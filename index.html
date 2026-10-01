@@ -3075,7 +3075,7 @@ window.SID_LB={
     if(r.ok) return new Response(r.buf.slice(0),{status:200,headers:xl});
     return new Response(JSON.stringify({error:"Connection Failed",details:r.error||"not synced"}),{status:502,headers:{"Content-Type":"application/json"}});
   },
-  get aiBase(){ return liveCfg().bridge; },
+  get aiBase(){ return SBC.url+"/functions/v1/sid-ai"; },
   status(){
     const live=LIVE.src==="live"&&LIVE.ok, st=LIVE.busy?"busy":live?"live":LIVE.src==="last"?"last":"builtin";
     const text=st==="busy"?"Syncing…":st==="live"?"Live · "+fWhen(LIVE.at):st==="last"?"Last sync "+fWhen(LIVE.at):"Built-in copy";
@@ -7993,7 +7993,8 @@ let SBLB=null;
 /* ---- Settings → MDS data source ---- */
 const SRC={link:null,loaded:false,err:""};
 async function srcLoad(){
-  try{ const r=await SB.from("sid_config").select("key,value").eq("key","mds_link"); if(r.error) throw r.error; SRC.link=(r.data[0]||{}).value||""; SRC.loaded=true; }
+  try{ const r=await SB.from("sid_config").select("key,value").in("key",["mds_link","gemini_key"]); if(r.error) throw r.error;
+    SRC.link=(r.data.find(x=>x.key==="mds_link")||{}).value||""; SRC.ai=!!(r.data.find(x=>x.key==="gemini_key")||{}).value; SRC.loaded=true; }
   catch(e){ SRC.err=e.message||String(e); SRC.loaded=true; }
   const el=$("#srcCard"); if(el){ el.outerHTML=srcCardHtml(); srcWire(); }
 }
@@ -8019,8 +8020,9 @@ function srcCardHtml(){
       <div class="src-grid">
         <label>Language<select id="lbLang"><option value="en" ${d.language!=="ar"?"selected":""}>English</option><option value="ar" ${d.language==="ar"?"selected":""}>العربية</option></select></label>
         <label>Text size<select id="lbSize">${[["text-sm","Small"],["text-base","Medium"],["text-lg","Large"]].map(([v,l])=>`<option value="${v}" ${(d.fontSize||"text-base")===v?"selected":""}>${l}</option>`).join("")}</select></label>
-        <label class="w2">AI assistant server (optional — the “Ask SDM AI” robot only; syncing does not use it)<input id="aiBase" value="${esc(ai)}" placeholder="https://…run.app"></label>
-      </div><button class="ebtn" id="lbSave">Save display &amp; assistant</button></details>`}
+        <label class="w2">AI assistant (“Ask SDM AI”) — free Google Gemini API key · <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">get a free key</a> · stored privately, only administrators see it
+          <input id="aiKey" type="password" value="" placeholder="${SRC.ai?"key saved ✓ — paste a new one to replace it":"paste your Gemini API key"}" autocomplete="off"></label>
+      </div><button class="ebtn" id="lbSave">Save display &amp; AI key</button></details>`}
   </section>`;
 }
 function srcWire(){
@@ -8037,14 +8039,38 @@ function srcWire(){
       await sbSaveVersion(buf,{source:"Upload: "+f.name,rows:w.out.rows.length,modified:w.modified,sig:rowSig(w.out.rows)});
     }catch(e){ toast("Could not use that file: "+e.message,true); } finally{ up.value=""; } };
   const ls=$("#lbSave"); if(ls) ls.onclick=async()=>{ SBLB={language:$("#lbLang").value,fontSize:$("#lbSize").value};
-    const ai=cleanBase($("#aiBase").value);
+    const k=$("#aiKey").value.trim();
     const a=await SB.from("sid_kv").upsert({key:"lbdisplay",value:SBLB,updated_at:new Date().toISOString()});
-    const b=await SB.from("sid_kv").upsert({key:"live",value:{url:"",bridge:ai},updated_at:new Date().toISOString()});
-    try{ localStorage.setItem("sid.live2",JSON.stringify({url:"",bridge:ai})); }catch(e){}
+    const b=k?await SB.from("sid_config").upsert({key:"gemini_key",value:k,updated_at:new Date().toISOString()}):{error:null};
     if(a.error||b.error){ toast("Could not save: "+(a.error||b.error).message,true); return; }
-    lbDisplayToStorage(); LB.html=null; mountLB(); toast("Saved — the Sales & Land Bank view uses it for everyone"); };
+    if(k){ SRC.ai=true; $("#aiKey").value=""; $("#aiKey").placeholder="key saved ✓ — paste a new one to replace it"; }
+    lbDisplayToStorage(); LB.html=null; mountLB(); toast(k?"Saved — the AI assistant is ready for everyone":"Saved — the Sales & Land Bank view uses it for everyone"); };
 }
 async function srcSyncNow(){ const st=$("#srcSt"); if(st) st.textContent="Syncing with SharePoint…"; const r=await syncAll({manual:true}); const s2=$("#srcSt"); if(s2) s2.textContent=srcStatus(); if(r&&r.ok) sbVersRefresh(); }
+
+
+/* ---- Ask SDM AI: a compact, live summary of the whole system goes with every question ---- */
+function sidSummary(){
+  const by={};
+  S.rows.filter(r=>!r.dup).forEach(r=>{ const k=S.reg.parks[r.park]?.name||r.park;
+    const o=by[k]||(by[k]={park:k,units:0,plots:0,salesDeals:0,salesValueEGP:0,salesAreaSqm:0,availablePlots:0,availableAreaSqm:0,onHoldPlots:0,_p:0,_n:0});
+    const np=nPlots(r); o.units++; o.plots+=np;
+    if(isSale(r)){ o.salesDeals++; o.salesValueEGP+=r.cash||0; o.salesAreaSqm+=r.area||0; }
+    if(r.status==="ats"){ o.availablePlots+=np; o.availableAreaSqm+=r.area||0; const q=priceOf(r); if(q&&q.sqm){ o._p+=q.sqm; o._n++; } }
+    if(r.status==="hold") o.onHoldPlots+=np; });
+  const parks=Object.values(by).map(({_p,_n,...o})=>({...o,salesValueEGP:Math.round(o.salesValueEGP),salesAreaSqm:Math.round(o.salesAreaSqm),
+    availableAreaSqm:Math.round(o.availableAreaSqm),avgListPriceEGPperSqm:_n?Math.round(_p/_n):null}));
+  return {source:"SID Dashboard (live MDS)",sheetSaved:(LIVE.cur&&LIVE.cur.modified)||null,currency:"EGP",
+    definitions:{sales:"sold + contracted + reserved",available:"available to sell (ATS)"},parks};
+}
+function lbAiWrap(f){
+  const W=f&&f.contentWindow; if(!W||W.__sidAi) return; W.__sidAi=1; const of=W.fetch.bind(W);
+  W.fetch=async(u,o={})=>{ if(String(u).includes("/functions/v1/sid-ai")){
+      const tok=(await SB.auth.getSession()).data.session?.access_token; let body=o.body;
+      try{ const j=JSON.parse(body); j.sidContext=sidSummary(); body=JSON.stringify(j); }catch(e){}
+      o={...o,body,headers:{...(o.headers||{}),Authorization:"Bearer "+tok,apikey:SBC.key}}; }
+    return of(u,o); };
+}
 
 /* ---- page access ---- */
 let SBME=null;
@@ -8086,6 +8112,7 @@ function sbApplyPerms(){
 function lbPermTick(){
   if(!SBME) return;
   const f=document.querySelector("#lbwrap iframe"); let d=null; try{ d=f&&f.contentDocument; }catch(e){} if(!d||!d.body) return;
+  lbAiWrap(f);
   const hide=[...LB_HIDE_ALWAYS,...Object.entries(LB_TID).filter(([k])=>!canSee(k)).map(([,t])=>t)];
   let st=d.getElementById("sid-perm");
   if(!st){ st=d.createElement("style"); st.id="sid-perm"; (d.head||d.body).appendChild(st); }
