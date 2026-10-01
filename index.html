@@ -1502,6 +1502,15 @@ mark{background:#FFF1B8;color:inherit;padding:0 4px;border-radius:4px}
 .so-act{display:flex;flex-direction:column;gap:8px;margin-top:16px}
 @media (max-width:900px){ .mm.so{grid-template-columns:1fr} .so-prev{height:80vh} }
 
+/* V32: compact KPI strip — more room for the map */
+.kpis{padding:8px 16px 2px!important;gap:8px!important}
+.kpi{padding:7px 14px 8px 16px!important;border-radius:12px!important}
+.kpi .k{font-size:8.5px!important;letter-spacing:.09em!important}
+.kpi .k::before{width:6px!important;height:6px!important}
+.kpi .v{font-size:18px!important;line-height:1.2!important;margin-top:1px}
+.kpi .s{font-size:9.5px!important;margin-top:1px!important;min-height:0!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.map-note{display:none!important}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -2496,7 +2505,6 @@ const VIEWS=[
   {id:"portfolio", group:"land",    label:"Portfolio", hint:"Every project, from completed to Future of Egypt"},
   {id:"sales",     group:"land",    label:"Sales & Land Bank", badge:"Live",
                                     hint:"Overview, intelligence, land bank, executive, sales & financial engine"},
-  {id:"absorption",group:"land",    label:"Absorption", hint:"How fast land moves, and what that implies"},
   {id:"inventory", group:"land",    label:"Inventory",  hint:"Plot map — what is released, held, available"},
   {id:"match",     group:"tools",   label:"Investor match", badge:"New",
                                     hint:"Rank the best plots for an investor and send a proposal"},
@@ -3092,7 +3100,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V31.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V32.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
@@ -8053,7 +8061,6 @@ const SID_PAGES=[
     {h:"Land & inventory",items:[["lb.inventory_breakdown","Available Inventory"],["lb.landbank","Project Land Bank"]]},
     {h:"Sales & finance",items:[["lb.sales","Sales, Pipeline & Forecast"],["lb.executive","Executive Financials"],["lb.financial_engine","Financial Engine"]]},
     {h:"CEO Suite",items:[["lb.ceo_brief","CEO Brief"],["lb.ceo_cash","Cash & Receivables"],["lb.ceo_value","Pricing & Land Value"],["lb.ceo_runway","Inventory Runway"],["lb.ceo_customers","Customers & Bulk Deals"],["lb.ceo_governance","Deal Cycle & Governance"]]}]},
-  {id:"absorption",label:"Absorption"},
   {id:"inventory",label:"Inventory (plot map)"},
   {id:"match",label:"Investor match",subs:[{h:"Tools",items:[["match.fin","Initial financial offer & prices in the proposal"]]}]},
   {id:"codes",label:"Industrial Codes"},
