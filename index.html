@@ -1541,15 +1541,16 @@ mark{background:#FFF1B8;color:inherit;padding:0 4px;border-radius:4px}
 .mm-frommap b{color:var(--signal)}
 
 @property --la{syntax:"<angle>";inherits:true;initial-value:0deg}
-#laraEdge{position:fixed;inset:0;pointer-events:none;z-index:2147482990;opacity:0;transition:opacity .6s ease;--lw:6px}
+#laraEdge{position:fixed;inset:0;pointer-events:none;z-index:2147482990;opacity:0;transition:opacity .9s ease;--lw:3px}
 #laraEdge.on{opacity:1}
 #laraEdge::before,#laraEdge::after{content:"";position:absolute;inset:0;padding:var(--lw);border-radius:22px;
   background:conic-gradient(from var(--la),#ff375f,#ff9f0a,#ffd60a,#30d158,#64d2ff,#0a84ff,#bf5af2,#ff375f);
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:laraSpin 5s linear infinite}
-#laraEdge::before{filter:blur(calc(var(--lw) * 1.6));opacity:.95}
-#laraEdge::after{padding:calc(var(--lw) * .45);opacity:.9}
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:laraSpin 14s linear infinite}
+#laraEdge::before{filter:blur(calc(var(--lw) * 2));opacity:.28}
+#laraEdge::after{padding:1.5px;opacity:.55}
+#laraEdge.on{opacity:var(--lo,.6)}
 @keyframes laraSpin{to{--la:360deg}}
-.lara-dock{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2147482995;display:flex;align-items:center;gap:10px;
+.lara-dock{position:fixed;left:50%;bottom:16px;translate:-50% 0;z-index:2147482995;display:flex;align-items:center;gap:10px;
   font-family:Inter,-apple-system,system-ui,sans-serif;color:#fff}
 .lara-orbbtn{width:46px;height:46px;border-radius:50%;padding:0;border:0;background:transparent;cursor:pointer;flex:0 0 46px;
   box-shadow:0 8px 26px -6px rgba(60,40,180,.55),0 0 0 1px rgba(255,255,255,.12);transition:transform .25s cubic-bezier(.2,.9,.3,1.3),width .3s,height .3s}
@@ -1564,7 +1565,16 @@ mark{background:#FFF1B8;color:inherit;padding:0 4px;border-radius:4px}
 .lara-dock.open{bottom:22px;width:min(560px,calc(100vw - 32px));align-items:flex-start;padding:14px 16px 12px;border-radius:26px;
   background:rgba(14,14,24,.72);backdrop-filter:saturate(190%) blur(28px);-webkit-backdrop-filter:saturate(190%) blur(28px);
   box-shadow:0 30px 80px -20px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.1) inset;animation:laraIn .42s cubic-bezier(.2,.9,.3,1.15)}
-@keyframes laraIn{from{opacity:0;transform:translateX(-50%) translateY(18px) scale(.94)}to{opacity:1;transform:translateX(-50%)}}
+@keyframes laraIn{from{opacity:0;scale:.94}to{opacity:1;scale:1}}
+.lara-dock.open{resize:both;overflow:hidden;min-width:360px;min-height:210px;max-width:calc(100vw - 12px);max-height:calc(100vh - 12px);align-items:stretch}
+.lara-dock.open .lara-orbbtn{align-self:flex-start}
+.lara-dock.open .lara-main{height:100%}
+.lara-dock.open .lara-cap{flex:1 1 auto;overflow:auto;min-height:38px}
+.lara-dock .lara-orbbtn{touch-action:none}
+.lara-dock.open .lara-top{cursor:grab;user-select:none;touch-action:none}
+.lara-dock.drag,.lara-dock.drag .lara-top,.lara-dock.drag .lara-orbbtn{cursor:grabbing!important;transition:none!important}
+.lara-dock.drag{opacity:.93}
+.lara-dock.open::after{content:"";position:absolute;right:5px;bottom:5px;width:10px;height:10px;border-right:2px solid rgba(255,255,255,.35);border-bottom:2px solid rgba(255,255,255,.35);border-radius:0 0 4px 0;pointer-events:none}
 .lara-dock.open .lara-mini{display:none}
 .lara-dock.open .lara-orbbtn{width:64px;height:64px;flex:0 0 64px}
 .lara-dock.open .lara-main{display:flex;flex-direction:column;flex:1;min-width:0}
@@ -1574,7 +1584,7 @@ mark{background:#FFF1B8;color:inherit;padding:0 4px;border-radius:4px}
 .lara-ic{width:28px;height:28px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0}
 .lara-ic svg{width:14px;height:14px} .lara-ic:hover{background:rgba(255,255,255,.18)} .lara-ic.on{background:#ff375f}
 #laraWave{width:100%;height:46px;margin:2px 0 0}
-.lara-cap{min-height:38px}
+.lara-cap{min-height:38px;scrollbar-width:thin}
 .lara-cap p{margin:0;line-height:1.38}
 .lara-cap .u{font-size:12.5px;color:rgba(255,255,255,.58);font-style:italic}
 .lara-cap .l{font-size:14.5px;font-weight:500;color:#fff;margin-top:2px}
@@ -2983,13 +2993,24 @@ function laraPulse(keys){
     const c=[cs.reduce((a,x)=>a+x[0],0)/cs.length,cs.reduce((a,x)=>a+x[1],0)/cs.length], el=document.createElement("div"); el.className="lara-pulse";
     const mk=new maplibregl.Marker({element:el}).setLngLat(c).addTo(map); setTimeout(()=>mk.remove(),9000); }catch(e){}
 }
+/* while Lara is acting, the camera flies slowly: a long arc between projects, a gentle glide between plots */
+function laraCine(){ return typeof LARA!=="undefined"&&Date.now()<(LARA.cineUntil||0); }
+function laraDur(b,def){
+  if(!laraCine()||!map) return def;
+  try{ const c=map.getCenter(), cx=(b[0][0]+b[1][0])/2, cy=(b[0][1]+b[1][1])/2, km=hav([c.lng,c.lat],[cx,cy]);
+    let ms=Math.min(7000,Math.max(3000,2600+Math.sqrt(km)*260));
+    if(LARA.flyFar) ms=Math.max(ms,km>60?6500:5500);           // another project, or from the overview: a full, slow arc
+    LARA.flyFar=false; return Math.round(ms); }catch(e){ return 3200; }
+}
+function laraFlyMark(park){ LARA.flyFar=!!map&&(map.getZoom()<11||(!!LARA.lastPark&&LARA.lastPark!==park)); LARA.lastPark=park; }
+function laraPulseAfter(keys){ setTimeout(()=>{ if(map&&map.isMoving&&map.isMoving()) map.once("moveend",()=>laraPulse(keys)); else laraPulse(keys); },400); }
 function laraParkTo(p){ if(p&&S.park!=="all"&&S.park!==p){ S.park=p; const s=$("#parkSel"); if(s) s.value=p; } }
 function laraShow(x){
   if(!x) return false; LARA.cur=x; const keys=x.ks||(x.k?[x.k]:[]);
   if(!keys.length) return false;
   if(!laraCan("inventory")) return false;
   laraParkTo(x.r.park);
-  showPlots(keys); setTimeout(()=>laraPulse(keys),900); return true;
+  laraFlyMark(x.r.park); LARA.skipFit=true; showPlots(keys); laraPulseAfter(keys); return true;
 }
 async function laraFind(a){
   if(!laraCan("match")&&!laraCan("inventory")) return {error:"This user's role cannot open Investor Match or the map."};
@@ -3045,7 +3066,7 @@ function laraShowPlot(a){
   const keys=k0.length?k0:rs.flatMap(laraRowKeys);
   if(!keys.length) return {plots:laraPlotFacts(rs),note:"This plot is in the MDS but not drawn on the survey map."};
   const ks=a.add_to_selection?[...new Set([...S.sel,...keys])]:keys;
-  LARA.cur=null; laraParkTo((S.plots.get(keys[0])||{}).park); showPlots(ks); setTimeout(()=>laraPulse(keys),900);
+  LARA.cur=null; laraParkTo((S.plots.get(keys[0])||{}).park); laraFlyMark((S.plots.get(keys[0])||{}).park); LARA.skipFit=true; showPlots(ks); laraPulseAfter(keys);
   const sum=plotSum(ks.map(k=>({k,info:S.plots.get(k),f:S.geo.features.find(x=>x.properties.k===k)})).filter(x=>x.info&&x.f));
   return {plots:laraPlotFacts(rs.length?rs:sum.rows),selected_plots:ks.length,combined_area_sqm:rnd(sum.area)};
 }
@@ -3054,7 +3075,7 @@ function laraMerge(a){
     const keys=[], miss=[], rows=[];
     a.units.forEach(u=>{ const {rs,keys:k0}=laraUnit(u,a.park); const k=k0.length?k0:rs.flatMap(laraRowKeys); if(k.length){ keys.push(...k); rows.push(...rs); } else miss.push(u); });
     if(!keys.length) return {error:"None of those plots were found on the map.",missing:miss};
-    const ks=[...new Set(keys)]; LARA.cur=null; showPlots(ks); setTimeout(()=>laraPulse(ks),900);
+    const ks=[...new Set(keys)]; LARA.cur=null; laraFlyMark((S.plots.get(ks[0])||{}).park); LARA.skipFit=true; showPlots(ks); laraPulseAfter(ks);
     const items=ks.map(k=>({k,info:S.plots.get(k),f:S.geo.features.find(x=>x.properties.k===k)})).filter(x=>x.info&&x.f), sum=plotSum(items);
     const parks=new Set(items.map(x=>x.info.park));
     return {combined_plots:ks.length,combined_area_sqm:rnd(sum.area),total_price_egp:rnd(sum.value)||null,parks:[...parks].map(laraParkName),missing:miss,
@@ -3119,7 +3140,7 @@ async function laraNav(a){
 function laraOpenPark(a){
   const ps=laraParks(a.park); if(!ps.length) return {error:`No park matches "${a.park}"`};
   if(S.view!=="inventory"&&S.view!=="portfolio"&&laraCan("inventory")) go("inventory");
-  S.park=ps[0]; const sel=$("#parkSel"); if(sel) sel.value=ps[0]; render(); fitPlots();
+  laraFlyMark(ps[0]); S.park=ps[0]; const sel=$("#parkSel"); if(sel) sel.value=ps[0]; render(); if(S.view!=="inventory") fitPlots();   // render() already flies there on the plot map
   return {...laraStats({park:a.park}),also:ps.length>1?ps.slice(1).map(laraParkName):undefined};
 }
 const LARA_ST={available:"ats",sold:"sold",reserved:"reserved",eoi:"eoi",on_hold:"hold",not_for_sale:"nfs"};
@@ -3197,7 +3218,7 @@ function laraScreen(){
     last_search:LARA.opts.singles.length?{singles:LARA.opts.singles.length,merged:LARA.opts.merges.length}:null,last_pdf:LARA.last?LARA.last.name:null};
 }
 async function laraRun(name,a){
-  a=a||{};
+  a=a||{}; LARA.cineUntil=Date.now()+9000;
   try{
     switch(name){
       case "find_plots": return await laraFind(a);
@@ -3475,7 +3496,7 @@ function laraUI(){
   if($("#laraDock")) return;
   const edge=document.createElement("div"); edge.id="laraEdge"; document.body.appendChild(edge);
   const d=document.createElement("div"); d.id="laraDock"; d.className="lara-dock"; d.dataset.st="off";
-  d.innerHTML=`<button class="lara-orbbtn" id="laraOrbBtn" title="Talk to Lara (Alt+Space) — or just say “Hey Lara”" aria-label="Talk to Lara"><canvas id="laraOrb" width="120" height="120"></canvas></button>
+  d.innerHTML=`<button class="lara-orbbtn" id="laraOrbBtn" title="Talk to Lara (Alt+Space) — or just say “Hey Lara”. Drag to move." aria-label="Talk to Lara"><canvas id="laraOrb" width="120" height="120"></canvas></button>
     <div class="lara-mini" id="laraMini"><b>Lara</b><span id="laraMiniT">Say “Hey Lara”</span></div>
     <div class="lara-main">
       <div class="lara-top"><b>Lara</b><span class="lara-st" id="laraSt"></span>
@@ -3495,7 +3516,9 @@ function laraUI(){
     </div>`;
   document.body.appendChild(d);
   $("#laraLang").value=LARA_PREF.lang||"auto";
-  $("#laraOrbBtn").onclick=()=>{ if(LARA.ws||LARA.lite&&!LARA.sleeping&&LARA.st!=="wake"&&LARA.st!=="off") laraSleep(); else laraStart(); };
+  laraDrag(d);
+  addEventListener("resize",()=>laraPlace());
+  $("#laraOrbBtn").onclick=()=>{ if(Date.now()-(LARA.dragged||0)<350) return; if(LARA.ws||LARA.lite&&!LARA.sleeping&&LARA.st!=="wake"&&LARA.st!=="off") laraSleep(); else laraStart(); };
   $("#laraX").onclick=()=>laraSleep();
   $("#laraMute").onclick=()=>{ LARA.muted=!LARA.muted; $("#laraMute").classList.toggle("on",LARA.muted); $("#laraMute").innerHTML=LARA.muted?LARA_IC.micOff:LARA_IC.mic; };
   $("#laraGear").onclick=()=>{ const s=$("#laraSet"); s.hidden=!s.hidden; $("#laraModel").textContent=(LARA.lite?"Standard voice (live voice busy)":LARA.model?"Live voice · "+LARA.model:"Live voice · Google Gemini (free tier)")+" · the session closes after 30 s of silence."; };
@@ -3506,7 +3529,7 @@ function laraUI(){
   $("#laraIn").onsubmit=e=>{ e.preventDefault(); const v=$("#laraTxt").value.trim(); if(!v) return; $("#laraTxt").value=""; laraCap("u",v,true);
     if(LARA.ws||LARA.lite&&!LARA.sleeping&&LARA.st!=="wake"&&LARA.st!=="off") laraSend(v); else laraStart({text:v}); };
   addEventListener("keydown",e=>{ if(e.altKey&&e.code==="Space"){ e.preventDefault(); $("#laraOrbBtn").click(); } });
-  laraState(LARA_PREF.wake?"wake":"off"); laraAnim();
+  laraPlace(); laraState(LARA_PREF.wake?"wake":"off"); laraAnim();
   if(LARA_PREF.wake) laraWakeStart();
 }
 const LARA_IC={mic:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="5.5" y="1.5" width="5" height="8" rx="2.5"/><path d="M3 7.5a5 5 0 0010 0M8 12.5V15"/></svg>',
@@ -3521,11 +3544,39 @@ function laraState(st){
   const m=$("#laraMiniT"); if(m) m.textContent=LARA_STL[st==="wake"||st==="off"?st:"listening"];
   const e=$("#laraEdge"); if(e) e.classList.toggle("on",["connecting","listening","thinking","speaking"].includes(st));
 }
-function laraPanel(open){ const d=$("#laraDock"); if(!d) return; d.classList.toggle("open",open); if(open){ LARA.cap={u:"",l:"",who:""}; $("#laraU").textContent=""; $("#laraL").textContent=""; $("#laraChips").innerHTML=""; LARA.chips=[]; } else { const s=$("#laraSet"); if(s) s.hidden=true; } }
+/* position: the orb and the open chat box each remember where they were put (and the box its size) */
+function laraPos(){ try{ return JSON.parse(localStorage.getItem("sid.lara.pos")||"{}")||{}; }catch(e){ return {}; } }
+function laraPosSave(P){ try{ localStorage.setItem("sid.lara.pos",JSON.stringify(P)); }catch(e){} }
+function laraPlace(){
+  const d=$("#laraDock"); if(!d) return; const open=d.classList.contains("open"), P=laraPos(), q=open?P.panel:P.orb;
+  if(open&&q&&q.w){ d.style.width=Math.min(q.w,innerWidth-12)+"px"; d.style.height=Math.min(q.h,innerHeight-12)+"px"; } else { d.style.width=""; d.style.height=""; }
+  if(q&&q.x!=null){ const w=d.offsetWidth, h=d.offsetHeight;
+    Object.assign(d.style,{left:Math.min(Math.max(6,q.x),innerWidth-w-6)+"px",top:Math.min(Math.max(6,q.y),innerHeight-h-6)+"px",bottom:"auto",translate:"none"}); }
+  else Object.assign(d.style,{left:"",top:"",bottom:"",translate:""});
+}
+function laraDrag(d){
+  const pin=()=>{ const r=d.getBoundingClientRect(); Object.assign(d.style,{left:r.left+"px",top:r.top+"px",bottom:"auto",translate:"none"}); };
+  const save=(open,size)=>{ const P=laraPos(), k=open?"panel":"orb"; P[k]={...(P[k]||{}),x:d.offsetLeft,y:d.offsetTop,...(size?{w:d.offsetWidth,h:d.offsetHeight}:{})}; laraPosSave(P); };
+  d.addEventListener("pointerdown",e=>{
+    if(e.button!==0) return;
+    const open=d.classList.contains("open"), r=d.getBoundingClientRect();
+    if(open&&e.clientX>r.right-20&&e.clientY>r.bottom-20){ pin(); const up=()=>{ removeEventListener("pointerup",up); save(true,true); }; addEventListener("pointerup",up); return; }   // the resize corner
+    const h=open?e.target.closest(".lara-top,.lara-orbbtn"):e.target.closest(".lara-orbbtn");
+    if(!h||e.target.closest(".lara-ic,input,select,textarea")) return;
+    const sx=e.clientX, sy=e.clientY; let moved=false;
+    const mv=ev=>{ const dx=ev.clientX-sx, dy=ev.clientY-sy; if(!moved){ if(Math.hypot(dx,dy)<6) return; moved=true; pin(); d.classList.add("drag"); }
+      d.style.left=Math.min(Math.max(6,r.left+dx),innerWidth-r.width-6)+"px"; d.style.top=Math.min(Math.max(6,r.top+dy),innerHeight-r.height-6)+"px"; ev.preventDefault(); };
+    const up=()=>{ removeEventListener("pointermove",mv); removeEventListener("pointerup",up); d.classList.remove("drag"); if(moved){ LARA.dragged=Date.now(); save(open,open); } };
+    addEventListener("pointermove",mv); addEventListener("pointerup",up);
+  });
+  d.addEventListener("dblclick",e=>{ if(!e.target.closest(".lara-top")||e.target.closest(".lara-ic")) return;   // double-click the title bar: back to the default place
+    const P=laraPos(); delete P.panel; laraPosSave(P); laraPlace(); });
+}
+function laraPanel(open){ const d=$("#laraDock"); if(!d) return; d.classList.toggle("open",open); laraPlace(); if(open){ LARA.cap={u:"",l:"",who:""}; $("#laraU").textContent=""; $("#laraL").textContent=""; $("#laraChips").innerHTML=""; LARA.chips=[]; } else { const s=$("#laraSet"); if(s) s.hidden=true; } }
 function laraCap(who,text,replace){
   const C=LARA.cap;
-  if(who==="u"){ if(C.who!=="u"||replace){ C.u=""; } C.u=replace?text:(C.u+text); C.who="u"; const el=$("#laraU"); if(el) el.textContent=C.u.trim().slice(-180); }
-  else { if(C.who!=="l"||replace){ C.l=""; } C.l=replace?text:(C.l+text); C.who="l"; const el=$("#laraL"); if(el) el.textContent=C.l.trim().slice(-260); }
+  if(who==="u"){ if(C.who!=="u"||replace){ C.u=""; } C.u=replace?text:(C.u+text); C.who="u"; const el=$("#laraU"); if(el) el.textContent=C.u.trim().slice(-600); }
+  else { if(C.who!=="l"||replace){ C.l=""; } C.l=replace?text:(C.l+text); C.who="l"; const el=$("#laraL"); if(el) el.textContent=C.l.trim().slice(-1400); const cp=el&&el.parentNode; if(cp) cp.scrollTop=cp.scrollHeight; }
 }
 function laraChip(label){
   const box=$("#laraChips"); if(!box) return null; const el=document.createElement("span"); el.className="lara-chip busy"; el.innerHTML=`<i></i>${esc(label)}`;
@@ -3571,7 +3622,7 @@ function laraAnim(){
         wx.closePath(); const g=wx.createLinearGradient(0,0,WW,0); g.addColorStop(0,`rgba(${c},0)`); g.addColorStop(.5,`rgba(${c},.55)`); g.addColorStop(1,`rgba(${c},0)`); wx.fillStyle=g; wx.fill(); });
       wx.globalCompositeOperation="source-over";
     }
-    const e=$("#laraEdge"); if(e) e.style.setProperty("--lw",(5+L*16).toFixed(1)+"px");
+    const e=$("#laraEdge"); if(e){ e.style.setProperty("--lw",(2.5+L*3).toFixed(1)+"px"); e.style.setProperty("--lo",(st==="speaking"?.5+L*.35:.45).toFixed(2)); }
   };
   cancelAnimationFrame(LARA.raf); LARA.raf=requestAnimationFrame(frame);
 }
@@ -4044,7 +4095,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V36.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V37.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
@@ -5331,6 +5382,7 @@ function setBase(){
 }
 function fitPlots(){
   if(!map||!S.geo) return;
+  if(typeof LARA!=="undefined"&&LARA.skipFit&&laraCine()) return;   // Lara is about to fly to a plot: no detour
   let b=[[180,90],[-180,-90]];
   const want=S.park==="all"?null:S.park;
   S.geo.features.forEach(f=>{
@@ -5340,7 +5392,7 @@ function fitPlots(){
         b[0][0]=Math.min(b[0][0],x); b[0][1]=Math.min(b[0][1],y);
         b[1][0]=Math.max(b[1][0],x); b[1][1]=Math.max(b[1][1],y); }));
   });
-  if(b[0][0]<=b[1][0]){ map.fitBounds(b,{padding:70,duration:RM?0:700}); return; }
+  if(b[0][0]<=b[1][0]){ map.fitBounds(b,{padding:70,duration:RM?0:laraDur(b,700),essential:true}); return; }
   // no geometry for this park: centre on its portfolio coordinate instead of doing nothing
   const pf=PORTFOLIO.find(p=>p.park===want);
   if(pf) map.easeTo({center:[pf.lng,pf.lat],zoom:11,duration:RM?0:600});
@@ -5818,7 +5870,7 @@ function fitPortfolio(){
     b[0][0]=Math.min(b[0][0],c[0]); b[0][1]=Math.min(b[0][1],c[1]);
     b[1][0]=Math.max(b[1][0],c[0]); b[1][1]=Math.max(b[1][1],c[1]);
   });
-  map.fitBounds(b,{padding:{top:118,right:392,bottom:70,left:70},duration:RM?0:700,maxZoom:9});
+  map.fitBounds(b,{padding:{top:118,right:392,bottom:70,left:70},duration:RM?0:laraDur(b,700),maxZoom:9,essential:true});
 }
 function hideMap(){ $("#mapwrap").hidden=true; }
 /* One map serves both views. Portfolio shows the estate: project pins over the whole
@@ -5868,7 +5920,8 @@ function fitKeys(keys){
       b[0][0]=Math.min(b[0][0],x); b[0][1]=Math.min(b[0][1],y);
       b[1][0]=Math.max(b[1][0],x); b[1][1]=Math.max(b[1][1],y); }));
   });
-  if(b[0][0]<=b[1][0]) map.fitBounds(b,{padding:{top:110,left:70,right:70,bottom:70},maxZoom:17,duration:RM?0:700});
+  if(typeof LARA!=="undefined") LARA.skipFit=false;
+  if(b[0][0]<=b[1][0]) map.fitBounds(b,{padding:{top:110,left:70,right:70,bottom:70},maxZoom:17,duration:RM?0:laraDur(b,700),essential:true});
 }
 function refreshPaint(){
   if(!map||!map.getLayer("fill")) return;
