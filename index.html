@@ -1511,6 +1511,22 @@ mark{background:#FFF1B8;color:inherit;padding:0 4px;border-radius:4px}
 .kpi .s{font-size:9.5px!important;margin-top:1px!important;min-height:0!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .map-note{display:none!important}
 
+.kpis.map5{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+.kpi .u-v small{font-size:11px;font-weight:600;color:var(--mute);margin-left:2px}
+@media (max-width:1100px){ .kpis.map5{grid-template-columns:repeat(3,minmax(0,1fr))!important} }
+.selpanel{resize:both;min-width:280px;min-height:220px;max-width:calc(100% - 12px);max-height:calc(100% - 12px)}
+.selpanel .sp-top{cursor:grab;user-select:none}
+.selpanel.dragging{opacity:.94;box-shadow:0 30px 70px -20px rgba(0,0,0,.45)}
+.selpanel.dragging .sp-top{cursor:grabbing}
+.sp-print{position:relative}
+.sp-pmenu{position:absolute;left:0;right:0;bottom:calc(100% + 6px);background:var(--panel);border:1px solid var(--rule);border-radius:12px;box-shadow:var(--e3);padding:5px;z-index:5;display:flex;flex-direction:column}
+.sp-pmenu[hidden]{display:none}
+.sp-pmenu button{display:flex;flex-direction:column;align-items:flex-start;text-align:left;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:600;color:var(--ink)}
+.sp-pmenu button em{font-style:normal;font-weight:500;font-size:10.5px;color:var(--mute)}
+.sp-pmenu button:hover{background:var(--signal-w);color:var(--signal)}
+.sp-pmenu .sp-annex{background:transparent!important;color:var(--ink)!important;box-shadow:none!important;border:0!important;width:100%;height:auto!important;justify-content:flex-start}
+.sp-pmenu .sp-annex:hover{background:var(--signal-w)!important;color:var(--signal)!important}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -2606,7 +2622,9 @@ function buildRest(){
 function render(){
   const rs=rows(), t=totals(rs);
   computeHits();
-  $("#kpis").innerHTML=kpis(rs,t);
+  const MV=S.view==="portfolio"||S.view==="inventory";
+  $("#kpis").classList.toggle("map5",MV);
+  $("#kpis").innerHTML=MV?kpisMap(rs):kpis(rs,t); kpiHook();
   const body=$("#body"), content=$("#content");
   body.className="body view-"+S.view;
   $(".app").dataset.view=S.view;
@@ -2706,6 +2724,92 @@ function lbStrip(){
   $("#lbSync").onclick=()=>syncAll({manual:true});
   const b=$("#lbToHealth"); if(b) b.onclick=()=>go("health");
 }
+
+
+/* ============================================================================
+   MAP CARDS — on Portfolio and Inventory the top cards describe what is in focus:
+   the selected plots, else the park chosen or zoomed into, else every park — always after the filters.
+   ========================================================================== */
+const sumBy=(rs,f)=>rs.reduce((a,r)=>a+(+f(r)||0),0);
+let PARK_PINS=null;
+function mapFocusPark(){
+  if(!map||!map.getZoom||map.getZoom()<11.5) return null;
+  try{ if(!PARK_PINS) PARK_PINS=parkPins().features.map(f=>({park:f.properties.park,c:f.geometry.coordinates})).filter(x=>x.park&&x.c);
+    const B=map.getBounds(), C=map.getCenter(), inV=PARK_PINS.filter(x=>B.contains(x.c));
+    if(!inV.length) return null;
+    return inV.map(x=>({...x,d:hav([C.lng,C.lat],x.c)})).sort((a,b)=>a.d-b.d)[0].park;
+  }catch(e){ return null; }
+}
+function mapScope(rs){
+  if(S.sel&&S.sel.size){ const items=selRows(); if(items.length){ const sum=plotSum(items);
+    return {kind:"sel",label:`${items.length} selected plot${items.length>1?"s":""}`,rows:sum.rows,area:sum.area,plots:items.length,shares:sum.shares}; } }
+  const park=S.park!=="all"?S.park:mapFocusPark();
+  const rr=(park?rs.filter(r=>r.park===park):rs).filter(r=>!r.dup);
+  const f=typeof filterCount==="function"&&filterCount();
+  return {kind:park?"park":"all",park,label:park?(S.reg.parks[park]?.name||park)+(S.park==="all"?" · in view":""):"All parks"+(f?" · filtered":""),rows:rr,
+    area:sumBy(rr,r=>r.area),plots:sumBy(rr,r=>nPlots(r))};
+}
+function kpisMap(rs){
+  const sc=mapScope(rs), R=sc.rows, sold=R.filter(isSale), parks=new Set(R.map(r=>r.park));
+  const sh=r=>sc.shares&&sc.shares.has(r)?sc.shares.get(r):1;     // part of a merged deal selected → its share only
+  const soldA=sumBy(sold,r=>(r.area||0)*sh(r)), rev=sumBy(sold,r=>(r.cash||0)*sh(r));
+  const mva=sumBy(R,r=>r.mva), wat=sumBy(R,r=>r.water), sew=sumBy(R,r=>r.sewage);
+  const u=(v,d)=>v?(d?(Math.round(v*10)/10).toLocaleString("en-US"):fInt(v)):"—";
+  const cells=[
+    ["Active projects",dn(fInt(parks.size),"Projects in focus — "+sc.label,R),sc.label],
+    ["Total area",dn(fSq(sc.area)+" sqm","Plots in focus — "+sc.label,R),dn(fInt(sc.plots)+" plots","Plots in focus — "+sc.label,R)],
+    ["Sold area",dn(fSq(soldA)+" sqm","Sold + reserved — "+sc.label,sold),sc.area?pct(soldA,sc.area)+" of the area · sold + reserved":"sold + reserved"],
+    ["Revenue",dn(rev?fMon(rev,"EGP"):"—","Sales value — "+sc.label,sold),dn(fInt(sold.length)+" deals","Deals — "+sc.label,sold)+" · Cash Value (A)"],
+    ["Utilities",`<span class="u-v">${u(mva,1)}<small> MVA</small></span>`,`Water ${u(wat)} m³/d · Sewage ${u(sew)} m³/d · Gas n/a`]
+  ];
+  return cells.map(([k,v,s])=>`<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s||""}</span></div>`).join("");
+}
+let KPI_FOCUS=null;
+function kpiHook(){
+  if(!map||map.__kpiHook) return; map.__kpiHook=1;
+  map.on("moveend",()=>{ if(S.view!=="portfolio"&&S.view!=="inventory") return; const p=S.park==="all"?mapFocusPark():S.park;
+    if(p===KPI_FOCUS) return; KPI_FOCUS=p; const k=$("#kpis"); if(k) k.innerHTML=kpisMap(rows()); });
+}
+function kpisRefresh(){ if(S.view==="portfolio"||S.view==="inventory"){ const k=$("#kpis"); if(k){ k.innerHTML=kpisMap(rows()); k.classList.add("map5"); } } }
+
+/* ---- plot card: utilities (merged deals counted once) ---- */
+function utilHtml(rows){
+  const u=rows.filter(Boolean), mva=sumBy(u,r=>r.mva), wat=sumBy(u,r=>r.water), sew=sumBy(u,r=>r.sewage);
+  const has=u.some(r=>r.mva!=null||r.water!=null||r.sewage!=null);
+  const f=(v,d)=>v?(d?(Math.round(v*10)/10).toLocaleString("en-US"):fInt(v)):"—";
+  return `<div><span>Electricity</span><b>${has?f(mva,1)+" MVA":"—"}</b></div><div><span>Water</span><b>${has?f(wat)+" m³/day":"—"}</b></div>
+    <div><span>Sewage</span><b>${has?f(sew)+" m³/day":"—"}</b></div><div><span>Gas</span><b>n/a <em class="pbas">not in the MDS</em></b></div>`;
+}
+/* ---- plot card: Print menu ---- */
+function selOffer(mode){
+  const sum=plotSum(selRows()), rs=sum.rows; if(!rs.length){ toast("These plots have no register row yet",true); return; }
+  const parks=[...new Set(rs.map(r=>r.park))]; if(parks.length>1){ toast("Pick plots in one park for an offer",true); return; }
+  if(typeof canSee==="function"&&!canSee("offer")){ toast("Your role does not include the Sales offer",true); return; }
+  SO.park=parks[0]; SO.units=rs.map(r=>r.key); SO.q=""; soApplyTpl();
+  const f=SO.f; f.mode=mode; if(mode==="plan") f.title="Initial Financial Offer";
+  soSave(); go("offer"); toast(mode==="plan"?"Initial financial offer ready — check the plan and press Download":"Sales offer ready — fill the client and press Download");
+}
+/* ---- plot card: drag by its header, resize from the corner; remembered ---- */
+function selPlace(el){
+  let p=null; try{ p=JSON.parse(localStorage.getItem("sid.selpos")||"null"); }catch(e){}
+  const W=$("#mapwrap"); if(!W) return; const wr=W.getBoundingClientRect();
+  if(p){ const w=Math.min(Math.max(280,p.w||324),wr.width-20), h=Math.min(Math.max(220,p.h||wr.height-28),wr.height-20);
+    Object.assign(el.style,{left:Math.min(Math.max(6,p.x),wr.width-w-6)+"px",top:Math.min(Math.max(6,p.y),wr.height-h-6)+"px",right:"auto",bottom:"auto",width:w+"px",height:h+"px"}); }
+  if(el.__drag) return; el.__drag=1;
+  const save=()=>{ try{ localStorage.setItem("sid.selpos",JSON.stringify({x:el.offsetLeft,y:el.offsetTop,w:el.offsetWidth,h:el.offsetHeight})); }catch(e){} };
+  const fix=()=>{ if(el.style.right==="auto") return; Object.assign(el.style,{left:el.offsetLeft+"px",top:el.offsetTop+"px",width:el.offsetWidth+"px",height:el.offsetHeight+"px",right:"auto",bottom:"auto"}); };
+  el.addEventListener("pointerdown",e=>{
+    const r=el.getBoundingClientRect();
+    if(e.clientX>r.right-18&&e.clientY>r.bottom-18){ fix(); const up=()=>{ save(); removeEventListener("pointerup",up); }; addEventListener("pointerup",up); return; }  // the resize corner
+    const top=e.target.closest(".sp-top"); if(!top||e.target.closest("button,a,input,select")) return;
+    fix(); e.preventDefault(); const sx=e.clientX-el.offsetLeft, sy=e.clientY-el.offsetTop, wr2=W.getBoundingClientRect();
+    const mv=ev=>{ el.style.left=Math.min(Math.max(4,ev.clientX-sx),wr2.width-el.offsetWidth-4)+"px"; el.style.top=Math.min(Math.max(4,ev.clientY-sy),wr2.height-el.offsetHeight-4)+"px"; };
+    const up=()=>{ removeEventListener("pointermove",mv); removeEventListener("pointerup",up); el.classList.remove("dragging"); save(); };
+    el.classList.add("dragging"); addEventListener("pointermove",mv); addEventListener("pointerup",up);
+  });
+}
+/* ---- sync: an unchanged workbook is recognised by its bytes and not read again ---- */
+async function bufHash(buf){ try{ const h=await crypto.subtle.digest("SHA-1",buf); return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,"0")).join(""); }catch(e){ return null; } }
 
 function kpis(rs,t){
   const sold=rs.filter(r=>isSale(r)&&!r.dup), priced=sold.filter(r=>r.cash>0&&r.area>0);
@@ -3040,7 +3144,14 @@ function syncAll(o={}){
   LIVE.busy=(async()=>{
     syncUI(); liveStatus(o.watch?`Re-checking SharePoint for your latest save…`:"Syncing with SharePoint…",null);
     try{
-      const w=await fetchLive(!!(o.manual||o.fresh||o.watch)), p=wbRead(w.buf);
+      const w=await fetchLive(!!(o.manual||o.fresh||o.watch));
+      if(!LIVE.hash&&LIVE.cur&&LIVE.cur.buf&&LIVE.cur.buf.byteLength) LIVE.hash=await bufHash(LIVE.cur.buf);
+      const hx=await bufHash(w.buf);
+      if(hx&&hx===LIVE.hash){ LIVE.at=new Date(); LIVE.src="live"; LIVE.ok=true; LIVE.lastErr="";
+        const m=LIVE.cur&&LIVE.cur.modified; liveStatus(`Up to date · checked ${fWhen(LIVE.at)}${m?" · sheet saved "+fWhen(m):""} · no changes`,true);
+        if(o.manual){ toast("Synced · no changes since the last sync"); if(!o.watch) startWatch(); }
+        return {ok:true,buf:LIVE.cur.buf}; }
+      const p=wbRead(w.buf); LIVE.hash=hx;
       const modified=p.modified||(w.modified?new Date(w.modified).toISOString():null);
       const have=LIVE.cur&&LIVE.cur.src!=="builtin"?LIVE.cur.modified:null;
       if(!o.manual&&modified&&have&&modified<have){       // an older copy than the one on screen: never step back
@@ -3135,7 +3246,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V33.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V34.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
@@ -4454,10 +4565,10 @@ function plotSum(items){
     if(all.length>1){ merged++;
       if(g.ks.size<all.length){ const tot=all.reduce((a,k)=>a+gisOf(k),0), sel=[...g.ks].reduce((a,k)=>a+gisOf(k),0);
         share=tot?sel/tot:g.ks.size/all.length; } }
-    area+=(r.area||0)*share;
+    area+=(r.area||0)*share; g.share=share;
     const q=priceOf(r); if(q&&q.total){ value+=q.total*share; priced+=(r.area||0)*share; curs.add("EGP"); }
   });
-  return {area:area+loose, value, priced, curs, deals:byRow.size, merged, rows:[...byRow.keys()]};
+  return {area:area+loose, value, priced, curs, deals:byRow.size, merged, rows:[...byRow.keys()], shares:new Map([...byRow].map(([r,g])=>[r,g.share??1]))};
 }
 /* ---- selection panel: one plot, or several combined ---- */
 function selRows(){
@@ -4467,7 +4578,7 @@ function selRows(){
 function showSelection(){
   const el=$("#selpanel"), items=selRows();
   const shell=$("#mapwrap");
-  if(!items.length){ el.hidden=true; shell.classList.remove("sel-open"); highlightSel(); clearRoutes("sel"); return; }
+  if(!items.length){ el.hidden=true; shell.classList.remove("sel-open"); highlightSel(); clearRoutes("sel"); kpisRefresh(); return; }
   const multi=items.length>1;
   const sum=plotSum(items), area=sum.area, curs=sum.curs, value=sum.value;
   const parks=new Set(items.map(x=>x.info.park));
@@ -4482,6 +4593,7 @@ function showSelection(){
   const combined=`<div class="sp-tot">
       <div><span>Combined area</span><b class="big">${dn(fInt(area),"Selected plots",sum.rows)} <i>sqm</i></b></div>
       <div><span>Plots</span><b>${dn(items.length,"Selected plots",sum.rows)}</b></div>
+      ${utilHtml(sum.rows)}
       ${sum.deals&&sum.deals<items.length?`<div><span>Deals</span><b>${sum.deals}</b></div>`:""}
       ${sum.merged?`<div class="sp-warn" style="color:var(--ink-2)">Includes ${sum.merged} merged deal${sum.merged>1?"s":""} — plots sold together under one unit code; each deal is counted once.</div>`:""}
       ${value?`<div><span>Total price</span><b>${dn(fEGP(value),"Selected plots",sum.rows)}</b></div>
@@ -4502,6 +4614,7 @@ function showSelection(){
       <div class="sp-kv">
         <div><span>Area</span><b>${r?(((r._plots||[]).length>1||(x.info.rows||[]).length>1)&&p.gis?fInt(p.gis)+" sqm plot · "+fInt(r.area)+" in MDS unit":fInt(r.area)+" sqm"):(p.gis?fInt(p.gis)+" sqm (GIS)":"—")}</b></div>
         <div><span>Sector</span><b>${r&&r.sector?esc(r.sector):"—"}</b></div>
+        ${utilHtml(r?[r]:[])}
         ${(()=>{ const q=priceOf(r), tag=q&&q.basis==="list"?' <em class="pbas">list</em>':"";
           return `<div><span>Price / sqm</span><b>${q&&q.sqm?fInt(q.sqm)+" EGP"+tag:"—"}</b></div>
             <div><span>Total price</span><b>${q&&q.total?(r?dn(fEGP(q.total),"Plot "+(p.unit||""),[r]):fEGP(q.total))+tag:"—"}</b></div>
@@ -4542,11 +4655,14 @@ function showSelection(){
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 1v7"/><path d="M3.5 5.5L6 8l2.5-2.5"/><path d="M2 10h8"/></svg>
         Coordinates (CSV)
       </button>
-      <button class="sp-annex">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M3 1h4l2 2v8H3z"/><path d="M7 1v2h2"/></svg>
-        Technical annex (PDF)
-      </button>
+      <div class="sp-print"><button class="sp-pbtn">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4V1h6v3"/><rect x="1" y="4" width="10" height="5" rx="1"/><path d="M3 7h6v4H3z"/></svg>
+        Print ▾</button>
+        <div class="sp-pmenu" hidden>
+          <button class="sp-annex">Technical annex<em>PDF with the plot drawing and coordinates</em></button>
+          <button data-pm="cash">Sales offer<em>the team's offer layout · cash</em></button>
+          <button data-pm="plan">Initial financial offer<em>payment plan with instalments</em></button>
+        </div></div>
     </div>
     <div class="sp-foot">
       <button class="sp-clear">Clear</button>
@@ -4570,7 +4686,12 @@ function showSelection(){
     const name=items.map(x=>(x.f.properties.unit||"plot").replace(/[^\w-]+/g,"")).join("-").slice(0,60);
     downloadCSV(`Coordinates_${name}.csv`, verticesCSV(items));
   };
+  { const pb=el.querySelector(".sp-pbtn"), pm=el.querySelector(".sp-pmenu");
+    pb.onclick=e=>{ e.stopPropagation(); pm.hidden=!pm.hidden; };
+    pm.querySelectorAll("[data-pm]").forEach(b=>b.onclick=()=>{ pm.hidden=true; selOffer(b.dataset.pm); }); }
+  selPlace(el); kpisRefresh();
   el.querySelector(".sp-annex").onclick=()=>{
+    el.querySelector(".sp-pmenu").hidden=true;
     const b=el.querySelector(".sp-annex"); const old=b.innerHTML;
     b.disabled=true; b.textContent="Generating…";
     setTimeout(()=>{ try{ buildAnnex(); }catch(err){ console.error(err); alert("Could not build the annex: "+err.message); }
@@ -4586,6 +4707,7 @@ function clearSel(){
   $("#selpanel").hidden=true;
   $("#mapwrap").classList.remove("sel-open");
   highlightSel();
+  kpisRefresh();
 }
 function highlightSel(){
   rebuildSelDims();
@@ -6401,7 +6523,7 @@ function viewOffer(){
       ${selN?`<button type="button" class="ebtn" id="soFromMap">Use the ${selN} plot${selN>1?"s":""} selected on the map</button>`:""}
     </div>
     <div class="mm-sec"><h4>Offer header</h4>
-      <div class="mm-2"><label>Title<select data-so="title">${["Sales Offer","Sales Proposal"].map(t=>`<option ${t===f.title?"selected":""}>${t}</option>`).join("")}</select></label>
+      <div class="mm-2"><label>Title<select data-so="title">${["Sales Offer","Sales Proposal","Initial Financial Offer"].map(t=>`<option ${t===f.title?"selected":""}>${t}</option>`).join("")}</select></label>
         <label>Title bar colour<input data-so="bar" type="color" value="${esc(f.bar)}"></label></div>
       ${inp("client","Client's name")}${inp("company","Company name")}${inp("project","Project name")}
       <div class="mm-2">${inp("sector","Sector (block)")}${inp("plots","Plots no.")}</div>
@@ -7962,6 +8084,13 @@ function sbLoginUI(){
   });
 }
 async function sbDl(path){ const {data,error}=await SB.storage.from("sid").download(path); if(error) throw new Error(path+": "+(error.message||"not found")); return data; }
+async function sbCached(path,stamp,kind){
+  const k="sbc:"+path;
+  if(stamp){ try{ const c=await Promise.race([idb.get(k),new Promise(z=>setTimeout(()=>z(null),1500))]); if(c&&c.stamp===stamp&&c.data) return c.data; }catch(e){} }
+  const b=await sbDl(path), data=kind==="text"?await b.text():await b.arrayBuffer();
+  if(stamp){ try{ await idb.set(k,{stamp,data}); }catch(e){} }
+  return data;
+}
 async function sbGate(){
   if(!window.supabase||!window.supabase.createClient){ gateMsg("The sign-in service did not load — check the connection and reload the page."); throw new Error("supabase-js did not load"); }
   SB=window.supabase.createClient(SBC.url,SBC.key,{auth:{persistSession:true,autoRefreshToken:true}});
@@ -7974,13 +8103,15 @@ async function sbGate(){
   SBROLE=r.data; SBME=(await SB.rpc("sid_me")).data||{role:SBROLE,pages:[],can_edit:false,is_admin:false};
   if(SBME.is_admin&&!VIEWS.some(v=>v.id==="settings")) VIEWS.push({id:"settings",group:"data",label:"Settings",hint:"Users, roles and what each role can open"});
   gateMsg("Loading the plots and the MDS…");
-  const [reg,geo,ver,kv]=await Promise.all([sbDl("base/register.json").then(b=>b.text()),sbDl("base/geometry.json").then(b=>b.text()),
+  // the plots, register and MDS are kept in this browser and downloaded again only when the online copy changed
+  const L=await SB.storage.from("sid").list("base"); const st=n=>{ const f=(L.data||[]).find(x=>x.name===n); return f?(f.updated_at||"")+"|"+(f.metadata&&f.metadata.eTag||""):""; };
+  const [reg,geo,ver,kv]=await Promise.all([sbCached("base/register.json",st("register.json"),"text"),sbCached("base/geometry.json",st("geometry.json"),"text"),
     SB.from("sid_mds_versions").select("*").order("created_at",{ascending:false}).limit(1),SB.from("sid_kv").select("key,value,updated_at")]);
   const put=(id,txt)=>{ document.getElementById(id).textContent=txt;
     PRISTINE=PRISTINE.replace(new RegExp('(<script id="'+id+'" type="application/json">)[^<]*(</'+'script>)'),(m,a,b)=>a+txt.replace(/<\//g,"<\\/")+b); };
   put("register-data",reg); put("geometry-data",geo);
   const v=ver.data&&ver.data[0];
-  if(v){ gateMsg("Loading the latest MDS…"); const buf=await (await sbDl(v.path)).arrayBuffer(), el=document.getElementById("mds-workbook");
+  if(v){ gateMsg("Loading the latest MDS…"); const buf=await sbCached(v.path,"v"+v.id,"buf"), el=document.getElementById("mds-workbook");
     el.textContent=b64buf(buf); el.dataset.date=new Date(v.sheet_saved||v.created_at).toISOString(); el.dataset.fresh="1"; SBV=v; }
   const K=Object.fromEntries((kv.data||[]).map(x=>[x.key,x]));
   try{
