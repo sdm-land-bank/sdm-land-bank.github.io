@@ -1527,6 +1527,19 @@ mark{background:#FFF1B8;color:inherit;padding:0 4px;border-radius:4px}
 .sp-pmenu .sp-annex{background:transparent!important;color:var(--ink)!important;box-shadow:none!important;border:0!important;width:100%;height:auto!important;justify-content:flex-start}
 .sp-pmenu .sp-annex:hover{background:var(--signal-w)!important;color:var(--signal)!important}
 
+.sp-act{flex-wrap:wrap}
+.sp-act .sp-print{order:-1;flex:1 1 100%}
+.sp-act .sp-pbtn{width:100%;height:44px;border-radius:12px;background:linear-gradient(180deg,#B5203A,#8E1427)!important;color:#fff!important;
+  font-size:14px;font-weight:700;letter-spacing:.01em;display:flex;align-items:center;justify-content:center;gap:9px;
+  box-shadow:0 10px 24px -10px rgba(166,25,46,.7);border:0}
+.sp-act .sp-pbtn svg{width:16px;height:16px}
+.sp-act .sp-pbtn:hover{filter:brightness(1.08)}
+.sp-pmenu button{flex-direction:row!important;align-items:center!important;gap:10px;padding:10px 11px!important}
+.sp-pmenu button i{font-style:normal;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--signal-w);color:var(--signal);flex:0 0 30px;font-size:15px}
+.sp-pmenu button span{display:flex;flex-direction:column;gap:1px}
+.mm-frommap{background:var(--signal-w);border:1px solid color-mix(in srgb,var(--signal) 30%,var(--rule));border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:12px;color:var(--ink-2)}
+.mm-frommap b{color:var(--signal)}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -2780,6 +2793,32 @@ function utilHtml(rows){
   return `<div><span>Electricity</span><b>${has?f(mva,1)+" MVA":"—"}</b></div><div><span>Water</span><b>${has?f(wat)+" m³/day":"—"}</b></div>
     <div><span>Sewage</span><b>${has?f(sew)+" m³/day":"—"}</b></div><div><span>Gas</span><b>n/a <em class="pbas">not in the MDS</em></b></div>`;
 }
+
+/* the selection, as an Investor Match option */
+function selMatch(){
+  const items=selRows(), sum=plotSum(items), rs=sum.rows;
+  if(!rs.length){ toast("These plots have no register row yet",true); return; }
+  const parks=[...new Set(rs.map(r=>r.park))]; if(parks.length>1){ toast("Pick plots in one park for an initial offer",true); return; }
+  if(typeof canSee==="function"&&!canSee("match")){ toast("Your role does not include Investor Match",true); return; }
+  const cs=items.map(x=>x.f.properties.c).filter(Boolean), ll=cs.length?[cs.reduce((a,c)=>a+c[0],0)/cs.length,cs.reduce((a,c)=>a+c[1],0)/cs.length]:pinAt(parks[0]);
+  const lg=logisticsAt(ll), sumOf=(k,dp)=>rs.some(r=>r[k]==null)?null:+rs.reduce((a,r)=>a+(+r[k]||0),0).toFixed(dp);
+  const why=[{c:"",t:rs.length>1?`Chosen on the map · ${rs.length} plots combined · ${fInt(sum.area)} sqm`:`Chosen on the map · ${fInt(rs[0].area)} sqm`},
+    {c:"",t:`${lg.port.name} ${fKm(lg.port.km)} km · ${lg.air.name} ${fKm(lg.air.km)} km`}];
+  let x;
+  if(rs.length===1){ const r=rs[0], q=priceOf(r);
+    x={id:r._id, r, k:items[0].k, ll, lg, score:100, why, price:q&&q.sqm||null, cur:"EGP", total:q&&q.total||null}; }
+  else { const tot=rs.reduce((a,r)=>{ const q=priceOf(r); return a+(q&&q.total||0); },0), allP=rs.every(r=>{ const q=priceOf(r); return q&&q.total; });
+    const phases=[...new Set(rs.map(r=>r.phase).filter(Boolean))];
+    x={id:"msel", merge:true, ks:items.map(i=>i.k), members:rs,
+      r:{unit:rs.map(r=>r.unit).join(" + "), park:parks[0], area:sum.area, mva:sumOf("mva",2), water:sumOf("water",1), landType:rs[0].landType,
+         sector:rs[0].sector, phase:phases.length===1?phases[0]:phases.join(" / ")||null},
+      k:null, ll, lg, score:100, why, price:allP&&sum.area?tot/sum.area:null, cur:"EGP", total:allP?tot:null, compact:1, alts:[]}; }
+  MM.results=x.merge?[]:[x]; MM.merges=x.merge?[x]:[]; MM.total=1; MM.picked=new Set([x.id]); MM.fromMap=true;
+  FPL.on=true; FPL.open=new Set([String(x.id)]); FPL.px={};
+  go("match");
+  toast("Initial offer ready in Investor Match — check the payment plan, then Download proposal (PDF) → with the financial proposal");
+}
+
 /* ---- plot card: Print menu ---- */
 function selOffer(mode){
   const sum=plotSum(selRows()), rs=sum.rows; if(!rs.length){ toast("These plots have no register row yet",true); return; }
@@ -3246,7 +3285,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V34.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V35.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
@@ -4657,11 +4696,11 @@ function showSelection(){
       </button>
       <div class="sp-print"><button class="sp-pbtn">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4V1h6v3"/><rect x="1" y="4" width="10" height="5" rx="1"/><path d="M3 7h6v4H3z"/></svg>
-        Print ▾</button>
+        Print · annex, offer, financial offer ▾</button>
         <div class="sp-pmenu" hidden>
-          <button class="sp-annex">Technical annex<em>PDF with the plot drawing and coordinates</em></button>
-          <button data-pm="cash">Sales offer<em>the team's offer layout · cash</em></button>
-          <button data-pm="plan">Initial financial offer<em>payment plan with instalments</em></button>
+          <button class="sp-annex"><i>▦</i><span>Technical annex<em>PDF · plot drawing, dimensions and coordinates</em></span></button>
+          <button data-pm="cash"><i>€</i><span>Sales offer<em>the team's one-page offer · opens prefilled</em></span></button>
+          <button data-pm="plan"><i>%</i><span>Initial financial offer<em>Investor Match · payment plan → proposal PDF</em></span></button>
         </div></div>
     </div>
     <div class="sp-foot">
@@ -4688,7 +4727,7 @@ function showSelection(){
   };
   { const pb=el.querySelector(".sp-pbtn"), pm=el.querySelector(".sp-pmenu");
     pb.onclick=e=>{ e.stopPropagation(); pm.hidden=!pm.hidden; };
-    pm.querySelectorAll("[data-pm]").forEach(b=>b.onclick=()=>{ pm.hidden=true; selOffer(b.dataset.pm); }); }
+    pm.querySelectorAll("[data-pm]").forEach(b=>b.onclick=()=>{ pm.hidden=true; b.dataset.pm==="plan"?selMatch():selOffer(b.dataset.pm); }); }
   selPlace(el); kpisRefresh();
   el.querySelector(".sp-annex").onclick=()=>{
     el.querySelector(".sp-pmenu").hidden=true;
@@ -5887,7 +5926,8 @@ function viewMatch(){
         <label class="mm-chk"><input type="checkbox" name="hold" ${f.hold?"checked":""}> Include plots on hold</label></div>
       <button class="applybtn" id="mmGo" type="button">Find the best plots</button>
     </form>
-    <section class="mm-res" id="mmRes">${resultsHtml()}</section>
+    <section class="mm-res" id="mmRes">${MM.fromMap?`<div class="mm-frommap"><b>From the map:</b> the plots you selected are loaded below with the financial offer on.
+      Adjust the payment plan, then press <b>Download proposal (PDF)</b> and choose “with the financial proposal”. Fill the investor brief and press Find to search instead.</div>`:""}${resultsHtml()}</section>
   </div>`;
 }
 function readForm(){
@@ -6134,7 +6174,7 @@ function resultsHtml(){
   const n=MM.picked.size, f=MM.form;
   const rng=mergeRange(parseFloat(String(f.amin).replace(/[,\s]/g,""))||null,parseFloat(String(f.amax).replace(/[,\s]/g,""))||null);
   const fit=!rng||R.some(x=>x.r.area>=rng.lo&&x.r.area<=rng.hi);
-  const mergeSec=G.length?`<div class="mm-sech"><h4>Merge options <span>${G.length} combination${G.length>1?"s":""} of adjacent available plots · same park, same sector · ${fInt(rng.lo)}–${fInt(rng.hi)} sqm</span></h4>
+  const mergeSec=G.length?`<div class="mm-sech"><h4>Merge options <span>${G.length} combination${G.length>1?"s":""} of adjacent available plots · same park, same sector · ${rng?fInt(rng.lo)+"–"+fInt(rng.hi)+" sqm":"chosen on the map"}</span></h4>
       ${fit?"":`<p>No single available plot is within about 3% of the requested size — these blocks of neighbouring plots are.</p>`}</div>
     ${G.map(mmCard).join("")}`:"";
   const singleSec=R.length?`${G.length?`<div class="mm-sech"><h4>Single plots <span>${fInt(MM.total)} available plots scored · top ${R.length} shown</span></h4></div>`:""}
@@ -6199,6 +6239,7 @@ async function runMatch(){
   readForm();
   const b=$("#mmGo"); b.disabled=true; b.textContent="Scoring plots…";
   if(MM.form.activity.trim()) await runClassify();
+  MM.fromMap=false;
   MM.results=rankPlots();
   // pre-tick the best plot from each of the three best parks: a proposal reads better with real options
   const seen=new Set(), pre=[], ranked=mmAll().sort((a,b)=>b.score-a.score);
