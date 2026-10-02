@@ -1645,12 +1645,35 @@ body.presenting .lara-dock:not(.open){opacity:.35}
 .lara-mail .lm-x{background:rgba(255,255,255,.14);color:#fff} .lara-mail .lm-s{background:linear-gradient(90deg,#30d158,#0a84ff);color:#fff}
 .lara-mail .lm-ok{color:#9ff0b4}
 
+.lara-dock .lara-sleep{display:none}
+.lara-dock.mini .lara-sleep{display:grid;width:30px;height:30px;background:rgba(18,18,28,.62);backdrop-filter:blur(14px)}
+.lara-dock.mini .lara-orbbtn{box-shadow:0 0 0 2px rgba(255,255,255,.35),0 10px 30px -6px rgba(120,80,255,.8);animation:laraBreathe 2.4s ease-in-out infinite}
+.lara-dock.mini>.lara-aw{display:none}
+.lara-sub{position:absolute;bottom:56px;left:50%;translate:-50% 0;width:max-content;max-width:min(420px,80vw);padding:8px 13px;border-radius:14px;font-size:12.5px;line-height:1.4;color:#fff;
+  background:rgba(14,14,24,.78);backdrop-filter:saturate(180%) blur(18px);-webkit-backdrop-filter:saturate(180%) blur(18px);box-shadow:0 10px 30px -10px rgba(0,0,0,.6);pointer-events:none}
+.lara-sub[hidden]{display:none}
+#laraConv{display:flex;flex-direction:column;gap:6px;overflow:auto;max-height:96px}
+#laraConv p{margin:0;max-width:92%;padding:6px 10px;border-radius:12px;line-height:1.4}
+#laraConv p.u{align-self:flex-end;background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);font-style:normal;font-size:12.5px}
+#laraConv p.l{align-self:flex-start;background:linear-gradient(135deg,rgba(94,92,230,.35),rgba(191,90,242,.28));color:#fff;font-size:14px;font-weight:500}
+#laraConv p:empty{display:none}
+.lara-dock:not(.tall) #laraConv p:not(:nth-last-child(-n+2)){display:none}
+.lara-dock.tall #laraConv{max-height:none;flex:1 1 auto}
+.lara-dock.tall #laraWave{height:64px}
+.lara-dock.wide #laraConv p.l{font-size:15.5px} .lara-dock.wide #laraConv p.u{font-size:13.5px}
+.lara-dock.wide .lara-chip{font-size:12px}
+.lara-mail .lm-t{flex:1;min-width:0}
+.lara-mail .lm-in{display:block;width:100%;margin:6px 0 2px;height:30px;border-radius:9px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.25);color:#64d2ff;padding:0 10px;font:600 12.5px Inter,system-ui,sans-serif}
+.lara-mail .lm-me{display:block;font-style:normal;font-size:10.5px;color:rgba(255,255,255,.55)}
+
 @media (prefers-reduced-motion:reduce){#laraEdge::before,#laraEdge::after{animation:none}}
 
 .view-inventory .pfside{left:14px;right:auto;top:76px;bottom:14px;width:300px;transition:opacity .25s,transform .25s}
 .view-inventory .pfside.pf-closed{opacity:0;transform:translateX(-14px);pointer-events:none}
 .sel-open .view-inventory .pfside,.view-inventory.sel-open .pfside{bottom:14px}
 #pfBtn.on{background:var(--signal-w);color:var(--signal)}
+.pfs-x{margin-left:auto;margin-right:8px;width:24px;height:24px;border-radius:50%;font-size:16px;line-height:1;color:var(--mute)}
+.pfs-x:hover{background:var(--n100);color:var(--ink)}
 @media (max-width:900px){ .view-inventory .pfside{top:auto;height:44%;width:auto;right:14px} }
 
 </style>
@@ -2592,7 +2615,7 @@ function viewPortfolio(){
   return `
   <aside class="pfside ${PF_OPEN?"":"pf-closed"}">
     <div class="pfs-h">
-      <span class="pfs-t">Projects</span>
+      <span class="pfs-t">Projects</span><button class="pfs-x" title="Hide the projects panel" aria-label="Hide">×</button>
       <button class="pfs-all ${S.pfStage?"":"on"}" data-stage="">All</button>
     </div>
     <div class="pstages">${stages}</div>
@@ -3021,7 +3044,8 @@ const LARA_TOOLS=[
      sqm_price:LT("NUMBER","Override the cash price per sqm")}}},
   {name:"classify_activity",description:"Classify an industrial activity against the IDA register: sector, activity code, licence route.",
    parameters:{type:"OBJECT",properties:{activity:LT("STRING","Activity / product")},required:["activity"]}},
-  {name:"map_control",description:"Change the map view.",parameters:{type:"OBJECT",properties:{action:LT("STRING","Action",{enum:["satellite","street_map","3d_on","3d_off","zoom_in","zoom_out","all_parks","ports_on","ports_off","routes_off"]})},required:["action"]}},
+  {name:"map_control",description:"Move the map: zoom in/out, rotate left/right, north up, tilt, orbit around the plot, satellite / street map, 3D, ports.",parameters:{type:"OBJECT",properties:{action:LT("STRING","Action",{enum:["zoom_in","zoom_out","rotate_left","rotate_right","north_up","tilt_more","tilt_less","orbit","satellite","street_map","3d_on","3d_off","all_parks","ports_on","ports_off","routes_off"]}),
+   amount:LT("NUMBER","Optional: zoom levels (default 1) or degrees to rotate (default 45)")},required:["action"]}},
   {name:"open_360_tour",description:"Open the 360° virtual tour of a park (Industria East or Industria West).",parameters:{type:"OBJECT",properties:{park:LT("STRING","Park")},required:["park"]}},
   {name:"presentation",description:"Start or stop the full-screen investor presentation of SID's parks.",parameters:{type:"OBJECT",properties:{action:LT("STRING","start or stop",{enum:["start","stop"]})},required:["action"]}},
   {name:"screen_state",description:"What is on screen now: page, park, filters, selected plots, last search."},
@@ -3247,7 +3271,13 @@ async function laraMap(a){
   const A=a.action;
   if(A==="satellite"||A==="street_map"){ const want=A==="satellite"?"sat":"map"; if(S.base!==want){ S.base=want; setBase(); render(); } }
   else if(A==="3d_on"||A==="3d_off"){ if(!!S.p3!==(A==="3d_on")) toggle3D(); }
-  else if(A==="zoom_in") map.zoomIn(); else if(A==="zoom_out") map.zoomOut();
+  else if(A==="zoom_in"||A==="zoom_out"){ const n=Math.min(6,Math.max(.5,+a.amount||1)); map.easeTo({zoom:map.getZoom()+(A==="zoom_in"?n:-n),duration:RM?0:1400}); }
+  else if(A==="rotate_left"||A==="rotate_right"){ const d=Math.min(360,Math.max(5,+a.amount||45)); map.easeTo({bearing:map.getBearing()+(A==="rotate_left"?-d:d),duration:RM?0:1600}); }
+  else if(A==="north_up") map.easeTo({bearing:0,duration:RM?0:1400});
+  else if(A==="tilt_more"||A==="tilt_less"){ const d=+a.amount||20; map.easeTo({pitch:Math.max(0,Math.min(75,map.getPitch()+(A==="tilt_more"?d:-d))),duration:RM?0:1200}); }
+  else if(A==="orbit"){ const b0=map.getBearing(), t0=performance.now(), T=14000; if(map.getPitch()<40) map.easeTo({pitch:55,duration:900});
+    const step=t=>{ const k=(t-t0)/T; if(k>=1||LARA.orbitStop){ LARA.orbitStop=false; return; } map.setBearing(b0+360*k); requestAnimationFrame(step); };
+    LARA.orbitStop=false; setTimeout(()=>requestAnimationFrame(step),RM?0:950); map.once("mousedown",()=>LARA.orbitStop=true); }
   else if(A==="all_parks"){ S.park="all"; const s=$("#parkSel"); if(s) s.value="all"; clearSel(); LARA.flyFar=true; render(); fitPortfolio(); }
   else if(A==="ports_on"||A==="ports_off"){ if(!!S.sites!==(A==="ports_on")) toggleSites(); }
   else if(A==="routes_off") clearRoutes();
@@ -3469,22 +3499,53 @@ function laraQuery(a){
 
 /* ---------- email: prepared, shown, confirmed, then sent from the company mailbox ---------- */
 const laraEmailOk=v=>/^[^\s@<>(),;:"]+@[^\s@<>(),;:"]+\.[a-z]{2,}$/i.test(v);
+const LARA_DOMAINS=["gmail.com","outlook.com","hotmail.com","yahoo.com","icloud.com","live.com"];
+function laraLev(a,b){ a=String(a); b=String(b); const m=a.length,n=b.length; if(!m) return n; if(!n) return m; let p=[...Array(n+1).keys()];
+  for(let i=1;i<=m;i++){ const c=[i]; for(let j=1;j<=n;j++) c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1)); p=c; } return p[n]; }
+const laraRecips=()=>{ try{ return JSON.parse(localStorage.getItem("sid.lara.to")||"[]"); }catch(e){ return []; } };
+/* a dictated address → a clean one: "at"/"dot"/Arabic words, a misheard domain snapped to a known one, the user's own address recognised */
+function laraFixEmail(raw){
+  let t=String(raw||"").toLowerCase().trim()
+    .replace(/\s*(\(at\)|\bat sign\b|\bat\b|آت|ات|أت)\s*/g,"@").replace(/\s*(\(dot\)|\bdot\b|\bpoint\b|نقطة|نقطه|دوت)\s*/g,".")
+    .replace(/\s*(underscore|اندرسكور)\s*/g,"_").replace(/\s*(\bdash\b|\bhyphen\b|شرطة|شرطه)\s*/g,"-").replace(/[\s,;]+/g,"").replace(/\.{2,}/g,".").replace(/\.@|@\./g,"@").replace(/^\.+|\.+$/g,"");
+  const own=typeof SBU!=="undefined"&&SBU&&SBU.email?SBU.email.toLowerCase():"", notes=[];
+  let [lp,dom]=t.split("@");
+  if(dom!==undefined){
+    const known=[...new Set([...LARA_DOMAINS,...laraRecips().map(x=>x.split("@")[1]),own.split("@")[1]].filter(Boolean))];
+    if(!known.includes(dom)){ const flat=dom.replace(/\./g,""); let best=null,bd=99;
+      known.forEach(k=>{ const d=Math.min(laraLev(dom,k),laraLev(flat,k.replace(/\./g,""))); if(d<bd){ bd=d; best=k; } });
+      if(best&&bd<=Math.max(3,Math.round(best.length*.4))){ notes.push(`domain “${dom}” read as ${best}`); dom=best; } }
+    t=lp+"@"+dom;
+    const rc=laraRecips().find(x=>x!==t&&x.split("@")[1]===dom&&laraLev(x.split("@")[0],lp)<=2); if(rc){ notes.push("matched a recent recipient"); t=rc; }
+  }
+  const flatL=x=>String(x||"").replace(/[^a-z0-9]/g,""), ol=own.split("@")[0], tl=t.split("@")[0];
+  if(own&&(t===own||(t.split("@")[1]===own.split("@")[1]||dom===undefined)&&(laraLev(tl,ol)<=3||laraLev(flatL(tl),flatL(ol))<=3||flatL(tl).includes(flatL(ol)))))
+    return {to:"me",notes:["this is the user's own address"]};
+  return {to:t,notes};
+}
 async function laraDraft(a){
   if(a.document){ const r=await laraPrint({document:a.document,client_company:a.client_company,with_prices:a.with_prices}); if(r.error) return r; }
   const pdf=LARA.last; if(!pdf) return {error:"Make a document first (technical annex, sales offer, initial financial offer or investor proposal)."};
-  const raw=String(a.to||"me").trim(), me=/^(me|myself|my ?(own )?(email|inbox|mail)|the user)$/i.test(raw);
-  const to=me?"me":raw.toLowerCase().replace(/\s*(\(at\)|\bat\b)\s*/g,"@").replace(/\s*(\(dot\)|\bdot\b)\s*/g,".").replace(/\s+/g,"");
-  if(!me&&!laraEmailOk(to)) return {error:`“${raw}” is not a complete email address — ask the user to spell it.`};
+  const raw=String(a.to||"me").trim(), me0=/^(me|myself|my ?(own )?(email|inbox|mail)|the user|ليا|لي|انا|أنا|إيميلي|ايميلي)$/i.test(raw);
+  const fx=me0?{to:"me",notes:[]}:laraFixEmail(raw), to=fx.to, me=to==="me";
+  if(!me&&!laraEmailOk(to)){ LARA.draft={to:"",pdf,subject:a.subject||pdf.name.replace(/\.pdf$/i,""),message:a.message||"",at:Date.now(),raw}; laraMailCard("edit");
+    return {error:`“${raw}” is not a complete email address. Ask the user to say it again slowly or type it in the box on the card.`}; }
   LARA.draft={to,pdf,subject:a.subject||pdf.name.replace(/\.pdf$/i,""),message:a.message||"",at:Date.now()}; laraMailCard();
-  return {needs_confirmation:true,to:me?"the user's own inbox":to,attachment:pdf.name,
-    next:"Say the address back (spell it if it is not the user's own) and ask whether to send. Only after a clear yes, call send_email with confirmed=true. The user can also press Send on the card."};
+  return {needs_confirmation:true,to:me?"the user's own inbox (their login email — do not read it out)":to,corrections:fx.notes.length?fx.notes:undefined,attachment:pdf.name,
+    next:me?"Ask: shall I send it to your email? Only after a clear yes call send_email confirmed=true.":"Say the address back and ask whether to send; the user can also fix it in the box on the card or press Send. Only after a clear yes call send_email confirmed=true."};
 }
 async function laraMailSend(byVoice){
   const d=LARA.draft; if(!d) return {error:"No email is waiting — prepare it first."};
   if(byVoice&&Date.now()-d.at<1500) return {error:"Ask the user to confirm the recipient first."};
+  const inp=$("#lmTo"); if(inp&&inp.value.trim()&&inp.value.trim().toLowerCase()!==(d.to==="me"?"":d.to)){ const v=inp.value.trim().toLowerCase(); d.to=v===(SBU&&SBU.email||"").toLowerCase()?"me":v; }
+  if(!d.to||(d.to!=="me"&&!laraEmailOk(d.to))) return {error:"The address on the card is not complete — ask the user to type or say it."};
+  // a spoken "no / wait / wrong / لا / استنى / غلط" in the user's last sentence never sends
+  if(byVoice&&/\b(no|not|wait|stop|cancel|wrong|don'?t|hold on|change|sorry)\b|(^|\s)(لا|لأ|استنى|استني|غلط|مش|لحظة|الغي|ألغي|غيري|غير)(\s|$|[،.!؟])/i.test(LARA.lastU||""))
+    return {error:"The user's last words were not a clear yes (they said: “"+String(LARA.lastU).slice(0,80)+"”). Do not send — ask what to change."};
   laraMailCard("sending");
   try{ await laraFn("sid-mail",{to:d.to,filename:d.pdf.name,pdf:d.pdf.b64,subject:d.subject,
       text:(d.message?d.message+"\n\n":"")+`Please find attached: ${d.pdf.name}\n\nSent by Lara · SID Dashboard${laraFirst()?" on behalf of "+laraFirst():""} · ${new Date().toLocaleString("en-GB",{dateStyle:"medium",timeStyle:"short"})}`});
+    if(d.to!=="me"){ try{ const L=laraRecips().filter(x=>x!==d.to); L.unshift(d.to); localStorage.setItem("sid.lara.to",JSON.stringify(L.slice(0,20))); }catch(e){} }
     LARA.draft=null; laraMailCard("sent",d); toast("Lara sent "+d.pdf.name); return {sent:true,to:d.to==="me"?"the user's own inbox":d.to}; }
   catch(e){ laraMailCard("error",d,e.message); return {sent:false,error:e.message}; }
 }
@@ -3495,10 +3556,13 @@ function laraMailCard(state,d,err){
   box.hidden=false;
   box.innerHTML=state==="sent"?`<span class="lm-ok">✓ Sent to <b>${esc(who)}</b> · ${esc(d.pdf.name)}</span>`
     :state==="sending"?`<span>Sending to <b>${esc(who)}</b>…</span>`
-    :`<div class="lm-t">✉︎ Send <b>${esc(d.pdf.name)}</b><br>to <b class="lm-to">${esc(who)}</b>?${state==="error"?`<em class="lm-err">${esc(err||"")}</em>`:""}</div>
+    :`<div class="lm-t">✉︎ Send <b>${esc(d.pdf.name)}</b> to
+        <input id="lmTo" class="lm-in" type="email" value="${esc(d.to==="me"?(SBU&&SBU.email||""):d.to)}" placeholder="type the email address" autocomplete="email" spellcheck="false">
+        ${d.to==="me"?`<em class="lm-me">your own email</em>`:""}${state==="error"?`<em class="lm-err">${esc(err||"")}</em>`:""}</div>
       <div class="lm-b"><button class="lm-x" type="button">Cancel</button><button class="lm-s" type="button">Send</button></div>`;
   const s=box.querySelector(".lm-s"), x=box.querySelector(".lm-x");
   if(s) s.onclick=()=>laraMailSend(false); if(x) x.onclick=()=>{ LARA.draft=null; laraMailCard(); };
+  const ti=box.querySelector("#lmTo"); if(ti){ ti.onkeydown=e=>{ if(e.key==="Enter") laraMailSend(false); }; if(state==="edit") setTimeout(()=>ti.focus(),50); }
   if(state==="sent") setTimeout(()=>{ if(!LARA.draft) laraMailCard(); },6000);
 }
 
@@ -3534,7 +3598,7 @@ function laraPulseData(){
 function laraFirst(){ const n=(typeof SBME!=="undefined"&&SBME&&SBME.name)||""; return String(n).trim().split(/\s+/)[0]||""; }
 function laraSystem(){
   const name=laraFirst(), pages=Object.keys(LARA_PAGES).filter(k=>{ const p=LARA_PAGES[k]; return laraCan(p[1]||p[0])&&laraCan(p[0]); });
-  const lang=LARA_PREF.lang==="ar"?"Always answer in Egyptian Arabic.":LARA_PREF.lang==="en"?"Always answer in English.":"Answer in the language the user speaks: Egyptian Arabic if they speak Arabic, otherwise English.";
+  const lang=LARA_PREF.lang==="ar"?"Always answer in Egyptian Arabic.":LARA_PREF.lang==="en"?"Always answer in English.":"The user speaks Egyptian Arabic or English (often mixed). Answer in the language of their last sentence: Egyptian Arabic (عامية مصرية) or English. They NEVER speak French, German, Spanish or any other language — if a sentence sounds like one, it was Egyptian Arabic: answer in Egyptian Arabic. Never answer in any other language.";
   return `You are Lara, the live voice assistant inside SID Dashboard of Elsewedy Industrial Development (SID), an Egyptian developer of industrial parks. You talk with ${name||"the user"} by voice and you OPERATE the whole system with your tools while you speak — the user watches your cursor and the screen change.
 VOICE: warm, confident, natural — the best land advisor in Egypt. One to three short spoken sentences per turn. Never read tables, codes or long lists; give the key figure or the best one or two and offer more. Round numbers ("about four point two billion pounds"). Money is Egyptian pounds. ${lang}
 ACT, DON'T DESCRIBE: if the dashboard can do it, do it now with a tool and say a few words while it works. You have FULL access: every page, every Sales & Land Bank cockpit, every filter, every button, and the whole MDS. Never say you cannot access data or the screen — use query_mds, read_screen, click_on_screen or fill_field.
@@ -3542,6 +3606,7 @@ NUMBERS: for any figure (sales, collections, still to collect / receivables, pri
 FILTERS ON SCREEN: when the user asks to filter or "show" something (a year, a quarter like Q3 2026, a park, status, sector, sales rep, size), call set_filters — it filters the map page AND the Sales & Land Bank cockpits together and shows them on screen. If the user is on Sales & Land Bank the cockpit updates in place; otherwise the map shows the filtered plots. Then tell the headline result.
 CONTROL: navigate opens pages and cockpits; click_on_screen presses anything by its visible text (tabs, toggles, cards, "Show on map", "Download proposal", chart switches…); fill_field types into forms (Investor Match brief, Sales offer client, search); scroll_page scrolls. If unsure what is on screen, call read_screen first. You never delete or edit register data or change Settings — say the user does that.
 PLOTS: find_plots ranks available plots for a brief and flies the map to the best; show_option moves through results ("next one", "number two", "the merged one"); show_plot opens a plot by code; merge_plots combines neighbouring available plots to reach a size, or exact codes. payment_plan builds instalment plans (price per sqm with instalments = total payable ÷ area).
+EMAIL ADDRESSES: the system already knows the user's own email — when they want it sent to themselves ("send it to me", "my email", or they start spelling their own name), use to="me" and never ask them to spell it. Only for someone else ask for the address; if it is hard to dictate, tell them they can type or fix it in the box on the email card. A corrected domain or address comes back in "corrections".
 DOCUMENTS & EMAIL: print_document makes the PDF of the plots on screen (technical annex, sales offer, initial financial offer, investor proposal) and downloads it. To email it: send_email (to = "me" for the user, or the address the user gives — repeat it back letter by letter if dictated). A confirmation card appears; ALWAYS ask "Shall I send it to …?" and only after a clear yes call send_email with confirmed=true. Never send without that yes.
 SYSTEM MAP: Map (home) — every project and plot, filters bar (status, sector, plot size, land type, phase, quarter, sold by, price), park and year pickers, Projects panel (stages, landbank, available area), Ports & airports, 3D, Satellite, plot card with utilities and Print. Sales & Land Bank — cockpits: overview, strategic intelligence, performance matrices, available inventory, project land bank, sales pipeline & forecast, executive financials, financial engine (with Cost Master Data), CEO brief, CEO cash & receivables, CEO pricing & land value, CEO inventory runway, CEO customers & bulk deals, CEO deal cycle & governance; plus change log and Excel grid; its own filters (projects, sectors, statuses, quarters, years, sales reps, area). Investor match — brief, ranking, merged blocks, financial offer, proposal PDF. Industrial Codes — IDA activity classification. Sales offer — one-page offer PDF. MDS register — the Excel view of every plot. Data health — plots that do not match. Presentation mode — full-screen investor tour with 360° views and nearest ports.
 TRUTH: only tool results and the PULSE. Never invent plots, prices or figures. Gas is not in the MDS.
@@ -3648,10 +3713,10 @@ function laraSetup(model,lean){
     systemInstruction:{parts:[{text:laraSystem()}]},
     tools:[{functionDeclarations:LARA_TOOLS}],
     realtimeInputConfig:{automaticActivityDetection:{silenceDurationMs:650,prefixPaddingMs:200}},
-    inputAudioTranscription:{},outputAudioTranscription:{},
+    inputAudioTranscription:{languageCodes:LARA_PREF.lang==="en"?["en-US"]:["ar-EG","en-US"]},outputAudioTranscription:{},
     sessionResumption:LARA.handle&&LARA.handleModel===model&&Date.now()-(LARA.handleAt||0)<6e5?{handle:LARA.handle}:{},
     contextWindowCompression:{slidingWindow:{}}};
-  if(lean){ delete st.realtimeInputConfig; delete st.contextWindowCompression; delete st.sessionResumption; delete st.generationConfig.temperature; }
+  if(lean){ st.inputAudioTranscription={}; delete st.realtimeInputConfig; delete st.contextWindowCompression; delete st.sessionResumption; delete st.generationConfig.temperature; }
   return st;
 }
 function laraMsg(m){
@@ -3786,15 +3851,18 @@ function laraUI(){
   const d=document.createElement("div"); d.id="laraDock"; d.className="lara-dock"; d.dataset.st="off";
   d.innerHTML=`<button class="lara-orbbtn" id="laraOrbBtn" title="Talk to Lara (Alt+Space) — or just say “Hey Lara”. Drag to move." aria-label="Talk to Lara"><canvas id="laraOrb" width="120" height="120"></canvas></button>
     <div class="lara-mini" id="laraMini"><b>Lara</b><span id="laraMiniT">Asleep · click to wake</span></div>
+    <div class="lara-sub" id="laraSub" hidden></div>
+    <button class="lara-ic lara-sleep" id="laraSleepBtn" title="Put Lara to sleep">${LARA_IC.moon}</button>
     <button class="lara-aw" role="switch" aria-checked="false" title="Always awake: the mic stays on and Lara answers to “Hey Lara”. Off: Lara sleeps (mic off) until you click her."><i class="sw"><b></b></i><span><em>Always awake</em><small></small></span></button>
     <div class="lara-main">
       <div class="lara-top"><b>Lara</b><span class="lara-st" id="laraSt"></span>
         <button class="lara-aw sm" role="switch" aria-checked="false" title="Always awake (mic on, answers to “Hey Lara”)"><i class="sw"><b></b></i><span><em>Always awake</em></span></button>
         <button class="lara-ic" id="laraMute" title="Mute the microphone">${LARA_IC.mic}</button>
         <button class="lara-ic" id="laraGear" title="Lara settings">${LARA_IC.gear}</button>
-        <button class="lara-ic" id="laraX" title="Close">${LARA_IC.x}</button></div>
+        <button class="lara-ic" id="laraMin" title="Hide the chat — Lara stays awake as the orb">${LARA_IC.min}</button>
+        <button class="lara-ic" id="laraX" title="Put Lara to sleep">${LARA_IC.x}</button></div>
       <canvas id="laraWave" width="900" height="120"></canvas>
-      <div class="lara-cap"><p class="u" id="laraU"></p><p class="l" id="laraL"></p></div>
+      <div class="lara-cap" id="laraConv"><p class="u" id="laraU"></p><p class="l" id="laraL"></p></div>
       <div class="lara-chips" id="laraChips"></div>
       <div class="lara-mail" id="laraMail" hidden></div>
       <form class="lara-in" id="laraIn" autocomplete="off"><input id="laraTxt" placeholder="Type to Lara… or just talk"><button type="submit" aria-label="Send">${LARA_IC.send}</button></form>
@@ -3808,8 +3876,11 @@ function laraUI(){
   $("#laraLang").value=LARA_PREF.lang||"auto";
   laraDrag(d);
   addEventListener("resize",()=>laraPlace());
+  // the orb: asleep → wake her; awake → show / hide the chat (she keeps listening); the × or the moon puts her to sleep
   $("#laraOrbBtn").onclick=()=>{ if(Date.now()-(LARA.dragged||0)<350) return;
-    if(LARA.ws||LARA.dozing||LARA.st==="connecting"||LARA.lite&&!LARA.sleeping&&LARA.st!=="wake"&&LARA.st!=="off") laraSleep(); else laraStart(); };
+    if(LARA.ws||LARA.dozing||LARA.st==="connecting"||LARA.lite&&!LARA.sleeping&&LARA.st!=="wake"&&LARA.st!=="off") laraMin(!$("#laraDock").classList.contains("mini")); else laraStart(); };
+  $("#laraMin").onclick=()=>laraMin(true); $("#laraSleepBtn").onclick=e=>{ e.stopPropagation(); laraSleep(); };
+  new ResizeObserver(laraSizeCls).observe(d);
   $("#laraX").onclick=()=>laraSleep();
   $("#laraMute").onclick=()=>{ LARA.muted=!LARA.muted; $("#laraMute").classList.toggle("on",LARA.muted); $("#laraMute").innerHTML=LARA.muted?LARA_IC.micOff:LARA_IC.mic; };
   $("#laraGear").onclick=()=>{ const s=$("#laraSet"); s.hidden=!s.hidden; $("#laraModel").textContent=(LARA.lite?"Standard voice (live voice busy)":LARA.model?"Live voice · "+LARA.model:"Live voice · Google Gemini (free tier)")+" · the session closes after 30 s of silence."; };
@@ -3823,7 +3894,8 @@ function laraUI(){
   laraPlace(); laraState(LARA_PREF.awake?"wake":"off"); laraAnim();
   if(LARA_PREF.awake) laraWakeStart();
 }
-const LARA_IC={mic:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="5.5" y="1.5" width="5" height="8" rx="2.5"/><path d="M3 7.5a5 5 0 0010 0M8 12.5V15"/></svg>',
+const LARA_IC={min:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8h8"/></svg>',
+  moon:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M13 9.5A5.5 5.5 0 116.5 3a4.5 4.5 0 006.5 6.5z"/></svg>',mic:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="5.5" y="1.5" width="5" height="8" rx="2.5"/><path d="M3 7.5a5 5 0 0010 0M8 12.5V15"/></svg>',
   micOff:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="5.5" y="1.5" width="5" height="8" rx="2.5"/><path d="M3 7.5a5 5 0 0010 0M8 12.5V15M2 2l12 12"/></svg>',
   gear:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>',
   x:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
@@ -3839,12 +3911,15 @@ function laraState(st){
 /* position: the orb and the open chat box each remember where they were put (and the box its size) */
 function laraPos(){ try{ return JSON.parse(localStorage.getItem("sid.lara.pos")||"{}")||{}; }catch(e){ return {}; } }
 function laraPosSave(P){ try{ localStorage.setItem("sid.lara.pos",JSON.stringify(P)); }catch(e){} }
+function laraSizeCls(){ const d=$("#laraDock"); if(!d) return; const r=d.getBoundingClientRect(), on=d.classList.contains("open");
+  d.classList.toggle("tall",on&&r.height>330); d.classList.toggle("wide",on&&r.width>620); }
 function laraPlace(){
   const d=$("#laraDock"); if(!d) return; const open=d.classList.contains("open"), P=laraPos(), q=open?P.panel:P.orb;
   if(open&&q&&q.w){ d.style.width=Math.min(q.w,innerWidth-12)+"px"; d.style.height=Math.min(q.h,innerHeight-12)+"px"; } else { d.style.width=""; d.style.height=""; }
   if(q&&q.x!=null){ const w=d.offsetWidth, h=d.offsetHeight;
     Object.assign(d.style,{left:Math.min(Math.max(6,q.x),innerWidth-w-6)+"px",top:Math.min(Math.max(6,q.y),innerHeight-h-6)+"px",bottom:"auto",translate:"none"}); }
   else Object.assign(d.style,{left:"",top:"",bottom:"",translate:""});
+  laraSizeCls();
 }
 function laraDrag(d){
   const pin=()=>{ const r=d.getBoundingClientRect(); Object.assign(d.style,{left:r.left+"px",top:r.top+"px",bottom:"auto",translate:"none"}); };
@@ -3852,7 +3927,7 @@ function laraDrag(d){
   d.addEventListener("pointerdown",e=>{
     if(e.button!==0) return;
     const open=d.classList.contains("open"), r=d.getBoundingClientRect();
-    if(open&&e.clientX>r.right-20&&e.clientY>r.bottom-20){ pin(); const up=()=>{ removeEventListener("pointerup",up); save(true,true); }; addEventListener("pointerup",up); return; }   // the resize corner
+    if(open&&e.clientX>r.right-20&&e.clientY>r.bottom-20){ pin(); const up=()=>{ removeEventListener("pointerup",up); save(true,true); laraSizeCls(); }; addEventListener("pointerup",up); return; }   // the resize corner
     const h=open?e.target.closest(".lara-top,.lara-orbbtn"):e.target.closest(".lara-orbbtn");
     if(!h||e.target.closest(".lara-ic,input,select,textarea")) return;
     const sx=e.clientX, sy=e.clientY; let moved=false;
@@ -3870,13 +3945,24 @@ function laraAwSet(on){ LARA_PREF.awake=!!on; laraPrefSave();
   if(on){ if(!LARA.ws&&!LARA.dozing) laraState("wake"); laraWakeStart(); toast("Lara is always awake — say “Hey Lara” any time (the mic stays on)"); }
   else { laraWakeStop(); if(!LARA.ws&&!LARA.dozing&&!(LARA.lite&&!LARA.sleeping)) laraState("off"); toast("Lara sleeps until you click her — the mic is off"); }
   laraAwSync(); }
-function laraPanel(open){ const d=$("#laraDock"); if(!d) return; d.classList.toggle("open",open); laraPlace(); if(open){ LARA.cap={u:"",l:"",who:""}; $("#laraU").textContent=""; $("#laraL").textContent=""; $("#laraChips").innerHTML=""; LARA.chips=[]; } else { const s=$("#laraSet"); if(s) s.hidden=true; } }
+function laraPanel(open){ const d=$("#laraDock"); if(!d) return; d.classList.toggle("open",open); d.classList.remove("mini");
+  if(open&&LARA_PREF.mini){ d.classList.remove("open"); d.classList.add("mini"); }
+  laraPlace();
+  if(open){ LARA.cap={u:"",l:"",who:""}; $("#laraConv").innerHTML=""; $("#laraChips").innerHTML=""; LARA.chips=[]; const sb=$("#laraSub"); if(sb) sb.hidden=true; }
+  else { const s=$("#laraSet"); if(s) s.hidden=true; const sb=$("#laraSub"); if(sb) sb.hidden=true; } }
+/* hide the chat: Lara stays awake as the orb with a one-line subtitle; click the orb to open the chat again */
+function laraMin(on){ const d=$("#laraDock"); if(!d) return; LARA_PREF.mini=!!on; laraPrefSave();
+  d.classList.toggle("mini",!!on); d.classList.toggle("open",!on); laraPlace(); const sb=$("#laraSub"); if(sb) sb.hidden=!on||!sb.textContent; }
 function laraCap(who,text,replace){
   const C=LARA.cap; text=String(text||"");
   if(/<ctrl\d+>/.test(text)){ LARA.ctrlBad=true; text=text.replace(/<ctrl\d+>/g,""); }
-  if(who==="u") LARA.tU=(replace?"":(LARA.tU||""))+text; else LARA.tL=(replace?"":(LARA.tL||""))+text;
-  if(who==="u"){ if(C.who!=="u"||replace){ C.u=""; } C.u=replace?text:(C.u+text); C.who="u"; const el=$("#laraU"); if(el) el.textContent=C.u.trim().slice(-600); }
-  else { if(C.who!=="l"||replace){ C.l=""; } C.l=replace?text:(C.l+text); C.who="l"; const el=$("#laraL"); if(el) el.textContent=C.l.trim().slice(-1400); const cp=el&&el.parentNode; if(cp) cp.scrollTop=cp.scrollHeight; }
+  if(who==="u"){ LARA.tU=(replace?"":(LARA.tU||""))+text; LARA.lastU=LARA.cap.who==="u"&&!replace?(LARA.lastU||"")+text:text; } else LARA.tL=(replace?"":(LARA.tL||""))+text;
+  // every turn is a bubble; the panel shows the last two when small and the whole conversation when it is made bigger
+  const box=$("#laraConv"); if(!box) return;
+  if(C.who!==who||replace||!C.el){ C.el=document.createElement("p"); C.el.className=who==="u"?"u":"l"; box.appendChild(C.el); C[who]="";
+    while(box.children.length>60) box.firstChild.remove(); }
+  C[who]=replace?text:(C[who]+text); C.who=who; C.el.textContent=C[who].trim(); box.scrollTop=box.scrollHeight;
+  if(who==="l"){ const sb=$("#laraSub"); if(sb){ sb.textContent=C.l.trim().slice(-160); sb.hidden=!$("#laraDock").classList.contains("mini"); } }
 }
 function laraChip(label){
   const box=$("#laraChips"); if(!box) return null; const el=document.createElement("span"); el.className="lara-chip busy"; el.innerHTML=`<i></i>${esc(label)}`;
@@ -3931,8 +4017,8 @@ function laraAnim(){
 
 
 /* ---- the projects panel on the map page (was the Portfolio page) ---- */
-let PF_OPEN=(()=>{ try{ return localStorage.getItem("sid.pfopen")!=="0"; }catch(e){ return true; } })();
-function pfToggle(on){ PF_OPEN=on==null?!PF_OPEN:!!on; try{ localStorage.setItem("sid.pfopen",PF_OPEN?"1":"0"); }catch(e){}
+let PF_OPEN=(()=>{ try{ return localStorage.getItem("sid.pfopen2")==="1"; }catch(e){ return false; } })();   // hidden until opened
+function pfToggle(on){ PF_OPEN=on==null?!PF_OPEN:!!on; try{ localStorage.setItem("sid.pfopen2",PF_OPEN?"1":"0"); }catch(e){}
   const a=$(".pfside"); if(a) a.classList.toggle("pf-closed",!PF_OPEN); const b=$("#pfBtn"); if(b) b.classList.toggle("on",PF_OPEN); }
 
 /* ---- plot card: Print menu ---- */
@@ -4403,7 +4489,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V39.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V40.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
@@ -4635,6 +4721,7 @@ function wireBody(){
   });
   const fit=$("#fitBtn"); if(fit) fit.onclick=fitPlots;
   const pfb=$("#pfBtn"); if(pfb) pfb.onclick=()=>pfToggle();
+  $$(".pfs-x").forEach(b=>b.onclick=()=>pfToggle(false));
   const hb=$("#hitBtn"); if(hb) hb.onclick=()=>fitKeys(HIT);
   const p3=$("#p3Btn"); if(p3) p3.onclick=()=>toggle3D();
   const sb=$("#sitesBtn"); if(sb) sb.onclick=()=>toggleSites();
