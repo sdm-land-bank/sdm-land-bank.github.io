@@ -3707,7 +3707,7 @@ async function laraStart(opts={}){
   else laraSend(`(The user said "Hey Lara" again. Say a two-word "Yes, ${first||""}?" style reply.)`);
   LARA.greeted=true;
 }
-function laraSleep(quiet){ laraTurnLog(); laraLog("end",quiet?"idle":"closed"); laraLogFlush();
+function laraSleep(quiet){ if(!LARA.sleeping||LARA.ws||LARA.dozing){ laraTurnLog(); laraLog("end",quiet?"idle":"closed"); } laraLogFlush();
   LARA.sleeping=true; LARA.dozing=false; LARA.manual=false; LARA.draft=null; clearTimeout(LARA.idle); LARA.idle=null;
   const ws=LARA.ws; LARA.ws=null; if(ws){ try{ ws.close(1000); }catch(e){} }
   laraLiteStop(); laraStopAudio(); laraMicOff(); try{ speechSynthesis.cancel(); }catch(e){}
@@ -3818,7 +3818,7 @@ function laraUI(){
   $$(".lara-aw").forEach(b=>b.onclick=e=>{ e.stopPropagation(); if(Date.now()-(LARA.dragged||0)<350) return; laraAwSet(!LARA_PREF.awake); });
   $("#laraSpk").onchange=e=>{ LARA_PREF.speaker=e.target.checked; laraPrefSave(); };
   $("#laraIn").onsubmit=e=>{ e.preventDefault(); const v=$("#laraTxt").value.trim(); if(!v) return; $("#laraTxt").value=""; laraCap("u",v,true);
-    if(LARA.ws||LARA.lite&&!LARA.sleeping&&LARA.st!=="wake"&&LARA.st!=="off") laraSend(v); else laraStart({text:v}); };
+    if(LARA.ws||LARA.lite&&!LARA.sleeping&&LARA.st!=="wake"&&LARA.st!=="off"){ if(!LARA.lite) laraLog("user",v,{typed:true}); laraSend(v); } else laraStart({text:v}); };
   addEventListener("keydown",e=>{ if(e.altKey&&e.code==="Space"){ e.preventDefault(); $("#laraOrbBtn").click(); } });
   laraPlace(); laraState(LARA_PREF.awake?"wake":"off"); laraAnim();
   if(LARA_PREF.awake) laraWakeStart();
