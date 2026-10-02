@@ -583,6 +583,8 @@ body.sb-online #syncBtn{display:none!important}
 .src-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin:10px 0}
 .src-grid label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:600;color:var(--ink-2)}
 .src-grid .w2{grid-column:1/-1} .src-grid input,.src-grid select{height:34px}
+.lg-wrap{max-height:520px;overflow:auto} .lg-t td{vertical-align:top;font-size:11.5px} .lg-t pre{white-space:pre-wrap;font-size:10.5px;margin:4px 0 0;max-width:620px}
+.lg-t tr.lg-e td{background:color-mix(in srgb,var(--signal) 9%,transparent)} .lg-t tr.lg-u td:last-child{font-style:italic} .lg-t tr.lg-t td:last-child{color:var(--ink-2)}
 
 body.no-matchfin #fpOn,body.no-matchfin .fp-panel,body.no-matchfin .fp-sec,body.no-matchfin .pdfo-o:has(input[value="fin"]),body.no-matchfin .pdfo-c{display:none!important}
 .set{max-width:1180px;margin:0 auto;padding:22px 22px 60px;display:flex;flex-direction:column;gap:14px}
@@ -3308,7 +3310,7 @@ async function laraTools(calls){
   for(const c of calls){
     const ch=laraChip((LARA_CHIP[c.name]||(()=>c.name))(c.args||{}));
     const r=await laraRun(c.name,c.args);
-    laraChipDone(ch,!(r&&r.error),r&&r.error);
+    laraChipDone(ch,!(r&&r.error),r&&r.error); laraLog(r&&r.error?"tool_error":"tool",c.name,{args:c.args,result:r});
     out.push({id:c.id,name:c.name,response:r&&typeof r==="object"?r:{result:r}});
   }
   if(LARA.ws&&LARA.ws.readyState===1) LARA.ws.send(JSON.stringify({toolResponse:{functionResponses:out}}));
@@ -3500,6 +3502,29 @@ function laraMailCard(state,d,err){
   if(state==="sent") setTimeout(()=>{ if(!LARA.draft) laraMailCard(); },6000);
 }
 
+
+/* ---------- conversation & error log (Supabase table sid_lara_log, admins read it in Settings) ----------
+   Buffered: one insert per ~20 s or 25 events, and on sleep / leaving the page — a handful of writes per conversation. */
+const LLOG={q:[],sess:null,t:null}, LARA_UA=(navigator.userAgentData&&navigator.userAgentData.brands||[]).map(b=>b.brand+" "+b.version).join(", ")||navigator.userAgent.slice(0,120);
+function laraLog(kind,text,data){
+  try{ if(!laraOnline()) return; if(!LLOG.sess) LLOG.sess=Math.random().toString(36).slice(2,10);
+    const clip=v=>JSON.parse(JSON.stringify(v,(k,x)=>typeof x==="string"&&x.length>300?x.slice(0,300)+"…":Array.isArray(x)&&x.length>12?x.slice(0,12):x));
+    LLOG.q.push({at:new Date().toISOString(),sess:LLOG.sess,model:LARA.lite?"standard voice":(LARA.model||null),kind,text:text==null?null:String(text).slice(0,2000),
+      data:data==null?null:clip(data),page:S.view,ua:LARA_UA});
+    if(LLOG.q.length>=25) laraLogFlush(); else { clearTimeout(LLOG.t); LLOG.t=setTimeout(laraLogFlush,20000); } }catch(e){}
+}
+async function laraLogFlush(keep){
+  clearTimeout(LLOG.t); if(!LLOG.q.length||!laraOnline()) return; const rows=LLOG.q.splice(0,60);
+  try{ if(keep){ const tok=(await SB.auth.getSession()).data.session?.access_token;
+      fetch(SBC.url+"/rest/v1/sid_lara_log",{method:"POST",keepalive:true,headers:{apikey:SBC.key,Authorization:"Bearer "+tok,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify(rows)}); }
+    else { const r=await SB.from("sid_lara_log").insert(rows); if(r.error) console.warn("Lara log:",r.error.message); } }catch(e){}
+}
+function laraTurnLog(){ const u=(LARA.tU||"").trim(), l=(LARA.tL||"").trim(); LARA.tU=""; LARA.tL="";
+  if(u) laraLog("user",u); if(l) laraLog("lara",l); }
+addEventListener("visibilitychange",()=>{ if(document.hidden) laraLogFlush(true); });
+addEventListener("error",e=>{ const st=String(e.error&&e.error.stack||""); if(/lara/i.test(st)) laraLog("js_error",e.message,{stack:st.slice(0,600)}); });
+addEventListener("unhandledrejection",e=>{ const st=String(e.reason&&e.reason.stack||e.reason||""); if(/lara/i.test(st)) laraLog("js_error",String(e.reason&&e.reason.message||e.reason).slice(0,300),{stack:st.slice(0,600)}); });
+
 /* ---------- what she knows when a conversation starts ---------- */
 function laraPulseData(){
   try{ const s=typeof sidSummary==="function"?sidSummary():null; if(s) return s.parks.map(p=>({park:p.park,plots:p.plots,available_plots:p.availablePlots,available_sqm:p.availableAreaSqm,
@@ -3580,7 +3605,7 @@ function laraStopAudio(){ LARA.playing.forEach(s=>{ try{ s.stop(); }catch(e){} }
 function laraIdleArm(){ clearTimeout(LARA.idle); LARA.idle=setTimeout(()=>{ if(LARA.speaking) return;
   if(LARA.lite){ if(!LARA.manual) laraSleep(true); return; }
   if(LARA.ws){ if(LARA.manual) laraDoze(); else laraSleep(true); } },LARA_PREF.idle||30000); }
-function laraDoze(){ LARA.dozing=true; LARA.ring=[]; LARA.vad=0; const ws=LARA.ws; LARA.ws=null; if(ws){ try{ ws.close(1000); }catch(e){} } laraState("listening"); }
+function laraDoze(){ laraTurnLog(); laraLog("doze","30 s silence"); laraLogFlush(); LARA.dozing=true; LARA.ring=[]; LARA.vad=0; const ws=LARA.ws; LARA.ws=null; if(ws){ try{ ws.close(1000); }catch(e){} } laraState("listening"); }
 function laraUndoze(){
   if(!LARA.dozing) return; LARA.dozing=false; LARA.pre=(LARA.ring||[]).slice(); LARA.ring=[]; laraState("connecting");
   laraConnect().then(()=>{ const pre=LARA.pre||[]; LARA.pre=null; pre.forEach(m=>{ try{ LARA.ws.send(m); }catch(e){} }); laraState("listening"); laraIdleArm(); })
@@ -3588,19 +3613,22 @@ function laraUndoze(){
 }
 
 /* ---------- the live session ---------- */
+const laraCool=()=>{ try{ return JSON.parse(localStorage.getItem("sid.lara.cool")||"{}"); }catch(e){ return {}; } };
+function laraCoolSet(m,on){ const c=laraCool(); if(on) c[m]=Date.now()+600000; else delete c[m]; try{ localStorage.setItem("sid.lara.cool",JSON.stringify(c)); }catch(e){} }
 async function laraConnect(){
   let t=await laraFn("sid-live",{}), last=null;
-  const models=[...new Set([LARA_PREF.model,...(t.models||[])].filter(Boolean))];
+  const cool=laraCool(), all=(t.models||[]).filter(Boolean), fresh=all.filter(m=>!(cool[m]>Date.now()));
+  const models=fresh.length?fresh:all;                     // always the best model first; one that just failed waits 10 minutes
   for(let i=0;i<models.length;i++){
     try{ try{ await laraOpen(t,models[i]); }
          catch(e){ if(/handle|history not found/i.test(e.message)){ LARA.handle=null; t=await laraFn("sid-live",{}); await laraOpen(t,models[i]); }   // an expired resume handle: start fresh
            else if(/invalid|unknown|not supported|payload|unrecogni/i.test(e.message)){ t=await laraFn("sid-live",{}); await laraOpen(t,models[i],true); }
            else throw e; }      // a model that refuses the full setup gets the lean one
-      if(LARA_PREF.model!==models[i]){ LARA_PREF.model=models[i]; laraPrefSave(); } return; }
-    catch(e){ last=e; console.warn("Lara:",models[i],e.message);
+      laraCoolSet(models[i],false); laraLog("connect",models[i],i?{fallback_from:models.slice(0,i)}:null); return; }
+    catch(e){ last=e; console.warn("Lara:",models[i],e.message); laraCoolSet(models[i],true); laraLog("error","voice model failed: "+models[i],{msg:e.message});
       if(i<models.length-1){ try{ t=await laraFn("sid-live",{}); }catch(e2){ last=e2; break; } } }
   }
-  throw last||new Error("no voice model answered");
+  laraLog("error","no voice model answered",{msg:last&&last.message}); throw last||new Error("no voice model answered");
 }
 function laraOpen(t,model,lean){
   return new Promise((res,rej)=>{
@@ -3633,14 +3661,18 @@ function laraMsg(m){
     ((sc.modelTurn&&sc.modelTurn.parts)||[]).forEach(p=>{ if(p.inlineData&&/audio/i.test(p.inlineData.mimeType||"")&&p.inlineData.data) laraPlay(p.inlineData.data); });
     if(sc.inputTranscription&&sc.inputTranscription.text){ laraCap("u",sc.inputTranscription.text); laraState(LARA.speaking?"speaking":"thinking"); clearTimeout(LARA.idle); LARA.idle=null; LARA.turnDone=false; }
     if(sc.outputTranscription&&sc.outputTranscription.text) laraCap("l",sc.outputTranscription.text);
-    if(sc.turnComplete){ LARA.turnDone=true; if(!LARA.speaking){ laraState("listening"); if(LARA.endAfter) laraSleep(); else laraIdleArm(); } }
+    if(sc.turnComplete){ laraTurnLog();
+      if(LARA.ctrlBad&&LARA.ws&&!LARA.ctrlRetry){ LARA.ctrlRetry=true; laraLog("error","model sent control tokens instead of a tool call — retrying");
+        LARA.ws.send(JSON.stringify({realtimeInput:{text:"(Your last action did not go through. Call the right tool now to do what the user asked, then say one short sentence.)"}})); }
+      LARA.ctrlBad=false;
+      LARA.turnDone=true; if(!LARA.speaking){ laraState("listening"); if(LARA.endAfter) laraSleep(); else laraIdleArm(); } }
   }
-  if(m.toolCall&&m.toolCall.functionCalls) { laraState("thinking"); laraTools(m.toolCall.functionCalls); }
+  if(m.toolCall&&m.toolCall.functionCalls) { LARA.ctrlRetry=false; laraState("thinking"); laraTools(m.toolCall.functionCalls); }
   if(m.sessionResumptionUpdate&&m.sessionResumptionUpdate.resumable&&m.sessionResumptionUpdate.newHandle){ LARA.handle=m.sessionResumptionUpdate.newHandle; LARA.handleModel=LARA.model; LARA.handleAt=Date.now(); }
   if(m.goAway){ LARA.reconnect=true; }
 }
 function laraClosed(e){
-  const was=LARA.ws; LARA.ws=null;
+  const was=LARA.ws; LARA.ws=null; if(e&&e.code!==1000) laraLog("close",(e.code||"")+" "+(e.reason||""),{model:LARA.model});
   if(LARA.st==="off"||LARA.st==="wake"||LARA.sleeping||LARA.dozing) return;
   if(LARA.reconnect||(e&&e.code!==1000)){ LARA.reconnect=false;      // the session ended on the server side (time limit): carry on
     laraConnect().then(()=>laraState("listening")).catch(err=>laraFail(err)); return; }
@@ -3655,6 +3687,7 @@ async function laraStart(opts={}){
   if(LARA.ws||LARA.st==="connecting") return;
   if(LARA.lite&&Date.now()>(LARA.liteUntil||0)) LARA.lite=false;
   if(opts.wake) setTimeout(laraWakeStop,1800); else laraWakeStop();
+  LLOG.sess=null; laraLog("start",opts.wake?"Hey Lara":opts.text?"typed":"clicked",{page:S.view,awake:LARA_PREF.awake,lite:!!LARA.lite});
   LARA.pre=[]; LARA.sleeping=false; LARA.dozing=false; LARA.manual=!opts.wake; LARA.endAfter=false; LARA.turnDone=false; laraPanel(true); if(opts.text) laraCap("u",opts.text,true); laraState("connecting");
   try{ laraOut(); await laraMicOn(); }
   catch(e){ laraFail(new Error("Lara needs the microphone — allow it in the address bar and try again")); return; }
@@ -3674,14 +3707,14 @@ async function laraStart(opts={}){
   else laraSend(`(The user said "Hey Lara" again. Say a two-word "Yes, ${first||""}?" style reply.)`);
   LARA.greeted=true;
 }
-function laraSleep(quiet){
+function laraSleep(quiet){ laraTurnLog(); laraLog("end",quiet?"idle":"closed"); laraLogFlush();
   LARA.sleeping=true; LARA.dozing=false; LARA.manual=false; LARA.draft=null; clearTimeout(LARA.idle); LARA.idle=null;
   const ws=LARA.ws; LARA.ws=null; if(ws){ try{ ws.close(1000); }catch(e){} }
   laraLiteStop(); laraStopAudio(); laraMicOff(); try{ speechSynthesis.cancel(); }catch(e){}
   laraState(LARA_PREF.awake?"wake":"off"); laraPanel(false);
   if(LARA_PREF.awake) setTimeout(laraWakeStart,600);
 }
-function laraFail(e){ laraChipDone(laraChip(e.message||String(e)),false); laraState("error"); setTimeout(()=>{ if(LARA.st==="error") laraSleep(); },6000); }
+function laraFail(e){ laraLog("error",e&&e.message||String(e),{state:LARA.st}); laraChipDone(laraChip(e.message||String(e)),false); laraState("error"); setTimeout(()=>{ if(LARA.st==="error") laraSleep(); },6000); }
 
 /* ---------- "Hey Lara": Chrome speech recognition listens for her name only ---------- */
 function laraWakeStart(){
@@ -3722,19 +3755,19 @@ function laraLiteListen(){
 }
 function laraLiteStop(){ const r=LARA.liteRec; LARA.liteRec=null; if(r){ try{ r.onend=null; r.abort(); }catch(e){} } }
 async function laraLiteTurn(text){
-  LARA.hist.push({role:"user",parts:[{text}]}); laraState("thinking");
+  laraLog("user",text); LARA.hist.push({role:"user",parts:[{text}]}); laraState("thinking");
   try{
     for(let k=0;k<6;k++){
       let h=LARA.hist.slice(-24); while(h.length&&!(h[0].role==="user"&&h[0].parts.some(p=>p.text))) h.shift();
       const j=await laraFn("sid-ai",{lara:true,system:laraSystem(),tools:LARA_TOOLS,contents:h});
       const parts=j.parts||[]; LARA.hist.push({role:"model",parts});
-      const say=parts.map(p=>p.text||"").join(" ").trim(); if(say){ laraCap("l",say,true); laraSay(say); }
+      const say=parts.map(p=>p.text||"").join(" ").replace(/<ctrl\d+>/g,"").trim(); if(say){ laraLog("lara",say,{model:j.model}); laraCap("l",say,true); laraSay(say); }
       const calls=parts.filter(p=>p.functionCall).map((p,i)=>({id:p.functionCall.id||null,name:p.functionCall.name,args:p.functionCall.args||{}}));
       if(!calls.length) break;
-      const rs=[]; for(const c of calls){ const ch=laraChip((LARA_CHIP[c.name]||(()=>c.name))(c.args)); const r=await laraRun(c.name,c.args); laraChipDone(ch,!(r&&r.error),r&&r.error); rs.push({functionResponse:c.id?{id:c.id,name:c.name,response:r}:{name:c.name,response:r}}); }
+      const rs=[]; for(const c of calls){ const ch=laraChip((LARA_CHIP[c.name]||(()=>c.name))(c.args)); const r=await laraRun(c.name,c.args); laraChipDone(ch,!(r&&r.error),r&&r.error); laraLog(r&&r.error?"tool_error":"tool",c.name,{args:c.args,result:r}); rs.push({functionResponse:c.id?{id:c.id,name:c.name,response:r}:{name:c.name,response:r}}); }
       LARA.hist.push({role:"user",parts:rs});
     }
-  }catch(e){ laraSay(/limit/i.test(e.message)?"I've reached the free limit for a moment. Please try again in a minute.":"Sorry, something went wrong: "+e.message); }
+  }catch(e){ laraLog("error","standard voice: "+e.message); laraSay(/limit/i.test(e.message)?"I've reached the free limit for a moment. Please try again in a minute.":"Sorry, something went wrong: "+e.message); }
   if(LARA.endAfter) setTimeout(laraSleep,2500); else laraIdleArm();
 }
 function laraSay(text){
@@ -3839,7 +3872,9 @@ function laraAwSet(on){ LARA_PREF.awake=!!on; laraPrefSave();
   laraAwSync(); }
 function laraPanel(open){ const d=$("#laraDock"); if(!d) return; d.classList.toggle("open",open); laraPlace(); if(open){ LARA.cap={u:"",l:"",who:""}; $("#laraU").textContent=""; $("#laraL").textContent=""; $("#laraChips").innerHTML=""; LARA.chips=[]; } else { const s=$("#laraSet"); if(s) s.hidden=true; } }
 function laraCap(who,text,replace){
-  const C=LARA.cap;
+  const C=LARA.cap; text=String(text||"");
+  if(/<ctrl\d+>/.test(text)){ LARA.ctrlBad=true; text=text.replace(/<ctrl\d+>/g,""); }
+  if(who==="u") LARA.tU=(replace?"":(LARA.tU||""))+text; else LARA.tL=(replace?"":(LARA.tL||""))+text;
   if(who==="u"){ if(C.who!=="u"||replace){ C.u=""; } C.u=replace?text:(C.u+text); C.who="u"; const el=$("#laraU"); if(el) el.textContent=C.u.trim().slice(-600); }
   else { if(C.who!=="l"||replace){ C.l=""; } C.l=replace?text:(C.l+text); C.who="l"; const el=$("#laraL"); if(el) el.textContent=C.l.trim().slice(-1400); const cp=el&&el.parentNode; if(cp) cp.scrollTop=cp.scrollHeight; }
 }
@@ -4368,7 +4403,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V38.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V39.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
@@ -9361,6 +9396,30 @@ function mailCardHtml(){
     <div class="src-act"><button class="applybtn" id="mailSave">Save email settings</button><button class="ebtn" id="mailTest" ${ok?"":"disabled"}>Send a test email to me</button><span class="src-st" id="mailSt"></span></div>`}
   </section>`;
 }
+/* ---- Settings → Lara's conversations & errors (loaded only when asked: no reads otherwise) ---- */
+const LGV={rows:null,err:"",only:false,busy:false};
+function logCardHtml(){
+  const R=LGV.rows, show=R?(LGV.only?R.filter(r=>/error|close/.test(r.kind)):R):null;
+  const kc={user:"lg-u",lara:"lg-l",tool:"lg-t",tool_error:"lg-e",error:"lg-e",js_error:"lg-e",close:"lg-e"};
+  const fd=x=>new Date(x).toLocaleString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  return `<section class="card wide" id="logCard"><h3>Lara · conversations &amp; errors <span class="sub">last 300 events · kept 30 days · administrators only</span></h3>
+    <div class="src-act" style="margin:0 0 10px"><button class="applybtn" id="lgLoad">${R?"Refresh":"Load the log"}</button>
+      <label class="mm-chk"><input type="checkbox" id="lgOnly" ${LGV.only?"checked":""}> Errors only</label>
+      ${R?`<button class="ebtn" id="lgCsv">Download (Excel)</button>`:""}<span class="src-st">${LGV.busy?"Loading…":LGV.err?esc(LGV.err):R?`${show.length} events`:""}</span></div>
+    ${show?`<div class="tablewrap lg-wrap"><table class="tbl lg-t"><thead><tr><th>When</th><th>User</th><th>Session</th><th>Model</th><th>Event</th><th>What</th></tr></thead><tbody>
+      ${show.map(r=>`<tr class="${kc[r.kind]||""}"><td class="mono">${fd(r.at)}</td><td>${esc(String(r.by_email||"").split("@")[0])}</td><td class="mono">${esc(r.sess||"")}</td>
+        <td>${esc(r.model||"")}</td><td><b>${esc(r.kind)}</b></td><td>${esc(r.text||"")}${r.data?`<details><summary>details</summary><pre>${esc(JSON.stringify(r.data,null,1)).slice(0,3000)}</pre></details>`:""}</td></tr>`).join("")}
+      </tbody></table></div>`:""}
+  </section>`;
+}
+async function logLoad(){ LGV.busy=true; logRepaint();
+  try{ SB.rpc("sid_lara_log_prune").then(()=>{},()=>{});
+    const r=await SB.from("sid_lara_log").select("at,by_email,sess,model,kind,text,data,page").order("at",{ascending:false}).limit(300); if(r.error) throw r.error; LGV.rows=r.data; LGV.err=""; }
+  catch(e){ LGV.err=e.message||String(e); } LGV.busy=false; logRepaint(); }
+function logRepaint(){ const c=$("#logCard"); if(c){ c.outerHTML=logCardHtml(); logWire(); } }
+function logWire(){ const l=$("#lgLoad"); if(l) l.onclick=logLoad; const o=$("#lgOnly"); if(o) o.onchange=()=>{ LGV.only=o.checked; logRepaint(); };
+  const x=$("#lgCsv"); if(x) x.onclick=()=>{ const ws=XLSX.utils.json_to_sheet((LGV.rows||[]).map(r=>({...r,data:r.data?JSON.stringify(r.data):""}))), wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,"Lara log"); XLSX.writeFile(wb,"Lara log "+new Date().toISOString().slice(0,10)+".xlsx"); }; }
 function mailWire(){
   const sv=$("#mailSave"); if(sv) sv.onclick=async()=>{ const f=$("#mailFrom").value.trim(), n=$("#mailName").value.trim(), u=$("#mailEws").value.trim(), us=$("#mailUser").value.trim(), pw=$("#mailPw").value;
     if(f&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f)){ toast("The sender mailbox does not look like an email address",true); return; }
@@ -9484,6 +9543,7 @@ function viewSettings(){
   ${SET.err?`<div class="alarm"><b>Could not load:</b> ${esc(SET.err)}</div>`:""}
   ${srcCardHtml()}
   ${mailCardHtml()}
+  ${logCardHtml()}
   ${sbCardHtml()}
   <section class="card wide"><h3>Add a user</h3>
     <form class="set-add" id="setAdd" autocomplete="off">
@@ -9521,6 +9581,7 @@ function viewSettings(){
 function wireSettings(){
   const C=$("#content"); if(!$(".set",C)) return;
   if(!SRC.loaded) srcLoad(); else { srcWire(); mailWire(); }
+  logWire();
   sbWire();
   const again=()=>{ const sc=C.scrollTop; C.innerHTML=viewSettings(); wireSettings(); C.scrollTop=sc; };
   const busy=async(fn,ok)=>{ try{ await fn(); if(ok) toast(ok); await setLoad(); }catch(e){ toast(e.message||String(e),true); } };
