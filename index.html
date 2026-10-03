@@ -3930,7 +3930,7 @@ function laraMsg(m){
     ((sc.modelTurn&&sc.modelTurn.parts)||[]).forEach(p=>{ if(p.inlineData&&/audio/i.test(p.inlineData.mimeType||"")&&p.inlineData.data) laraPlay(p.inlineData.data); });
     if(sc.inputTranscription&&sc.inputTranscription.text){ laraCap("u",sc.inputTranscription.text); laraState(LARA.speaking?"speaking":"thinking"); clearTimeout(LARA.idle); LARA.idle=null; LARA.turnDone=false; }
     if(sc.outputTranscription&&sc.outputTranscription.text) laraCap("l",sc.outputTranscription.text);
-    if(sc.turnComplete){ laraTurnLog();
+    if(sc.turnComplete){ LARA.langNoted=false; laraTurnLog();
       if(LARA.ctrlBad&&LARA.ws&&!LARA.ctrlRetry){ LARA.ctrlRetry=true; laraLog("error","model sent control tokens instead of a tool call — retrying");
         LARA.ws.send(JSON.stringify({realtimeInput:{text:"(Your last action did not go through. Call the right tool now to do what the user asked, then say one short sentence.)"}})); }
       LARA.ctrlBad=false;
@@ -3949,7 +3949,7 @@ function laraClosed(e){
 }
 function laraSend(text){
   if(LARA.lite){ laraLiteTurn(text); return; }
-  if(LARA.ws&&LARA.ws.readyState===1){ if(!/^\(/.test(text)){ laraLangTrack(text); const r=laraLangFrom(text); if(LARA.convLang&&r&&!r.asked&&r.lang!==LARA.convLang) text=text+"\n"+laraLangNote(LARA.convLang); }
+  if(LARA.ws&&LARA.ws.readyState===1){ if(!/^\(/.test(text)){ laraLangTrack(text,true); const r=laraLangFrom(text); if(LARA.convLang&&r&&!r.asked&&r.lang!==LARA.convLang) text=text+"\n"+laraLangNote(LARA.convLang); }
     LARA.ws.send(JSON.stringify({realtimeInput:{text}})); laraState("thinking"); }
 }
 async function laraStart(opts={}){
@@ -3977,7 +3977,7 @@ async function laraStart(opts={}){
   else laraSend(`(The user said "Hey Lara" again. Say a two-word "Yes, ${first||""}?" style reply.)`);
   LARA.greeted=true;
 }
-function laraSleep(quiet){ LARA.convLang=null; if(!LARA.sleeping||LARA.ws||LARA.dozing){ laraTurnLog(); laraLog("end",quiet?"idle":"closed"); } laraLogFlush();
+function laraSleep(quiet){ LARA.convLang=null; LARA.handle=null; if(!LARA.sleeping||LARA.ws||LARA.dozing){ laraTurnLog(); laraLog("end",quiet?"idle":"closed"); } laraLogFlush();
   LARA.sleeping=true; LARA.dozing=false; LARA.manual=false; LARA.draft=null; clearTimeout(LARA.idle); LARA.idle=null;
   const ws=LARA.ws; LARA.ws=null; if(ws){ try{ ws.close(1000); }catch(e){} }
   laraLiteStop(); laraStopAudio(); laraMicOff(); try{ speechSynthesis.cancel(); }catch(e){}
@@ -4161,7 +4161,7 @@ function laraMin(on){ const d=$("#laraDock"); if(!d) return; LARA_PREF.mini=!!on
 function laraCap(who,text,replace){
   const C=LARA.cap; text=String(text||"");
   if(/<ctrl\d+>/.test(text)){ LARA.ctrlBad=true; text=text.replace(/<ctrl\d+>/g,""); }
-  if(who==="u"){ laraLangTrack(text); LARA.tU=(replace?"":(LARA.tU||""))+text; LARA.lastU=LARA.cap.who==="u"&&!replace?(LARA.lastU||"")+text:text; } else LARA.tL=(replace?"":(LARA.tL||""))+text;
+  if(who==="u"){ laraLangTrack(text,replace); LARA.tU=(replace?"":(LARA.tU||""))+text; LARA.lastU=LARA.cap.who==="u"&&!replace?(LARA.lastU||"")+text:text; } else LARA.tL=(replace?"":(LARA.tL||""))+text;
   // every turn is a bubble; the panel shows the last two when small and the whole conversation when it is made bigger
   const box=$("#laraConv"); if(!box) return;
   if(C.who!==who||replace||!C.el){ C.el=document.createElement("p"); C.el.className=who==="u"?"u":"l"; box.appendChild(C.el); C[who]="";
@@ -4375,14 +4375,17 @@ function laraLangFrom(text){
 }
 const laraLangNote=l=>l==="ar"?"[Conversation language: Egyptian Arabic. Answer this and every next message in Egyptian Arabic (عامية مصرية), even when I use English words, until I explicitly ask for English.]"
   :"[Conversation language: English. Answer this and every next message in English, even when I use some Arabic words, until I explicitly ask for Arabic.]";
-/* the page keeps the language: a quiet note (no reply) into the live session whenever the user drifts into the other language */
-function laraLangNudge(){ const ws=LARA.ws; if(!ws||ws.readyState!==1||LARA.lite||!LARA.convLang) return;
-  if(Date.now()-(LARA.langNoteAt||0)<4000) return; LARA.langNoteAt=Date.now();
-  try{ ws.send(JSON.stringify({clientContent:{turns:[{role:"user",parts:[{text:laraLangNote(LARA.convLang)}]}],turnComplete:false}})); }catch(e){} }
-function laraLangTrack(text){
+/* the page keeps the language: when the user drifts into the other language, a short note follows their words in the same
+   turn (realtimeInput text — clientContent with turnComplete:false stalls the live session, verified 3 Oct 2026) */
+function laraLangNudge(){ const ws=LARA.ws; if(!ws||ws.readyState!==1||LARA.lite||!LARA.convLang||LARA.langNoted) return;
+  LARA.langNoted=true;
+  const note=LARA.convLang==="ar"?"(Note, not a question — do not reply to this note: the conversation language is Egyptian Arabic; answer my last question in Egyptian Arabic.)"
+    :"(Note, not a question — do not reply to this note: the conversation language is English; answer my last question in English.)";
+  try{ ws.send(JSON.stringify({realtimeInput:{text:note}})); }catch(e){} }
+function laraLangTrack(text,typed){
   const r=laraLangFrom(text); if(!r) return;
-  if(!LARA.convLang||r.asked){ if(LARA.convLang!==r.lang){ LARA.convLang=r.lang; laraLog("info","conversation language: "+(r.lang==="ar"?"Egyptian Arabic":"English")+(r.asked?" (asked)":"")); laraLangNudge(); } }
-  else if(r.lang!==LARA.convLang) laraLangNudge();
+  if(!LARA.convLang||r.asked){ if(LARA.convLang!==r.lang){ LARA.convLang=r.lang; laraLog("info","conversation language: "+(r.lang==="ar"?"Egyptian Arabic":"English")+(r.asked?" (asked)":"")); } }
+  else if(r.lang!==LARA.convLang&&!typed) laraLangNudge();          // typed messages carry the note inside the message itself
 }
 
 /* ---- plot card: Print menu ---- */
