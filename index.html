@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121318">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>SID Land — Elsewedy Industrial Development</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1675,6 +1679,156 @@ body.presenting .lara-dock:not(.open){opacity:.35}
 .pfs-x{margin-left:auto;margin-right:8px;width:24px;height:24px;border-radius:50%;font-size:16px;line-height:1;color:var(--mute)}
 .pfs-x:hover{background:var(--n100);color:var(--ink)}
 @media (max-width:900px){ .view-inventory .pfside{top:auto;height:44%;width:auto;right:14px} }
+
+/* ===================== PHONE (≤ 820 px) ===================== */
+.m-sheet,.m-backdrop,#mFiltBtn{display:none}
+@media (max-width:820px){
+  :root{--tab:calc(62px + env(safe-area-inset-bottom,0px))}
+  html,body{height:100%;overscroll-behavior:none}
+  body{-webkit-tap-highlight-color:transparent}
+  .app,.app.pinned{height:100dvh!important;min-height:0!important;grid-template-rows:1fr!important;grid-template-columns:1fr!important}
+  main{min-height:0;height:100dvh;display:flex;flex-direction:column;padding-bottom:var(--tab)!important;box-sizing:border-box}
+  #body{flex:1 1 auto;min-height:0}
+
+  /* ---- bottom tab bar ---- */
+  aside.rail,.app.pinned aside.rail,aside.rail:hover{position:fixed!important;left:0;right:0;bottom:0;top:auto!important;height:var(--tab)!important;width:100%!important;z-index:1500;
+    flex-direction:row!important;align-items:flex-start!important;padding:4px 4px env(safe-area-inset-bottom,0px)!important;border:0!important;border-top:1px solid rgba(255,255,255,.08)!important;
+    overflow-x:auto;overflow-y:hidden;scrollbar-width:none;background:rgba(18,19,24,.94)!important;backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px)}
+  aside.rail::-webkit-scrollbar{display:none}
+  aside.rail .brand{display:none!important}
+  .rail-scroll{flex:1 0 auto!important}
+  #nav,.nav-group{gap:0!important;padding:0!important;border:0!important;margin:0!important}
+  #nav{flex:1;justify-content:space-around}
+  .nav-group{flex:1 0 auto;justify-content:space-around}
+  .nav-item{flex-direction:column!important;justify-content:center;align-items:center;gap:2px!important;min-width:58px;min-height:54px!important;padding:4px 2px!important;border-radius:12px;background:transparent!important}
+  .nav-item .nav-i{flex:0 0 auto!important;width:30px;height:26px;display:grid;place-items:center}
+  .nav-item .nav-t{display:block!important;opacity:1!important;visibility:visible!important;width:auto!important}
+  .nav-item .nav-h,.nav-item .nav-k,.nav-item .nav-badge{display:none!important}
+  .nav-item .nav-row{display:block!important}
+  .nav-item .nav-l{font-size:10px;font-weight:600;letter-spacing:0;white-space:nowrap;color:rgba(255,255,255,.62)}
+  .nav-item[aria-current="page"] .nav-l{color:#fff}
+  .nav-item[aria-current="page"] .nav-i{background:var(--signal,#A6192E);border-radius:10px;color:#fff}
+  .rail-foot{flex:0 0 auto!important;border:0!important;padding:0 2px!important;align-items:flex-start!important;gap:0!important}
+  #railPin,#stamp,#syncBtn{display:none!important}
+  .rail-foot .railpin{min-width:50px;min-height:54px!important;flex-direction:column;justify-content:center}
+
+  /* ---- slim top bar: park + Filters ---- */
+  .app[data-view="inventory"] header.top{display:flex!important}
+  .app:not([data-view="inventory"]) header.top,.app:not([data-view="inventory"]) .kpis{display:none!important}
+  header.top{flex-wrap:nowrap!important;gap:8px!important;padding:8px 10px!important;min-height:0!important;align-items:center}
+  header.top .field{flex:1 1 auto;min-width:0} header.top .field select{width:100%}
+  header.top .spacer{display:none}
+  #mFiltBtn{display:flex;align-items:center;gap:6px;height:36px;padding:0 13px;border-radius:12px;border:1px solid var(--rule);background:var(--panel,#fff);color:var(--ink);font:600 13px Inter,system-ui,sans-serif;flex:0 0 auto}
+  #mFiltBtn svg{width:15px;height:15px} #mFiltBtn i{font-style:normal;min-width:18px;height:18px;border-radius:9px;background:var(--signal);color:#fff;font-size:10.5px;display:none;place-items:center;padding:0 4px}
+  #mFiltBtn.on i{display:grid} #mFiltBtn.on{border-color:var(--signal);color:var(--signal)}
+
+  /* ---- the filters sheet ---- */
+  .m-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1600;opacity:0;pointer-events:none;transition:opacity .25s}
+  body.m-filt .m-backdrop{opacity:1;pointer-events:auto}
+  .m-sheet{display:flex;flex-direction:column;position:fixed;left:0;right:0;bottom:0;max-height:78dvh;z-index:1700;background:var(--panel,#fff);color:var(--ink);
+    border-radius:20px 20px 0 0;box-shadow:0 -20px 60px -20px rgba(0,0,0,.45);transform:translateY(105%);transition:transform .32s cubic-bezier(.2,.9,.3,1);padding-bottom:env(safe-area-inset-bottom,0px)}
+  body.m-filt .m-sheet{transform:none}
+  .m-grab{width:40px;height:5px;border-radius:3px;background:var(--rule-2,#ccc);margin:8px auto 4px;flex:0 0 auto;touch-action:none;cursor:grab}
+  .m-sh-h{display:flex;align-items:center;gap:10px;padding:4px 16px 10px}
+  .m-sh-h b{font-size:16px;flex:1}
+  .m-sh-h button{height:34px;padding:0 14px;border-radius:10px;font-weight:600;font-size:13px}
+  .m-sh-done{background:var(--signal);color:#fff} .m-sh-clear{color:var(--signal);background:transparent}
+  .m-sh-body{overflow:auto;padding:0 16px 18px;display:flex;flex-direction:column;gap:10px}
+  .m-sh-body .field{width:100%!important;max-width:none!important}
+  .m-sh-body .field select,.m-sh-body .field input{width:100%!important;height:42px;font-size:15px}
+  .m-sh-body .fbar{display:grid!important;grid-template-columns:1fr 1fr;gap:8px!important;flex-wrap:wrap}
+  .m-sh-body .fbtn{height:42px;justify-content:space-between;font-size:13.5px;width:100%}
+  .m-sh-body .fclear{grid-column:1/-1;height:40px}
+  .fpop{position:fixed!important;left:10px!important;right:10px!important;top:auto!important;bottom:calc(env(safe-area-inset-bottom,0px) + 12px)!important;width:auto!important;max-height:60dvh;z-index:1800!important;border-radius:18px!important}
+  .fpop .fopts{max-height:42dvh!important}
+
+  /* ---- the cards: one thin swipeable strip ---- */
+  .app[data-view="inventory"] .kpis{display:flex!important}
+  .kpis,.kpis.map5{flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x mandatory;gap:8px!important;padding:6px 10px 8px!important;scrollbar-width:none;flex:0 0 auto}
+  .kpis::-webkit-scrollbar{display:none}
+  .kpis .kpi{flex:0 0 auto;min-width:132px;max-width:190px;scroll-snap-align:start;padding:7px 11px!important;min-height:0!important;border-radius:14px!important}
+  .kpis .kpi .k{font-size:9px!important;letter-spacing:.06em}
+  .kpis .kpi .v{font-size:17px!important;line-height:1.15!important;white-space:nowrap}
+  .kpis .kpi .s{font-size:10px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+
+  /* ---- the map fills the rest ---- */
+  .body.view-inventory{padding:0}
+  #body{position:relative}
+  #mapwrap{position:absolute!important;inset:0!important;height:auto!important;margin:0!important;border-radius:0!important}
+  /* short tab names */
+  .nav-item .nav-l{font-size:0!important}
+  .nav-item .nav-l::after{font-size:10px}
+  .nav-item[data-view="inventory"] .nav-l::after{content:"Map"} .nav-item[data-view="sales"] .nav-l::after{content:"Sales"}
+  .nav-item[data-view="match"] .nav-l::after{content:"Match"} .nav-item[data-view="codes"] .nav-l::after{content:"Codes"}
+  .nav-item[data-view="offer"] .nav-l::after{content:"Offer"} .nav-item[data-view="editor"] .nav-l::after{content:"Register"}
+  .nav-item[data-view="health"] .nav-l::after{content:"Health"} .nav-item[data-view="settings"] .nav-l::after{content:"Settings"}
+  .rail-foot .railpin .pin-t{display:block!important;font-size:10px;font-weight:600;color:rgba(255,255,255,.62)}
+  .maptools,.sel-open .maptools{top:8px!important;left:0!important;right:0!important;flex-direction:column!important;gap:6px!important;align-items:stretch!important}
+  .maptools .legend,.maptools .mapbtns{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;max-width:none!important;padding:0 10px!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;gap:6px!important}
+  .maptools .legend::-webkit-scrollbar,.maptools .mapbtns::-webkit-scrollbar{display:none}
+  .maptools .lg{flex:0 0 auto;height:30px;padding:0 10px!important;font-size:11.5px!important;white-space:nowrap}
+  .maptools .mapbtns button{flex:0 0 auto;height:32px;padding:0 12px!important;font-size:12px!important;white-space:nowrap;border-radius:10px!important;background:var(--glass,rgba(255,255,255,.9))!important;box-shadow:0 2px 10px -4px rgba(0,0,0,.3)!important}
+  .maplibregl-ctrl-bottom-right{bottom:76px!important;right:4px!important}
+  .maplibregl-ctrl-bottom-left{bottom:4px}
+  #tip{display:none!important}
+
+  /* ---- bottom sheets: plot card, park card, projects ---- */
+  .selpanel,.parkcard,.view-inventory .pfside,.pfside{position:absolute!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;width:auto!important;
+    height:auto!important;max-height:62%!important;resize:none!important;border-radius:20px 20px 0 0!important;z-index:30!important;overflow:auto!important;transform:none}
+  .selpanel .sp-top{cursor:default!important}
+  .view-inventory .pfside.pf-closed{transform:translateY(105%)!important;opacity:1}
+  .sel-open .maplibregl-ctrl-bottom-right{display:none}
+
+  /* ---- other pages ---- */
+  #content{padding:10px!important}
+  .card,.card.wide{padding:14px!important;border-radius:16px!important}
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .mm-form{padding:14px!important}
+  .mm-res{padding:10px!important}
+  .mm-top{flex-wrap:wrap;gap:8px}
+  .mm-top .ebtn,.mm-top .fp-tog{flex:1 1 auto}
+  .pdfo-box,.dr-box{width:100%!important;max-width:none!important;border-radius:18px 18px 0 0!important}
+  .toast{bottom:calc(var(--tab) + 14px)!important;max-width:calc(100vw - 24px)}
+  .set,.set-grid{grid-template-columns:1fr!important}
+  input,select,textarea{font-size:16px}                 /* no zoom-in on focus in Chrome / Safari */
+
+  /* ---- Lara on a phone: an orb above the tab bar, her chat a bottom sheet ---- */
+  .lara-dock:not(.open){left:auto!important;right:14px!important;top:auto!important;bottom:calc(var(--tab) + 14px)!important;translate:none!important}
+  .lara-dock:not(.open) .lara-orbbtn{width:52px;height:52px;flex-basis:52px}
+  .lara-dock:not(.open)>.lara-aw{display:none!important}
+  .lara-dock.mini .lara-sleep{order:-1}
+  .lara-sub{left:auto!important;right:0!important;translate:none!important;bottom:62px!important;max-width:calc(100vw - 40px)!important}
+  .lara-dock.open{left:6px!important;right:6px!important;top:auto!important;bottom:calc(var(--tab) + 6px)!important;width:auto!important;height:auto!important;max-height:58dvh;
+    translate:none!important;resize:none!important;padding:10px 12px 10px!important;border-radius:22px!important;animation:laraUp .35s cubic-bezier(.2,.9,.3,1)}
+  @keyframes laraUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
+  .lara-dock.open::after{display:none}
+  .lara-dock.open{min-width:0!important;max-width:none!important;box-sizing:border-box}
+  .lara-dock.open .lara-main{min-width:0;overflow:hidden}
+  .lara-top{flex-wrap:nowrap;gap:5px!important} .lara-st{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px!important}
+  .lara-chip{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lara-dock.open .lara-orbbtn{width:44px;height:44px;flex:0 0 44px}
+  .lara-dock.open .lara-top{cursor:default}
+  .lara-dock.open .lara-top b{display:none}
+  .lara-dock.open .lara-aw.sm em{font-size:10px}
+  .lara-dock.open #laraConv{max-height:26dvh}
+  .lara-dock.open #laraWave{height:34px}
+  .lara-in input{font-size:16px;height:38px} .lara-in button{width:38px;height:38px}
+  .lara-mail{flex-direction:column;align-items:stretch} .lara-mail .lm-b{justify-content:flex-end}
+  .lara-set{grid-template-columns:1fr}
+  body.m-filt .lara-dock,body.m-filt #laraEdge{visibility:hidden}
+  .app[data-view="sales"]~#laraDock:not(.open),.app[data-view="codes"]~#laraDock:not(.open){right:auto!important;left:14px!important}
+  .app[data-view="sales"]~#laraDock .lara-sub{right:auto!important;left:0!important}
+  #map{isolation:isolate;z-index:0}
+  body:has(#mapwrap.sel-open:not([hidden]),#parkcard:not([hidden]),.view-inventory .pfside:not(.pf-closed)) .lara-dock:not(.open){top:206px!important;bottom:auto!important}
+  body:has(#mapwrap.sel-open:not([hidden]),#parkcard:not([hidden]),.view-inventory .pfside:not(.pf-closed)) .lara-dock:not(.open) .lara-orbbtn{width:44px;height:44px;flex-basis:44px}
+}
+@media (max-width:380px){
+  .lara-dock.open .lara-aw.sm span{display:none} .lara-dock.open .lara-orbbtn{width:38px;height:38px;flex-basis:38px} .lara-dock.open #laraGear{display:none}
+  .nav-item{min-width:52px} .nav-item .nav-l{font-size:9px}
+  .kpis .kpi{min-width:118px} .kpis .kpi .v{font-size:15.5px!important}
+  #mFiltBtn span{display:none}
+}
+@media (hover:none){ #tip{display:none!important} }
 
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -3925,7 +4079,7 @@ function laraDrag(d){
   const pin=()=>{ const r=d.getBoundingClientRect(); Object.assign(d.style,{left:r.left+"px",top:r.top+"px",bottom:"auto",translate:"none"}); };
   const save=(open,size)=>{ const P=laraPos(), k=open?"panel":"orb"; P[k]={...(P[k]||{}),x:d.offsetLeft,y:d.offsetTop,...(size?{w:d.offsetWidth,h:d.offsetHeight}:{})}; laraPosSave(P); };
   d.addEventListener("pointerdown",e=>{
-    if(e.button!==0) return;
+    if(e.button!==0||(typeof isPhone==="function"&&isPhone())) return;
     const open=d.classList.contains("open"), r=d.getBoundingClientRect();
     if(open&&e.clientX>r.right-20&&e.clientY>r.bottom-20){ pin(); const up=()=>{ removeEventListener("pointerup",up); save(true,true); laraSizeCls(); }; addEventListener("pointerup",up); return; }   // the resize corner
     const h=open?e.target.closest(".lara-top,.lara-orbbtn"):e.target.closest(".lara-orbbtn");
@@ -4020,6 +4174,59 @@ function laraAnim(){
 let PF_OPEN=(()=>{ try{ return localStorage.getItem("sid.pfopen2")==="1"; }catch(e){ return false; } })();   // hidden until opened
 function pfToggle(on){ PF_OPEN=on==null?!PF_OPEN:!!on; try{ localStorage.setItem("sid.pfopen2",PF_OPEN?"1":"0"); }catch(e){}
   const a=$(".pfside"); if(a) a.classList.toggle("pf-closed",!PF_OPEN); const b=$("#pfBtn"); if(b) b.classList.toggle("on",PF_OPEN); }
+
+
+/* ============================================================================
+   PHONE LAYOUT — an app shell under 820 px
+   ========================================================================== */
+const MQ_PHONE=window.matchMedia("(max-width:820px)");
+const isPhone=()=>MQ_PHONE.matches;
+function mSheetEl(){
+  let s=$("#mSheet"); if(s) return s;
+  s=document.createElement("div"); s.id="mSheet"; s.className="m-sheet"; s.setAttribute("role","dialog"); s.setAttribute("aria-label","Filters");
+  s.innerHTML=`<div class="m-grab"></div><div class="m-sh-h"><b>Filters</b><button type="button" class="m-sh-clear" id="mClear">Clear all</button><button type="button" class="m-sh-done" id="mDone">Done</button></div><div class="m-sh-body" id="mShBody"></div>`;
+  document.body.appendChild(s);
+  const bd=document.createElement("div"); bd.id="mBackdrop"; bd.className="m-backdrop"; document.body.appendChild(bd);
+  bd.onclick=()=>mFilters(false); s.querySelector("#mDone").onclick=()=>mFilters(false);
+  s.querySelector("#mClear").onclick=()=>{ clearAllFilters(); mFiltCount(); };
+  return s;
+}
+function mFilters(on){ document.body.classList.toggle("m-filt",!!on); try{ if(!on&&FP&&FP.open) closePop(); }catch(e){} mFiltCount(); }
+function mFiltCount(){ const b=$("#mFiltBtn"); if(!b) return; let n=0; try{ n=filterCount(); }catch(e){} b.querySelector("i").textContent=n||""; b.classList.toggle("on",!!n); }
+/* move year, search and the filter bar into the sheet on a phone, and back on a wider screen */
+function mLayout(){
+  const hd=$("header.top"); if(!hd) return; const fields=[...hd.querySelectorAll(":scope > .field")], fbar=$("#fbar"), sp=hd.querySelector(".spacer");
+  let btn=$("#mFiltBtn");
+  if(isPhone()){
+    const body=mSheetEl().querySelector("#mShBody");
+    if(!btn){ btn=document.createElement("button"); btn.id="mFiltBtn"; btn.type="button"; btn.className="m-filt-btn";
+      btn.innerHTML=`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 4h12M4.5 8h7M7 12h2"/></svg><span>Filters</span><i></i>`;
+      btn.onclick=()=>mFilters(!document.body.classList.contains("m-filt")); }
+    if(fields[0]&&btn.parentNode!==hd) fields[0].after(btn);
+    fields.slice(1).forEach(f=>{ if(f.parentNode!==body) body.appendChild(f); });
+    if(fbar&&fbar.parentNode!==body) body.appendChild(fbar);
+  } else {
+    const body=$("#mShBody"); if(body){ [...body.querySelectorAll(".field")].forEach(f=>hd.insertBefore(f,sp||null)); if(fbar&&fbar.parentNode===body) hd.insertBefore(fbar,sp||null); }
+    if(btn) btn.remove(); if(document.body.classList.contains("m-filt")) mFilters(false);
+  }
+  document.body.classList.toggle("m-phone",isPhone()); mFiltCount();
+}
+MQ_PHONE.addEventListener("change",()=>{ mLayout(); if(typeof laraPlace==="function") laraPlace(); if(map) setTimeout(()=>map.resize(),60); });
+/* the map redraws whenever its area changes size (rotating the phone, the address bar, sheets) */
+(function mResize(){ const w=document.getElementById("mapwrap"); if(!w||!window.ResizeObserver){ setTimeout(mResize,500); return; }
+  let t=null; new ResizeObserver(()=>{ clearTimeout(t); t=setTimeout(()=>{ try{ if(map) map.resize(); }catch(e){} },80); }).observe(w); })();
+(function mBoot(){ const go2=()=>{ try{ if($("header.top")&&$("#fbar")&&typeof S!=="undefined"&&S.reg){ mLayout(); return; } }catch(e){} setTimeout(go2,300); }; setTimeout(go2,0); })();   // only after the whole script has run
+/* a pulled-down sheet closes: drag the grab handle of the filters / plot / park / projects sheets */
+document.addEventListener("pointerdown",e=>{
+  if(!isPhone()) return; const h=e.target.closest(".m-grab"); if(!h) return; const sh=h.parentElement, y0=e.clientY; let dy=0;
+  const mv=ev=>{ dy=Math.max(0,ev.clientY-y0); sh.style.transform=`translateY(${dy}px)`; };
+  const up=()=>{ removeEventListener("pointermove",mv); removeEventListener("pointerup",up); sh.style.transform="";
+    if(dy>70){ if(sh.id==="mSheet") mFilters(false); else if(sh.id==="selpanel") clearSel(); else if(sh.id==="parkcard") sh.hidden=true; else if(sh.classList.contains("pfside")) pfToggle(false); } };
+  addEventListener("pointermove",mv); addEventListener("pointerup",up);
+});
+/* every bottom sheet gets a grab handle */
+new MutationObserver(()=>{ if(!isPhone()) return; ["#selpanel","#parkcard",".pfside"].forEach(q=>{ const el=$(q); if(el&&!el.hidden&&!el.querySelector(":scope > .m-grab")){ const g=document.createElement("div"); g.className="m-grab"; el.prepend(g); } }); })
+  .observe(document.body,{subtree:true,childList:true});
 
 /* ---- plot card: Print menu ---- */
 function selOffer(mode){
@@ -4489,7 +4696,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V40.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V41.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
@@ -8429,7 +8636,7 @@ function renderPop(){
 /* redrawPop=false while the user is typing a range, so the input keeps its caret */
 function onFilter(redrawPop=true){
   render();
-  buildFilterBar();
+  buildFilterBar(); if(typeof mFiltCount==="function") mFiltCount();
   if(FP.open){ if(redrawPop) renderPop();
     else { const n=$("#fpop .fpop-f b"); if(n) n.textContent=fInt(rows().length); } placePop(); }
 }
