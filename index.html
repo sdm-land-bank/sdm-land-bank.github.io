@@ -3949,7 +3949,8 @@ function laraClosed(e){
 }
 function laraSend(text){
   if(LARA.lite){ laraLiteTurn(text); return; }
-  if(LARA.ws&&LARA.ws.readyState===1){ LARA.ws.send(JSON.stringify({realtimeInput:{text}})); laraState("thinking"); }
+  if(LARA.ws&&LARA.ws.readyState===1){ if(!/^\(/.test(text)){ laraLangTrack(text); const r=laraLangFrom(text); if(LARA.convLang&&r&&!r.asked&&r.lang!==LARA.convLang) text=text+"\n"+laraLangNote(LARA.convLang); }
+    LARA.ws.send(JSON.stringify({realtimeInput:{text}})); laraState("thinking"); }
 }
 async function laraStart(opts={}){
   if(!laraOnline()){ toast("Lara works in the online dashboard after signing in",true); return; }
@@ -4372,9 +4373,16 @@ function laraLangFrom(text){
   const ar=(t.match(/[؀-ۿ]/g)||[]).length, la=(t.match(/[a-z]/gi)||[]).length;
   if(ar+la<3) return null; return {lang:ar>=la*0.6?"ar":"en",asked:false};
 }
+const laraLangNote=l=>l==="ar"?"[Conversation language: Egyptian Arabic. Answer this and every next message in Egyptian Arabic (عامية مصرية), even when I use English words, until I explicitly ask for English.]"
+  :"[Conversation language: English. Answer this and every next message in English, even when I use some Arabic words, until I explicitly ask for Arabic.]";
+/* the page keeps the language: a quiet note (no reply) into the live session whenever the user drifts into the other language */
+function laraLangNudge(){ const ws=LARA.ws; if(!ws||ws.readyState!==1||LARA.lite||!LARA.convLang) return;
+  if(Date.now()-(LARA.langNoteAt||0)<4000) return; LARA.langNoteAt=Date.now();
+  try{ ws.send(JSON.stringify({clientContent:{turns:[{role:"user",parts:[{text:laraLangNote(LARA.convLang)}]}],turnComplete:false}})); }catch(e){} }
 function laraLangTrack(text){
   const r=laraLangFrom(text); if(!r) return;
-  if(!LARA.convLang||r.asked){ if(LARA.convLang!==r.lang){ LARA.convLang=r.lang; laraLog("info","conversation language: "+(r.lang==="ar"?"Egyptian Arabic":"English")+(r.asked?" (asked)":"")); } }
+  if(!LARA.convLang||r.asked){ if(LARA.convLang!==r.lang){ LARA.convLang=r.lang; laraLog("info","conversation language: "+(r.lang==="ar"?"Egyptian Arabic":"English")+(r.asked?" (asked)":"")); laraLangNudge(); } }
+  else if(r.lang!==LARA.convLang) laraLangNudge();
 }
 
 /* ---- plot card: Print menu ---- */
