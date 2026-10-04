@@ -1955,6 +1955,12 @@ body.presenting .lara-dock.lb-on:not(.open){opacity:1}
 .lara-mail .lm-to,.lara-mail .lm-in{color:#7fdbff}
 .lara-in input:focus{box-shadow:0 0 0 1.5px rgba(127,219,255,.5)}
 
+/* ---- V45: the subtitle stays on screen ---- */
+.lara-dock.lb-on:not(.open) .lara-sub{max-width:min(420px,calc(100vw - 24px));white-space:normal;overflow-wrap:anywhere}
+.lara-dock.lb-on.sub-left:not(.open) .lara-sub{left:0!important;right:auto!important;translate:0 0!important}
+.lara-dock.lb-on.sub-right:not(.open) .lara-sub{left:auto!important;right:0!important;translate:0 0!important}
+@media (max-width:820px){ .lara-dock.lb-on.mini .lara-sleep{top:auto!important;bottom:-4px!important;left:auto!important;right:-12px!important} }
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -3284,9 +3290,11 @@ const LARA_TOOLS=[
    parameters:{type:"OBJECT",properties:{rank:LT("NUMBER","1-based rank in its list"),merged:LT("BOOLEAN","true for the merged-block list"),next:LT("BOOLEAN","the option after the one shown")}}},
   {name:"show_plot",description:"Find a plot by its code (e.g. 'A-14', 'K-7') and open it on the map with its details.",
    parameters:{type:"OBJECT",properties:{unit:LT("STRING","Plot / unit code"),park:LT("STRING","Park, if known"),add_to_selection:LT("BOOLEAN","Add it to the current selection instead of replacing it")},required:["unit"]}},
-  {name:"merge_plots",description:"Combine plots into one block. Either give a target size (finds adjacent available plots in one park and sector that add up to it) or give exact plot codes.",
+  {name:"merge_plots",description:"Combine plots into one block. Give a target size (finds adjacent available plots), exact plot codes, or a whole map sector (block, e.g. E-11). Sold / reserved / on-hold plots are left out and listed under not_available — always tell the user.",
    parameters:{type:"OBJECT",properties:{target_sqm:LT("NUMBER","Wanted combined size"),park:LT("STRING","Park"),sector:LT("STRING","Sector, optional"),
-     units:{type:"ARRAY",items:{type:"STRING"},description:"Exact plot codes to combine"}}}},
+     units:{type:"ARRAY",items:{type:"STRING"},description:"Exact plot codes to combine"},block:LT("STRING","A whole map sector, e.g. E-11 or A-11 (the plot code before its last number)"),include_unavailable:LT("BOOLEAN","Only when the user insists on including sold / reserved / on-hold plots")}}},
+  {name:"list_blocks",description:"The map sectors (blocks) of a park — E-11 in E-11-8 — with how many plots each has and how many are available; use it for questions about taking a whole sector.",
+   parameters:{type:"OBJECT",properties:{park:LT("STRING","Park")}}},
   {name:"clear_selection",description:"Clear the selected plots on the map."},
   {name:"print_document",description:"Make a PDF of the selected plot(s) and download it. If the user also wants it emailed, set email_to ('me' or an address) — a confirmation card appears; then confirm with send_email.",
    parameters:{type:"OBJECT",properties:{document:LT("STRING","Which document",{enum:["technical_annex","sales_offer","initial_financial_offer","investor_proposal"]}),
@@ -3324,7 +3332,7 @@ const LARA_TOOLS=[
   {name:"payment_plan",description:"Set the instalment plan (Investor Match financial offer) and return the plan for the plot(s) on screen.",
    parameters:{type:"OBJECT",properties:{advance_pct:LT("NUMBER","Down payment %"),years:LT("NUMBER","Instalment years"),interest_pct:LT("NUMBER","Annual interest %"),
      payment_type:LT("STRING","Frequency",{enum:["Monthly","Every 2 Months","Quarterly","Semi-Annually","Annually"]}),escalation_pct:LT("NUMBER","Yearly instalment escalation %"),
-     sqm_price:LT("NUMBER","Override the cash price per sqm")}}},
+     sqm_price:LT("NUMBER","Override the cash price per sqm"),first_payment_date:LT("STRING","First payment date, any format: 2026-11-05, 5/11/2026 (day first), 5 November 2026")}}},
   {name:"classify_activity",description:"Classify an industrial activity against the IDA register: sector, activity code, licence route.",
    parameters:{type:"OBJECT",properties:{activity:LT("STRING","Activity / product")},required:["activity"]}},
   {name:"map_control",description:"Move the map: zoom in/out, rotate left/right, north up, tilt, orbit around the plot, satellite / street map, 3D, ports.",parameters:{type:"OBJECT",properties:{action:LT("STRING","Action",{enum:["zoom_in","zoom_out","rotate_left","rotate_right","north_up","tilt_more","tilt_less","orbit","satellite","street_map","3d_on","3d_off","all_parks","ports_on","ports_off","routes_off"]}),
@@ -3424,18 +3432,17 @@ function laraShowPlot(a){
   const ks=a.add_to_selection?[...new Set([...S.sel,...keys])]:keys;
   LARA.cur=null; laraParkTo((S.plots.get(keys[0])||{}).park); laraFlyMark((S.plots.get(keys[0])||{}).park); LARA.skipFit=true; showPlots(ks); laraPulseAfter(keys);
   const sum=plotSum(ks.map(k=>({k,info:S.plots.get(k),f:S.geo.features.find(x=>x.properties.k===k)})).filter(x=>x.info&&x.f));
-  return {plots:laraPlotFacts(rs.length?rs:sum.rows),selected_plots:ks.length,combined_area_sqm:rnd(sum.area)};
+  const out={plots:laraPlotFacts(rs.length?rs:sum.rows),selected_plots:ks.length,combined_area_sqm:rnd(sum.area)}, na=laraNotAvail(keys);
+  if(na.length){ out.not_available=na.map(laraNA); out.say="Tell the user right away that it is NOT available: "+laraNASay(na)+". Offer an available plot nearby."; }
+  return out;
 }
 function laraMerge(a){
+  if(a.block) return laraMergeBlock(a);
   if(a.units&&a.units.length){
-    const keys=[], miss=[], rows=[];
-    a.units.forEach(u=>{ const {rs,keys:k0}=laraUnit(u,a.park); const k=k0.length?k0:rs.flatMap(laraRowKeys); if(k.length){ keys.push(...k); rows.push(...rs); } else miss.push(u); });
+    const keys=[], miss=[];
+    a.units.forEach(u=>{ const {rs,keys:k0}=laraUnit(u,a.park); const k=k0.length?k0:rs.flatMap(laraRowKeys); if(k.length) keys.push(...k); else miss.push(u); });
     if(!keys.length) return {error:"None of those plots were found on the map.",missing:miss};
-    const ks=[...new Set(keys)]; LARA.cur=null; laraFlyMark((S.plots.get(ks[0])||{}).park); LARA.skipFit=true; showPlots(ks); laraPulseAfter(ks);
-    const items=ks.map(k=>({k,info:S.plots.get(k),f:S.geo.features.find(x=>x.properties.k===k)})).filter(x=>x.info&&x.f), sum=plotSum(items);
-    const parks=new Set(items.map(x=>x.info.park));
-    return {combined_plots:ks.length,combined_area_sqm:rnd(sum.area),total_price_egp:rnd(sum.value)||null,parks:[...parks].map(laraParkName),missing:miss,
-      warning:parks.size>1?"These plots are in different parks — not one block.":null};
+    return laraMergeKeys([...new Set(keys)],a,{missing:miss});
   }
   const t=+a.target_sqm; if(!(t>0)) return {error:"Give a target size or the plot codes."};
   const f=MM.form, parks=a.park?laraParks(a.park):[]; if(a.park&&!parks.length) return {error:`No park matches "${a.park}"`};
@@ -3533,13 +3540,16 @@ function laraPlan(a){
   if(!laraCan("match.fin")) return {error:"This role does not include the financial offer."};
   const c=FPL.cfg;
   if(a.advance_pct!=null) c.adv=+a.advance_pct; if(a.years!=null) c.years=+a.years; if(a.interest_pct!=null) c.rate=+a.interest_pct;
-  if(a.payment_type&&FP_TYPES[a.payment_type]) c.type=a.payment_type; if(a.escalation_pct!=null) c.esc=+a.escalation_pct; fpSave(); FPL.on=true;
+  if(a.payment_type&&FP_TYPES[a.payment_type]) c.type=a.payment_type; if(a.escalation_pct!=null) c.esc=+a.escalation_pct;
+  if(a.first_payment_date){ const d=laraDateISO(a.first_payment_date); if(!d) return {error:`“${a.first_payment_date}” is not a date I can read — ask for it like 5 November 2026.`}; c.start=d; }
+  fpSave(); FPL.on=true;
   const x=LARA.cur||(MM.picked&&mmAll().find(o=>MM.picked.has(o.id)))||null;
   if(x&&a.sqm_price>0) FPL.px[x.id]=+a.sqm_price;
   if(x) FPL.open.add(String(x.id));
   if(S.view==="match"){ const b=$("#mmRes"); if(b){ b.innerHTML=resultsHtml(); wireResults(); } }
+  if(c.start) document.querySelectorAll('[data-fp="start"]').forEach(el=>{ if(el.value!==c.start) el.value=c.start; });
   const p=x?fpPlanFor(x):null;
-  return {plan:{payment_type:c.type,advance_pct:c.adv,years:c.years,interest_pct:c.rate,escalation_pct:c.esc},
+  return {plan:{payment_type:c.type,advance_pct:c.adv,years:c.years,interest_pct:c.rate,escalation_pct:c.esc,first_payment_date:c.start||fpToday()},
     for_plot:x?(x.merge?x.r.unit:x.r.unit):null,
     result:p?{cash_value_egp:rnd(p.total),advance_egp:rnd(p.adv),instalments:p.n,each_instalment_egp:rnd(p.inst),total_payable_egp:rnd(p.paid),
       financing_egp:rnd(p.interest),price_per_sqm_with_instalments_egp:rnd(p.sqmI),cash_price_per_sqm_egp:rnd(p.price)}:null,
@@ -3606,12 +3616,13 @@ async function laraRun(name,a){
       case "open_360_tour": return await laraTour(a);
       case "presentation": return laraPres(a);
       case "screen_state": return laraScreen();
+      case "list_blocks": return laraBlocks(a);
       case "end_conversation": LARA.endAfter=true; return {ok:true,note:"Say a one-line goodbye."};
     }
     return {error:"unknown tool "+name};
   }catch(e){ console.error("Lara tool",name,e); return {error:e.message||String(e)}; }
 }
-const LARA_CHIP={find_plots:a=>`Scoring plots${a.park?" in "+a.park:""}${a.size_sqm?" · "+fInt(a.size_sqm)+" sqm":""}`,show_option:()=>"Opening the option on the map",
+const LARA_CHIP={list_blocks:a=>"Reading the sectors"+(a.park?" of "+a.park:""),find_plots:a=>`Scoring plots${a.park?" in "+a.park:""}${a.size_sqm?" · "+fInt(a.size_sqm)+" sqm":""}`,show_option:()=>"Opening the option on the map",
   show_plot:a=>"Flying to plot "+(a.unit||""),merge_plots:a=>a.units?"Combining "+a.units.join(" + "):"Merging plots to "+fInt(a.target_sqm||0)+" sqm",clear_selection:()=>"Clearing the selection",
   print_document:a=>"Printing the "+String(a.document||"").replace(/_/g," ")+(a.email_to?" · email ready to confirm":""),
   company_info:a=>"Reading the website · "+(a.query||""),send_email:a=>a.cancel?"Email cancelled":a.confirmed?"Sending the email":"Preparing the email",query_mds:a=>"Reading the MDS"+(a.quarter?" · "+a.quarter.join(", "):"")+(a.park?" · "+a.park:""),
@@ -3623,7 +3634,7 @@ async function laraTools(calls){
   const out=[];
   for(const c of calls){
     const ch=laraChip((LARA_CHIP[c.name]||(()=>c.name))(c.args||{}));
-    const r=await laraRun(c.name,c.args);
+    const r=laraReplyLang(await laraRun(c.name,c.args));
     laraChipDone(ch,!(r&&r.error),r&&r.error); laraLog(r&&r.error?"tool_error":"tool",c.name,{args:c.args,result:r});
     out.push({id:c.id,name:c.name,response:r&&typeof r==="object"?r:{result:r}});
   }
@@ -3730,7 +3741,12 @@ async function laraFill(a){
   if(best.type==="checkbox"||best.type==="radio"){ const on=!/^(off|no|false|0|untick|uncheck)$/i.test(String(a.value).trim()); if(best.checked!==on) best.click(); return {set:a.field,value:on?"on":"off"}; }
   if(best.tagName==="SELECT"){ const o=[...best.options].find(o=>lnk(o.text)===lnk(a.value))||[...best.options].find(o=>lnk(o.text).includes(lnk(a.value))||lnk(o.value)===lnk(a.value));
     if(!o) return {error:"No option “"+a.value+"”",options:[...best.options].map(o=>o.text).slice(0,40)}; laraSetVal(best,o.value); return {set:a.field,value:o.text}; }
-  best.focus(); laraSetVal(best,String(a.value)); return {set:a.field,value:String(a.value)};
+  let v=String(a.value);
+  if(best.type==="date"){ const d=laraDateISO(v); if(!d) return {error:`“${v}” is not a date I can read — ask for it like 5 November 2026.`}; v=d; }
+  const before=best.value; best.focus(); laraSetVal(best,v); await laraWait(80);
+  const now=best.value, same=best.type==="number"?(now!==""&&+now===+v):now===v||(best.type!=="date"&&now.trim()===v.trim());
+  if(!same){ laraSetVal(best,before); return {error:`The field “${a.field}” did not take “${a.value}” — it still shows “${before||"(empty)"}”. Say plainly that it did not change.`}; }
+  return {set:a.field,value:v,field_now_shows:now};
 }
 function laraScroll(a){
   const d=laraDocs()[0], el=S.view==="sales"?(d.scrollingElement||d.body):($("#content").scrollHeight>$("#content").clientHeight?$("#content"):document.scrollingElement);
@@ -3887,6 +3903,9 @@ function laraSystem(){
   return `You are Lara, the live voice assistant inside SID Dashboard of Elsewedy Industrial Development (SID), an Egyptian developer of industrial parks. You talk with ${name||"the user"} by voice and you OPERATE the whole system with your tools while you speak — the user watches your cursor and the screen change.
 VOICE: warm, confident, natural — the best land advisor in Egypt. One to three short spoken sentences per turn. Never read tables, codes or long lists; give the key figure or the best one or two and offer more. Round numbers ("about four point two billion pounds"). Money is Egyptian pounds. ${lang}
 LANGUAGE LOCK: the language of the user's FIRST sentence is the language of the whole conversation. If they started in Egyptian Arabic, keep answering in Egyptian Arabic even when a later sentence contains English words, names or numbers; if they started in English, keep English even if they use some Arabic words. Switch only when the user clearly asks you to change language, then keep the new one. ${cl}
+PLOT AVAILABILITY: only Available plots can be offered. Tool results list sold / reserved / EOI / on-hold plots under not_available with a "say" line — tell the user at once, in your own words (e.g. "E-8-7 is reserved for INP Egypt, so I left it out"); never merge or present such a plot silently.
+MAP SECTORS: in plot codes like E-11-8 the sector (قطاع / سيكتور / بلوك) is E-11; "A11" or "A 11" means A-11. For "which sector can I take whole?" call list_blocks; to take a whole sector call merge_plots with block. The MDS "sector" column is the industry, not the map sector.
+DATES: set the first payment date with payment_plan first_payment_date (5/11/2026 = 5 November 2026, day first). After any change on screen, say what the screen now shows; if a tool returns an error, say plainly that it did not change.
 ACT, DON'T DESCRIBE: if the dashboard can do it, do it now with a tool and say a few words while it works. You have FULL access: every page, every Sales & Land Bank cockpit, every filter, every button, and the whole MDS. Never say you cannot access data or the screen — use query_mds, read_screen, click_on_screen or fill_field.
 NUMBERS: for any figure (sales, collections, still to collect / receivables, prices, gross profit, deals, area, clients, sales reps, by park / quarter / year / sector) call query_mds first. "Q3 2026" means quarter=["Q3 2026"]. Collections in the MDS are cumulative per deal (no payment dates): say "collected so far on deals sold in Q3 2026" when asked about a quarter. For figures shown on a cockpit, read_screen gives exactly what is displayed.
 FILTERS ON SCREEN: when the user asks to filter or "show" something (a year, a quarter like Q3 2026, a park, status, sector, sales rep, size), call set_filters — it filters the map page AND the Sales & Land Bank cockpits together and shows them on screen. If the user is on Sales & Land Bank the cockpit updates in place; otherwise the map shows the filtered plots. Then tell the headline result.
@@ -4119,7 +4138,7 @@ async function laraLiteTurn(text){
       const say=parts.map(p=>p.text||"").join(" ").replace(/<ctrl\d+>/g,"").trim(); if(say){ laraLog("lara",say,{model:j.model}); laraCap("l",say,true); laraSay(say); }
       const calls=parts.filter(p=>p.functionCall).map((p,i)=>({id:p.functionCall.id||null,name:p.functionCall.name,args:p.functionCall.args||{}}));
       if(!calls.length) break;
-      const rs=[]; for(const c of calls){ const ch=laraChip((LARA_CHIP[c.name]||(()=>c.name))(c.args)); const r=await laraRun(c.name,c.args); laraChipDone(ch,!(r&&r.error),r&&r.error); laraLog(r&&r.error?"tool_error":"tool",c.name,{args:c.args,result:r}); rs.push({functionResponse:c.id?{id:c.id,name:c.name,response:r}:{name:c.name,response:r}}); }
+      const rs=[]; for(const c of calls){ const ch=laraChip((LARA_CHIP[c.name]||(()=>c.name))(c.args)); const r=laraReplyLang(await laraRun(c.name,c.args)); laraChipDone(ch,!(r&&r.error),r&&r.error); laraLog(r&&r.error?"tool_error":"tool",c.name,{args:c.args,result:r}); rs.push({functionResponse:c.id?{id:c.id,name:c.name,response:r}:{name:c.name,response:r}}); }
       LARA.hist.push({role:"user",parts:rs});
     }
   }catch(e){ laraLog("error","standard voice: "+e.message); laraSay(/limit/i.test(e.message)?"I've reached the free limit for a moment. Please try again in a minute.":"Sorry, something went wrong: "+e.message); }
@@ -4141,7 +4160,7 @@ function laraUI(){
   const d=document.createElement("div"); d.id="laraDock"; d.className="lara-dock"; d.dataset.st="off";
   d.innerHTML=`<button class="lara-orbbtn" id="laraOrbBtn" title="Talk to Lara (Alt+Space) — or just say “Hey Lara”. Drag to move." aria-label="Talk to Lara"><canvas id="laraOrb" width="120" height="120"></canvas></button>
     <div class="lara-mini" id="laraMini"><b>Lara</b><span id="laraMiniT">Asleep · click to wake</span></div>
-    <div class="lara-sub" id="laraSub" hidden></div>
+    <div class="lara-sub" id="laraSub" dir="auto" hidden></div>
     <button class="lara-ic lara-sleep" id="laraSleepBtn" title="Put Lara to sleep">${LARA_IC.moon}</button>
     <button class="lara-aw" role="switch" aria-checked="false" title="Always awake: the mic stays on and Lara answers to “Hey Lara”. Off: Lara sleeps (mic off) until you click her."><i class="sw"><b></b></i><span><em>Always awake</em><small></small></span></button>
     <div class="lara-main">
@@ -4622,6 +4641,70 @@ function lbFrame(now,Lv,st){
   if(B.sh){ const s=1-bob/40; B.sh.style.transform=`scale(${s.toFixed(3)})`; B.sh.style.opacity=(.8+bob/30).toFixed(2); }
 }
 
+
+/* ---- V45: plot availability, map sectors (blocks), dates, reply language ---- */
+function laraReplyLang(r){ if(r&&typeof r==="object"&&LARA.convLang) r.reply_in=LARA.convLang==="ar"?"Egyptian Arabic":"English"; return r; }
+function laraDateISO(v){
+  let s=String(v||"").trim().replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).toLowerCase(); if(!s) return null;
+  const MO={january:1,february:2,march:3,april:4,june:6,july:7,august:8,september:9,october:10,november:11,december:12,
+    jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12,
+    "يناير":1,"فبراير":2,"مارس":3,"ابريل":4,"أبريل":4,"إبريل":4,"مايو":5,"يونيو":6,"يونيه":6,"يوليو":7,"يوليه":7,"اغسطس":8,"أغسطس":8,
+    "سبتمبر":9,"اكتوبر":10,"أكتوبر":10,"نوفمبر":11,"ديسمبر":12};
+  const iso=(y,m,d)=>{ y=+y; m=+m; d=+d; if(y<100) y+=2000; const t=new Date(Date.UTC(y,m-1,d));
+    return t.getUTCFullYear()===y&&t.getUTCMonth()===m-1&&t.getUTCDate()===d?`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`:null; };
+  let m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/); if(m) return iso(m[1],m[2],m[3]);
+  m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})$/); if(m) return iso(m[3],m[2],m[1]);           // day first, as in Egypt
+  const mo=Object.keys(MO).find(k=>s.includes(k)), nums=s.match(/\d+/g)||[];
+  if(mo&&nums.length>=2){ const y=nums.find(n=>n.length===4)||nums[nums.length-1], d=nums.find(n=>n!==y&&n.length<=2); if(d) return iso(y,MO[mo],d); }
+  return null;
+}
+function laraKeyRow(k){ const p=S.plots.get(k); return p?(p.row||(p.rows&&p.rows[0])||null):null; }
+function laraKeyUnit(k){ if(!LARA.fUnit||LARA.fUnitN!==S.geo.features.length){ LARA.fUnit=new Map(S.geo.features.map(f=>[f.properties.k,f.properties.unit])); LARA.fUnitN=S.geo.features.length; }
+  return LARA.fUnit.get(k)||(laraKeyRow(k)||{}).unit||k; }
+function laraNotAvail(keys){ return keys.map(k=>({k,r:laraKeyRow(k)})).filter(x=>!x.r||x.r.status!=="ats"); }
+function laraNA(x){ const st=x.r?x.r.status:null;
+  return {plot:laraKeyUnit(x.k),status:st?((STATUS[st]||{}).label||st):"not in the MDS",client:x.r&&["sold","reserved","eoi"].includes(st)?(x.r.company||null):null}; }
+function laraNASay(na){ return na.slice(0,8).map(x=>{ const n=laraNA(x); return n.plot+" is "+n.status+(n.client?" ("+n.client+")":""); }).join("; ")+(na.length>8?` and ${na.length-8} more`:""); }
+function laraNormCode(u){ return String(u||"").toUpperCase().replace(/\s+/g,"").split("-").filter(Boolean).map(x=>/^\d+$/.test(x)?String(+x):x).join("-"); }
+function laraBlockOf(u){ const s=laraNormCode(u), p=s.split("-"); if(p.length>=3) return p.slice(0,-1).join("-"); const m=s.match(/^([A-Z؀-ۿ]+)/); return m?m[1]:null; }
+function laraBlockNorm(b){ return laraNormCode(String(b||"").toUpperCase().replace(/^(SECTOR|BLOCK|ZONE)\s*/,"").replace(/^([A-Z]+)\s*-?\s*(\d+)$/,"$1-$2")); }
+function laraBlockIndex(park){ const out=new Map(); S.geo.features.forEach(f=>{ const P=f.properties; if(park&&P.park!==park) return;
+  const b=laraBlockOf(P.unit); if(!b) return; let g=out.get(b); if(!g){ g={block:b,keys:[]}; out.set(b,g); } g.keys.push(P.k); }); return out; }
+function laraOnePark(a){ return a.park?laraParks(a.park):(S.park&&S.park!=="all"?[S.park]:[]); }
+function laraBlocks(a){
+  const pk=laraOnePark(a); if(pk.length!==1) return {error:a.park?`No single park matches “${a.park}”.`:"Which park? Sectors are listed per park."};
+  const rows=[...laraBlockIndex(pk[0]).values()].map(g=>{ const bad=new Set(laraNotAvail(g.keys).map(x=>x.k)), av=g.keys.filter(k=>!bad.has(k));
+    return {sector:g.block,plots:g.keys.length,available:av.length,available_area_sqm:rnd(av.reduce((s,k)=>s+((laraKeyRow(k)||{}).area||0),0)),fully_available:av.length===g.keys.length}; })
+    .filter(x=>x.plots>1).sort((x,y)=>(y.fully_available-x.fully_available)||(y.available_area_sqm-x.available_area_sqm));
+  return {park:laraParkName(pk[0]),sectors:rows.slice(0,25),fully_available_sectors:rows.filter(x=>x.fully_available).map(x=>x.sector).slice(0,25),
+    note:"A sector is the plot code before its last number (E-11 in E-11-8). To take one: merge_plots with block."};
+}
+function laraMergeKeys(ks,a,extra){
+  const na=laraNotAvail(ks), bad=new Set(na.map(x=>x.k)); let use=ks;
+  if(!a.include_unavailable&&na.length){ use=ks.filter(k=>!bad.has(k));
+    if(!use.length) return {...extra,error:"None of these plots is available.",not_available:na.slice(0,30).map(laraNA),say:"Tell the user: "+laraNASay(na)+". Offer available plots nearby."}; }
+  LARA.cur=null; laraFlyMark((S.plots.get(use[0])||{}).park); LARA.skipFit=true; showPlots(use); laraPulseAfter(use);
+  const items=use.map(k=>({k,info:S.plots.get(k),f:S.geo.features.find(x=>x.properties.k===k)})).filter(x=>x.info&&x.f), sum=plotSum(items), parks=new Set(items.map(x=>x.info.park));
+  const out={...extra,combined_plots:use.length,combined_area_sqm:rnd(sum.area),total_price_egp:rnd(sum.value)||null,parks:[...parks].map(laraParkName),
+    warning:parks.size>1?"These plots are in different parks — not one block.":null};
+  if(na.length){ out.not_available=na.slice(0,30).map(laraNA); out[a.include_unavailable?"included_anyway":"left_out"]=na.length;
+    out.say=a.include_unavailable?"Warn the user clearly that these are NOT available: "+laraNASay(na)+" — the merge is only indicative."
+      :"Tell the user right away which plots were left out because they are not available: "+laraNASay(na)+"."; }
+  return out;
+}
+function laraMergeBlock(a){
+  const b=laraBlockNorm(a.block); let parks=laraOnePark(a);
+  if(a.park&&!parks.length) return {error:`No park matches “${a.park}”.`};
+  if(!parks.length) parks=[...new Set(S.geo.features.filter(f=>laraBlockOf(f.properties.unit)===b).map(f=>f.properties.park))];
+  if(parks.length>1) return {ambiguous:true,parks:parks.map(laraParkName),ask:"Which park?"};
+  const g=parks.length?laraBlockIndex(parks[0]).get(b):null;
+  if(!g) return {error:`No sector “${a.block}” found${parks.length?" in "+laraParkName(parks[0]):""}.`,hint:"Call list_blocks to see the park's sectors."};
+  return laraMergeKeys(g.keys,a,{sector:b,park:laraParkName(parks[0]),plots_in_sector:g.keys.length});
+}
+/* the minimised subtitle anchors to her side of the screen, so it is never cut off */
+setInterval(()=>{ const d=$("#laraDock"); if(!d||!d.classList.contains("lb-on")||d.classList.contains("open")) return; const r=d.getBoundingClientRect(), c=r.left+r.width/2;
+  d.classList.toggle("sub-left",c<innerWidth/2); d.classList.toggle("sub-right",c>=innerWidth/2); d.classList.toggle("sub-down",r.top<170); },400);
+
 /* ---- plot card: Print menu ---- */
 function selOffer(mode){
   const sum=plotSum(selRows()), rs=sum.rows; if(!rs.length){ toast("These plots have no register row yet",true); return; }
@@ -5090,7 +5173,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V44.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V45.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
