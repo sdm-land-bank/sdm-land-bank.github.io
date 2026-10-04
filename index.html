@@ -1872,6 +1872,61 @@ body.presenting .lara-dock:not(.open){opacity:.35}
   .pres-tour,.pres-tour.big{left:10px!important;right:10px!important;top:calc(env(safe-area-inset-top,0px) + 54px)!important;height:34dvh!important;bottom:auto!important}
 }
 
+/* ---- V43: Lara the robot ---- */
+.lara-dock.lb-on .lara-orbbtn{box-shadow:none!important;background:transparent;border-radius:18px;overflow:visible;animation:none!important;filter:none!important;position:relative}
+.lara-dock.lb-on .lara-orbbtn:hover{transform:none}
+.lara-dock.lb-on .lara-orbbtn>#laraOrb{display:none}
+.lara-dock.lb-on:not(.open) .lara-orbbtn{width:96px;height:118px;flex:0 0 96px}
+.lara-dock.lb-on.lb-roam:not(.open){transform:translate3d(var(--rx,0px),var(--ry,0px),0);will-change:transform}
+.lara-dock.lb-on:not(.open):not(:hover)>.lara-aw{opacity:0;pointer-events:none}
+.lara-dock.lb-on>.lara-aw{transition:opacity .25s}
+#laraBot3d{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.lb-shadow{position:absolute;left:22%;right:22%;bottom:-5px;height:11px;border-radius:50%;background:radial-gradient(closest-side,rgba(10,10,20,.30),rgba(10,10,20,0));pointer-events:none}
+.lara-dock.open .lb-shadow{display:none}
+.lb-bub{position:absolute;left:50%;bottom:calc(100% - 4px);translate:-22% 0;transform-origin:18% 100%;width:max-content;max-width:230px;padding:9px 14px 10px;border-radius:18px 18px 18px 6px;
+  background:rgba(255,255,255,.97);color:#1c1c1e;font:600 13.5px/1.32 Inter,-apple-system,system-ui,sans-serif;text-align:start;white-space:normal;
+  box-shadow:0 14px 34px -12px rgba(20,10,20,.45),0 0 0 1px rgba(179,38,61,.14);opacity:0;scale:.35;pointer-events:none;
+  transition:opacity .25s ease,scale .5s cubic-bezier(.2,1.55,.4,1);z-index:2}
+.lb-bub.on{opacity:1;scale:1;pointer-events:auto;cursor:pointer}
+.lb-bub small{display:block;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#b3263d;margin-bottom:2px}
+.lb-bub::after{content:"";position:absolute;left:12px;bottom:-7px;width:14px;height:14px;background:inherit;border-radius:0 0 4px 0;transform:rotate(45deg) skew(8deg,8deg);
+  box-shadow:3px 3px 4px -2px rgba(20,10,20,.12)}
+.lb-bub.flip{translate:-78% 0;transform-origin:82% 100%;border-radius:18px 18px 6px 18px}
+.lb-bub.flip::after{left:auto;right:12px}
+.lb-bub.below{bottom:auto;top:calc(100% + 8px);transform-origin:18% 0;border-radius:6px 18px 18px 18px}
+.lb-bub.below::after{bottom:auto;top:-7px;transform:rotate(225deg) skew(8deg,8deg)}
+.lb-bub.below.flip{border-radius:18px 6px 18px 18px;transform-origin:82% 0}
+.lara-dock.open .lb-bub{display:none}
+.lara-dock.lb-on:not(.open) .lara-sub{bottom:calc(100% + 8px)}
+.lara-dock.lb-on.sub-down:not(.open) .lara-sub{bottom:auto!important;top:calc(100% + 8px)!important}
+.lb-ico{position:absolute;width:30px;height:30px;pointer-events:none;opacity:0;scale:.3;transition:opacity .25s,scale .55s cubic-bezier(.2,1.6,.4,1);z-index:1;
+  filter:drop-shadow(0 0 6px rgba(76,201,255,.55)) drop-shadow(0 3px 4px rgba(0,0,0,.18))}
+.lb-ico.on{opacity:1;scale:1;animation:lbFloat 1.6s ease-in-out infinite}
+.lb-ico svg{width:100%;height:100%;display:block;overflow:visible}
+.lb-ico.l{left:-14px;top:0} .lb-ico.r{right:-16px;top:0} .lb-ico.m{right:-22px;top:42%}
+.lara-dock.open .lb-ico{width:20px;height:20px} .lara-dock.open .lb-ico.l{left:-8px} .lara-dock.open .lb-ico.r,.lara-dock.open .lb-ico.m{right:-10px}
+@keyframes lbFloat{50%{translate:0 -3px}}
+/* the frame: dark red, white, gray, light blue — dark red while either of you speaks */
+#laraEdge::before,#laraEdge::after{background:conic-gradient(from var(--la),#7a0e1f,#d9dbe0,#8e8e93,#7fdbff,#f4f5f7,#b3263d,#5c5f66,#9fe6ff,#7a0e1f)}
+#laraEdge .rd{position:absolute;inset:0;opacity:var(--rd,0)}
+#laraEdge .rd::before,#laraEdge .rd::after{content:"";position:absolute;inset:0;padding:var(--lw);border-radius:22px;
+  background:conic-gradient(from calc(var(--la) * -1.4),#4a0711,#b3263d,#7a0e1f,#e0455a,#5a0a16,#c8102e,#4a0711);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+#laraEdge .rd::before{filter:blur(calc(var(--lw) * 2.2));opacity:.85}
+#laraEdge .rd::after{padding:3px}
+#laraConv p.l{background:linear-gradient(135deg,rgba(179,38,61,.42),rgba(92,95,102,.30))}
+.lara-in button{background:linear-gradient(135deg,#c8102e,#7a0e1f)}
+#laraCursor i{background:radial-gradient(circle at 35% 35%,#fff,#7fdbff 45%,#b3263d);box-shadow:0 0 0 3px rgba(255,255,255,.8),0 0 18px 4px rgba(179,38,61,.5)}
+#laraCursor span{background:linear-gradient(90deg,#b3263d,#7a0e1f)}
+.lara-ring{box-shadow:0 0 0 2px #b3263d,0 0 0 6px rgba(179,38,61,.2),0 0 22px rgba(127,219,255,.5)}
+@media (max-width:820px){
+  .lara-dock.lb-on:not(.open) .lara-orbbtn{width:70px;height:86px;flex-basis:70px}
+  body:has(#mapwrap.sel-open:not([hidden]),#parkcard:not([hidden]),.view-inventory .pfside:not(.pf-closed)) .lara-dock.lb-on:not(.open) .lara-orbbtn{width:54px;height:66px;flex-basis:54px}
+  .lb-bub{max-width:190px;font-size:12.5px}
+  .lb-ico{width:24px;height:24px}
+}
+@media (prefers-reduced-motion:reduce){ .lb-ico.on{animation:none} }
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -4052,7 +4107,7 @@ function laraSay(text){
 /* ---------- the Siri-style interface ---------- */
 function laraUI(){
   if($("#laraDock")) return;
-  const edge=document.createElement("div"); edge.id="laraEdge"; document.body.appendChild(edge);
+  const edge=document.createElement("div"); edge.id="laraEdge"; edge.innerHTML='<i class="rd"></i>'; document.body.appendChild(edge);
   const d=document.createElement("div"); d.id="laraDock"; d.className="lara-dock"; d.dataset.st="off";
   d.innerHTML=`<button class="lara-orbbtn" id="laraOrbBtn" title="Talk to Lara (Alt+Space) — or just say “Hey Lara”. Drag to move." aria-label="Talk to Lara"><canvas id="laraOrb" width="120" height="120"></canvas></button>
     <div class="lara-mini" id="laraMini"><b>Lara</b><span id="laraMiniT">Asleep · click to wake</span></div>
@@ -4074,6 +4129,7 @@ function laraUI(){
       <div class="lara-set" id="laraSet" hidden>
         <label>Voice<select id="laraVoice">${LARA_VOICES.map(([v,l])=>`<option value="${v}" ${LARA_PREF.voice===v?"selected":""}>${l}</option>`).join("")}</select></label>
         <label>Language<select id="laraLang"><option value="auto">Auto (English / العربية)</option><option value="en">English</option><option value="ar">العربية (Egyptian)</option></select></label>
+        <label class="ck"><input type="checkbox" id="laraRoam" ${lbRoamOn()?"checked":""}> Walk around the screen (off = she stays where you put her)</label>
         <label class="ck"><input type="checkbox" id="laraSpk" ${LARA_PREF.speaker?"checked":""}> Speaker mode (no headphones) — Lara ignores her own voice</label>
         <p class="lara-note" id="laraModel"></p></div>
     </div>`;
@@ -4093,10 +4149,11 @@ function laraUI(){
   $("#laraLang").onchange=e=>{ LARA_PREF.lang=e.target.value; laraPrefSave(); };
   $$(".lara-aw").forEach(b=>b.onclick=e=>{ e.stopPropagation(); if(Date.now()-(LARA.dragged||0)<350) return; laraAwSet(!LARA_PREF.awake); });
   $("#laraSpk").onchange=e=>{ LARA_PREF.speaker=e.target.checked; laraPrefSave(); };
+  $("#laraRoam").onchange=e=>{ try{ localStorage.setItem("sid.lara.roam",e.target.checked?"1":"0"); }catch(x){} $("#laraDock").classList.toggle("lb-roam",e.target.checked); };
   $("#laraIn").onsubmit=e=>{ e.preventDefault(); const v=$("#laraTxt").value.trim(); if(!v) return; $("#laraTxt").value=""; laraCap("u",v,true);
     if(LARA.ws||LARA.lite&&!LARA.sleeping&&LARA.st!=="wake"&&LARA.st!=="off"){ if(!LARA.lite) laraLog("user",v,{typed:true}); laraSend(v); } else laraStart({text:v}); };
   addEventListener("keydown",e=>{ if(e.altKey&&e.code==="Space"){ e.preventDefault(); $("#laraOrbBtn").click(); } });
-  laraPlace(); laraState(LARA_PREF.awake?"wake":"off"); laraAnim();
+  laraPlace(); laraState(LARA_PREF.awake?"wake":"off"); laraAnim(); lbLoad();
   if(LARA_PREF.awake) laraWakeStart();
 }
 const LARA_IC={min:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8h8"/></svg>',
@@ -4173,7 +4230,7 @@ function laraChip(label){
   const box=$("#laraChips"); if(!box) return null; const el=document.createElement("span"); el.className="lara-chip busy"; el.innerHTML=`<i></i>${esc(label)}`;
   box.prepend(el); while(box.children.length>4) box.lastChild.remove(); return el;
 }
-function laraChipDone(el,ok,err){ if(!el) return; el.classList.remove("busy"); el.classList.add(ok?"ok":"bad"); if(err) el.title=err; }
+function laraChipDone(el,ok,err){ if(!el) return; if(LBOT.ok) lbPose(ok?"thumbs":"question",2200); el.classList.remove("busy"); el.classList.add(ok?"ok":"bad"); if(err) el.title=err; }
 
 /* the orb: Siri-like fluid light; the wave: three coloured curves that follow the voice */
 function laraAnim(){
@@ -4191,6 +4248,7 @@ function laraAnim(){
     else target=.06;
     LARA.lvl+=(target-LARA.lvl)*(target>LARA.lvl?.35:.08);
     const L=LARA.lvl, sp=st==="thinking"||st==="connecting"?2.6:st==="speaking"?1.6:1;
+    if(LBOT.ok) lbFrame(t,L,st); else {
     // orb
     const W=orb.width, R=W/2; ox.clearRect(0,0,W,W);
     ox.save(); ox.beginPath(); ox.arc(R,R,R*.94,0,7); ox.clip();
@@ -4202,10 +4260,11 @@ function laraAnim(){
     ox.globalCompositeOperation="source-over";
     const hl=ox.createRadialGradient(R*.7,R*.55,0,R*.7,R*.55,R*.7); hl.addColorStop(0,"rgba(255,255,255,.35)"); hl.addColorStop(1,"rgba(255,255,255,0)"); ox.fillStyle=hl; ox.fillRect(0,0,W,W);
     ox.restore(); ox.beginPath(); ox.arc(R,R,R*.94,0,7); ox.strokeStyle="rgba(255,255,255,.28)"; ox.lineWidth=2; ox.stroke();
+    }
     // wave (only while the panel is open)
     if(d.classList.contains("open")){
       const WW=wave.width, H=wave.height; wx.clearRect(0,0,WW,H); wx.globalCompositeOperation="lighter";
-      [[255,55,95],[48,209,88],[10,132,255],[191,90,242]].forEach((c,k)=>{
+      [[179,38,61],[236,237,242],[142,142,147],[127,219,255]].forEach((c,k)=>{
         const amp=H*.42*Math.max(.04,L)*(.65+.35*Math.sin(t/(260+k*70)+k)), fq=1.4+k*.55, ph=t/1000*sp*(2.2+k*.6)+k*1.3;
         wx.beginPath(); wx.moveTo(0,H/2);
         for(let x=0;x<=WW;x+=6){ const nx=x/WW*2-1, att=Math.pow(1-nx*nx,2.2); wx.lineTo(x,H/2+amp*att*Math.sin(nx*fq*Math.PI*2+ph)); }
@@ -4213,7 +4272,7 @@ function laraAnim(){
         wx.closePath(); const g=wx.createLinearGradient(0,0,WW,0); g.addColorStop(0,`rgba(${c},0)`); g.addColorStop(.5,`rgba(${c},.55)`); g.addColorStop(1,`rgba(${c},0)`); wx.fillStyle=g; wx.fill(); });
       wx.globalCompositeOperation="source-over";
     }
-    const e=$("#laraEdge"); if(e){ e.style.setProperty("--lw",(4+L*7).toFixed(1)+"px"); e.style.setProperty("--lo",(st==="speaking"?.75+L*.25:.7).toFixed(2)); }
+    const e=$("#laraEdge"); if(e){ const rt=st==="speaking"?.55+.45*L:(st==="listening"&&(LARA.micLvl||0)*9>.22)?.5+.5*L:0; LARA.rd=(LARA.rd||0)+(rt-(LARA.rd||0))*(rt>(LARA.rd||0)?.25:.05); e.style.setProperty("--rd",LARA.rd.toFixed(3)); e.style.setProperty("--lw",(4+L*7).toFixed(1)+"px"); e.style.setProperty("--lo",(st==="speaking"?.75+L*.25:.7).toFixed(2)); }
   };
   cancelAnimationFrame(LARA.raf); LARA.raf=requestAnimationFrame(frame);
 }
@@ -4314,7 +4373,7 @@ function mLaraRestore(){ const d=$("#laraDock"); if(!d) return;
   if(!isPhone()){ d.classList.remove("m-placed"); return; }
   let p=null; try{ p=JSON.parse(localStorage.getItem("sid.lara.mpos")||"null"); }catch(e){}
   if(!p){ d.classList.remove("m-placed"); mSubPos(); return; }
-  const x=p.side==="left"?8:innerWidth-60, y=Math.min(Math.max(60,p.y*innerHeight),innerHeight-140);
+  const x=p.side==="left"?8:innerWidth-(d.offsetWidth||52)-8, y=Math.min(Math.max(60,p.y*innerHeight),innerHeight-(d.offsetHeight||52)-90);
   d.style.setProperty("--mx",x+"px"); d.style.setProperty("--my",y+"px"); d.classList.add("m-placed"); mSubPos(); }
 function mSubPos(){ const d=$("#laraDock"); if(!d) return; const r=d.getBoundingClientRect();
   d.classList.toggle("sub-left",isPhone()&&r.left+r.width/2<innerWidth/2); d.classList.toggle("sub-down",isPhone()&&r.top<innerHeight*.42); }
@@ -4386,6 +4445,270 @@ function laraLangTrack(text,typed){
   const r=laraLangFrom(text); if(!r) return;
   if(!LARA.convLang||r.asked){ if(LARA.convLang!==r.lang){ LARA.convLang=r.lang; laraLog("info","conversation language: "+(r.lang==="ar"?"Egyptian Arabic":"English")+(r.asked?" (asked)":"")); } }
   else if(r.lang!==LARA.convLang&&!typed) laraLangNudge();          // typed messages carry the note inside the message itself
+}
+
+
+/* ---- V43: Lara as a 3D robot (three.js on demand; the orb canvas stays as the fallback) ---- */
+const LBOT={ok:false,loading:false};
+const LB_SRC="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js",
+  LB_SRI="sha384-qOkzR5Ke/XkQxuGVJ9hpFEpDlcoLtWwVYhnJf06cLIZa2vaIptSqaubivErzmD5O";
+const LB_RM={x:0,y:0,vx:0,vy:0,ax:0,ay:0,tx:null,ty:null,until:0,hold:0,arrived:false};
+function lbRoamOn(){ try{ return localStorage.getItem("sid.lara.roam")!=="0"; }catch(e){ return true; } }
+function lbLoad(){
+  if(LBOT.ok||LBOT.loading) return; LBOT.loading=true;
+  const go=()=>{ try{ lbInit(); }catch(e){ LBOT.fail=String(e&&e.message||e); console.warn("Lara robot:",e); lbDrop(); } };
+  if(window.THREE) return go();
+  const s=document.createElement("script"); s.src=LB_SRC; s.integrity=LB_SRI; s.crossOrigin="anonymous"; s.referrerPolicy="no-referrer";
+  s.onload=go; s.onerror=()=>{ LBOT.fail="the 3D library did not load"; }; document.head.appendChild(s);
+}
+function lbDrop(){ const d=$("#laraDock"); if(d){ d.classList.remove("lb-on","lb-roam"); d.style.setProperty("--rx","0px"); d.style.setProperty("--ry","0px"); }
+  ["#laraBot3d",".lb-shadow",".lb-bub",".lb-ico"].forEach(q=>$$(q).forEach(e=>e.remove())); LBOT.ok=false; }
+
+/* the studio the glossy shell reflects (an environment map made once, then thrown away) */
+function lbStudio(T){
+  const s=new T.Scene(), g=new T.SphereGeometry(20,32,16), p=g.attributes.position, col=[], c=new T.Color();
+  const top=new T.Color(1,1,1), mid=new T.Color(.80,.82,.86), bot=new T.Color(.30,.32,.36);
+  for(let i=0;i<p.count;i++){ const y=p.getY(i)/20; if(y>0) c.copy(mid).lerp(top,y); else c.copy(mid).lerp(bot,-y); col.push(c.r,c.g,c.b); }
+  g.setAttribute("color",new T.Float32BufferAttribute(col,3));
+  s.add(new T.Mesh(g,new T.MeshBasicMaterial({side:T.BackSide,vertexColors:true})));
+  const box=(w,h,x,y,z,k,tint)=>{ const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({color:new T.Color(tint||0xffffff).multiplyScalar(k),side:T.DoubleSide}));
+    m.position.set(x,y,z); m.lookAt(0,0,0); s.add(m); };
+  box(9,5,-7,7,8,3.2); box(4,10,10,2,3,1.7); box(14,2,0,12,-2,2.2); box(6,4,4,-3,-9,1.3,0x9fdcff); box(5,3,-9,-2,-4,.9,0xffd6dc);
+  return s;
+}
+/* panel seams drawn on the head (equirectangular: lon 0 = the face, + to the viewer's right) */
+function lbSeams(T){
+  const W=2048,H=1024,c=document.createElement("canvas"); c.width=W; c.height=H; const g=c.getContext("2d");
+  g.fillStyle="#f3f4f6"; g.fillRect(0,0,W,H);
+  const P=(lon,lat)=>[(((.25+lon/360)%1)+1)%1*W,(90-lat)/180*H];
+  const smooth=(pts,n)=>{ const o=[]; for(let i=0;i<pts.length-1;i++){ const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||p2;
+      for(let k=0;k<n;k++){ const t=k/n,t2=t*t,t3=t2*t; o.push([0,1].map(j=>.5*(2*p1[j]+(-p0[j]+p2[j])*t+(2*p0[j]-5*p1[j]+4*p2[j]-p3[j])*t2+(-p0[j]+3*p1[j]-3*p2[j]+p3[j])*t3))); } }
+    o.push(pts[pts.length-1]); return o; };
+  const line=(pts,closed)=>{ const q=smooth(closed?pts.concat([pts[0]]):pts,12);
+    [["rgba(255,255,255,.95)",7,4],["#a3a6ae",5,0]].forEach(([col,wd,dy])=>{ g.beginPath(); q.forEach((p,i)=>{ const [x,y]=P(p[0],p[1]); i?g.lineTo(x,y+dy):g.moveTo(x,y+dy); });
+      g.strokeStyle=col; g.lineWidth=wd; g.lineJoin=g.lineCap="round"; g.stroke(); }); };
+  line([[-86,18],[-74,36],[-58,50],[-38,60],[-22,57],[-10,52],[0,51],[10,52],[22,57],[38,60],[58,50],[74,36],[86,18]]);
+  line([[-62,-12],[-53,-31],[-37,-44],[-17,-50],[0,-51],[17,-50],[37,-44],[53,-31],[62,-12]]);
+  line([[0,-51],[0,-70],[0,-88]]);
+  line([[-86,-22],[-72,-48],[-52,-70]]); line([[86,-22],[72,-48],[52,-70]]);
+  line([[148,58],[180,62],[212,58],[216,34],[180,29],[144,34]],true);
+  line([[112,40],[114,-12],[120,-62]]); line([[248,40],[246,-12],[240,-62]]);
+  const t=new T.CanvasTexture(c); t.colorSpace=T.SRGBColorSpace; t.anisotropy=4; return t;
+}
+/* the visor: a dark glass band with a curved, smiling lower edge */
+function lbShape(g,W,H){ const r=92; g.beginPath(); g.moveTo(r*.9,8); g.lineTo(W-r*.9,8); g.quadraticCurveTo(W-6,10,W-8,r);
+  g.lineTo(W-14,H-r*.95); g.quadraticCurveTo(W-26,H-12,W-r*1.4,H-24); g.quadraticCurveTo(W/2,H+4,r*1.4,H-24); g.quadraticCurveTo(26,H-12,14,H-r*.95);
+  g.lineTo(8,r); g.quadraticCurveTo(6,10,r*.9,8); g.closePath(); }
+function lbVBase(W,H){ const c=document.createElement("canvas"); c.width=W; c.height=H; const g=c.getContext("2d");
+  lbShape(g,W,H); const gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,"#1a1c24"); gr.addColorStop(.45,"#08090c"); gr.addColorStop(1,"#030304"); g.fillStyle=gr; g.fill();
+  g.save(); lbShape(g,W,H); g.clip(); g.fillStyle="rgba(90,210,255,.06)"; for(let y=6;y<H;y+=7) for(let x=6;x<W;x+=7) g.fillRect(x,y,2,2); g.restore();
+  g.lineWidth=3; g.strokeStyle="rgba(255,255,255,.12)"; lbShape(g,W,H); g.stroke(); return c; }
+/* the eyes: happy arcs with lashes, round eyes that look around, a wink, a blink */
+function lbEyes(f){
+  const B=LBOT, key=[f.mode,f.wink?1:0,f.open.toFixed(2),f.lx.toFixed(2),f.ly.toFixed(2),f.dy.toFixed(1),f.sq.toFixed(2)].join("|"); if(key===B.eyeKey) return; B.eyeKey=key;
+  const c=B.vc, g=c.getContext("2d"), W=c.width, H=c.height; g.clearRect(0,0,W,H); g.drawImage(B.vBase,0,0);
+  g.save(); lbShape(g,W,H); g.clip(); g.lineCap="round"; g.lineJoin="round";
+  const cy=H*.5+f.dy;
+  [[W*.31,-1],[W*.69,1]].forEach(([ex,side],i)=>{
+    let m=f.mode; if(f.wink) m=i===0?"happy":"open"; if(f.open<.28&&m!=="happy") m="closed"; if(f.open<.2&&m==="happy") m="closed";
+    g.strokeStyle=g.fillStyle="#72f1ff"; g.shadowColor="#19c8ff"; g.shadowBlur=26;
+    const lash=(ax,ay,a,n)=>{ g.lineWidth=6; for(let k=0;k<n;k++){ const aa=a-side*(.25+k*.32), x0=ax+Math.cos(a+side*k*.1)*2, y0=ay+Math.sin(a)*2-k*5;
+        g.beginPath(); g.moveTo(x0,y0); g.lineTo(x0+Math.cos(aa)*(17-k*3)*(side<0?1:1),y0+Math.sin(aa)*(17-k*3)); g.stroke(); } };
+    if(m==="happy"){ const R=54, cx=ex, cyy=cy+36, A0=Math.PI*1.15, A1=Math.PI*1.85;
+      g.save(); g.translate(cx,cyy); g.scale(1,f.sq); g.lineWidth=17; g.beginPath(); g.arc(0,0,R,A0,A1); g.stroke(); g.restore();
+      const a=side<0?A0:A1, ax=cx+Math.cos(a)*R, ay=cyy+Math.sin(a)*R*f.sq; lash(ax,ay,a+(side<0?-.25:.25),3); }
+    else if(m==="closed"){ g.lineWidth=13; g.beginPath(); g.moveTo(ex-40,cy+4); g.quadraticCurveTo(ex,cy+16,ex+40,cy+4); g.stroke(); }
+    else { const r=m==="wide"?52:46; g.save(); g.translate(ex,cy); g.scale(1,Math.max(.12,f.open));
+      g.beginPath(); g.arc(0,0,r,0,Math.PI*2); g.fill(); g.shadowBlur=0;
+      const px=f.lx*r*.32, py=f.ly*r*.30; g.fillStyle="#04303d"; g.beginPath(); g.arc(px,py,r*.47,0,Math.PI*2); g.fill();
+      g.fillStyle="rgba(255,255,255,.95)"; g.beginPath(); g.arc(px-r*.18,py-r*.2,r*.17,0,Math.PI*2); g.fill(); g.restore();
+      if(f.open>.6){ g.shadowBlur=20; const a=side<0?Math.PI*1.22:Math.PI*1.78; lash(ex+Math.cos(a)*(r+2),cy+Math.sin(a)*(r+2),a,2); } }
+  });
+  g.restore(); B.vTex.needsUpdate=true;
+}
+function lbLogo(g){ g.clearRect(0,0,128,128); g.strokeStyle="#fff"; g.lineWidth=7; g.lineJoin="round";
+  g.beginPath(); g.moveTo(92,20); g.lineTo(20,20); g.lineTo(20,108); g.lineTo(108,108); g.lineTo(108,40); g.stroke();
+  g.lineWidth=6; g.beginPath(); g.moveTo(98,12); g.lineTo(116,12); g.lineTo(116,30); g.stroke();
+  g.fillStyle="#fff"; g.font="800 46px Inter,Arial,sans-serif"; g.textAlign="center"; g.textBaseline="middle"; g.fillText("SD",64,67); }
+function lbBuild(T){
+  const D=Math.PI/180, phys=o=>new T.MeshPhysicalMaterial(o);
+  const root=new T.Group(), body=new T.Group(), head=new T.Group(); root.add(body); body.add(head);
+  head.add(new T.Mesh(new T.SphereGeometry(1,72,54),phys({color:0xffffff,map:lbSeams(T),roughness:.27,clearcoat:1,clearcoatRoughness:.05})));
+  const vc=document.createElement("canvas"); vc.width=640; vc.height=272; const vTex=new T.CanvasTexture(vc); vTex.colorSpace=T.SRGBColorSpace; vTex.anisotropy=4;
+  head.add(new T.Mesh(new T.SphereGeometry(1.02,64,28,Math.PI/2-60*D,120*D,(90-24)*D,51*D),
+    phys({map:vTex,emissiveMap:vTex,emissive:0xffffff,emissiveIntensity:1.6,roughness:.1,metalness:.1,clearcoat:1,clearcoatRoughness:.02,alphaTest:.5})));
+  const black=phys({color:0x0e0e12,roughness:.22,metalness:.15,clearcoat:1,clearcoatRoughness:.08});
+  const white=phys({color:0xf2f3f5,roughness:.25,clearcoat:1,clearcoatRoughness:.05});
+  const ring=phys({color:0x2a0004,emissive:0xd8001c,emissiveIntensity:.8,roughness:.3,clearcoat:1});
+  [-1,1].forEach(sx=>{ const cup=new T.Group();
+    const cyl=(r1,r2,h,m,x)=>{ const g=new T.CylinderGeometry(r1,r2,h,48,1); g.rotateZ(Math.PI/2); const o=new T.Mesh(g,m); o.position.x=x*sx; cup.add(o); };
+    const tor=(R,r,m,x)=>{ const g=new T.TorusGeometry(R,r,16,64); g.rotateY(Math.PI/2); const o=new T.Mesh(g,m); o.position.x=x*sx; cup.add(o); };
+    cyl(.40,.40,.26,black,0); tor(.4,.032,ring,.12); cyl(.30,.30,.05,white,.14); tor(.235,.034,ring,.165);
+    const dome=new T.Mesh(new T.SphereGeometry(.2,32,16),black); dome.scale.set(.42,1,1); dome.position.x=.168*sx; cup.add(dome);
+    cup.position.set(sx*.95,.03,-.02); head.add(cup); });
+  // headset microphone (shown while she listens)
+  const mic=new T.Group(), pv=new T.Vector3(1.06,-.1,.1); mic.position.copy(pv);
+  const pts=[[1.08,-.12,.12],[1.02,-.5,.5],[.72,-.78,.8],[.32,-.86,.93]].map(p=>new T.Vector3(p[0],p[1],p[2]).sub(pv));
+  mic.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts),40,.028,10,false),black));
+  const cap=new T.Mesh(new T.CapsuleGeometry(.065,.1,6,12),black); cap.rotation.z=Math.PI/2; cap.position.set(.28,-.865,.93).sub(pv); mic.add(cap);
+  mic.scale.setScalar(.001); mic.visible=false; head.add(mic);
+  // collar and tie
+  const neck=new T.Mesh(new T.CylinderGeometry(.3,.34,.13,40),black); neck.position.y=-.93; body.add(neck);
+  [-1,1].forEach(sx=>{ const c2=new T.Shape(); c2.moveTo(0,.02); c2.lineTo(sx*.38,.07); c2.lineTo(sx*.17,-.19); c2.closePath();
+    const f=new T.Mesh(new T.ExtrudeGeometry(c2,{depth:.04,bevelEnabled:true,bevelThickness:.015,bevelSize:.015,bevelSegments:2}),black);
+    f.position.set(0,-.94,.2); f.rotation.x=-.32; body.add(f); });
+  const red=phys({color:0xa80a20,roughness:.32,clearcoat:.9,clearcoatRoughness:.12});
+  const tie=new T.Group(); tie.position.set(0,-.95,.25); body.add(tie);
+  const knot=new T.Mesh(new T.CylinderGeometry(.12,.085,.17,24),red); knot.scale.z=.62; knot.position.y=-.07; tie.add(knot);
+  const sh=new T.Shape(); sh.moveTo(-.075,0); sh.lineTo(.075,0); sh.lineTo(.23,-.58); sh.lineTo(0,-.78); sh.lineTo(-.23,-.58); sh.closePath();
+  const bg=new T.ExtrudeGeometry(sh,{depth:.05,bevelEnabled:true,bevelThickness:.02,bevelSize:.018,bevelSegments:3,curveSegments:4}); bg.translate(0,-.13,-.025);
+  tie.add(new T.Mesh(bg,red));
+  const lc=document.createElement("canvas"); lc.width=lc.height=128; lbLogo(lc.getContext("2d")); const lt=new T.CanvasTexture(lc); lt.colorSpace=T.SRGBColorSpace;
+  const logo=new T.Mesh(new T.PlaneGeometry(.18,.18),new T.MeshBasicMaterial({map:lt,transparent:true,toneMapped:false})); logo.position.set(0,-.66,.052); tie.add(logo);
+  return {root,body,head,mic,tie,ring,vc,vTex};
+}
+function lbInit(){
+  const T=THREE, d=$("#laraDock"), btn=$("#laraOrbBtn"); if(!d||!btn||LBOT.ok) return;
+  const cv=document.createElement("canvas"); cv.id="laraBot3d";
+  const R=new T.WebGLRenderer({canvas:cv,alpha:true,antialias:true,powerPreference:"low-power"});
+  R.setClearColor(0x000000,0); R.toneMapping=T.ACESFilmicToneMapping; R.toneMappingExposure=1.28; R.outputColorSpace=T.SRGBColorSpace;
+  R.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  const sc=new T.Scene(), cam=new T.PerspectiveCamera(26,1,.1,60);
+  const pm=new T.PMREMGenerator(R), env=lbStudio(T); sc.environment=pm.fromScene(env,.04).texture; pm.dispose();
+  env.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); });
+  sc.add(new T.HemisphereLight(0xffffff,0xc9ced6,1.0));
+  const fill=new T.DirectionalLight(0xffffff,.55); fill.position.set(1.5,-2.5,4); sc.add(fill);
+  const key=new T.DirectionalLight(0xffffff,1.45); key.position.set(-2.5,4,5); sc.add(key);
+  const rim=new T.DirectionalLight(0xcdefff,.9); rim.position.set(3.5,1.5,-3); sc.add(rim);
+  const B=lbBuild(T); sc.add(B.root);
+  const sh=document.createElement("i"); sh.className="lb-shadow";
+  const bub=document.createElement("div"); bub.className="lb-bub"; bub.dir="auto";
+  btn.append(cv,sh,bub);
+  const now=performance.now();
+  Object.assign(LBOT,{ok:true,T,R,sc,cam,...B,vBase:lbVBase(B.vc.width,B.vc.height),cv,sh,bub,w:0,h:0,t:now,mx:innerWidth/2,my:innerHeight/2,
+    yaw:0,pitch:0,roll:0,tie:B.tie,tieA:0,tieV:0,micS:0,blinkAt:now+2500,idleFace:"happy",idleFaceAt:now+6000,nextIdle:now+26000,nextBub:now+95000,
+    lastSt:LARA.st,nextTalk:0,pose:null,poseEnd:0,baseT:0,base:null});
+  d.classList.add("lb-on"); d.classList.toggle("lb-roam",lbRoamOn()&&!matchMedia("(prefers-reduced-motion: reduce)").matches);
+  new ResizeObserver(lbSize).observe(btn); lbSize();
+  cv.addEventListener("webglcontextlost",e=>{ e.preventDefault(); LBOT.lost=true; setTimeout(()=>{ if(LBOT.lost) lbDrop(); },4000); });
+  cv.addEventListener("webglcontextrestored",()=>{ LBOT.lost=false; LBOT.eyeKey=""; });
+  btn.addEventListener("pointerenter",()=>{ LBOT.hover=true; clearTimeout(LBOT.hvT); LBOT.hvT=setTimeout(()=>{ if(LBOT.hover) lbBubble(null,0); },450); });
+  btn.addEventListener("pointerleave",()=>{ LBOT.hover=false; clearTimeout(LBOT.hvT); if(LBOT.bubHover) lbBubbleHide(1200); });
+  addEventListener("pointermove",e=>{ LBOT.mx=e.clientX; LBOT.my=e.clientY; },{passive:true});
+  addEventListener("pointerdown",lbFold,true);
+  addEventListener("resize",()=>{ LBOT.baseT=0; });
+  setTimeout(()=>lbBubble(null,6500,"wave"),2200);
+}
+/* frame the whole robot; in the small slot of the open chat, the head and the tie knot */
+function lbSize(){ const L=LBOT, b=$("#laraOrbBtn"), d=$("#laraDock"); if(!L.ok||!b||!d) return;
+  const w=Math.max(1,b.clientWidth), h=Math.max(1,b.clientHeight); if(w===L.w&&h===L.h) return; L.w=w; L.h=h;
+  L.R.setSize(w,h,false); const c=L.cam; c.aspect=w/h;
+  const small=Math.min(w,h)<76, y0=small?-1.42:-2.12, y1=1.1, X=1.3, Hh=(y1-y0)*1.05, cy=(y0+y1)/2, t=Math.tan(c.fov*Math.PI/360);
+  const dist=Math.max(Hh/2/t,X*1.05/(t*c.aspect)); c.position.set(0,cy+.18,dist); c.lookAt(0,cy,0); c.updateProjectionMatrix(); L.eyeKey=""; }
+/* clicking or dragging her: the walk offset becomes her real place first (so the drag starts exactly under the finger) */
+function lbFold(e){ const d=$("#laraDock"), R=LB_RM; if(!d||!LBOT.ok||d.classList.contains("open")||!e.target||!e.target.closest||!e.target.closest("#laraOrbBtn")) return;
+  R.hold=performance.now()+12000; R.vx=R.vy=0; R.tx=null; LBOT.bub&&LBOT.bub.classList.remove("on");
+  if(!R.ax&&!R.ay) return; const r=d.getBoundingClientRect();
+  if(typeof isPhone==="function"&&isPhone()){ d.style.setProperty("--mx",r.left+"px"); d.style.setProperty("--my",r.top+"px"); d.classList.add("m-placed"); }
+  else Object.assign(d.style,{left:r.left+"px",top:r.top+"px",bottom:"auto",translate:"none"});
+  R.x=R.y=R.ax=R.ay=0; d.style.setProperty("--rx","0px"); d.style.setProperty("--ry","0px"); LBOT.baseT=0; }
+/* she walks: a new spot every few seconds, never over an open card or panel, never off screen */
+function lbPick(){ const B=LBOT, b=B.base, R=LB_RM; if(!b) return; const ph=typeof isPhone==="function"&&isPhone();
+  const tab=ph?(parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tab"))||62):0;
+  const minX=10, maxX=innerWidth-b.w-10, minY=ph?64:84, maxY=innerHeight-b.h-(ph?tab+14:14);
+  if(maxX<=minX||maxY<=minY){ R.tx=R.x; R.ty=R.y; return; }
+  const av=[...document.querySelectorAll("#selpanel,#parkcard,.pfside:not(.pf-closed),#mSheet.open,.fpop,.lara-ring")].map(e=>e.getBoundingClientRect()).filter(r=>r.width>0&&r.height>0);
+  const cx=b.l+R.x, cy=b.t+R.y; let best=null;
+  for(let i=0;i<16&&!best;i++){ const x=minX+Math.random()*(maxX-minX), y=minY+Math.random()*(maxY-minY), dd=Math.hypot(x-cx,y-cy);
+    if(dd<(ph?110:150)||dd>(ph?300:600)) continue; if(av.some(r=>x<r.right+10&&x+b.w>r.left-10&&y<r.bottom+10&&y+b.h>r.top-10)) continue; best=[x,y]; }
+  if(!best) best=[Math.min(Math.max(cx,minX),maxX),Math.min(Math.max(cy,minY),maxY)];
+  R.tx=best[0]-b.l; R.ty=best[1]-b.t; R.arrived=false; R.until=performance.now()+25000; }
+function lbRoam(dt,d,open,st,now){
+  const B=LBOT, R=LB_RM;
+  if(!open&&(!B.base||now-B.baseT>500)){ const r=d.getBoundingClientRect(); B.base={l:r.left-R.ax,t:r.top-R.ay,w:r.width,h:r.height}; B.baseT=now; }
+  const talk=["connecting","listening","thinking","speaking"].includes(st);
+  const can=!open&&d.classList.contains("lb-roam")&&!B.hover&&!d.classList.contains("drag")&&!document.body.classList.contains("presenting")&&now>R.hold&&!document.hidden;
+  const max=(typeof isPhone==="function"&&isPhone()?40:64)*(talk?.5:1);
+  let dx=0,dy=0;
+  if(can&&B.base){
+    if(R.tx==null||(R.arrived&&now>R.until)) lbPick();
+    if(R.tx!=null){ const ex=R.tx-R.x, ey=R.ty-R.y, dist=Math.hypot(ex,ey);
+      if(dist<3){ if(!R.arrived){ R.arrived=true; R.until=now+1800+Math.random()*3400; } }
+      else { const sp=Math.min(max,dist*1.2); dx=ex/dist*sp; dy=ey/dist*sp; } }
+  }
+  const k=1-Math.exp(-dt*(can?2.4:6)); R.vx+=(dx-R.vx)*k; R.vy+=(dy-R.vy)*k; R.x+=R.vx*dt; R.y+=R.vy*dt;
+  if(B.base){ const b=B.base; R.x=Math.min(Math.max(R.x,6-b.l),innerWidth-b.w-6-b.l); R.y=Math.min(Math.max(R.y,6-b.t),innerHeight-b.h-6-b.t); }
+  if(!open&&(Math.abs(R.x-R.ax)>.05||Math.abs(R.y-R.ay)>.05)){ R.ax=R.x; R.ay=R.y; d.style.setProperty("--rx",R.x.toFixed(1)+"px"); d.style.setProperty("--ry",R.y.toFixed(1)+"px"); }
+  B.moving=Math.hypot(R.vx,R.vy)>9; B.vxN=Math.max(-1,Math.min(1,R.vx/64));
+}
+const LB_POSE={wave:{ico:"spark",side:"l",face:"happy",tilt:0},love:{ico:"heart",side:"r",face:"happy",tilt:-.13},idea:{ico:"bulb",side:"r",face:"wide",tilt:.07},
+  thumbs:{ico:"thumb",side:"m",face:"wink",tilt:-.09},question:{ico:"q",side:"l",face:"up",tilt:.2}};
+const LB_ICO={
+  spark:'<svg viewBox="0 0 40 40"><g stroke="#4cc9ff" stroke-width="4.6" stroke-linecap="round"><path d="M25 5l-3 10"/><path d="M8 13l8 6"/><path d="M4 28l10-1.5"/></g></svg>',
+  q:'<svg viewBox="0 0 40 40"><text x="20" y="32" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="36" fill="#5fd8ff">?</text></svg>',
+  heart:'<svg viewBox="0 0 40 40"><defs><linearGradient id="lbH" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff5a6e"/><stop offset="1" stop-color="#c8102e"/></linearGradient></defs><path d="M17 33S3 24.5 3 14.5a7 7 0 0114-3 7 7 0 0114 3C31 24.5 17 33 17 33z" fill="url(#lbH)"/><path d="M8.5 12.5a4 4 0 014.5-3" stroke="#fff" stroke-opacity=".7" stroke-width="2" fill="none" stroke-linecap="round"/><g stroke="#e8283c" stroke-width="3" stroke-linecap="round"><path d="M34 18l5-1.5"/><path d="M33 25l4.5 2"/></g></svg>',
+  bulb:'<svg viewBox="0 0 40 40"><g stroke="#ffc83d" stroke-width="2.6" stroke-linecap="round"><path d="M20 2v4"/><path d="M8 7l3 3"/><path d="M32 7l-3 3"/><path d="M3 18h4"/><path d="M33 18h4"/></g><path d="M20 10a9 9 0 00-5.4 16.2c1 .8 1.6 2 1.6 3.3V31h7.6v-1.5c0-1.3.6-2.5 1.6-3.3A9 9 0 0020 10z" fill="#ffd54a"/><path d="M16.4 33h7.2v2.4a2 2 0 01-2 2h-3.2a2 2 0 01-2-2z" fill="#8a7a5c"/><path d="M15.5 17a5 5 0 014-3.6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
+  thumb:'<svg viewBox="0 0 40 40"><path d="M11 18H7.5A1.5 1.5 0 006 19.5v13A1.5 1.5 0 007.5 34H11z" fill="#17171c"/><path d="M13 33.5h13.6a4 4 0 003.9-3.2l1.8-8.6a3.4 3.4 0 00-3.3-4.2H22l1.1-5.8a2.9 2.9 0 00-2.9-3.4L13 18z" fill="#17171c"/><path d="M16 21l4-6" stroke="#fff" stroke-opacity=".35" stroke-width="2" stroke-linecap="round"/><g stroke="#4cc9ff" stroke-width="3" stroke-linecap="round"><path d="M35 8l3-3"/><path d="M36 15h3.5"/></g></svg>'};
+function lbIcon(name,side,ms){ const btn=$("#laraOrbBtn"); if(!btn||!LB_ICO[name]) return; btn.querySelectorAll(".lb-ico").forEach(e=>e.remove());
+  const el=document.createElement("i"); el.className="lb-ico "+side; el.innerHTML=LB_ICO[name]; btn.appendChild(el);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add("on")));
+  setTimeout(()=>{ el.classList.remove("on"); setTimeout(()=>el.remove(),450); },ms); }
+function lbPose(name,ms){ const B=LBOT, P=LB_POSE[name]; if(!B.ok||!P) return; ms=ms||2400; const now=performance.now();
+  B.pose=name; B.poseT0=now; B.poseEnd=now+ms; B.lastPose=name; lbIcon(P.ico,P.side,ms); }
+function lbBubble(text,ms,pose){ const B=LBOT, d=$("#laraDock"); if(!B.ok||!d||d.classList.contains("open")) return;
+  const sub=$("#laraSub"); if(sub&&!sub.hidden&&d.classList.contains("mini")) return;
+  const ar=(LARA.convLang||LARA_PREF.lang)==="ar";
+  B.bub.innerHTML=text?esc(text):(ar?"<small>لارا</small>أقدر أساعدك في إيه النهارده؟":"<small>Lara</small>How may I help you today?");
+  const r=d.getBoundingClientRect(); B.bub.classList.toggle("below",r.top<120); B.bub.classList.toggle("flip",r.left+r.width/2>innerWidth-170);
+  B.bub.classList.add("on"); B.bubHover=!ms; clearTimeout(B.bubT); if(ms) B.bubT=setTimeout(()=>lbBubbleHide(0),ms); if(pose) lbPose(pose,2200); }
+function lbBubbleHide(delay){ const B=LBOT; clearTimeout(B.bubT); B.bubT=setTimeout(()=>{ if(B.bub) B.bub.classList.remove("on"); B.bubHover=false; },delay||0); }
+const lbS=(v,t,dt,k)=>v+(t-v)*(1-Math.exp(-dt*k));   // smooth follow
+function lbFrame(now,Lv,st){
+  const B=LBOT; if(!B.ok||B.lost) return; const d=$("#laraDock"); if(!d) return;
+  const dt=Math.min(.05,Math.max(.001,(now-B.t)/1000)); B.t=now; const open=d.classList.contains("open");
+  lbRoam(dt,d,open,st,now);
+  if(!d.offsetWidth) return;                                   // hidden (presentation on a phone, filters sheet)
+  if(B.bub.classList.contains("on")&&d.classList.contains("mini")){ const sb=$("#laraSub"); if(sb&&!sb.hidden) lbBubbleHide(0); }
+  // what she is doing → pose, face, bubble
+  if(st!==B.lastSt){ const was=B.lastSt; B.lastSt=st;
+    if(st==="thinking") B.qAt=now+1100;
+    if(st==="speaking") B.nextTalk=now+700;
+    if(st==="listening"&&was==="connecting"){ lbPose("wave",2200); lbBubble(null,4500); }
+    if(st==="error") lbPose("question",2600); }
+  if(st==="thinking"&&B.qAt&&now>B.qAt){ B.qAt=0; lbPose("question",2600); }
+  if(st==="speaking"&&now>B.nextTalk){ const o=["wave","love","idea","thumbs"].filter(p=>p!==B.lastPose); lbPose(o[Math.floor(Math.random()*o.length)],2300); B.nextTalk=now+3400+Math.random()*1800; }
+  const idle=st==="off"||st==="wake";
+  if(idle&&!open&&!B.hover&&now>B.nextIdle){ const o=["wave","love","idea"]; lbPose(o[Math.floor(Math.random()*o.length)],2200); B.nextIdle=now+24000+Math.random()*22000; }
+  if(idle&&!open&&!B.hover&&now>B.nextBub){ lbBubble(null,5200,"wave"); B.nextBub=now+90000+Math.random()*60000; }
+  const pose=B.pose&&now<B.poseEnd?LB_POSE[B.pose]:null; if(!pose) B.pose=null;
+  if(idle&&now>B.idleFaceAt){ B.idleFace=B.idleFace==="happy"?"open":"happy"; B.idleFaceAt=now+(B.idleFace==="happy"?6000:3500)+Math.random()*3000; }
+  let face=pose?pose.face:st==="listening"?"open":(st==="thinking"||st==="connecting")?"up":st==="speaking"?"happy":(B.moving?"open":B.idleFace);
+  // where she looks: the way she walks, else the pointer
+  const r=B.cv.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height*.35;
+  let lx=Math.max(-1,Math.min(1,(B.mx-cx)/320)), ly=Math.max(-1,Math.min(1,(B.my-cy)/320));
+  if(B.moving){ lx=B.vxN*.8; ly=.1; } if(face==="up"){ lx=.55; ly=-.85; } if(open&&!pose&&st!=="thinking"){ lx*=.4; ly*=.4; }
+  // blink
+  if(now>B.blinkAt+200) B.blinkAt=now+2600+Math.random()*3800;
+  const bp=(now-B.blinkAt)/200, open01=bp>0&&bp<1?Math.abs(Math.cos(bp*Math.PI)):1;
+  const talkB=st==="speaking"?Lv:0, dy=-talkB*10*Math.abs(Math.sin(now/105)), sq=1-talkB*.18*Math.abs(Math.sin(now/105));
+  lbEyes({mode:face==="wink"?"happy":face==="up"?"open":face,wink:face==="wink",open:open01,lx:Math.round(lx*20)/20,ly:Math.round(ly*20)/20,dy:Math.round(dy),sq:Math.round(sq*20)/20});
+  // head and body motion (springs, so it is always smooth)
+  const vx=B.vxN||0, tp=pose?(now-B.poseT0)/1000:9;
+  const waveW=pose&&B.pose==="wave"&&tp<1.3?Math.sin(tp*13)*.16*(1-tp/1.3):0;
+  const yawT=B.moving?vx*.85:lx*.42, pitchT=(B.moving?.06:ly*.2)+(face==="up"?-.14:0)+(st==="speaking"?talkB*.1*Math.sin(now/95):0);
+  const rollT=(pose?pose.tilt:0)+(st==="thinking"?.12:0)+waveW-vx*.08;
+  B.yaw=lbS(B.yaw,yawT,dt,4.2); B.pitch=lbS(B.pitch,pitchT,dt,6); B.roll=lbS(B.roll,rollT,dt,6);
+  const bob=Math.sin(now/1000*2.2)*.055+(B.moving?Math.abs(Math.sin(now/170))*.035:0)+talkB*.02;
+  B.root.position.y=bob; B.root.rotation.y=B.yaw; B.body.rotation.z=-vx*.07; B.head.rotation.x=B.pitch; B.head.rotation.z=B.roll;
+  // the tie swings behind the movement (a damped spring)
+  const tieT=vx*.32+B.roll*.45; B.tieV+=((tieT-B.tieA)*38-B.tieV*5.5)*dt; B.tieA+=B.tieV*dt; B.tie.rotation.z=B.tieA; B.tie.rotation.x=-.05+Math.sin(now/900)*.03;
+  // headphones glow with the voice; the headset mic comes out while she is in a conversation
+  const base=st==="off"?.55:st==="wake"?.72+.18*Math.sin(now/650):.95;
+  B.ring.emissiveIntensity=base+((st==="speaking"||st==="listening")?Lv*2.4:0);
+  B.micS=lbS(B.micS,["listening","thinking","speaking"].includes(st)?1:0,dt,7); B.mic.visible=B.micS>.02; B.mic.scale.setScalar(Math.max(.001,B.micS));
+  // soft floor shadow
+  if(B.sh){ const s=1-bob*2.2; B.sh.style.transform=`scale(${s.toFixed(3)})`; B.sh.style.opacity=(.85-bob*2).toFixed(2); }
+  B.R.render(B.sc,B.cam);
 }
 
 /* ---- plot card: Print menu ---- */
@@ -4856,7 +5179,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V42.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V43.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
