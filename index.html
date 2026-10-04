@@ -708,6 +708,43 @@ body.no-matchfin #fpOn,body.no-matchfin .fp-panel,body.no-matchfin .fp-sec,body.
 @media (max-width:820px){ .nt-panel{left:8px;right:8px;width:auto;bottom:calc(var(--tab,62px) + 8px)} .wf-sts{grid-template-columns:1fr 1fr} .wf-grid{grid-template-columns:1fr}
   .wf-page{padding:14px 12px calc(var(--tab,62px) + 20px)} #ntPops{top:auto;bottom:calc(var(--tab,62px) + 10px)} }
 
+
+/* ---- V49 change log ---- */
+.sp-log{width:24px;height:24px;flex:0 0 24px;border-radius:7px;display:grid;place-items:center;color:var(--n400,#8e8e93);background:none;border:1px solid transparent}
+.sp-log:hover,.sp-log:focus-visible{color:var(--signal,#b3263d);border-color:var(--rule-2);background:var(--panel)}
+.aud-box{width:min(560px,calc(100vw - 24px));max-height:min(720px,calc(100dvh - 40px));display:flex;flex-direction:column}
+.aud-tl{overflow:auto;flex:1;margin:4px -4px 10px;padding:0 4px;display:flex;flex-direction:column;gap:0}
+.aud-wait{padding:26px 8px;text-align:center;color:var(--mute);font-size:12.5px} .aud-wait b{display:block;color:var(--ink);font-size:13.5px;margin-bottom:4px}
+.aud-e{position:relative;padding:10px 0 12px 18px;border-left:2px solid var(--rule);margin-left:6px}
+.aud-e::before{content:"";position:absolute;left:-6px;top:13px;width:10px;height:10px;border-radius:50%;background:var(--panel,#fff);border:2px solid #8E8E93}
+.aud-e.k-live::before{border-color:#34C759;background:#34C759} .aud-e.k-mgr_no::before,.aud-e.k-ops_no::before,.aud-e.k-remove::before{border-color:#ff453a}
+.aud-e.k-request::before,.aud-e.k-mgr_ok::before{border-color:#FF9F0A} .aud-e.k-mds::before,.aud-e.k-edit::before,.aud-e.k-add::before,.aud-e.k-mds_ok::before{border-color:#0A84FF}
+.aud-eh{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap} .aud-eh b{font-size:13px} .aud-eh span{font-size:11px;color:var(--mute);white-space:nowrap}
+.aud-eb{display:flex;flex-direction:column;gap:3px;margin-top:3px;font-size:12px;color:var(--ink-2)}
+.aud-by{font-weight:600;color:var(--ink)} .aud-by em,.aud-tbl em{font-style:normal;font-size:10.5px;color:var(--mute);font-weight:500}
+.aud-st{display:inline-flex;align-items:center;gap:2px;flex-wrap:wrap} .aud-d{display:block;color:var(--ink-2);word-break:break-word}
+.aud-n{font-style:normal;background:var(--n50,#f6f6f8);border-radius:8px;padding:5px 8px} .aud-r{font-size:10.5px;color:var(--mute);font-style:normal}
+.aud-f{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.aud-f input,.aud-f select{height:34px;border-radius:9px;border:1px solid var(--rule-2);padding:0 10px;font:500 12.5px Inter,sans-serif;background:var(--panel);color:var(--ink)}
+.aud-f input[type=search]{flex:1 1 240px;min-width:200px} .aud-f select{flex:0 1 190px;min-width:140px}
+.aud-f label{display:flex;flex-direction:column;gap:3px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.aud-tb{display:flex;gap:8px;flex-wrap:wrap}
+.aud-key{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;background:#fdecee;color:#9b1c2e;border-radius:99px;padding:5px 6px 5px 12px;font-size:12px}
+.aud-key button{width:22px;height:22px;border-radius:50%;background:rgba(155,28,46,.12);color:#9b1c2e;font-size:15px;line-height:1}
+.aud-tw{border:1px solid var(--rule);border-radius:14px;background:var(--panel);overflow:auto}
+.aud-tbl{min-width:980px} .aud-tbl td,.aud-tbl th{font-size:12px;vertical-align:top} .aud-tbl th{position:sticky;top:0;background:var(--panel);z-index:1}
+.aud-w{white-space:nowrap;color:var(--ink-2)} .aud-a{font-weight:600;display:block} .aud-ch{min-width:220px;max-width:380px} .aud-nt{max-width:220px;color:var(--ink-2)}
+.aud-pl{font:600 12px "IBM Plex Mono",monospace;color:var(--ink);background:none;padding:0;text-decoration:underline dotted;text-underline-offset:3px}
+.aud-pl:hover{color:var(--signal)}
+.aud-tbl tr.k-live td:first-child{box-shadow:inset 3px 0 #34C759} .aud-tbl tr.k-mgr_no td:first-child,.aud-tbl tr.k-ops_no td:first-child,.aud-tbl tr.k-remove td:first-child{box-shadow:inset 3px 0 #ff453a}
+.aud-more{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--mute)}
+.app[data-view="audit"] header.top,.app[data-view="audit"] .kpis{display:none}
+@media (max-width:820px){
+  .nav-item[data-view="approvals"] .nav-l::after{content:"Approvals"} .nav-item[data-view="audit"] .nav-l::after{content:"Log"}
+  .aud-f input[type=search]{flex-basis:100%} .aud-f select,.aud-f label{flex:1 1 45%;min-width:0} .aud-f label input{width:100%}
+  .aud-box{width:auto;left:0;right:0}
+}
+
 #sbGate{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:radial-gradient(1200px 600px at 20% 0%,#3a0d16 0%,#141416 60%);padding:16px}
 .sbg-box{width:min(380px,100%);background:#fff;border-radius:18px;padding:26px 24px 22px;box-shadow:0 40px 90px -30px rgba(0,0,0,.7);display:flex;flex-direction:column;gap:12px;color:#15171b}
 .sbg-box img{height:44px;align-self:flex-start}
@@ -3070,6 +3107,7 @@ function portfolioDetail(){
    VIEWS
    ========================================================================== */
 const ICO={
+  audit:'<path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9"/><path d="M2.3 2.6v2.6h2.6"/><path d="M8 5.2V8l2 1.3"/>',
   approvals:'<path d="M3 8.5l3 3 7-7"/><path d="M13 9.5V13a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1h5"/>',
   settings:'<circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v1.8M8 12.7v1.8M1.5 8h1.8M12.7 8h1.8M3.4 3.4l1.3 1.3M11.3 11.3l1.3 1.3M3.4 12.6l1.3-1.3M11.3 4.7l1.3-1.3"/>',
   portfolio:'<path d="M2 6.5L8 2l6 4.5V13a1 1 0 01-1 1H3a1 1 0 01-1-1z"/><path d="M6.2 14V9h3.6v5"/>',
@@ -3169,6 +3207,7 @@ function render(){
   if(S.view==="offer") content.innerHTML=viewOffer();
   if(S.view==="settings") content.innerHTML=viewSettings();
   if(S.view==="approvals") content.innerHTML=viewApprovals();
+  if(S.view==="audit") content.innerHTML=viewAudit();
   if(S.view==="portfolio"){ content.innerHTML=""; $("#mapshell").innerHTML=viewPortfolio(); }
   if(S.view==="sales"){ content.innerHTML=""; showLB(); } else hideLB();
   if(S.view==="absorption") content.innerHTML=viewAbsorption(rs);
@@ -3181,6 +3220,7 @@ function render(){
   if(S.view==="offer") wireOffer();
   if(S.view==="settings") wireSettings();
   if(S.view==="approvals") wireApprovals();
+  if(S.view==="audit") wireAudit();
   applyHits();
   if(S.view==="inventory"||S.view==="portfolio") showMap(); else hideMap();
 }
@@ -5160,6 +5200,179 @@ function wfPop(n){
 function wfNew(n){ if(!n||WF.notif.some(x=>x.id===n.id)) return; WF.notif.unshift(n); wfBell(); wfPop(n);
   wfSoon("req",async()=>{ await wfLoadReq(); wfBadge(); if(S.view==="approvals") wfRender(); },300); }
 
+
+/* ============================================================================
+   V49 — PLOT CHANGE LOG: who changed which plot, when (Cairo time), and what
+   ========================================================================== */
+const AUD={cur:null, prev:null, at:0, pend:null, cache:new Map(), missing:false, people:null,
+  pg:{f:{}, rows:[], more:false, busy:false, loaded:false, err:""}};
+const AUD_ACT={request:"Asked to change",mgr_ok:"Approved by sales manager",mgr_no:"Rejected by sales manager",ops_no:"Rejected by sales operation",
+  cancel:"Request cancelled",live:"Status changed",hold_end:"Hold ended (4 days)",mds_ok:"Typed into the MDS",
+  edit:"Edited in the register",add:"Added to the register",remove:"Removed from the register",mds:"Changed in the MDS sheet"};
+const AUD_GROUPS=[["live","Status changes (live)",["live","hold_end"]],["req","Requests & approvals",["request","mgr_ok","mgr_no","ops_no","cancel"]],
+  ["mdsok","Typed into the MDS",["mds_ok"]],["reg","Register edits",["edit","add","remove"]],["mds","MDS sheet changes",["mds"]]];
+const AUD_TF=new Intl.DateTimeFormat("en-GB",{timeZone:"Africa/Cairo",weekday:"short",day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false});
+const audWhen=t=>t?AUD_TF.format(new Date(t)).replace(/,/g,"").replace(/ (\d\d:\d\d)$/," · $1"):"";
+const audSt=s=>(STATUS[s]&&STATUS[s].label)||s||"—";
+const audOn=()=>typeof sbReady==="function"&&sbReady()&&!AUD.missing;
+const audMiss=e=>/sid_audit|does not exist|schema cache|Could not find the function/i.test(e&&e.message||"");
+const AUD_SEP="\u0001";
+
+/* ---- what each plot looks like in the MDS (the sheet's own values, before dashboard status changes) ---- */
+function audVal(r){ const o=r._wf0||r; return [o.status||"",o.client||"",o.company||"",o.soldBy||"",Math.round(r.area||0),Math.round(r.price||0)].join(AUD_SEP); }
+function audSnap(){
+  if(!S.rows||!S.rows.length) return; const m=new Map();
+  S.rows.forEach(r=>{ if(r.unit&&!r.dup&&!m.has(r.key)) m.set(r.key,{v:audVal(r),r}); });
+  const c=AUD.cur, same=c&&c.size===m.size&&[...m].every(([k,x])=>{ const y=c.get(k); return y&&y.v===x.v; });
+  if(!same&&c){ AUD.prev=c; AUD.at=Date.now(); } AUD.cur=m;
+}
+const audRow=(r,action,o)=>({key:r.key,park:r.park,sheet:r.sheet,unit:r.unit,client:(r._wf0||r).client||null,company:(r._wf0||r).company||null,action,...o});
+function audMdsDiff(A,B){
+  const out=[], F=[["Status",0,audSt],["Client",1],["Company",2],["Sold by",3],["Area sqm",4,v=>fInt(+v)],["Price / sqm",5,v=>fInt(+v)]];
+  const fv=(f,v)=>v===""||v==="0"?"—":f?f(v):v;
+  B.forEach((x,k)=>{ const y=A.get(k);
+    if(!y){ out.push(audRow(x.r,"mds",{to:(x.r._wf0||x.r).status||null,detail:"Added to the MDS · "+audSt((x.r._wf0||x.r).status)})); return; }
+    if(y.v===x.v) return; const a=y.v.split(AUD_SEP), b=x.v.split(AUD_SEP), ch=[];
+    F.forEach(([l,i,f])=>{ if(a[i]!==b[i]) ch.push(l+": "+fv(f,a[i])+" → "+fv(f,b[i])); });
+    out.push(audRow(x.r,"mds",{from:a[0]!==b[0]?a[0]||null:null,to:a[0]!==b[0]?b[0]||null:null,detail:ch.join(" · ")})); });
+  A.forEach((y,k)=>{ if(!B.has(k)) out.push(audRow(y.r,"mds",{from:(y.r._wf0||y.r).status||null,detail:"Removed from the MDS"})); });
+  return out;
+}
+async function audSend(source,rows,ref){
+  if(!rows||!rows.length||!audOn()) return;
+  for(let i=0;i<rows.length&&i<6000;i+=2000){
+    const r=await SB.rpc("sid_audit_add",{p:{source,ref:ref||null,rows:rows.slice(i,i+2000)}});
+    if(r.error){ if(audMiss(r.error)) AUD.missing=true; else console.warn("change log:",r.error.message); return; } }
+  AUD.cache.clear(); AUD.pg.loaded=false;
+}
+/* a new MDS version was stored by this browser → log what changed in the sheet (only right after it was applied here) */
+function audMds(v){ try{
+  if(!AUD.prev||!AUD.cur||Date.now()-AUD.at>3*60*1000) return;
+  const d=audMdsDiff(AUD.prev,AUD.cur); AUD.prev=null; audSend("mds",d,v&&v.id!=null?"v"+v.id:null); }catch(e){ console.warn("change log:",e); } }
+/* the register Save: every changed field (GP / cost values never written) */
+function audFmt(k,v){ if(v==null||v==="") return "—"; if(k==="status") return audSt(v); if(typeof v==="number") return Math.abs(v)<10&&v%1?String(Math.round(v*1000)/1000):fInt(v); return String(v).slice(0,80); }
+function audEdits(live){
+  const out=[], hid=typeof REG_SENS!=="undefined"?REG_SENS:new Set(), lab=k=>(colOf(k)||{}).label||k, cols=(S.reg.cols||[]).filter(k=>k!=="src"&&k!=="_id");
+  const row=(r,action,detail,o)=>({key:ckey(r.sheet,r.unit),park:r.park,sheet:r.sheet,unit:r.unit,client:r.client||null,company:r.company||null,action,detail,...(o||{})});
+  live.forEach(r=>{ if(ED.added.has(r._id)){ out.push(row(r,"add","Added to the register · "+audSt(r.status),{to:r.status||null})); return; }
+    const o=ED.orig.get(r._id); if(!o) return; const ch=[]; let gp=false;
+    cols.forEach(k=>{ if(edEq(o[k],r[k])) return; if(hid.has(k)){ gp=true; return; } ch.push(lab(k)+": "+audFmt(k,o[k])+" → "+audFmt(k,r[k])); });
+    if(gp) ch.push("GP / cost figures changed (hidden)");
+    if(!ch.length) return; const st=o.status!==r.status?{from:o.status||null,to:r.status||null}:{};
+    out.push(row(r,"edit",ch.join(" · "),st));
+    if(ckey(o.sheet,o.unit)!==ckey(r.sheet,r.unit)) out.push(row(o,"edit",ch.join(" · "),st)); });
+  [...ED.deleted].filter(id=>!ED.added.has(id)).forEach(id=>{ const o=ED.orig.get(id); if(o) out.push(row(o,"remove","Removed from the register",{from:o.status||null})); });
+  return out;
+}
+
+/* ---- reading (on demand only) ---- */
+async function audFind(p){ const r=await SB.rpc("sid_audit_find",{p}); if(r.error){ if(audMiss(r.error)) AUD.missing=true; throw r.error; } return r.data||[]; }
+function audChange(a){
+  const st=a.to_status?`<span class="aud-st">${a.from_status?`${wfDot(a.from_status)}${esc(audSt(a.from_status))} → `:""}${wfDot(a.to_status)}<b>${esc(audSt(a.to_status))}</b></span>`:"";
+  return st+(a.detail?`<span class="aud-d">${esc(a.detail)}</span>`:"");
+}
+function audWho(a){ return a.by_name||a.by_email?`${esc(a.by_name||a.by_email)}${a.source==="mds"?' <em>synced</em>':""}`:'<em>System</em>'; }
+function audCust(a){ return [a.client,a.company].filter(Boolean).filter((x,i,l)=>l.indexOf(x)===i).map(esc).join(" · "); }
+
+/* ---- plot card: the clock icon → this plot's history ---- */
+function audBtn(r){ if(!r||!r.key||typeof sbReady!=="function"||!sbReady()) return "";
+  return `<button class="sp-log" data-ak="${esc(r.key)}" data-au="${esc(r.unit||"")}" title="Change history" aria-label="Change history of ${esc(r.unit||"this plot")}"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9"/><path d="M2.3 2.6v2.6h2.6"/><path d="M8 5.2V8l2 1.3"/></svg></button>`; }
+async function audPlot(key,unit){
+  $("#audDlg")?.remove();
+  const ov=document.createElement("div"); ov.className="wf-ov aud-ov"; ov.id="audDlg";
+  ov.innerHTML=`<div class="wf-box aud-box" role="dialog" aria-label="Change history"><div class="wf-h"><div><b>Change history · ${esc(unit||"plot")}</b><span>Cairo time · newest first</span></div><button type="button" class="wf-x" aria-label="Close">×</button></div>
+    <div class="aud-tl" id="audTl"><div class="aud-wait">Loading…</div></div>
+    <div class="wf-b"><button type="button" class="ebtn" id="audAll">Open in the change log</button></div></div>`;
+  document.body.appendChild(ov);
+  const close=()=>ov.remove(); ov.querySelector(".wf-x").onclick=close; ov.addEventListener("click",e=>{ if(e.target===ov) close(); });
+  ov.addEventListener("keydown",e=>{ if(e.key==="Escape") close(); }); ov.tabIndex=-1; ov.focus();
+  $("#audAll").onclick=()=>{ close(); AUD.pg.f={key,keyLabel:unit}; AUD.pg.loaded=false; go("audit"); };
+  const tl=$("#audTl");
+  try{ let c=AUD.cache.get(key); if(!c||Date.now()-c.t>60000){ c={t:Date.now(),rows:await audFind({key,limit:100})}; AUD.cache.set(key,c); }
+    tl.innerHTML=c.rows.length?c.rows.map(a=>`<div class="aud-e k-${esc(a.action)}"><div class="aud-eh"><b>${esc(AUD_ACT[a.action]||a.action)}</b><span>${audWhen(a.at)}</span></div>
+      <div class="aud-eb"><span class="aud-by">${audWho(a)}</span>${audChange(a)}${audCust(a)?`<span class="aud-c">${audCust(a)}</span>`:""}${a.note?`<em class="aud-n">“${esc(a.note)}”</em>`:""}${a.req_id?`<span class="aud-r">request #${a.req_id}</span>`:""}</div></div>`).join("")
+      :`<div class="aud-wait"><b>No changes logged yet</b>Changes made from today on appear here: status requests and approvals, register edits and MDS sheet changes.</div>`;
+  }catch(e){ tl.innerHTML=`<div class="aud-wait">${AUD.missing?"<b>The change log is not switched on yet</b>An administrator runs step 8 (sql_8_audit.sql) in Supabase once.":"Could not load the history: "+esc(wfErr(e))}</div>`; }
+}
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".sp-log"); if(b){ e.preventDefault(); e.stopPropagation(); audPlot(b.dataset.ak,b.dataset.au); } },true);
+
+/* ---- the Change log page ---- */
+function audParams(extra){ const f=AUD.pg.f, g=AUD_GROUPS.find(x=>x[0]===f.act);
+  const p={limit:50,...extra}; if(f.key) p.key=f.key; if(f.q) p.q=f.q; if(f.by) p.by=f.by; if(f.park) p.park=f.park; if(f.from) p.from=f.from; if(f.to) p.to=f.to; if(g) p.actions=g[2]; return p; }
+function viewAudit(){
+  const f=AUD.pg.f, ppl=AUD.people||[];
+  return `<div class="wf-page aud-page">
+    <div class="wf-ph"><div><b>Change log</b><span>Every plot change — who, when (Cairo time) and what · newest first</span></div>
+      <div class="aud-tb"><button class="ebtn" id="audRef">Refresh</button><button class="ebtn" id="audXls">Export to Excel</button></div></div>
+    <form class="aud-f" id="audF" autocomplete="off" onsubmit="return false">
+      <input name="q" type="search" value="${esc(f.q||"")}" placeholder="Search plot, client, company, note…">
+      <select name="by"><option value="">All users</option>${ppl.map(u=>`<option value="${esc(u.email)}" ${u.email===f.by?"selected":""}>${esc(u.name||u.email)}</option>`).join("")}</select>
+      <select name="act"><option value="">All actions</option>${AUD_GROUPS.map(([k,l])=>`<option value="${k}" ${k===f.act?"selected":""}>${l}</option>`).join("")}</select>
+      <select name="park"><option value="">All projects</option>${Object.entries(S.reg.parks).map(([id,p])=>`<option value="${esc(id)}" ${id===f.park?"selected":""}>${esc(p.name||id)}</option>`).join("")}</select>
+      <label>From<input type="date" name="from" value="${esc(f.from||"")}"></label>
+      <label>To<input type="date" name="to" value="${esc(f.to||"")}"></label>
+      <button class="ebtn" type="button" id="audClr">Clear</button>
+    </form>
+    ${f.key?`<div class="aud-key">Plot <b>${esc(f.keyLabel||f.key)}</b><button type="button" id="audKeyX" aria-label="Show all plots">×</button></div>`:""}
+    <div id="audBody">${audBodyHtml()}</div></div>`;
+}
+function audBodyHtml(){
+  const P=AUD.pg;
+  if(AUD.missing) return `<div class="mm-empty"><b>The change log is not switched on yet</b>An administrator runs step 8 (sql_8_audit.sql) in Supabase once.</div>`;
+  if(P.err) return `<div class="alarm"><b>Could not load:</b> ${esc(P.err)}</div>`;
+  if(!P.loaded) return `<div class="mm-empty"><b>Loading…</b></div>`;
+  if(!P.rows.length) return `<div class="mm-empty"><b>Nothing found</b>Try fewer filters. Changes are logged from the day the change log was switched on.</div>`;
+  return `<div class="tablewrap aud-tw"><table class="tbl aud-tbl"><thead><tr><th>When (Cairo)</th><th>User</th><th>Action</th><th>Plot</th><th>Project</th><th>Change</th><th>Client / company</th><th>Note</th></tr></thead><tbody>
+    ${P.rows.map(a=>`<tr class="k-${esc(a.action)}"><td class="aud-w">${audWhen(a.at)}</td><td>${audWho(a)}</td><td><b class="aud-a">${esc(AUD_ACT[a.action]||a.action)}</b>${a.req_id?`<em class="aud-r">#${a.req_id}</em>`:""}</td>
+      <td class="mono"><button type="button" class="aud-pl" data-ak="${esc(a.key||"")}" data-au="${esc(a.unit||"")}" title="Only this plot">${esc(a.unit||"—")}</button></td>
+      <td>${esc(a.sheet||S.reg.parks[a.park]?.name||a.park||"")}</td><td class="aud-ch">${audChange(a)||"—"}</td><td>${audCust(a)||"—"}</td><td class="aud-nt">${a.note?esc(a.note):""}</td></tr>`).join("")}
+  </tbody></table></div>
+  <div class="aud-more"><span>${fInt(P.rows.length)} shown</span>${P.more?`<button class="ebtn" id="audMore" ${P.busy?"disabled":""}>${P.busy?"Loading…":"Load 50 more"}</button>`:""}</div>`;
+}
+function audPaint(){ const b=$("#audBody"); if(b&&S.view==="audit"){ b.innerHTML=audBodyHtml(); audWireBody(); } }
+async function audLoad(more){
+  const P=AUD.pg; if(P.busy) return; P.busy=true; P.err=""; if(more) audPaint();
+  try{ const last=more&&P.rows.length?P.rows[P.rows.length-1].id:null, d=await audFind(audParams(last?{before:last}:{}));
+    P.rows=more?P.rows.concat(d):d; P.more=d.length===50; P.loaded=true; }
+  catch(e){ P.err=AUD.missing?"":wfErr(e); P.loaded=true; }
+  P.busy=false; audPaint();
+}
+async function audPeople(){ if(AUD.people||AUD.missing) return; try{ const r=await SB.rpc("sid_audit_people"); if(r.error){ if(audMiss(r.error)) AUD.missing=true; return; }
+  AUD.people=r.data||[]; if(S.view==="audit"){ const sel=$("#audF select[name=by]"); if(sel) sel.innerHTML=`<option value="">All users</option>`+AUD.people.map(u=>`<option value="${esc(u.email)}" ${u.email===AUD.pg.f.by?"selected":""}>${esc(u.name||u.email)}</option>`).join(""); } }catch(e){} }
+function audWireBody(){
+  const m=$("#audMore"); if(m) m.onclick=()=>audLoad(true);
+  $$(".aud-pl").forEach(b=>b.onclick=()=>{ if(!b.dataset.ak) return; AUD.pg.f={...AUD.pg.f,key:b.dataset.ak,keyLabel:b.dataset.au}; audRerender(); });
+}
+function rerenderAudit(){ const c=$("#content"); if(!c||S.view!=="audit") return; c.innerHTML=viewAudit(); wireAudit(); }
+const audRerender=()=>{ AUD.pg.loaded=false; rerenderAudit(); };
+function wireAudit(){
+  const F=$("#audF"); if(!F) return; let t=null;
+  const read=()=>{ const f=AUD.pg.f; AUD.pg.f={key:f.key,keyLabel:f.keyLabel,q:F.q.value.trim(),by:F.by.value,act:F.act.value,park:F.park.value,from:F.from.value,to:F.to.value}; };
+  F.q.oninput=()=>{ clearTimeout(t); t=setTimeout(()=>{ read(); audLoad(false); },450); };
+  F.querySelectorAll("select,input[type=date]").forEach(el=>el.onchange=()=>{ read(); audLoad(false); });
+  $("#audClr").onclick=()=>{ AUD.pg.f={}; audRerender(); };
+  const kx=$("#audKeyX"); if(kx) kx.onclick=()=>{ const f={...AUD.pg.f}; delete f.key; delete f.keyLabel; AUD.pg.f=f; audRerender(); };
+  $("#audRef").onclick=()=>{ AUD.people=null; audPeople(); audLoad(false); };
+  $("#audXls").onclick=audXls;
+  audWireBody(); audPeople();
+  if(!AUD.pg.loaded&&!AUD.pg.busy) audLoad(false);
+}
+async function audXls(){
+  const b=$("#audXls"); if(!b||b.disabled) return; b.disabled=true; const lbl=b.textContent; let all=[];
+  try{ for(let i=0;i<10;i++){ b.textContent="Exporting… "+fInt(all.length); const last=all.length?all[all.length-1].id:null;
+      const d=await audFind(audParams({limit:500,...(last?{before:last}:{})})); all=all.concat(d); if(d.length<500) break; }
+    const rows=all.map(a=>({"When (Cairo)":audWhen(a.at),"User":a.by_name||(a.by_email?"":"System"),"Email":a.by_email||"","Action":AUD_ACT[a.action]||a.action,
+      "Plot":a.unit||"","Project":a.sheet||"","Park":S.reg.parks[a.park]?.name||a.park||"","From status":a.from_status?audSt(a.from_status):"","To status":a.to_status?audSt(a.to_status):"",
+      "Client":a.client||"","Company":a.company||"","Note":a.note||"","Details":a.detail||"","Request #":a.req_id||""}));
+    const wb=XLSX.utils.book_new(), ws=XLSX.utils.json_to_sheet(rows.length?rows:[{"When (Cairo)":"No entries for these filters"}]);
+    ws["!cols"]=[22,20,26,24,14,22,18,14,14,24,24,30,60,10].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,ws,"Change log");
+    XLSX.writeFile(wb,"SID_change_log_"+new Date().toISOString().slice(0,10)+".xlsx");
+    toast(fInt(all.length)+" entries exported"+(all.length>=5000?" (the newest 5,000 — narrow the filters for older ones)":""));
+  }catch(e){ toast("Could not export: "+wfErr(e),true); }
+  b.disabled=false; b.textContent=lbl;
+}
+
 /* ---- plot card: Print menu ---- */
 function selOffer(mode){
   const sum=plotSum(selRows()), rs=sum.rows; if(!rs.length){ toast("These plots have no register row yet",true); return; }
@@ -5628,7 +5841,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V48.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V49.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
@@ -6994,6 +7207,7 @@ function showSelection(){
       <div class="sp-ih">
         <span class="sp-u">${esc(p.unit||"—")}</span>
         <span class="sp-c" style="${sw}">${s.label}</span>
+        ${audBtn(r)}
         <button class="sp-rm" data-k="${esc(x.k)}" aria-label="Remove">×</button>
       </div>
       <div class="sp-kv">
@@ -9652,6 +9866,7 @@ async function persist(){
 /* Re-join the register to the survey and repaint every view and the map. */
 function commitRows(){
   try{ wfApplyRows(); }catch(e){}
+  try{ audSnap(); }catch(e){}
   S.byKey.clear();
   S.rows.forEach(r=>{ if(r.unit&&!S.byKey.has(r.key)) S.byKey.set(r.key,r); });
   bind();
@@ -10072,6 +10287,7 @@ async function edSave(){
   }
   const c=edCounts(); if(!(c.changed+c.added+c.deleted)) return;
   const btn=$("#edSave"); if(btn) btn.disabled=true;
+  try{ AUD.pend=audEdits(live); }catch(e){ AUD.pend=null; }
   S.rows=live.map(r=>hydrateRow({...r}));
   S.reg.savedAt={"Edits saved in dashboard":new Date().toISOString().slice(0,10)};
   S.reg.sources=[{file:"Edited in dashboard",rows:S.rows.length}];
@@ -10497,6 +10713,7 @@ async function sbGate(){
     `<button class="ebtn" id="sbgOut">Sign out</button>`); await new Promise(()=>{}); }
   SBROLE=r.data; SBME=(await SB.rpc("sid_me")).data||{role:SBROLE,pages:[],can_edit:false,is_admin:false};
   if((SBME.wf||SBME.is_admin)&&!VIEWS.some(v=>v.id==="approvals")) VIEWS.splice(Math.max(0,VIEWS.findIndex(v=>v.id==="editor")),0,{id:"approvals",group:"data",label:"Approvals",hint:"Status-change requests, holds and MDS updates"});
+  if(!VIEWS.some(v=>v.id==="audit")){ const ix=VIEWS.findIndex(v=>v.id==="editor"); VIEWS.splice(ix<0?VIEWS.length:ix,0,{id:"audit",group:"data",label:"Change log",hint:"Who changed which plot, and when"}); }
   if(SBME.is_admin&&!VIEWS.some(v=>v.id==="settings")) VIEWS.push({id:"settings",group:"data",label:"Settings",hint:"Users, roles and what each role can open"});
   gateMsg("Loading the plots and the MDS…");
   // the plots, register and MDS are kept in this browser and downloaded again only when the online copy changed
@@ -10719,6 +10936,7 @@ const ALL_PAGE_IDS=SID_PAGES.flatMap(p=>[p.id,...(p.subs||[]).flatMap(g=>g.items
 function canSee(id){
   if(!SBME) return true; if(SBME.is_admin) return true;
   if(id==="approvals") return !!SBME.wf;
+  if(id==="audit") return true;
   if(id==="settings") return false;
   const P=SBME.pages||[]; if(P.includes("*")) return true;
   const map=P.includes("inventory")||P.includes("portfolio");          // Portfolio and Inventory are one page now
@@ -10898,7 +11116,7 @@ async function sbSaveVersion(buf,meta){
     if(up.error) throw up.error;
     const ins=await SB.from("sid_mds_versions").insert({path,source:meta.source||"",rows:meta.rows||null,sheet_saved:meta.modified||null,sig:meta.sig||null}).select().single();
     if(ins.error) throw ins.error;
-    SBV=ins.data; toast("Saved online as a new MDS version — everyone opens on it from now on"); sbVersRefresh();
+    SBV=ins.data; toast("Saved online as a new MDS version — everyone opens on it from now on"); sbVersRefresh(); audMds(ins.data);
   }catch(e){ console.warn("version:",e); toast("Could not keep this MDS online: "+(e.message||e),true); }
 }
 const SBT={};
@@ -10910,7 +11128,7 @@ async function sbSaveEdits(){
     const up=await SB.storage.from("sid").upload("edits/latest.json",new Blob([JSON.stringify(rec)],{type:"application/json"}),{upsert:true});
     if(up.error) throw up.error;
     const r=await SB.from("sid_kv").upsert({key:"edits",value:{savedAt:rec.savedAt,n:rec.n},updated_at:new Date().toISOString()}); if(r.error) throw r.error;
-    toast("Edits saved online — the whole team sees them");
+    toast("Edits saved online — the whole team sees them"); const ap=AUD.pend; AUD.pend=null; audSend("register",ap);
   }catch(e){ toast("Edits saved in this browser, but not online: "+(e.message||e),true); }
 }
 /* ---- Data health: the online card ---- */
