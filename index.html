@@ -3671,6 +3671,7 @@ async function laraNav(a){
   for(let i=0;i<60;i++){ await laraWait(i?150:300);
     const f=document.querySelector("#lbwrap iframe"); let d=null; try{ d=f&&f.contentDocument; }catch(e){}
     const el=d&&d.getElementById(tid);
+    if(!el&&d&&i%4===2&&tid!=="tab-dashboard"){ const db=d.getElementById("tab-dashboard"); if(db) db.click(); }   // V52: Excel grid / changelog view open
     if(el){ if(el.offsetParent===null&&tid!=="tab-dashboard"&&tid!=="tab-changelog"&&tid!=="tab-excel-grid"){ const db=d.getElementById("tab-dashboard"); if(db) db.click(); await laraWait(250); }
       const t2=d.getElementById(tid)||el; await laraTouch(t2); t2.click(); laraLBPendingApply(); return {opened:a.page}; } }
   return {opened:"sales",note:"The Land Bank app is still loading — the cockpit could not be opened yet."};
@@ -4096,7 +4097,7 @@ MAP SECTORS: in plot codes like E-11-8 the sector (قطاع / سيكتور / ب�
 DATES: set the first payment date with payment_plan first_payment_date (5/11/2026 = 5 November 2026, day first). After any change on screen, say what the screen now shows; if a tool returns an error, say plainly that it did not change.
 HARD DATA QUESTIONS: query_mds reads every MDS row. Group totals are NOT deals — never call a group a deal. For losses ("did we lose", "any negative GP", "worst deal") call query_mds with gp:"loss" (it lists each loss-making deal: plot, client, GP, GP %); every total and group also reports loss_deals and worst_deal — check them before saying everything is profitable. For best / worst use sort gross_profit / gross_profit_lowest / gp_pct_lowest with list. Name the deals (plot and client) when you answer.
 DROPDOWNS: to choose from a dropdown (e.g. "-- Select Project --") call click_on_screen with the option's name; it selects it, or returns the list of options.
-SHOW WHILE YOU TALK (very important — the user must SEE what you talk about, never only hear it): in the SAME turn as your answer call the tool that shows it on screen. A project / park → open_park (the map zooms to it). Plots → show_plot, or set_filters to highlight them. Any sales, collections, receivables, profit, price or deals figure → navigate to the Sales & Land Bank cockpit that shows that figure (overview, ceo_cash_receivables, executive_financials, ceo_pricing_land_value, ceo_customers_bulk_deals, ceo_brief…) and set_filters with the same project / quarter / year, so the number on screen is the number you say. If a tool result has shown_on_screen, the dashboard is already showing it — mention it in a few words.
+SHOW WHILE YOU TALK (very important — the user must SEE what you talk about, never only hear it): in the SAME turn as your answer call the tool that shows it on screen. A project / park → open_park (the map zooms to it). Plots → show_plot, or set_filters to highlight them. Any sales, collections, receivables, profit, price or deals figure → navigate to the Sales & Land Bank cockpit that shows that figure (overview, ceo_cash_receivables, executive_financials, ceo_pricing_land_value, ceo_customers_bulk_deals, ceo_brief…) and set_filters with the same project / quarter / year, so the number on screen is the number you say. If a tool result has shown_on_screen, the dashboard is already showing it — mention it in a few words. NOISE: while you speak or just after, the microphone can catch background voices or your own echo — a single short fragment ("ده", "ليه", "تحب", a lone number, a word that does not answer you) is NOT a question: do not answer it, do not run a tool for it, stay silent and wait.
 ACT, DON'T DESCRIBE: if the dashboard can do it, do it now with a tool and say a few words while it works. You have FULL access: every page, every Sales & Land Bank cockpit, every filter, every button, and the whole MDS. Never say you cannot access data or the screen — use query_mds, read_screen, click_on_screen or fill_field.
 NUMBERS: for any figure (sales, collections, still to collect / receivables, prices, gross profit, deals, area, clients, sales reps, by park / quarter / year / sector) call query_mds first. "Q3 2026" means quarter=["Q3 2026"]. Collections in the MDS are cumulative per deal (no payment dates): say "collected so far on deals sold in Q3 2026" when asked about a quarter. For figures shown on a cockpit, read_screen gives exactly what is displayed.
 FILTERS ON SCREEN: when the user asks to filter or "show" something (a year, a quarter like Q3 2026, a park, status, sector, sales rep, size), call set_filters — it filters the map page AND the Sales & Land Bank cockpits together and shows them on screen. If the user is on Sales & Land Bank the cockpit updates in place; otherwise the map shows the filtered plots. Then tell the headline result.
@@ -4144,7 +4145,7 @@ async function laraMicOn(){
     if(!live&&LARA.dozing){ LARA.vad=rms>0.045?(LARA.vad||0)+1:0; if(LARA.vad>=3) laraUndoze(); }
     if(!live&&!(LARA.st==="connecting"&&LARA.pre)&&!LARA.dozing) return;
     // speaker mode: while Lara talks, only clear near-field speech gets through (barge-in), so she does not hear herself
-    const gate=(LARA_PREF.speaker||LARA.echoGuard)&&laraInTurn()&&rms<(LARA.echoGuard?0.12:0.07);
+    const gate=laraGateCalc(rms,pcm);
     const u8=gate?new Uint8Array(pcm.byteLength):new Uint8Array(pcm);
     let s=""; for(let i=0;i<u8.length;i++) s+=String.fromCharCode(u8[i]);
     const msg=JSON.stringify({realtimeInput:{audio:{data:btoa(s),mimeType:"audio/pcm;rate=16000"}}});
@@ -5240,6 +5241,29 @@ setTimeout(()=>{ try{
 
 
 /* ============================================================================
+   V52 — live-test fixes: sustained barge-in gate, cockpit after Excel grid, network dot at once
+   ========================================================================== */
+const LGATE={hist:[],pre:[],openUntil:0};
+function laraEnc(buf){ const u8=new Uint8Array(buf); let s=""; for(let i=0;i<u8.length;i++) s+=String.fromCharCode(u8[i]);
+  return JSON.stringify({realtimeInput:{audio:{data:btoa(s),mimeType:"audio/pcm;rate=16000"}}}); }
+/* true = send silence for this frame. While Lara speaks, only sustained speech (≈ a third of a second) gets through. */
+function laraGateCalc(rms,pcm){
+  if(!(LARA_PREF.speaker||LARA.echoGuard)||!laraInTurn()){ LGATE.hist=[]; LGATE.pre=[]; LGATE.openUntil=0; return false; }
+  const thr=LARA.echoGuard?0.09:0.06, now=Date.now();
+  LGATE.hist.push(rms>thr?1:0); if(LGATE.hist.length>10) LGATE.hist.shift();
+  if(now<LGATE.openUntil){ if(rms>thr) LGATE.openUntil=now+600; return false; }
+  if(LGATE.hist.reduce((a,b)=>a+b,0)>=8){
+    LGATE.openUntil=now+600;
+    if(LARA.ws&&LARA.ws.readyState===1) LGATE.pre.forEach(b=>{ try{ LARA.ws.send(laraEnc(b)); }catch(e){} });
+    LGATE.pre=[]; return false;
+  }
+  LGATE.pre.push(pcm); if(LGATE.pre.length>10) LGATE.pre.shift();
+  return true;
+}
+setInterval(()=>{ try{ if(!$("#laraNet")||!$("#laraNetT")) netDot(); }catch(e){} },2000);
+
+
+/* ============================================================================
    V48 — PLOT STATUS WORKFLOW: requests, approvals, holds, notifications
    ========================================================================== */
 const WF={live:new Map(), req:[], notif:[], ready:false, missing:false, ch:null, tab:null, focus:null, t:{}, lastTick:0};
@@ -6149,7 +6173,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V51.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V52.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
