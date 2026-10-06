@@ -2112,6 +2112,30 @@ body.presenting .lara-dock.lb-on:not(.open){opacity:1}
 .lara-dock[data-st="off"] .lara-orbbtn .lara-net{opacity:.75}
 @media (prefers-reduced-motion:reduce){ .lara-net[data-q="bad"]{animation:none} }
 
+/* ---- V51: map redraw button, phone speed, phone plot sheet ---- */
+.map-rev{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);z-index:30;height:44px;padding:0 20px;border-radius:99px;border:0;
+  background:#B3263D;color:#fff;font:700 14px Inter,system-ui,sans-serif;box-shadow:0 12px 30px -10px rgba(0,0,0,.5)}
+body.m-moving .poi .poi-n,body.m-moving .tpin-c,body.m-moving .rt-km{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+@media (hover:none){ #tip{display:none!important} }
+.sp-madd{height:32px;padding:0 14px;border-radius:99px;border:1px solid var(--rule-2);background:var(--panel);font-weight:700;font-size:12.5px;color:var(--ink)}
+.sp-madd.on{background:#0A84FF;border-color:#0A84FF;color:#fff}
+@media (max-width:820px){
+  .poi .poi-n{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:rgba(255,255,255,.95)!important}
+  .tpin-c,.rt-km{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  .rt-km{background:rgba(255,255,255,.96)!important}
+  body.m-moving .top,body.m-moving .kpi,body.m-moving .lg,body.m-moving .maplibregl-ctrl,body.m-moving #baseBtn,body.m-moving #fitBtn,body.m-moving #p3Btn,
+  body.m-moving #pfBtn,body.m-moving #sitesBtn,body.m-moving .note{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  #laraEdge::before,#laraEdge .rd::before{display:none!important}
+  body.m-moving .lara-dock .lb-fig{filter:none!important}
+  #selpanel.sp-one .sp-item{border:0!important;background:none!important;box-shadow:none!important;padding:0!important}
+  #selpanel.sp-one .sp-item .sp-u,#selpanel.sp-one .sp-item .sp-rm{display:none!important}
+  #selpanel.sp-one .sp-item .sp-ih{justify-content:flex-start}
+  .sp-foot .sp-hint{display:none}
+  body:has(#mapwrap.sel-open) .app[data-view="inventory"] .kpis,body:has(#mapwrap.sel-open) .maptools .legend,
+  body:has(#mapwrap.sel-open) #sitesKey,body:has(#parkcard:not([hidden])) #sitesKey{display:none!important}
+}
+.lara-ios .lara-aw{display:none!important}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
@@ -3523,7 +3547,7 @@ function laraDur(b,def){
   try{ const c=map.getCenter(), cx=(b[0][0]+b[1][0])/2, cy=(b[0][1]+b[1][1])/2, km=hav([c.lng,c.lat],[cx,cy]);
     let ms=Math.min(7000,Math.max(3000,2600+Math.sqrt(km)*260));
     if(LARA.flyFar) ms=Math.max(ms,km>60?6500:5500);           // another project, or from the overview: a full, slow arc
-    LARA.flyFar=false; return Math.round(ms); }catch(e){ return 3200; }
+    LARA.flyFar=false; return Math.round(typeof isPhone==="function"&&isPhone()?Math.min(ms,2200):ms); }catch(e){ return 3200; }
 }
 function laraFlyMark(park){ LARA.flyFar=!!map&&(map.getZoom()<11||(!!LARA.lastPark&&LARA.lastPark!==park)); LARA.lastPark=park; }
 function laraPulseAfter(keys){ setTimeout(()=>{ if(map&&map.isMoving&&map.isMoving()) map.once("moveend",()=>laraPulse(keys)); else laraPulse(keys); },400); }
@@ -3818,7 +3842,7 @@ function laraLBFilters(f){
   if(f.clear) set.reset();
   if(f.quarters){ const q=laraPick(uniq("quarterYearOfSale"),f.quarters); set.quarters(q); res.quarters=q; }
   if(f.years){ const y=f.years.map(String).filter(x=>/^\d{4}$/.test(x)); set.years(y); res.years=y; }
-  if(f.projects){ const v=laraPick(uniq("projectName"),f.projects); set.projects(v); res.projects=v; }
+  if(f.projects){ const v=laraLBProjects(uniq("projectName"),f.projects); set.projects(v); res.projects=v; }
   if(f.sectors){ const v=laraPick(uniq("sector"),f.sectors); set.sectors(v); res.sectors=v; }
   if(f.statuses){ const v=laraPick(uniq("status"),f.statuses); set.statuses(v); res.statuses=v; }
   if(f.reps){ const v=laraPick(uniq("salesRep"),f.reps); set.reps(v); res.sales_reps=v; }
@@ -4072,6 +4096,7 @@ MAP SECTORS: in plot codes like E-11-8 the sector (قطاع / سيكتور / ب�
 DATES: set the first payment date with payment_plan first_payment_date (5/11/2026 = 5 November 2026, day first). After any change on screen, say what the screen now shows; if a tool returns an error, say plainly that it did not change.
 HARD DATA QUESTIONS: query_mds reads every MDS row. Group totals are NOT deals — never call a group a deal. For losses ("did we lose", "any negative GP", "worst deal") call query_mds with gp:"loss" (it lists each loss-making deal: plot, client, GP, GP %); every total and group also reports loss_deals and worst_deal — check them before saying everything is profitable. For best / worst use sort gross_profit / gross_profit_lowest / gp_pct_lowest with list. Name the deals (plot and client) when you answer.
 DROPDOWNS: to choose from a dropdown (e.g. "-- Select Project --") call click_on_screen with the option's name; it selects it, or returns the list of options.
+SHOW WHILE YOU TALK (very important — the user must SEE what you talk about, never only hear it): in the SAME turn as your answer call the tool that shows it on screen. A project / park → open_park (the map zooms to it). Plots → show_plot, or set_filters to highlight them. Any sales, collections, receivables, profit, price or deals figure → navigate to the Sales & Land Bank cockpit that shows that figure (overview, ceo_cash_receivables, executive_financials, ceo_pricing_land_value, ceo_customers_bulk_deals, ceo_brief…) and set_filters with the same project / quarter / year, so the number on screen is the number you say. If a tool result has shown_on_screen, the dashboard is already showing it — mention it in a few words.
 ACT, DON'T DESCRIBE: if the dashboard can do it, do it now with a tool and say a few words while it works. You have FULL access: every page, every Sales & Land Bank cockpit, every filter, every button, and the whole MDS. Never say you cannot access data or the screen — use query_mds, read_screen, click_on_screen or fill_field.
 NUMBERS: for any figure (sales, collections, still to collect / receivables, prices, gross profit, deals, area, clients, sales reps, by park / quarter / year / sector) call query_mds first. "Q3 2026" means quarter=["Q3 2026"]. Collections in the MDS are cumulative per deal (no payment dates): say "collected so far on deals sold in Q3 2026" when asked about a quarter. For figures shown on a cockpit, read_screen gives exactly what is displayed.
 FILTERS ON SCREEN: when the user asks to filter or "show" something (a year, a quarter like Q3 2026, a park, status, sector, sales rep, size), call set_filters — it filters the map page AND the Sales & Land Bank cockpits together and shows them on screen. If the user is on Sales & Land Bank the cockpit updates in place; otherwise the map shows the filtered plots. Then tell the headline result.
@@ -4260,14 +4285,15 @@ function laraWakeStart(){
   const R=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!R||!LARA_PREF.awake||LARA.ws||LARA.lite&&LARA.liteRec||LARA.wake||!laraOnline()||document.hidden) return;
   const r=new R(); r.continuous=true; r.interimResults=true; r.lang=LARA_PREF.lang==="en"?"en-US":"ar-EG"; r.maxAlternatives=3;
-  r.onresult=e=>{ for(let i=e.resultIndex;i<e.results.length;i++){ const res=e.results[i];
+  r.onresult=e=>{ LARA.wakeBeat=Date.now(); LARA.wakeErrN=0; for(let i=e.resultIndex;i<e.results.length;i++){ const res=e.results[i];
       for(let a=0;a<res.length;a++){ const tx=res[a].transcript, m=tx.match(LARA_WAKE);
         if(m&&!LARA.wakeHit){ LARA.wakeHit=Date.now(); LARA.wakeRest=tx.slice(m.index+m[0].length); laraStart({wake:true}); }
         else if(LARA.wakeHit&&m) LARA.wakeRest=tx.slice(m.index+m[0].length);
         if(res.isFinal&&!m&&!LARA.wakeHit&&a===0&&/l[aeo]+u?r|لار|لور/i.test(tx)) laraLog("info","wake word near-miss",{heard:tx.slice(0,40),lang:r.lang});
         if(LARA.wakeHit&&res.isFinal){ LARA.wakeHit=null; try{ r.stop(); }catch(e){} return; } } } };
-  r.onerror=e=>{ if(!/no-speech|aborted/.test(e.error)) laraLog("error","wake word: "+e.error,{lang:r.lang}); if(e.error==="not-allowed"||e.error==="service-not-allowed"){ LARA_PREF.awake=false; laraPrefSave(); laraState("off"); toast("“Hey Lara” needs the microphone — click the orb to talk instead",true); } };
-  r.onend=()=>{ if(LARA.wake===r) LARA.wake=null; if(LARA.wakeHit){ LARA.wakeHit=null; } if(LARA_PREF.awake&&!LARA.ws&&LARA.st==="wake") setTimeout(laraWakeStart,350); };
+  r.onstart=()=>{ LARA.wakeBeat=Date.now(); }; r.onaudiostart=()=>{ LARA.wakeBeat=Date.now(); };
+  r.onerror=e=>{ if(!/no-speech|aborted/.test(e.error)) LARA.wakeErrN=(LARA.wakeErrN||0)+1; if(!/no-speech|aborted/.test(e.error)) laraLog("error","wake word: "+e.error,{lang:r.lang}); if(e.error==="not-allowed"||e.error==="service-not-allowed"){ LARA_PREF.awake=false; laraPrefSave(); laraState("off"); toast(e.error==="service-not-allowed"?"This browser can't listen for “Hey Lara” — tap Lara to talk":"“Hey Lara” needs the microphone — click the orb to talk instead",true); } };
+  r.onend=()=>{ if(LARA.wake===r) LARA.wake=null; if(LARA.wakeHit){ LARA.wakeHit=null; } if(LARA_PREF.awake&&!LARA.ws&&LARA.st==="wake") setTimeout(laraWakeStart,(LARA.wakeErrN||0)>2?Math.min(15000,1500*LARA.wakeErrN):350); };
   try{ r.start(); LARA.wake=r; if(LARA.st==="off") laraState("wake"); if(!LARA.wakeLogged){ LARA.wakeLogged=1; laraLog("info","wake word listening",{lang:r.lang}); } }catch(e){ laraLog("error","wake word did not start: "+(e&&e.message||e)); }
 }
 function laraWakeStop(){ const r=LARA.wake; LARA.wake=null; if(r){ try{ r.onend=null; r.abort(); }catch(e){} } }
@@ -5052,6 +5078,165 @@ function netTilesReload(){ try{ if(typeof map==="undefined"||!map||!map.style) r
     const cv=map.getCanvas&&map.getCanvas(); if(cv) cv.addEventListener("webglcontextlost",()=>{ if(netAwake()) laraLog("map","WebGL context lost (the browser dropped the map drawing)"); });
     return; } }catch(e){} setTimeout(go2,700); }; setTimeout(go2,1500); })();
 setTimeout(()=>{ try{ netDot(); netTick(); }catch(e){} },1200);
+
+
+/* ============================================================================
+   V51 — CEO-READY: the map never stays blank, smooth phones, Lara shows what she says, wake-word watchdog
+   ========================================================================== */
+const LARA_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+const MREV={n:[],busy:false,t:null,btn:null};
+const mPhone=()=>typeof isPhone==="function"&&isPhone();
+function mapPR(){ try{ if(map&&map.setPixelRatio&&mPhone()&&(map.getPixelRatio?map.getPixelRatio():devicePixelRatio)>2) map.setPixelRatio(2); }catch(e){} }
+function mapReapply(){ [typeof applyOpacity==="function"&&applyOpacity,typeof refreshPaint==="function"&&refreshPaint,typeof applyMapMode==="function"&&applyMapMode,
+  typeof applyHits==="function"&&applyHits,typeof highlightSel==="function"&&highlightSel,typeof paint==="function"&&paint].forEach(f=>{ try{ f&&f(); }catch(e){} }); }
+function mapCanvasHooks(cv){
+  if(!cv||cv.__rev) return; cv.__rev=1;
+  cv.addEventListener("webglcontextlost",e=>{ e.preventDefault(); clearTimeout(MREV.t); MREV.t=setTimeout(mapRevive,350); },false);
+}
+/* the phone dropped the map's drawing: a fresh canvas, the style rebuilt, camera / filters / selection kept */
+function mapRevive(force){
+  if(typeof map==="undefined"||!map||MREV.busy) return;
+  const now=Date.now(); MREV.n=MREV.n.filter(t=>now-t<60000);
+  if(MREV.n.length>=3&&!force){ mapRevBtn(true); return; }
+  MREV.n.push(now); MREV.busy=true; mapRevBtn(false);
+  const cam={center:map.getCenter(),zoom:map.getZoom(),bearing:map.getBearing(),pitch:map.getPitch()};
+  try{
+    const old=map.getCanvas(), nc=document.createElement("canvas");
+    try{ old.removeEventListener("webglcontextlost",map._contextLost,false); old.removeEventListener("webglcontextrestored",map._contextRestored,false); }catch(e){}
+    [...old.attributes].forEach(a=>nc.setAttribute(a.name,a.value)); nc.style.cssText=old.style.cssText;
+    old.replaceWith(nc); map._canvas=nc;
+    nc.addEventListener("webglcontextlost",map._contextLost,false); nc.addEventListener("webglcontextrestored",map._contextRestored,false);
+    mapCanvasHooks(nc);
+    map._setupPainter(); mapPR(); map.resize();
+    map.setStyle(styleFor(S.base),{diff:false});
+    map.once("idle",()=>{ try{ map.jumpTo(cam); }catch(e){} mapReapply(); setTimeout(mapReapply,400); });
+    ensureLayers();
+    try{ if(typeof netAwake==="function"&&netAwake()) laraLog("map","map redrawn on a fresh canvas after the browser dropped it",{n:MREV.n.length}); }catch(e){}
+  }catch(e){ console.warn("map revive:",e); try{ laraLog("map","map redraw failed: "+(e&&e.message||e)); }catch(e2){} setTimeout(()=>{ MREV.busy=false; mapRevive(); },2500); return; }
+  setTimeout(()=>{ MREV.busy=false; },1500);
+}
+function mapRevBtn(on){
+  if(!on){ if(MREV.btn){ MREV.btn.remove(); MREV.btn=null; } return; }
+  if(MREV.btn) return; const w=$("#mapwrap"); if(!w) return;
+  const b=document.createElement("button"); b.className="map-rev"; b.textContent="Redraw the map";
+  b.onclick=()=>{ MREV.n=[]; mapRevive(true); }; w.appendChild(b); MREV.btn=b;
+}
+/* while the map moves: no glass blur over it (phones), so the animation stays smooth */
+let MMOV=null;
+function mapMotionBoot(){
+  if(typeof map==="undefined"||!map||map.__mmov) return; map.__mmov=1; mapPR(); mapCanvasHooks(map.getCanvas());
+  map.on("movestart",()=>{ clearTimeout(MMOV); document.body.classList.add("m-moving"); });
+  map.on("moveend",()=>{ clearTimeout(MMOV); MMOV=setTimeout(()=>{ document.body.classList.remove("m-moving"); mSelReveal(); },160); });
+  try{ MQ_PHONE.addEventListener("change",mapPR); }catch(e){}
+}
+
+/* ---- phone plot sheet: the plot stays in view above the sheet; several plots can be chosen by tapping ---- */
+const MADD={on:false};
+function mSelReveal(){
+  try{
+    if(!mPhone()||!map||!S.sel.size||(map.isMoving&&map.isMoving())) return;
+    const el=$("#selpanel"); if(!el||el.hidden) return;
+    const its=selRows(); if(!its.length) return;
+    let x0=180,y0=90,x1=-180,y1=-90;
+    its.forEach(x=>{ const g=x.f&&x.f.geometry; if(!g) return; (g.type==="Polygon"?g.coordinates:g.coordinates.flat()).forEach(r=>r.forEach(([x,y])=>{ x0=Math.min(x0,x); y0=Math.min(y0,y); x1=Math.max(x1,x); y1=Math.max(y1,y); })); });
+    if(x0>x1) return;
+    const cv=map.getCanvas().getBoundingClientRect(), top=el.getBoundingClientRect().top;
+    const p=map.project([(x0+x1)/2,(y0+y1)/2]), py=p.y+cv.top, px=p.x+cv.left;
+    const vTop=cv.top+70, vBot=Math.min(top,cv.bottom)-24;
+    if(vBot-vTop<60) return;
+    if(py>vTop&&py<vBot&&px>8&&px<innerWidth-8) return;
+    const target=(vTop+vBot)/2-cv.top; map.panBy([px<8||px>innerWidth-8?(px-innerWidth/2):0, p.y-target],{duration:RM?0:380});
+  }catch(e){}
+}
+function mAddToggle(){ MADD.on=!MADD.on; showSelection(); toast(MADD.on?"Tap plots to add or remove them":"Done — the selection is kept"); }
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".sp-madd"); if(b){ e.preventDefault(); mAddToggle(); } });
+
+/* ============================================================================
+   LARA SHOWS WHAT SHE TALKS ABOUT — the prompt asks her; this does it when she only answers from the data
+   ========================================================================== */
+const LSHOW={t:null,at:0,last:"",lastAt:0};
+const LARA_SHOWS=new Set(["find_plots","show_option","show_plot","merge_plots","navigate","open_park","set_filters","map_control","presentation","open_360_tour","click_on_screen"]);
+const LARA_DATA=new Set(["query_mds","get_stats","list_blocks"]);
+const LARA_MONEY=/sale|sold|sell|revenue|collect|receiv|profit|\bgp\b|loss|cash|value|egp|million|billion|deal|مبيع|بيع|اتباع|باع|تحصيل|محصل|متحصل|ربح|مكسب|خسار|ايراد|إيراد|فلوس|قيمة|مليون|مليار|كاش|صفق/i;
+function laraShowPlan(name,a){
+  if(typeof PR!=="undefined"&&PR.on) return null;
+  const said=String(LARA.lastU||"")+" "+String(LARA.tU||"");
+  const park=a.park&&!/^all/i.test(a.park)?a.park:null;
+  if(name==="query_mds"){
+    const scope=a.scope||"sales";
+    if(scope==="available"||scope==="on_hold"||(scope==="all"&&!LARA_MONEY.test(said))){
+      if(!park&&!a.sector) return null;
+      return {kind:"map",park,status:scope==="available"?["available"]:scope==="on_hold"?["on_hold"]:undefined,sector:a.sector?[a.sector]:undefined};
+    }
+    const page=/collect|receiv|outstanding|تحصيل|محصل|متحصل|متبقي|مديوني/i.test(said)?"ceo_cash_receivables"
+      :/profit|\bgp\b|loss|margin|ربح|مكسب|خسار|هامش/i.test(said)||a.gp?"executive_financials"
+      :/client|customer|company|عميل|عملاء|شركة|شركات/i.test(said)||a.client?"ceo_customers_bulk_deals"
+      :/price|سعر|اسعار|أسعار/i.test(said)?"ceo_pricing_land_value":"overview";
+    return {kind:"sales",page,filters:{park:park||undefined,quarter:a.quarter,years:a.year,sales_rep:a.sold_by?[a.sold_by]:undefined,sector:a.sector?[a.sector]:undefined}};
+  }
+  if((name==="get_stats"||name==="list_blocks")&&park) return {kind:"map",park};
+  if(name==="get_stats"&&!park&&LARA_MONEY.test(said)) return {kind:"sales",page:"overview",filters:{}};
+  return null;
+}
+const laraPlanText=P=>P.kind==="map"?"the map zooms to "+(P.park||"these plots")+(P.status?" and highlights them":""):"the "+P.page.replace(/_/g," ")+" page opens with the same filters";
+async function laraShowRun(P){
+  try{
+    const key=JSON.stringify(P); if(key===LSHOW.last&&Date.now()-LSHOW.lastAt<60000) return;   // the same thing is already on screen
+    LSHOW.last=key; LSHOW.lastAt=Date.now(); LSHOW.at=Date.now();
+    const ch=laraChip(P.kind==="map"?"Showing "+(P.park||"it")+" on the map":"Opening "+P.page.replace(/_/g," "));
+    let r;
+    if(P.kind==="map"){
+      if(P.status||P.sector) r=laraFilters({park:P.park||undefined,status:P.status,sector:P.sector});
+      else { const cur=S.view==="inventory"&&laraParks(P.park)[0]===S.park; r=cur?{already:true}:laraOpenPark({park:P.park}); }
+    } else {
+      if(!laraCan("sales")){ laraChipDone(ch,false,"no access"); return; }
+      r=await laraNav({page:P.page});
+      const f=P.filters||{}; if(Object.values(f).some(v=>v!=null&&!(Array.isArray(v)&&!v.length))) laraFilters(f);
+    }
+    laraChipDone(ch,!(r&&r.error),r&&r.error); laraLog("tool","auto_show",{plan:P,result:r&&r.error?r:undefined});
+  }catch(e){ console.warn("auto show:",e); }
+}
+function laraAutoShow(name,a,r){
+  const P=laraShowPlan(name,a||{}); if(!P) return;
+  if(Date.now()-LSHOW.at<8000) return;                                           // she already showed something this turn
+  if(r&&typeof r==="object") r.shown_on_screen="While you answer, "+laraPlanText(P)+" — say it in a few words.";
+  clearTimeout(LSHOW.t); LSHOW.t=setTimeout(()=>laraShowRun(P),700);
+}
+/* a project as the user says it → the Sales & Land Bank project names (MDS sheet names) of that park */
+function laraLBProjects(all,wants){ const out=[], add=v=>{ if(v!=null&&!out.includes(v)) out.push(v); };
+  (wants||[]).forEach(w=>{ const ex=all.find(v=>lnk(v)===lnk(w)); if(ex){ add(ex); return; }
+    let ids=[]; try{ ids=laraParks(w)||[]; }catch(e){}
+    const sheets=new Set(); S.rows.forEach(r=>{ if(ids.includes(r.park)&&r.sheet) sheets.add(r.sheet); });
+    const hit=all.filter(v=>sheets.has(v)); (hit.length?hit:laraPick(all,[w])).forEach(add); });
+  return out; }
+const laraRun0=laraRun;
+laraRun=async function(name,a){
+  if(LARA_SHOWS.has(name)){ clearTimeout(LSHOW.t); LSHOW.at=Date.now(); }
+  const r=await laraRun0(name,a);
+  try{ if(LARA_DATA.has(name)&&r&&!r.error) laraAutoShow(name,a,r); }catch(e){}
+  return r;
+};
+
+/* ============================================================================
+   "HEY LARA": iPhone cannot listen for it; computers get a watchdog
+   ========================================================================== */
+const laraAwSet0=laraAwSet;
+laraAwSet=function(on){
+  if(on&&LARA_IOS){ LARA_PREF.awake=false; laraPrefSave(); laraAwSync(); toast("On iPhone and iPad, Safari can't listen for “Hey Lara” — tap Lara to talk",true); return; }
+  return laraAwSet0(on);
+};
+function laraWakeWatch(){
+  if(LARA_IOS||!LARA_PREF.awake||document.hidden||LARA.ws||LARA.dozing||LARA.st!=="wake"||(LARA.lite&&!LARA.sleeping)) return;
+  if(!LARA.wake){ laraWakeStart(); return; }
+  if(Date.now()-(LARA.wakeBeat||Date.now())>75000){ LARA.wakeBeat=Date.now(); LARA.wakeRs=(LARA.wakeRs||0)+1;
+    if(LARA.wakeRs<=3) laraLog("info","wake word listener restarted (silent for 75 s)");
+    laraWakeStop(); setTimeout(laraWakeStart,300); }
+}
+setTimeout(()=>{ try{
+  if(LARA_IOS){ document.body.classList.add("lara-ios"); if(LARA_PREF.awake){ LARA_PREF.awake=false; laraPrefSave(); try{ laraWakeStop(); laraAwSync(); if(LARA.st==="wake") laraState("off"); }catch(e){} } }
+  setInterval(laraWakeWatch,5000);
+}catch(e){} },1500);
+(function v51Boot(){ const go4=()=>{ try{ if(typeof map!=="undefined"&&map&&map.on){ mapMotionBoot(); return; } }catch(e){} setTimeout(go4,600); }; setTimeout(go4,800); })();
 
 
 /* ============================================================================
@@ -5964,7 +6149,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V50.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V51.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
@@ -7300,7 +7485,7 @@ function showSelection(){
   const el=$("#selpanel"), items=selRows();
   const shell=$("#mapwrap");
   if(!items.length){ el.hidden=true; shell.classList.remove("sel-open"); highlightSel(); clearRoutes("sel"); kpisRefresh(); return; }
-  const multi=items.length>1;
+  const multi=items.length>1; el.classList.toggle("sp-one",!multi);
   const sum=plotSum(items), area=sum.area, curs=sum.curs, value=sum.value;
   const parks=new Set(items.map(x=>x.info.park));
   const one=curs.size===1?[...curs][0]:null;
@@ -7389,12 +7574,12 @@ function showSelection(){
     </div>
     <div class="sp-foot">
       <button class="sp-clear">Clear</button>
-      <span class="sp-hint">${multi?"Ctrl/⌘-click to add or remove":"Ctrl/⌘-click another plot to combine"}</span>
+      <span class="sp-hint">${multi?"Ctrl/⌘-click to add or remove":"Ctrl/⌘-click another plot to combine"}</span>${typeof isPhone==="function"&&isPhone()?`<button type="button" class="sp-madd ${MADD.on?"on":""}">${MADD.on?"✓ Done adding":"＋ Select more plots"}</button>`:""}
     </div>`;
   el.hidden=false;
   shell.classList.add("sel-open");
   el.querySelector(".sp-x").onclick=clearSel;
-  el.querySelector(".sp-clear").onclick=clearSel;
+  el.querySelector(".sp-clear").onclick=clearSel; setTimeout(mSelReveal,260);
   el.querySelectorAll(".sp-rm").forEach(b=>b.onclick=()=>{ S.sel.delete(b.dataset.k); showSelection(); });
   el.querySelectorAll(".sp-edit").forEach(b=>b.onclick=()=>{
     const it=items.find(x=>x.k===b.dataset.k); if(it) editPlot(it); });
@@ -7424,6 +7609,7 @@ function showSelection(){
   routesForSelection(items);
 }
 function clearSel(){
+  MADD.on=false;
   clearRoutes("sel");
   S.sel.clear();
   selDims=[];
@@ -7564,7 +7750,7 @@ function hoverEvents(){
     const k=f.properties.k;
     // Plain click replaces the selection; Ctrl/Cmd/Shift adds to it. Clicking a selected
     // plot again removes it, so a mis-click is one click to undo.
-    const add=e.originalEvent.ctrlKey||e.originalEvent.metaKey||e.originalEvent.shiftKey;
+    const add=e.originalEvent.ctrlKey||e.originalEvent.metaKey||e.originalEvent.shiftKey||(MADD.on&&S.sel.size>0);
     if(!add) S.sel.clear();
     S.sel.has(k)?S.sel.delete(k):S.sel.add(k);
     hideTip();
