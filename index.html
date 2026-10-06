@@ -4259,6 +4259,7 @@ async function laraStart(opts={}){
   if(LARA.lite){ laraLiteStart(opts); return; }
   try{ await laraConnect(); }
   catch(e){ if(/not set up|key/i.test(e.message)){ laraFail(e); return; }
+    if(LARA_CAP.test(e.message||"")){ laraLog("error","monthly AI spend cap reached"); laraFail(new Error(LARA_CAP_MSG)); return; }
     console.warn("Lara live unavailable → lite mode",e); LARA.lite=true; LARA.liteUntil=Date.now()+600000; laraChipDone(laraChip("Live voice is busy — switching to standard voice"),true); laraLiteStart(opts); return; }
   laraState("listening");
   await laraWait(opts.wake?900:0);
@@ -4334,7 +4335,7 @@ async function laraLiteTurn(text){
       const rs=[]; for(const c of calls){ const ch=laraChip((LARA_CHIP[c.name]||(()=>c.name))(c.args)); const r=laraReplyLang(await laraRun(c.name,c.args)); laraChipDone(ch,!(r&&r.error),r&&r.error); laraLog(r&&r.error?"tool_error":"tool",c.name,{args:c.args,result:r}); rs.push({functionResponse:c.id?{id:c.id,name:c.name,response:r}:{name:c.name,response:r}}); }
       LARA.hist.push({role:"user",parts:rs});
     }
-  }catch(e){ laraLog("error","standard voice: "+e.message); laraSay(/limit/i.test(e.message)?"I've reached the free limit for a moment. Please try again in a minute.":"Sorry, something went wrong: "+e.message); }
+  }catch(e){ laraLog("error","standard voice: "+e.message); laraSay(LARA_CAP.test(e.message||"")?LARA_CAP_MSG:/limit/i.test(e.message)?"I've reached the free limit for a moment. Please try again in a minute.":"Sorry, something went wrong: "+e.message); }
   if(LARA.endAfter) setTimeout(laraSleep,2500); else laraIdleArm();
 }
 function laraSay(text){
@@ -5261,6 +5262,8 @@ function laraGateCalc(rms,pcm){
   return true;
 }
 setInterval(()=>{ try{ if(!$("#laraNet")||!$("#laraNetT")) netDot(); }catch(e){} },2000);
+const LARA_CAP=/spending cap|spend cap|exceeded its|RESOURCE_EXHAUSTED|billing/i;
+const LARA_CAP_MSG="Lara's monthly AI budget is used up — an administrator raises the spend cap in Google AI Studio (Spend page), or it resets on the 1st of the month.";
 
 
 /* ============================================================================
@@ -6173,7 +6176,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V52.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V53.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
