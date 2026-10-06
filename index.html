@@ -2296,7 +2296,7 @@ function passF(r,skip){
   for(const f of FDEFS){
     if(f.k===skip) continue;
     if(f.type==="set"){ const s=S.f[f.k]; if(s.size&&!s.has(nk(r[f.k]))) return false; }
-    else { const {min,max}=S.f[f.k], v=r[f.k];
+    else { const {min,max}=S.f[f.k], v=f.k==="price"?((typeof priceOf==="function"&&priceOf(r))||{}).sqm:r[f.k];
       if(min!=null&&!(v>=min)) return false;
       if(max!=null&&!(v<=max)) return false; }
   }
@@ -2596,8 +2596,11 @@ function parseMDS(wb){
   const own=new Map(), sigs=new Map(), rows=[];
   primary.forEach(r=>{
     const ks=keysOf(r), sig=ks.slice().sort().join("+");
-    if(sig&&sigs.has(sig)){ const first=sigs.get(sig); r.dup=first.code||first.unit||"yes";
-      rep.dups.push({park:r.park,unit:r.unit,code:r.code,same:first.unit,sameCode:first.code,
+    if(sig&&sigs.has(sig)){ const first=sigs.get(sig);
+      const dr=x=>(/sold|contract|reserv/i.test(String(x.status))?3:/eoi/i.test(String(x.status))?2:0)+(x.client||x.company?0.5:0);   // V54: the row with the deal wins
+      let keep=first, drop=r; if(dr(r)>dr(first)){ keep=r; drop=first; sigs.set(sig,r); ks.forEach(k=>own.set(k,r)); }
+      drop.dup=keep.code||keep.unit||"yes";
+      rep.dups.push({park:drop.park,unit:drop.unit,code:drop.code,same:keep.unit,sameCode:keep.code,
         identical:r.status===first.status&&Math.abs((r.area||0)-(first.area||0))<1}); rows.push(r); return; }
     if(sig) sigs.set(sig,r);
     ks.forEach(k=>{ if(!own.has(k)) own.set(k,r); });
@@ -4912,7 +4915,7 @@ async function laraPickOption(text){
     const cur=lnk((sel.options[sel.selectedIndex]||{}).text||"");
     if(cur&&(cur===q||q.includes(cur)||cur.includes(q))&&bs<1){ bs=1; best={sel,opt:null}; }
     [...sel.options].forEach(o=>{ const t=lnk(o.text); if(!t||/^-+.*select|^select/i.test(o.text.trim())) return;
-      const sc=t===q?5:(t.includes(q)||q.includes(t))?4:toks.some(k=>t.includes(k))?3:0; if(sc>bs){ bs=sc; best={sel,opt:o}; } }); }));
+      const sc=t===q?5:(t.length>2&&(t.includes(q)||q.includes(t)))?4:t.length>2&&toks.some(k=>t.includes(k))?3:0; if(sc>bs){ bs=sc; best={sel,opt:o}; } }); }));
   if(!best) return null;
   const g=laraGuard(best.sel,text); if(g) return {error:g};
   await laraTouch(best.sel);
@@ -5264,6 +5267,28 @@ function laraGateCalc(rms,pcm){
 setInterval(()=>{ try{ if(!$("#laraNet")||!$("#laraNetT")) netDot(); }catch(e){} },2000);
 const LARA_CAP=/spending cap|spend cap|exceeded its|RESOURCE_EXHAUSTED|billing/i;
 const LARA_CAP_MSG="Lara's monthly AI budget is used up — an administrator raises the spend cap in Google AI Studio (Spend page), or it resets on the 1st of the month.";
+
+
+/* ============================================================================
+   V54 — Lara park names in Arabic and as MDS project names
+   ========================================================================== */
+const laraAr=s=>String(s||"").toLowerCase().replace(/[ً-ْ]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/[^a-z0-9؀-ۿ]+/g," ").trim();
+const LARA_PARK_ALIAS=[["برج العرب","industria-borg-el-arab"],["borg","industria-borg-el-arab"],["سخنه 360","sokhna360"],["السخنه 360","sokhna360"],["sid 360","sokhna360"],
+  ["العين السخنه","industria-sokhna"],["السخنه","industria-sokhna"],["سخنه","industria-sokhna"],["اكتوبر","industria-october"],["السادات الجديده","industria-new-sadat"],
+  ["مدينه السادات الجديده","industria-new-sadat"],["نيو سادات","industria-new-sadat"],["السادات","industria-sadat"],["سادات","industria-sadat"],["الشرق","industria-east"],
+  ["ايست","industria-east"],["الغرب","industria-west"],["ويست","industria-west"],["اشير","industria-asher-p10"],["عشير","industria-asher-p10"],["العلا","al-oula"],["علا","al-oula"],
+  ["aloula","al-oula"],["al ola","al-oula"],["el oula","al-oula"],["العاشر من رمضان","industria-asher-p11"],["العاشر","industria-asher-p11"],["10th of ramadan","industria-asher-p11"],
+  ["tenth of ramadan","industria-asher-p11"],["10th ramadan","industria-asher-p11"]];
+const laraParks0=laraParks;
+laraParks=function(q){
+  let r=laraParks0(q); if(r&&r.length) return r;
+  const Q=laraAr(q); if(!Q||!S.reg) return [];
+  const hit=LARA_PARK_ALIAS.map(([a,id])=>[laraAr(a),id]).filter(([a,id])=>S.reg.parks[id]&&(" "+Q+" ").includes(" "+a+" ")).sort((x,y)=>y[0].length-x[0].length);
+  if(hit.length){ const id=hit[0][1]; if(id==="industria-asher-p10"&&S.reg.parks["industria-asher-p11"]) return ["industria-asher-p10","industria-asher-p11"]; return [id]; }
+  const sh=new Map(); S.rows.forEach(x=>{ if(x.sheet&&!sh.has(x.sheet)) sh.set(x.sheet,x.park); });            // MDS project names
+  for(const [name,park] of sh){ const n=laraAr(name); if(n===Q||n.includes(Q)&&Q.length>=5||Q.includes(n)&&n.length>=5) return [park]; }
+  return [];
+};
 
 
 /* ============================================================================
@@ -6176,7 +6201,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V53.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V54.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
@@ -8769,7 +8794,7 @@ function ensureCodesFrame(){
 }
 async function classify(text){
   const W=await ensureCodesFrame();
-  const fn=W.eval(`(function(q){
+  if(!W.__sidCls){ const sc=W.document.createElement("script"); sc.textContent=`window.__sidCls=(function(q){
     const R=analyse(q); if(!R.prods.length) return {n:0};
     const top=R.acts.slice(0,3).map(a=>({code:ACT[a.ai][0],ar:ACT[a.ai][1],en:ACT[a.ai][2]||"",sc:a.sc}));
     const sec=new Map(); R.prods.slice(0,25).forEach(h=>{ const si=SUB[PR[h.i][2]][3]; sec.set(si,(sec.get(si)||0)+h.sc); });
@@ -8778,7 +8803,8 @@ async function classify(text){
     const r=rowOf(best.i);
     return {n:R.prods.length, top, secs, sub:{code:r.scode,name:r.sname}, prod:{code:r.pcode,name:r.pname},
             lic:TYP[r.type][1], prior:TYP[r.type][0]==='مسبق'};
-  })`);
+  })`; (W.document.head||W.document.documentElement).appendChild(sc); }
+  const fn=W.__sidCls; if(typeof fn!=="function") throw new Error("The Industrial Codes classifier did not load");
   const out=fn(text);
   return JSON.parse(JSON.stringify(out));
 }
