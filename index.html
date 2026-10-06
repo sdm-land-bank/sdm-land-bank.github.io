@@ -2102,6 +2102,16 @@ body.presenting .lara-dock.lb-on:not(.open){opacity:1}
 .reg-box em{display:block;min-height:16px;color:#b3263d;font-size:12px;font-style:normal}
 .reg-b{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
 
+/* ---- V50: network dot above Lara's head ---- */
+.lara-net{position:absolute;left:50%;top:-7px;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;background:#34C759;
+  box-shadow:0 0 0 2px #fff,0 1px 4px rgba(0,0,0,.35);z-index:3;pointer-events:auto;transition:background .3s ease}
+.lara-net[data-q="slow"]{background:#FFCC00} .lara-net[data-q="bad"]{background:#FF3B30;animation:laraNetP 1.2s ease-in-out infinite}
+@keyframes laraNetP{50%{box-shadow:0 0 0 2px #fff,0 0 0 6px rgba(255,59,48,.25)}}
+.lara-net.in-top{position:static;display:inline-block;margin:0 6px 0 2px;vertical-align:middle;width:8px;height:8px;box-shadow:0 0 0 1.5px rgba(255,255,255,.9)}
+.lara-dock.open .lara-orbbtn .lara-net{display:none}
+.lara-dock[data-st="off"] .lara-orbbtn .lara-net{opacity:.75}
+@media (prefers-reduced-motion:reduce){ .lara-net[data-q="bad"]{animation:none} }
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
@@ -3509,6 +3519,7 @@ function laraPulse(keys){
 function laraCine(){ return typeof LARA!=="undefined"&&Date.now()<(LARA.cineUntil||0); }
 function laraDur(b,def){
   if(!laraCine()||!map) return def;
+  if(typeof NET!=="undefined"&&NET.q!=="good"){ LARA.flyFar=false; return 1200; }
   try{ const c=map.getCenter(), cx=(b[0][0]+b[1][0])/2, cy=(b[0][1]+b[1][1])/2, km=hav([c.lng,c.lat],[cx,cy]);
     let ms=Math.min(7000,Math.max(3000,2600+Math.sqrt(km)*260));
     if(LARA.flyFar) ms=Math.max(ms,km>60?6500:5500);           // another project, or from the overview: a full, slow arc
@@ -4108,7 +4119,7 @@ async function laraMicOn(){
     if(!live&&LARA.dozing){ LARA.vad=rms>0.045?(LARA.vad||0)+1:0; if(LARA.vad>=3) laraUndoze(); }
     if(!live&&!(LARA.st==="connecting"&&LARA.pre)&&!LARA.dozing) return;
     // speaker mode: while Lara talks, only clear near-field speech gets through (barge-in), so she does not hear herself
-    const gate=LARA_PREF.speaker&&LARA.speaking&&rms<0.06;
+    const gate=(LARA_PREF.speaker||LARA.echoGuard)&&laraInTurn()&&rms<(LARA.echoGuard?0.12:0.07);
     const u8=gate?new Uint8Array(pcm.byteLength):new Uint8Array(pcm);
     let s=""; for(let i=0;i<u8.length;i++) s+=String.fromCharCode(u8[i]);
     const msg=JSON.stringify({realtimeInput:{audio:{data:btoa(s),mimeType:"audio/pcm;rate=16000"}}});
@@ -4123,8 +4134,8 @@ function laraPlay(b64){
   const buf=ctx.createBuffer(1,n,24000), ch=buf.getChannelData(0);
   for(let i=0;i<n;i++){ let v=bin.charCodeAt(2*i)|(bin.charCodeAt(2*i+1)<<8); if(v>=32768) v-=65536; ch[i]=v/32768; }
   const s=ctx.createBufferSource(); s.buffer=buf; s.connect(LARA.anOut);
-  const t=Math.max(ctx.currentTime+0.04,LARA.playT); s.start(t); LARA.playT=t+buf.duration; LARA.playing.add(s); LARA.speaking=true; laraState("speaking"); clearTimeout(LARA.idle); LARA.idle=null;
-  s.onended=()=>{ LARA.playing.delete(s); if(!LARA.playing.size){ LARA.speaking=false; if(LARA.ws) laraState("listening"); if(LARA.endAfter) setTimeout(()=>{ if(!LARA.playing.size) laraSleep(); },500); else if(LARA.turnDone) laraIdleArm(); } };
+  const t=laraNetSched(ctx); s.start(t); LARA.playT=t+buf.duration; LARA.playing.add(s); LARA.speaking=true; laraState("speaking"); clearTimeout(LARA.idle); LARA.idle=null;
+  s.onended=()=>{ LARA.playing.delete(s); LARA.spokeAt=Date.now(); if(!LARA.playing.size){ LARA.speaking=false; if(LARA.ws) laraState("listening"); if(LARA.endAfter) setTimeout(()=>{ if(!LARA.playing.size) laraSleep(); },500); else if(LARA.turnDone) laraIdleArm(); } };
 }
 function laraStopAudio(){ LARA.playing.forEach(s=>{ try{ s.stop(); }catch(e){} }); LARA.playing.clear(); LARA.playT=0; LARA.speaking=false; }
 /* silence: a conversation the user started by clicking only dozes (voice connection closed to save the free quota,
@@ -4186,15 +4197,15 @@ function laraMsg(m){
   if(sc){
     if(sc.interrupted){ laraStopAudio(); laraState("listening"); }
     ((sc.modelTurn&&sc.modelTurn.parts)||[]).forEach(p=>{ if(p.inlineData&&/audio/i.test(p.inlineData.mimeType||"")&&p.inlineData.data) laraPlay(p.inlineData.data); });
-    if(sc.inputTranscription&&sc.inputTranscription.text){ laraCap("u",sc.inputTranscription.text); laraState(LARA.speaking?"speaking":"thinking"); clearTimeout(LARA.idle); LARA.idle=null; LARA.turnDone=false; }
+    if(sc.inputTranscription&&sc.inputTranscription.text){ laraCap("u",sc.inputTranscription.text); laraEchoCheck(); laraState(LARA.speaking?"speaking":"thinking"); clearTimeout(LARA.idle); LARA.idle=null; LARA.turnDone=false; }
     if(sc.outputTranscription&&sc.outputTranscription.text) laraCap("l",sc.outputTranscription.text);
-    if(sc.turnComplete){ LARA.langNoted=false; laraTurnLog();
+    if(sc.turnComplete){ LARA.langNoted=false; if(laraLoopCheck()){ laraTurnLog(); return; } laraTurnLog();
       if(LARA.ctrlBad&&LARA.ws&&!LARA.ctrlRetry){ LARA.ctrlRetry=true; laraLog("error","model sent control tokens instead of a tool call — retrying");
         LARA.ws.send(JSON.stringify({realtimeInput:{text:"(Your last action did not go through. Call the right tool now to do what the user asked, then say one short sentence.)"}})); }
       LARA.ctrlBad=false;
       LARA.turnDone=true; if(!LARA.speaking){ laraState("listening"); if(LARA.endAfter) laraSleep(); else laraIdleArm(); } }
   }
-  if(m.toolCall&&m.toolCall.functionCalls) { LARA.ctrlRetry=false; laraState("thinking"); laraTools(m.toolCall.functionCalls); }
+  if(m.toolCall&&m.toolCall.functionCalls) { LARA.ctrlRetry=false; LARA.toolTurn=true; laraState("thinking"); laraTools(m.toolCall.functionCalls); }
   if(m.sessionResumptionUpdate&&m.sessionResumptionUpdate.resumable&&m.sessionResumptionUpdate.newHandle){ LARA.handle=m.sessionResumptionUpdate.newHandle; LARA.handleModel=LARA.model; LARA.handleAt=Date.now(); }
   if(m.goAway){ LARA.reconnect=true; }
 }
@@ -4202,7 +4213,7 @@ function laraClosed(e){
   const was=LARA.ws; LARA.ws=null; if(e&&e.code!==1000) laraLog("close",(e.code||"")+" "+(e.reason||""),{model:LARA.model});
   if(LARA.st==="off"||LARA.st==="wake"||LARA.sleeping||LARA.dozing) return;
   if(LARA.reconnect||(e&&e.code!==1000)){ LARA.reconnect=false;      // the session ended on the server side (time limit): carry on
-    laraConnect().then(()=>laraState("listening")).catch(err=>laraFail(err)); return; }
+    laraReconnect(); return; }
   laraSleep();
 }
 function laraSend(text){
@@ -4600,7 +4611,7 @@ setInterval(()=>{ const d=$("#laraDock"); if(d&&isPhone()&&d.classList.contains(
 function mapWatch(){
   if(typeof map==="undefined"||!map||map.__watch) return; map.__watch=1;
   const fix=()=>{ try{ if(S.view!=="inventory"||document.hidden||!map.isStyleLoaded()||map.getLayer("fill")) return;
-      addLayers(); if(!map.getLayer("fill")) return;
+      addLayers(); if(!map.getLayer("fill")) return; try{ if(typeof netAwake==="function"&&netAwake()) laraLog("map","plot layers were missing — redrawn",{q:NET.q}); }catch(e){}
       [applyOpacity,refreshPaint,applyMapMode,applyHits,highlightSel].forEach(f=>{ try{ f(); }catch(e){} }); }catch(e){} };
   map.on("styledata",fix); map.on("idle",fix); setInterval(fix,2500);
   const cv=map.getCanvas&&map.getCanvas();
@@ -4929,6 +4940,118 @@ async function regUnlock(then,change){
     if(await regHash(v,st.salt)===st.hash){ REG_LOCK.open=true; REG_LOCK.tries=0; close(); regRefresh(); toast("Cost and GP are visible until you lock them or reload"); if(then) then(); }
     else { REG_LOCK.tries++; if(REG_LOCK.tries>=5){ REG_LOCK.tries=0; REG_LOCK.until=Date.now()+30000; } err.textContent="Wrong password."; pw.select(); } };
 }
+
+
+/* ============================================================================
+   V50 — LARA ON A WEAK NETWORK: quality dot, jitter buffer, echo guard, loop breaker, safe reconnects, map tiles
+   ========================================================================== */
+const NET={q:"good",rtt:null,fails:0,under:[],rc:false,t:null,said:{},mapErr:0,mapT:null};
+const netConn=()=>navigator.connection||navigator.webkitConnection||null;
+const netAwake=()=>!!(LARA&&(LARA.ws||LARA.dozing||LARA.st==="connecting"||(LARA.lite&&!LARA.sleeping)));
+function netCalc(){
+  const c=netConn(), now=Date.now(); NET.under=NET.under.filter(t=>now-t<25000);
+  if(!navigator.onLine||NET.fails>=2) return "bad";
+  if(NET.rc||NET.fails===1||NET.under.length>=2||(NET.rtt!=null&&NET.rtt>700)) return "slow";
+  if(c&&(/(^|-)2g|3g/.test(c.effectiveType||"")||(c.rtt&&c.rtt>600)||(c.downlink&&c.downlink<0.6))) return "slow";
+  return "good";
+}
+const NET_TXT={good:"Network good",slow:"Slow network — Lara may pause",bad:"No network"};
+function netSet(){
+  const q=netCalc(), c=netConn(), was=NET.q; NET.q=q;
+  const tip=NET_TXT[q]+(NET.rtt!=null&&navigator.onLine?" · "+NET.rtt+" ms":"")+(c&&c.effectiveType?" · "+c.effectiveType.toUpperCase():"");
+  $$(".lara-net").forEach(el=>{ el.dataset.q=q; el.title=tip; el.setAttribute("aria-label",tip); });
+  if(q!==was){
+    if(netAwake()){ laraLog("net",q,{rtt:NET.rtt,eff:c&&c.effectiveType||null,downlink:c&&c.downlink||null,gaps:NET.under.length,online:navigator.onLine});
+      if(q!=="good"&&!NET.said[q]){ NET.said[q]=1; laraChipDone(laraChip(q==="bad"?"No network — I'll carry on when it is back":"Slow network — my answers may lag"),q!=="bad"); } }
+    if(q==="good"&&was!=="good") netTilesReload();
+  }
+}
+async function netPing(){
+  if(!navigator.onLine){ netSet(); return; }
+  const t0=performance.now(), ac=new AbortController(), to=setTimeout(()=>ac.abort(),4000);
+  try{ await fetch("https://generativelanguage.googleapis.com/?ping="+Date.now(),{method:"HEAD",mode:"no-cors",cache:"no-store",credentials:"omit",signal:ac.signal});
+    NET.rtt=Math.round(performance.now()-t0); NET.fails=0; }
+  catch(e){ NET.fails++; NET.rtt=null; }
+  clearTimeout(to); netSet();
+}
+function netTick(){ clearTimeout(NET.t); if(!$("#laraNet")||!$("#laraNetT")) netDot(); if(netAwake()&&!document.hidden) netPing(); else netSet(); NET.t=setTimeout(netTick,netAwake()?8000:30000); }
+function netDot(){ const b=$("#laraOrbBtn"); if(!b) return; if(b&&!$("#laraNet")){ const i=document.createElement("i"); i.className="lara-net"; i.id="laraNet"; b.appendChild(i); }
+  const st=$("#laraSt"); if(st&&!$("#laraNetT")){ const i=document.createElement("i"); i.className="lara-net in-top"; i.id="laraNetT"; st.before(i); } netSet(); }
+addEventListener("online",()=>{ NET.fails=0; netTick(); }); addEventListener("offline",()=>netSet());
+try{ netConn()&&netConn().addEventListener("change",()=>netSet()); }catch(e){}
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) netTick(); });
+
+/* the voice: a gap in the middle of an answer = the link is slow → start the next stretch with a bigger cushion */
+function laraNetSched(ctx){
+  const now=ctx.currentTime;
+  if(LARA.turnAudio&&LARA.playT&&LARA.playT<now-0.05&&LARA.playing.size===0&&!LARA.turnDone){ NET.under.push(Date.now()); if(NET.under.length===2) laraLog("net","voice gaps",{n:NET.under.length,rtt:NET.rtt}); netSet(); }
+  LARA.turnAudio=true; return Math.max(now+(NET.q==="good"?0.04:0.35),LARA.playT);
+}
+
+/* hearing herself: the mic transcript repeats what she just said (log of 6 Oct: "تحب", "هل تحب", "مساحتها" — 1–2 words) */
+const laraWords=t=>String(t||"").toLowerCase().replace(/[^a-z0-9؀-ۿ ]+/g," ").split(/\s+/).filter(w=>w.length>1);
+const laraNorm=w=>w.replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/^ال(?=..)/,"");
+function laraSim(a,b){ const A=laraWords(a), B=new Set(laraWords(b)); if(A.length<4||!B.size) return 0; return A.filter(w=>B.has(w)).length/A.length; }
+function laraIsEcho(u,said){
+  const W=laraWords(u).map(laraNorm), S=laraWords(said).map(laraNorm);
+  if(!W.length) return /\p{L}/u.test(String(u||""));            // letters, but not Arabic / English (e.g. Hindi) = noise
+  if(!S.length) return false;
+  const hit=W.filter(w=>S.some(x=>x===w||(w.length>=3&&x.length>=3&&(x.startsWith(w)||w.startsWith(x))))).length;
+  return hit/W.length>=0.6;
+}
+const laraInTurn=()=>LARA.speaking||LARA.playing.size>0||(LARA.turnAudio&&!LARA.turnDone)||Date.now()-(LARA.spokeAt||0)<700;
+function laraEchoCheck(){
+  const u=LARA.tU||""; if(!u.trim()) return false;
+  if(!(laraInTurn()||Date.now()-(LARA.spokeAt||0)<2500)) return false;
+  if(!laraIsEcho(u,[LARA.tL||"",...(LARA.outs||[])].join(" "))) return false;
+  LARA.echoTurn=true; LARA.echoN=(LARA.echoN||0)+1;
+  if(!LARA.echoGuard){ LARA.echoGuard=true; laraLog("echo","the mic heard Lara's own voice — stronger mic gate while she speaks",{heard:u.slice(0,160)});
+    laraChipDone(laraChip("I could hear myself through the speaker — I'll listen once I finish talking"),true); }
+  return true;
+}
+/* the same answer again and again, or answers nobody asked for → stop and wait for the user */
+function laraLoopCheck(){
+  const out=(LARA.tL||"").trim(), user=(LARA.tU||"").trim(); LARA.turnAudio=false;
+  const realUser=user&&!LARA.echoTurn&&!laraIsEcho(user,[out,...(LARA.outs||[])].join(" "));
+  LARA.echoTurn=false;
+  if(realUser||LARA.toolTurn) LARA.noUser=0; else if(out) LARA.noUser=(LARA.noUser||0)+1;
+  LARA.toolTurn=false;
+  if(out){ const prev=LARA.outs||[]; LARA.rep=!realUser&&prev.length&&out.length>15&&laraSim(out,prev[0])>=0.8?(LARA.rep||0)+1:0; LARA.outs=[out,...prev].slice(0,3); }
+  if((LARA.rep||0)>=2||(LARA.noUser||0)>=3){
+    laraLog("loop",LARA.rep>=2?"same answer 3 times":"3 answers without the user speaking",{last:out.slice(0,200),q:NET.q,rtt:NET.rtt,echo:!!LARA.echoGuard});
+    LARA.rep=0; LARA.noUser=0; LARA.outs=[]; LARA.echoGuard=true;
+    laraStopAudio(); laraChipDone(laraChip("I was repeating myself, so I stopped — just speak to continue"),false);
+    setTimeout(()=>{ if(LARA.ws){ if(LARA.manual) laraDoze(); else laraSleep(true); } },50);
+    return true;
+  }
+  return false;
+}
+
+/* the connection dropped: a few calm retries, never an endless loop */
+async function laraReconnect(){
+  const now=Date.now(); LARA.rcAt=(LARA.rcAt||[]).filter(t=>now-t<90000); LARA.rcAt.push(now);
+  laraStopAudio(); NET.rc=true; netSet(); laraState("connecting");
+  if(LARA.rcAt.length>4){ NET.rc=false; laraLog("net","connection keeps dropping — stopped",{n:LARA.rcAt.length,q:NET.q,rtt:NET.rtt});
+    laraChipDone(laraChip("The connection keeps dropping — click me to try again"),false); laraSleep(); netSet(); return; }
+  if(!navigator.onLine){ laraChipDone(laraChip("No network — waiting for it to come back"),false);
+    await new Promise(r=>{ const f=()=>{ removeEventListener("online",f); clearTimeout(k); r(); }, k=setTimeout(f,60000); addEventListener("online",f); });
+    if(!navigator.onLine){ NET.rc=false; laraLog("net","no network for 60 s — stopped"); laraSleep(); netSet(); return; } }
+  await laraWait([0,1000,3000,6000][LARA.rcAt.length-1]||6000);
+  if(LARA.sleeping||LARA.st==="off"||LARA.ws){ NET.rc=false; netSet(); return; }
+  try{ await laraConnect(); laraLog("net","reconnected",{attempt:LARA.rcAt.length,rtt:NET.rtt}); laraState("listening"); laraIdleArm(); }
+  catch(e){ laraFail(e); }
+  NET.rc=false; netSet();
+}
+
+/* the map: tiles that failed on a weak link come back; problems are written to Lara's log */
+function netTilesReload(){ try{ if(typeof map==="undefined"||!map||!map.style) return; const sc=map.style.sourceCaches||{};
+  Object.keys(sc).forEach(id=>{ const s=map.getSource(id); if(s&&(s.type==="raster"||s.type==="vector")&&sc[id].reload) sc[id].reload(); }); map.triggerRepaint(); }catch(e){} }
+(function netMapBoot(){ const go2=()=>{ try{ if(typeof map!=="undefined"&&map&&map.on){
+    map.on("error",e=>{ if(!(e&&(e.tile||e.sourceId))) return; NET.mapErr++; clearTimeout(NET.mapT);
+      NET.mapT=setTimeout(()=>{ if(netAwake()) laraLog("map","tiles failed to load",{n:NET.mapErr,q:NET.q,rtt:NET.rtt}); NET.mapErr=0; if(navigator.onLine) netTilesReload(); },6000); });
+    const cv=map.getCanvas&&map.getCanvas(); if(cv) cv.addEventListener("webglcontextlost",()=>{ if(netAwake()) laraLog("map","WebGL context lost (the browser dropped the map drawing)"); });
+    return; } }catch(e){} setTimeout(go2,700); }; setTimeout(go2,1500); })();
+setTimeout(()=>{ try{ netDot(); netTick(); }catch(e){} },1200);
 
 
 /* ============================================================================
@@ -5841,7 +5964,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V49.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V50.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
