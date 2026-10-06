@@ -4169,8 +4169,8 @@ function laraStopAudio(){ LARA.playing.forEach(s=>{ try{ s.stop(); }catch(e){} }
 /* silence: a conversation the user started by clicking only dozes (voice connection closed to save the free quota,
    the microphone stays on and the first word reconnects her); one started by "Hey Lara" goes back to listening for her name */
 function laraIdleArm(){ clearTimeout(LARA.idle); LARA.idle=setTimeout(()=>{ if(LARA.speaking) return;
-  if(LARA.lite){ if(!LARA.manual) laraSleep(true); return; }
-  if(LARA.ws){ if(LARA.manual) laraDoze(); else laraSleep(true); } },LARA_PREF.idle||30000); }
+  if(LARA.lite){ laraSleep(true); return; }
+  if(LARA.ws){ laraLog("end","15 s without words after her answer — closed to save the AI budget"); laraSleep(true); } },15000); }   // V57
 function laraDoze(){ laraTurnLog(); laraLog("doze","30 s silence"); laraLogFlush(); LARA.dozing=true; LARA.ring=[]; LARA.vad=0; const ws=LARA.ws; LARA.ws=null; if(ws){ try{ ws.close(1000); }catch(e){} } laraState("listening"); }
 function laraUndoze(){
   if(!LARA.dozing) return; LARA.dozing=false; LARA.pre=(LARA.ring||[]).slice(); LARA.ring=[]; laraState("connecting");
@@ -5296,7 +5296,7 @@ laraParks=function(q){
 const LVAD={floor:0.01,ring:[],on:false,hang:0,sent:0,skipped:0};
 function laraVadSend(rms,msg){
   LVAD.floor = rms<LVAD.floor ? LVAD.floor*0.9+rms*0.1 : LVAD.floor*0.995+rms*0.005;     // the room's noise level
-  const thr=Math.max(0.02,LVAD.floor*2.5), now=Date.now();
+  const thr=Math.max(0.035,LVAD.floor*3), now=Date.now();
   if(rms>thr){ if(!LVAD.on){ LVAD.on=true; if(LARA.ws&&LARA.ws.readyState===1) LVAD.ring.forEach(m=>{ try{ LARA.ws.send(m); }catch(e){} }); LVAD.ring=[]; } LVAD.hang=now+2000; }
   if(LVAD.on&&now>LVAD.hang) LVAD.on=false;
   if(LVAD.on){ LVAD.sent++; return true; }
@@ -5315,7 +5315,7 @@ const laraSleepV55=laraSleep;
 laraSleep=function(q){ if(LVAD.sent+LVAD.skipped>0){ laraLog("info","microphone frames sent / skipped",{sent:LVAD.sent,skipped:LVAD.skipped}); LVAD.sent=0; LVAD.skipped=0; } return laraSleepV55(q); };
 setInterval(()=>{ try{
   const now=Date.now();
-  if(LARA.ws&&!LARA.speaking&&now-(LARA.heardAt||now)>120000){ laraLog("end","no words for 2 minutes — disconnected to save the AI budget"); laraSleep(true); return; }
+  if(LARA.ws&&!LARA.speaking&&now-(LARA.heardAt||now)>60000){ laraLog("end","no words for 60 s — disconnected to save the AI budget"); laraSleep(true); return; }
   if(LARA.dozing&&now-(LARA.dozeAt||now)>300000){ laraLog("end","dozed 5 minutes — asleep"); laraSleep(true); }
 }catch(e){} },5000);
 document.addEventListener("visibilitychange",()=>{ try{ if(document.hidden&&(LARA.ws||LARA.dozing)){ laraLog("end","tab hidden — disconnected to save the AI budget"); laraSleep(true); } }catch(e){} });
@@ -6251,7 +6251,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V56.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V57.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
