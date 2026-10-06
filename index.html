@@ -4110,7 +4110,7 @@ EMAIL ADDRESSES: the system already knows the user's own email — when they wan
 DOCUMENTS & EMAIL: print_document makes the PDF of the plots on screen (technical annex, sales offer, initial financial offer, investor proposal) and downloads it. To email it: send_email (to = "me" for the user, or the address the user gives — repeat it back letter by letter if dictated). A confirmation card appears; ALWAYS ask "Shall I send it to …?" and only after a clear yes call send_email with confirmed=true. Never send without that yes.
 SYSTEM MAP: Map (home) — every project and plot, filters bar (status, sector, plot size, land type, phase, quarter, sold by, price), park and year pickers, Projects panel (stages, landbank, available area), Ports & airports, 3D, Satellite, plot card with utilities and Print. Sales & Land Bank — cockpits: overview, strategic intelligence, performance matrices, available inventory, project land bank, sales pipeline & forecast, executive financials, financial engine (with Cost Master Data), CEO brief, CEO cash & receivables, CEO pricing & land value, CEO inventory runway, CEO customers & bulk deals, CEO deal cycle & governance; plus change log and Excel grid; its own filters (projects, sectors, statuses, quarters, years, sales reps, area). Investor match — brief, ranking, merged blocks, financial offer, proposal PDF. Industrial Codes — IDA activity classification. Sales offer — one-page offer PDF. MDS register — the Excel view of every plot. Data health — plots that do not match. Presentation mode — full-screen investor tour with 360° views and nearest ports.
 COMPANY KNOWLEDGE: for anything about Elsewedy Industrial Development itself — who we are, vision, each park's location, size, incentives and target industries, services (logistics, October Dry Port, technical academy, legal support, smart parks), partners, sustainability, case studies, news and signed deals, why invest in Egypt, how to visit or contact — call company_info and answer from it. Combine it with the live MDS when both help (website = the story and facts about the parks; MDS = live plots, prices, sales). If they differ on availability, prices or sales, the MDS is current.
-WEBSITE DIGEST: ${siteKB().digest}
+WEBSITE: for any question about the company, a park's story, location, services or contacts call company_info (it searches the official website).
 TRUTH: only tool results and the PULSE. Never invent plots, prices or figures. Gas is not in the MDS.
 When the user says goodbye or that's all, say a short goodbye and call end_conversation. If you hear only noise or talk not meant for you, stay silent.
 PARKS: ${Object.values(S.reg.parks).map(p=>p.name+" ("+p.where+")").join("; ")}. "Asher" means the two Industria Asher parks (Plot 10 and Plot 11).
@@ -4142,17 +4142,16 @@ async function laraMicOn(){
   if(!LARA.wk){ await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([LARA_WK],{type:"text/javascript"}))); LARA.wk=1; }
   const src=ctx.createMediaStreamSource(st), node=new AudioWorkletNode(ctx,"lara-mic");
   node.port.onmessage=e=>{ const {pcm,rms}=e.data; LARA.micLvl=rms;
-    if(rms>0.03&&LARA.idle&&!LARA.speaking) laraIdleArm();
     if(LARA.muted) return;
     const live=LARA.ws&&LARA.ws.readyState===1;
-    if(!live&&LARA.dozing){ LARA.vad=rms>0.045?(LARA.vad||0)+1:0; if(LARA.vad>=3) laraUndoze(); }
+    if(!live&&LARA.dozing){ LARA.vad=rms>Math.max(0.045,LVAD.floor*3)?(LARA.vad||0)+1:0; if(LARA.vad>=8) laraUndoze(); }
     if(!live&&!(LARA.st==="connecting"&&LARA.pre)&&!LARA.dozing) return;
     // speaker mode: while Lara talks, only clear near-field speech gets through (barge-in), so she does not hear herself
     const gate=laraGateCalc(rms,pcm);
     const u8=gate?new Uint8Array(pcm.byteLength):new Uint8Array(pcm);
     let s=""; for(let i=0;i<u8.length;i++) s+=String.fromCharCode(u8[i]);
     const msg=JSON.stringify({realtimeInput:{audio:{data:btoa(s),mimeType:"audio/pcm;rate=16000"}}});
-    if(live) LARA.ws.send(msg); else if(LARA.pre&&LARA.st==="connecting"){ if(LARA.pre.length<150) LARA.pre.push(msg); }
+    if(live){ if(!gate&&laraVadSend(rms,msg)) LARA.ws.send(msg); } else if(LARA.pre&&LARA.st==="connecting"){ if(LARA.pre.length<150) LARA.pre.push(msg); }
     else if(LARA.dozing){ LARA.ring.push(msg); if(LARA.ring.length>28) LARA.ring.shift(); } };
   src.connect(node); LARA.mic={st,src,node};
 }
@@ -5292,6 +5291,37 @@ laraParks=function(q){
 
 
 /* ============================================================================
+   V56 — LARA COSTS ONLY WHILE SOMEONE TALKS TO HER
+   ========================================================================== */
+const LVAD={floor:0.01,ring:[],on:false,hang:0,sent:0,skipped:0};
+function laraVadSend(rms,msg){
+  LVAD.floor = rms<LVAD.floor ? LVAD.floor*0.9+rms*0.1 : LVAD.floor*0.995+rms*0.005;     // the room's noise level
+  const thr=Math.max(0.02,LVAD.floor*2.5), now=Date.now();
+  if(rms>thr){ if(!LVAD.on){ LVAD.on=true; if(LARA.ws&&LARA.ws.readyState===1) LVAD.ring.forEach(m=>{ try{ LARA.ws.send(m); }catch(e){} }); LVAD.ring=[]; } LVAD.hang=now+2000; }
+  if(LVAD.on&&now>LVAD.hang) LVAD.on=false;
+  if(LVAD.on){ LVAD.sent++; return true; }
+  LVAD.ring.push(msg); if(LVAD.ring.length>10) LVAD.ring.shift(); LVAD.skipped++; return false;
+}
+/* real words = Google's transcript of the user (not an echo) or typed text */
+const laraEchoCheckV55=laraEchoCheck;
+laraEchoCheck=function(){ const echo=laraEchoCheckV55(); if(!echo&&(LARA.tU||"").trim()) LARA.heardAt=Date.now(); return echo; };
+const laraSendV55=laraSend;
+laraSend=function(text){ LARA.heardAt=Date.now(); return laraSendV55(text); };
+const laraStartV55=laraStart;
+laraStart=function(o){ LARA.heardAt=Date.now(); LVAD.sent=0; LVAD.skipped=0; LVAD.on=false; LVAD.ring=[]; return laraStartV55(o); };
+const laraDozeV55=laraDoze;
+laraDoze=function(){ LARA.dozeAt=Date.now(); return laraDozeV55(); };
+const laraSleepV55=laraSleep;
+laraSleep=function(q){ if(LVAD.sent+LVAD.skipped>0){ laraLog("info","microphone frames sent / skipped",{sent:LVAD.sent,skipped:LVAD.skipped}); LVAD.sent=0; LVAD.skipped=0; } return laraSleepV55(q); };
+setInterval(()=>{ try{
+  const now=Date.now();
+  if(LARA.ws&&!LARA.speaking&&now-(LARA.heardAt||now)>120000){ laraLog("end","no words for 2 minutes — disconnected to save the AI budget"); laraSleep(true); return; }
+  if(LARA.dozing&&now-(LARA.dozeAt||now)>300000){ laraLog("end","dozed 5 minutes — asleep"); laraSleep(true); }
+}catch(e){} },5000);
+document.addEventListener("visibilitychange",()=>{ try{ if(document.hidden&&(LARA.ws||LARA.dozing)){ laraLog("end","tab hidden — disconnected to save the AI budget"); laraSleep(true); } }catch(e){} });
+
+
+/* ============================================================================
    V48 — PLOT STATUS WORKFLOW: requests, approvals, holds, notifications
    ========================================================================== */
 const WF={live:new Map(), req:[], notif:[], ready:false, missing:false, ch:null, tab:null, focus:null, t:{}, lastTick:0};
@@ -6221,7 +6251,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V55.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V56.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
