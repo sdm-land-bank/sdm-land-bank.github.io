@@ -5266,7 +5266,7 @@ function laraGateCalc(rms,pcm){
 }
 setInterval(()=>{ try{ if(!$("#laraNet")||!$("#laraNetT")) netDot(); }catch(e){} },2000);
 const LARA_CAP=/spending cap|spend cap|exceeded its|RESOURCE_EXHAUSTED|billing/i;
-const LARA_CAP_MSG="Lara's monthly AI budget is used up — an administrator raises the spend cap in Google AI Studio (Spend page), or it resets on the 1st of the month.";
+const LARA_CAP_MSG="Lara's AI budget is used up on both keys — an administrator raises the spend cap in Google AI Studio (Spend page) or adds a free backup key in Settings → MDS data source.";
 
 
 /* ============================================================================
@@ -5732,6 +5732,26 @@ async function audXls(){
   }catch(e){ toast("Could not export: "+wfErr(e),true); }
   b.disabled=false; b.textContent=lbl;
 }
+
+
+/* ---- V55: Lara's voice falls back to the free backup key ---- */
+const LARA_QUOTA=/spend|cap|quota|exhausted|rate|limit|billing|429/i;
+const laraConnectMain=laraConnect;
+laraConnect=async function(){
+  try{ const r=await laraConnectMain(); LARA.backup=false; return r; }
+  catch(e){
+    if(!LARA_QUOTA.test(e&&e.message||"")) throw e;
+    laraLog("info","main AI key blocked — trying the backup key",{msg:String(e.message).slice(0,160)});
+    let t; try{ t=await laraFn("sid-live",{backup:true}); }catch(e2){ laraLog("error","backup key: "+(e2&&e2.message||e2)); throw e; }
+    if(!t||!t.token||!(t.models||[]).length) throw e;
+    let last=e;
+    for(const m of t.models){
+      try{ await laraOpen(t,m); LARA.backup=true; laraLog("connect",m,{backup:true}); return; }
+      catch(e3){ last=e3; laraLog("error","backup voice model failed: "+m,{msg:String(e3&&e3.message||e3).slice(0,160)}); }
+    }
+    throw last;
+  }
+};
 
 /* ---- plot card: Print menu ---- */
 function selOffer(mode){
@@ -6201,7 +6221,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V54.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V55.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
@@ -11136,9 +11156,9 @@ let SBLB=null;
 /* ---- Settings → MDS data source ---- */
 const SRC={link:null,loaded:false,err:""};
 async function srcLoad(){
-  try{ const r=await SB.from("sid_config").select("key,value").in("key",["mds_link","gemini_key","mail_from","mail_name","ews_url","ews_user"]); if(r.error) throw r.error;
+  try{ const r=await SB.from("sid_config").select("key,value").in("key",["mds_link","gemini_key","gemini_key_backup","live_models","live_models_backup","mail_from","mail_name","ews_url","ews_user"]); if(r.error) throw r.error;
     const g=k=>(r.data.find(x=>x.key===k)||{}).value||"";
-    SRC.link=g("mds_link"); SRC.ai=!!g("gemini_key"); SRC.from=g("mail_from"); SRC.fromName=g("mail_name"); SRC.ews=g("ews_url"); SRC.ewsUser=g("ews_user");
+    SRC.link=g("mds_link"); SRC.ai=!!g("gemini_key"); SRC.ai2=!!g("gemini_key_backup"); SRC.lm=g("live_models"); SRC.lmb=g("live_models_backup"); SRC.from=g("mail_from"); SRC.fromName=g("mail_name"); SRC.ews=g("ews_url"); SRC.ewsUser=g("ews_user");
     try{ const v=await SB.rpc("sid_secret_saved",{p_name:"ews_password"}); SRC.pw=!!v.data; }catch(e){ SRC.pw=false; } SRC.loaded=true; }
   catch(e){ SRC.err=e.message||String(e); SRC.loaded=true; }
   const el=$("#srcCard"); if(el){ el.outerHTML=srcCardHtml(); srcWire(); }
@@ -11168,6 +11188,10 @@ function srcCardHtml(){
         <label>Text size<select id="lbSize">${[["text-sm","Small"],["text-base","Medium"],["text-lg","Large"]].map(([v,l])=>`<option value="${v}" ${(d.fontSize||"text-base")===v?"selected":""}>${l}</option>`).join("")}</select></label>
         <label class="w2">AI assistant (“Ask SDM AI”) — free Google Gemini API key · <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">get a free key</a> · stored privately, only administrators see it
           <input id="aiKey" type="password" value="" placeholder="${SRC.ai?"key saved ✓ — paste a new one to replace it":"paste your Gemini API key"}" autocomplete="off"></label>
+        <label class="w2">Backup Gemini key — from a Google project WITHOUT billing (free) · used automatically when the main key is blocked (monthly spend cap, quota)
+          <input id="aiKey2" type="password" value="" placeholder="${SRC.ai2?"backup key saved ✓ — paste a new one to replace it":"paste a free Gemini API key (AI Studio → Get API key → new project)"}" autocomplete="off"></label>
+        <label class="w2">Lara's voice models, main key (best first)<input id="lmMain" value="${esc(SRC.lm||"")}" placeholder="gemini-3.8-live, gemini-3.1-flash-live-preview" autocomplete="off"></label>
+        <label class="w2">Lara's voice models, backup key<input id="lmBack" value="${esc(SRC.lmb||"")}" placeholder="gemini-3.8-live, gemini-3.1-flash-live-preview, gemini-3-flash-live, gemini-2.5-flash-native-audio-dialog" autocomplete="off"></label>
       </div><button class="ebtn" id="lbSave">Save display &amp; AI key</button></details>
 `}
   </section>`;
@@ -11190,6 +11214,12 @@ function srcWire(){
     const a=await SB.from("sid_kv").upsert({key:"lbdisplay",value:SBLB,updated_at:new Date().toISOString()});
     const b=k?await SB.from("sid_config").upsert({key:"gemini_key",value:k,updated_at:new Date().toISOString()}):{error:null};
     if(a.error||b.error){ toast("Could not save: "+(a.error||b.error).message,true); return; }
+    const k2=($("#aiKey2")||{value:""}).value.trim(), now=new Date().toISOString(), up=[];
+    if(k2) up.push({key:"gemini_key_backup",value:k2,updated_at:now});
+    const lm=($("#lmMain")||{value:""}).value.trim(), lmb=($("#lmBack")||{value:""}).value.trim();
+    if(lm!==(SRC.lm||"")) up.push({key:"live_models",value:lm,updated_at:now}); if(lmb!==(SRC.lmb||"")) up.push({key:"live_models_backup",value:lmb,updated_at:now});
+    if(up.length){ const c=await SB.from("sid_config").upsert(up); if(c.error){ toast("Could not save: "+c.error.message,true); return; } }
+    if(k2){ SRC.ai2=true; $("#aiKey2").value=""; $("#aiKey2").placeholder="backup key saved ✓ — paste a new one to replace it"; } SRC.lm=lm; SRC.lmb=lmb;
     if(k){ SRC.ai=true; $("#aiKey").value=""; $("#aiKey").placeholder="key saved ✓ — paste a new one to replace it"; }
     lbDisplayToStorage(); LB.html=null; mountLB(); toast(k?"Saved — the AI assistant is ready for everyone":"Saved — the Sales & Land Bank view uses it for everyone"); };
 }
