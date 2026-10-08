@@ -5866,7 +5866,7 @@ function luseAdd(u){
 const laraMsgV57=laraMsg;
 laraMsg=function(m){ try{
   if(LARA.ws&&LARA.ws!==LUSE.ws){ luseSeg(); LUSE.ws=LARA.ws; LUSE.since=Date.now(); }
-  if(m&&m.serverContent&&m.serverContent.turnComplete&&(LARA.tU||"").trim()) LUSE.turns++;
+  if(m&&m.serverContent&&m.serverContent.turnComplete&&(LARA.tU||"").trim()&&typeof LVAD!=="undefined"&&LVAD.sent>(LUSE.vs||0)){ LUSE.turns++; LUSE.vs=LVAD.sent; }   // a spoken question (mic audio was sent since the last one)
   if(m&&m.usageMetadata) luseAdd(m.usageMetadata); }catch(e){}
   return laraMsgV57(m); };
 const laraSendV57=laraSend; laraSend=function(t){ if(!/^\(/.test(String(t||""))) LUSE.turns++; return laraSendV57(t); };   // typed questions (her own "(…)" nudges do not count)
@@ -5879,7 +5879,7 @@ function luseFlush(keep){ try{
   const rows=ent.map(([k,a],i)=>{ const [project,model]=k.split("|"); return {project,model,kind:"live",...a,...(i?{}:{sessions:1,user_turns:LUSE.turns,secs_connected:Math.min(secs,86400),...mic})}; });
   const tot=rows.reduce((o,r)=>{ ["in_text","in_audio","in_other","out_text","out_audio","thoughts"].forEach(f=>o[f]=(o[f]||0)+(r[f]||0)); return o; },{});
   laraLog("info","tokens used",{...tot,answers:LUSE.msgs,secs,turns:LUSE.turns,...mic});
-  LUSE.acc={}; LUSE.secs=0; LUSE.turns=0; LUSE.msgs=0;
+  LUSE.acc={}; LUSE.secs=0; LUSE.turns=0; LUSE.msgs=0; LUSE.vs=0;
   if(!laraOnline()) return;
   rows.forEach(async p=>{ try{
     if(keep){ const tok=(await SB.auth.getSession()).data.session?.access_token;
@@ -6048,7 +6048,7 @@ function usgCards(C){
     usgCard({name:"File storage",used:s&&s.storage_bytes,limit:(SL.storage_mb||1024)*1048576,fmt:usgMB,src:USG_SRC.d,link:USG_URL.sb,
       sub:s?`${fInt(s.storage_objects||0)} files (plots, MDS versions, edits)`:"press Sync",info:"Sum of the sizes of every file in Supabase Storage (storage.objects), read inside Postgres. Free plan limit 1 GB."}),
     usgCard({name:"Monthly active users",used:s&&s.mau,limit:SL.mau||50000,fmt:v=>fInt(v),src:USG_SRC.d,link:USG_URL.sb,
-      sub:s?`${fInt(s.auth_users||0)} accounts in total`:"press Sync",info:"People who signed in or refreshed their sign-in this calendar month (Supabase's sign-in log, auth.audit_log_entries) — how Supabase counts MAU. Free plan limit 50,000."}),
+      sub:s?`${fInt(s.auth_users||0)} accounts in total`:"press Sync",info:"People who signed in or refreshed their sign-in this calendar month (Supabase's sign-in sessions and refresh tokens, auth.sessions / auth.refresh_tokens) — how Supabase counts MAU. Free plan limit 50,000."}),
     usgCard({name:"Edge function calls · last 24 h",used:sec.supabase?fnTot:null,limit:sec.supabase?Math.round((SL.functions||500000)/30):null,fmt:v=>fInt(v),src:USG_SRC.s,link:USG_URL.sb,
       na:sec.supabase?(C.fn24.length?null:"connected — press Sync"):`connect the Supabase token below · <a href="${USG_URL.sb}" target="_blank" rel="noopener">Supabase → Usage ↗</a>`,
       sub:"limit shown = 500,000 a month ÷ 30",info:"Calls of sid-sync, sid-ai, sid-live, sid-mail, sid-admin and sid-usage in the last 24 hours (Supabase Management API, functions.combined-stats). Free plan: 500,000 a month."}),
@@ -6248,7 +6248,7 @@ function usgXls(){
   const about=[["SID Dashboard · Usage export",""],["Range (Cairo days)",C.a+" to "+C.b],["Exported",new Date().toISOString()],["",""],
     [USG_SRC.m,"Google's own token counts sent with every answer (usageMetadata): Lara live voice one write per conversation; sid-ai one write per answer."],
     [USG_SRC.e,"Σ tokens × price per 1M tokens from the price list (Settings → Usage → Limits & prices; source ai.google.dev/gemini-api/docs/pricing). Official cost: Google Cloud Billing → Reports."],
-    [USG_SRC.d,"Read inside Postgres: pg_database_size, storage.objects sizes, pg_stat_user_tables (rows read / written = change between daily snapshots), auth.audit_log_entries (sign-ins, MAU), SID logs."],
+    [USG_SRC.d,"Read inside Postgres: pg_database_size, storage.objects sizes, pg_stat_user_tables (rows read / written = change between daily snapshots), auth.sessions / auth.refresh_tokens (sign-ins, MAU), SID logs."],
     [USG_SRC.g,"Google Cloud Monitoring: serviceruntime.googleapis.com/api/request_count and quota/rate/net_usage for generativelanguage.googleapis.com (needs the service account)."],
     [USG_SRC.s,"Supabase Management API: usage.api-counts (7 days) and functions.combined-stats (24 h) (needs the access token)."],
     ["n/a","No source publishes it (egress, realtime messages, GitHub bandwidth) — see the official pages."]];
