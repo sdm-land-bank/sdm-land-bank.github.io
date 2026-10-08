@@ -6373,9 +6373,9 @@ function gkUse(e){
   const rest=typeof LKEY!=="undefined"&&(LKEY.cool[e.id]||0)>Date.now()?`<span class="gk-rest" title="This key failed a moment ago in this browser — Lara uses the next key until then">resting until ${new Date(LKEY.cool[e.id]).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</span>`:"";
   const n=v=>v>=1e6?(v/1e6).toFixed(2)+" M":v>=1e3?(v/1e3).toFixed(1)+" K":String(Math.round(v));
   if(e.tier!=="free"){ const cap=+e.cap_usd||10, left=Math.max(0,cap-usd), pct=Math.min(100,usd/cap*100), lv=pct>=90?"red":pct>=70?"amber":"";
-    return `<div class="gk-use ${lv}"><div class="gk-ul"><span><b>$${usd.toFixed(2)}</b> of $${cap} used this month</span><span class="gk-left"><b>$${left.toFixed(2)}</b> left</span>${rest}</div>
+    return `<div class="gk-use ${lv}"><div class="gk-ul"><span><b>$${usd.toFixed(2)}</b> of $${cap} used this month</span><span class="gk-left"><b>$${left.toFixed(2)}</b> left by SID’s count</span>${rest}</div>
       <div class="gk-ub"><i style="width:${pct.toFixed(1)}%"></i></div>
-      <em>${n(tok)} tokens · ${ans} answers this month · ${today} today${unknown?" · some models have no price":""}</em></div>`; }
+      <em>${n(tok)} tokens · ${ans} answers this month · ${today} today${unknown?" · some models have no price":""} · counted by SID since 8 Oct 2026 — use from before or outside SID is not included: Google's own figure is on <a href="https://aistudio.google.com/spend" target="_blank" rel="noopener">AI Studio → Spend</a></em></div>`; }
   const F=GK.limits&&GK.limits.free_models||{}, L=F["gemini-3.8-live"]||{};
   return `<div class="gk-use"><div class="gk-ul"><span><b>Free tier</b> — ${L.rpd?(L.rpd==="unlimited"?"no daily limit":L.rpd+" requests / day"):"daily limit n/a"}${L.tpm?", "+n(+L.tpm)+" tokens / minute":""}</span><span class="gk-left"><b>nothing to run out of</b></span>${rest}</div>
     <em>${n(tok)} tokens · ${ans} answers this month · ${today} today · limits for Gemini 3.8 Live from AI Studio → Rate limits</em></div>`;
