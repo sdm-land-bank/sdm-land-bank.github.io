@@ -6308,7 +6308,7 @@ function gkCardHtml(){
       <td><input class="gk-l" value="${esc(e.label||"")}" maxlength="60" placeholder="e.g. Pro account 2 · credit"></td>
       <td><select class="gk-tier"><option value="paid" ${e.tier!=="free"?"selected":""}>Paid · credit-covered</option><option value="free" ${e.tier==="free"?"selected":""}>Free tier</option></select></td>
       <td><input class="gk-cap" type="number" min="0" step="1" value="${e.tier==="free"?"":esc(e.cap_usd??10)}" ${e.tier==="free"?"disabled placeholder=\"free\"":""}></td>
-      <td class="gk-k">${own?`<input class="gk-key" type="password" autocomplete="off" placeholder="${saved?"saved ✓ — paste to replace":"paste the key (AIza…)"}">`:
+      <td class="gk-k">${own?`<input class="gk-key" type="password" autocomplete="off" placeholder="${saved?"saved ✓ — paste to replace":"paste the key (AQ.… or AIza…)"}">`:
         `<span class="${saved?"u-ok":"gk-miss"}">${saved?"saved ✓":"missing"}</span> <em class="u-un">${e.id==="main"?"main key":"backup key"} · set in “Sales &amp; Land Bank display and the AI assistant” below</em>`}</td>
       <td><input type="checkbox" class="gk-on" ${e.on!==false?"checked":""} aria-label="Use this key"></td>
       <td class="gk-b"><button type="button" class="ebtn gk-up" ${i?"":"disabled"} aria-label="Move up">↑</button><button type="button" class="ebtn gk-dn" ${i<n-1?"":"disabled"} aria-label="Move down">↓</button>${own?`<button type="button" class="ebtn gk-rm">Remove</button>`:""}</td></tr>`; }).join("")}
@@ -6339,7 +6339,7 @@ function gkWire(){
     GK.draft.push({id,label:"Pro account "+(GK.draft.length+1)+" · credit",tier:"paid",cap_usd:10,on:true}); gkRepaint(); };
   const sv=$("#gkSave"); if(sv) sv.onclick=async()=>{ gkRead(); const st=$("#gkSt"); sv.disabled=true; st.textContent="Saving…";
     try{ for(const inp of $$("#gkCard .gk-key")){ const v=inp.value.trim(); if(!v) continue; const e=GK.draft[+inp.closest("tr").dataset.i];
-        if(!/^AIza[0-9A-Za-z_\-]{30,}$/.test(v)){ throw new Error(`“${e.label}”: that does not look like a Gemini API key (it starts with AIza)`); }
+        if(!/^(AIza[0-9A-Za-z_\-]{30,}|AQ\.[0-9A-Za-z_\-.]{30,})$/.test(v)){ throw new Error(`“${e.label}”: that does not look like a Gemini API key (new keys start with AQ. — older ones with AIza)`); }
         const r=await SB.rpc("sid_set_secret",{p_name:"gemini_"+e.id,p_value:v}); if(r.error) throw r.error; GK.saved[e.id]=true; inp.value=""; }
       const ring=GK.draft.map(e=>({id:e.id,label:e.label,tier:e.tier,...(e.tier!=="free"?{cap_usd:+e.cap_usd||10}:{}),on:e.on!==false}));
       const r=await SB.rpc("sid_gemini_ring_save",{p:ring}); if(r.error) throw r.error;
