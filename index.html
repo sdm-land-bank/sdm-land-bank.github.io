@@ -806,6 +806,16 @@ body.no-matchfin #fpOn,body.no-matchfin .fp-panel,body.no-matchfin .fp-sec,body.
 @media (max-width:480px){ .u-cards{grid-template-columns:1fr} }
 
 .u-link{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap} .u-link .applybtn{width:auto;height:36px;padding:0 20px;margin:0}
+
+/* ---- V59 Gemini keys ---- */
+.gk-t td,.gk-t th{font-size:12px;vertical-align:middle;padding:5px 6px}
+.gk-t input:not([type=checkbox]),.gk-t select{height:30px;border-radius:7px;border:1px solid var(--rule-2);padding:0 8px;background:var(--panel);width:100%;min-width:90px}
+.gk-t .gk-l{min-width:190px} .gk-t .gk-tier{min-width:170px} .gk-t .gk-cap{width:80px;min-width:60px} .gk-t .gk-key{font-family:"IBM Plex Mono",monospace;min-width:200px}
+.gk-t .gk-on{accent-color:var(--signal);width:16px;height:16px}
+.gk-b{white-space:nowrap} .gk-b .ebtn{width:auto;height:28px;padding:0 9px;margin-left:3px}
+.gk-miss{color:#A6192E;font-weight:600;font-size:11px} .gk-how{padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--ink-2);margin-top:8px}
+@media (max-width:820px){ .gk-t{min-width:760px} }
+
 #sbGate{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:radial-gradient(1200px 600px at 20% 0%,#3a0d16 0%,#141416 60%);padding:16px}
 .sbg-box{width:min(380px,100%);background:#fff;border-radius:18px;padding:26px 24px 22px;box-shadow:0 40px 90px -30px rgba(0,0,0,.7);display:flex;flex-direction:column;gap:12px;color:#15171b}
 .sbg-box img{height:44px;align-self:flex-start}
@@ -5329,7 +5339,7 @@ function laraGateCalc(rms,pcm){
 }
 setInterval(()=>{ try{ if(!$("#laraNet")||!$("#laraNetT")) netDot(); }catch(e){} },2000);
 const LARA_CAP=/spending cap|spend cap|exceeded its|RESOURCE_EXHAUSTED|billing/i;
-const LARA_CAP_MSG="Lara's AI budget is used up on both keys — an administrator raises the spend cap in Google AI Studio (Spend page) or adds a free backup key in Settings → MDS data source.";
+const LARA_CAP_MSG="Lara's AI budget is used up on every Gemini key — an administrator adds another key in Settings → Gemini keys (or raises a spend cap in Google AI Studio → Spend).";
 
 
 /* ============================================================================
@@ -5828,20 +5838,30 @@ async function audXls(){
 }
 
 
-/* ---- V55: Lara's voice falls back to the free backup key ---- */
+/* ---- V55 / V59: Lara's voice moves to the NEXT Gemini key (keyring order) when one is capped / rate-limited ---- */
 const LARA_QUOTA=/spend|cap|quota|exhausted|rate|limit|billing|429/i;
+const laraFnV58=laraFn;
+laraFn=async function(name,body){ const j=await laraFnV58(name,body);
+  if(name==="sid-live"&&j&&j.token){ LARA.key={id:j.key_id||(j.backup?"backup":"main"),label:j.label||(j.backup?"backup key":"main key"),more:!!j.more}; LARA.backup=!!j.backup; }
+  return j; };
 const laraConnectMain=laraConnect;
 laraConnect=async function(){
-  try{ const r=await laraConnectMain(); LARA.backup=false; return r; }
+  LARA.key=null;
+  try{ return await laraConnectMain(); }
   catch(e){
     if(!LARA_QUOTA.test(e&&e.message||"")) throw e;
-    laraLog("info","main AI key blocked — trying the backup key",{msg:String(e.message).slice(0,160)});
-    let t; try{ t=await laraFn("sid-live",{backup:true}); }catch(e2){ laraLog("error","backup key: "+(e2&&e2.message||e2)); throw e; }
-    if(!t||!t.token||!(t.models||[]).length) throw e;
     let last=e;
-    for(const m of t.models){
-      try{ await laraOpen(t,m); LARA.backup=true; laraLog("connect",m,{backup:true}); return; }
-      catch(e3){ last=e3; laraLog("error","backup voice model failed: "+m,{msg:String(e3&&e3.message||e3).slice(0,160)}); }
+    for(let n=0;n<10;n++){
+      const after=LARA.key&&LARA.key.id||"main";
+      laraLog("info","AI key blocked — trying the next key",{after,msg:String(last&&last.message||last).slice(0,160)});
+      let t; try{ t=await laraFn("sid-live",{after}); }catch(e2){ laraLog("error","next key: "+(e2&&e2.message||e2)); throw last; }
+      if(!t||!t.token||!(t.models||[]).length) throw last;
+      for(const m of t.models){
+        try{ await laraOpen(t,m); laraLog("connect",m,{key:t.key_id,label:t.label,backup:!!t.backup}); return; }
+        catch(e3){ last=e3; laraLog("error","voice model failed: "+m,{key:t.key_id,msg:String(e3&&e3.message||e3).slice(0,160)});
+          if(LARA_QUOTA.test(e3&&e3.message||"")) break; }      // this key is blocked: no point trying its other models
+      }
+      if(!t.more) break;
     }
     throw last;
   }
@@ -5853,7 +5873,7 @@ laraConnect=async function(){
    ========================================================================== */
 /* ---- Lara's meter: Google's own token counts per answer, one write per conversation ---- */
 const LUSE={acc:{},ws:null,since:0,secs:0,turns:0,msgs:0};
-const luseKey=()=>(LARA.backup?"backup":"main")+"|"+String(LARA.model||"unknown").toLowerCase().replace(/^models\//,"");
+const luseKey=()=>((LARA.key&&LARA.key.id)||(LARA.backup?"backup":"main"))+"|"+String(LARA.model||"unknown").toLowerCase().replace(/^models\//,"");
 function luseSeg(){ if(LUSE.ws&&LUSE.since) LUSE.secs+=(Date.now()-LUSE.since)/1000; LUSE.ws=null; LUSE.since=0; }
 function luseAdd(u){
   const k=luseKey(), a=LUSE.acc[k]||(LUSE.acc[k]={in_text:0,in_audio:0,in_other:0,cached:0,out_text:0,out_audio:0,thoughts:0,requests:0});
@@ -5910,6 +5930,8 @@ function usgRange(){ const t=usgDay(), f=USG.f;
   if(f.p==="custom"&&f.from&&f.to) return f.from<=f.to?[f.from,f.to]:[f.to,f.from];
   if(f.p==="month") return [t.slice(0,8)+"01",t];
   return [usgAdd(t,1-(+f.p||30)),t]; }
+function usgRing(){ let R=usgCfg("gemini_keyring"); if(!Array.isArray(R)||!R.length) R=[{id:"main",label:"Main key",tier:"paid",cap_usd:+usgCfg("usage_limits").gemini_cap_usd||10},{id:"backup",label:"Backup key",tier:"free"}]; return R; }
+const usgKL=id=>{ const e=usgRing().find(x=>x.id===id); return e?e.label:id; };
 function usgCfg(k){ try{ const v=USG.data&&USG.data.config&&USG.data.config[k]; return typeof v==="string"?JSON.parse(v):v||{}; }catch(e){ return {}; } }
 /* tokens → USD with the price list (per 1M tokens); null when the model has no price */
 function usgCost(r){ const P=(usgCfg("usage_prices").models||{})[r.model]; if(!P) return null;
@@ -5942,16 +5964,17 @@ async function usgSync(){
 
 /* ---- the numbers for the chosen range ---- */
 function usgCalc(){
-  const D=USG.data, [a,b]=usgRange(), days=usgDays(a,b), inR=d=>d>=a&&d<=b, L=usgCfg("usage_limits"), P=USG.proj;
+  const D=USG.data, [a,b]=usgRange(), days=usgDays(a,b), inR=d=>d>=a&&d<=b, L=usgCfg("usage_limits"), P=USG.proj, RING=usgRing(), PAID=new Set(RING.filter(e=>e.tier!=="free").map(e=>e.id));
   const meter=(D.meter||[]).filter(r=>inR(r.day)&&(P==="all"||r.project===P));
   const by={}; days.forEach(d=>by[d]={in_text:0,in_audio:0,out_text:0,out_audio:0,cost:0,costMain:0,costKnown:true,req:0,turns:0,mic:0,secs:0,sess:0});
   meter.forEach(r=>{ const o=by[r.day]; if(!o) return; USG_T.forEach(([k])=>o[k]+=usgTok(r,k));
-    const c=usgCost(r); if(c==null) o.costKnown=false; else { o.cost+=c; if(r.project==="main") o.costMain+=c; }
+    const c=usgCost(r); if(c==null) o.costKnown=false; else { o.cost+=c; if(PAID.has(r.project)) o.costMain+=c; }
     o.req+=+r.requests||0; o.turns+=+r.user_turns||0; o.mic+=+r.mic_secs_sent||0; o.secs+=+r.secs_connected||0; o.sess+=+r.sessions||0; });
   // month to date on the main (paid) key — Google's month starts on the 1st, Pacific time
   const pt=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Los_Angeles"}).format(new Date()), m0=pt.slice(0,8)+"01";
-  const mm=(D.month_meter||[]).filter(r=>r.project==="main"&&r.day>=m0);
+  const mm=(D.month_meter||[]).filter(r=>PAID.has(r.project)&&r.day>=m0);
   const mtd=mm.reduce((s,r)=>s+(usgCost(r)||0),0), mtdUnknown=mm.some(r=>usgCost(r)==null);
+  const perKey=RING.filter(e=>e.tier!=="free").map(e=>{ const rows=mm.filter(r=>r.project===e.id); return {...e,mtd:rows.reduce((s,r)=>s+(usgCost(r)||0),0),unknown:rows.some(r=>usgCost(r)==null)}; });
   const nx=new Date(pt.slice(0,8)+"01T12:00:00Z"); nx.setUTCMonth(nx.getUTCMonth()+1); const left=Math.max(0,Math.ceil((nx-new Date(pt+"T12:00:00Z"))/864e5));
   // database snapshots → per-day change of rows read / written (Postgres keeps running totals)
   const snaps=(D.snaps||[]).slice().sort((x,y)=>x.day<y.day?-1:1), db={};
@@ -5966,7 +5989,7 @@ function usgCalc(){
   const sReq=per(s.filter(r=>r.item==="api_requests"),r=>r.metric);
   const fn24=s.filter(r=>r.item.startsWith("function_24h:")&&r.metric==="calls");
   const tot=k=>days.reduce((n,d)=>n+by[d][k],0);
-  return {D,L,days,a,b,by,mtd,mtdUnknown,left,db,gReq,gQuota,sReq,fn24,tot,meter,snap:D.last_snap||null,ext:ext.length,
+  return {D,L,RING,PAID,perKey,days,a,b,by,mtd,mtdUnknown,left,db,gReq,gQuota,sReq,fn24,tot,meter,snap:D.last_snap||null,ext:ext.length,
     lara:(D.lara||[]).filter(r=>inR(r.day)),mail:(D.mail||[]).filter(r=>inR(r.day)),audit:(D.audit||[]).filter(r=>inR(r.day)),
     reqs:(D.requests||[]).filter(r=>inR(r.day)),signins:(D.signins||[]).filter(r=>inR(r.day))};
 }
@@ -6034,14 +6057,14 @@ function usgCards(C){
   const mailMax=Math.max(0,...C.mail.map(r=>+r.max_per_user||0));
   const site=(()=>{ try{ const e=performance.getEntriesByType("navigation")[0]; return e&&(e.decodedBodySize||e.encodedBodySize)||null; }catch(e){ return null; } })();
   return [
-    usgCard({name:"Gemini spend this month · main key",used:C.mtd,limit:cap||null,fmt:usgUSD,src:USG_SRC.e,link:USG_URL.spend,
-      sub:`${C.left} day${C.left===1?"":"s"} to the monthly reset (1st, Pacific time)${C.mtdUnknown?" · some models have no price — set it under Limits & prices":""}<br>Official cost: n/a here — <a href="${USG_URL.billing}" target="_blank" rel="noopener">Google Cloud Billing → Reports (group by SKU)</a>`,
-      info:"Equation: Σ tokens × price per 1M tokens (price list below, from ai.google.dev/pricing) for every conversation on the MAIN key since the 1st of the month (Pacific time). Source: Google's own token counts sent with every answer (usageMetadata), added up by the dashboard. Google applies the spend cap to the whole project — this page sees only what SID used."}),
+    ...C.perKey.map(k=>usgCard({name:"Gemini spend this month · "+k.label,used:k.mtd,limit:+k.cap_usd||cap||null,fmt:usgUSD,src:USG_SRC.e,link:USG_URL.spend,
+      sub:`${C.left} day${C.left===1?"":"s"} to the monthly reset (1st, Pacific time)${k.unknown?" · some models have no price — set it under Limits & prices":""}<br>Official cost: n/a here — <a href="${USG_URL.billing}" target="_blank" rel="noopener">Google Cloud Billing → Reports (group by SKU)</a>`,
+      info:"Equation: Σ tokens × price per 1M tokens (price list below, from ai.google.dev/pricing) for every answer on THIS key since the 1st of the month (Pacific time). Source: Google's own token counts sent with every answer (usageMetadata), added up by the dashboard. The limit is this key's spend cap (Settings → Gemini keys) — a Google AI Pro account's $10 monthly credit covers it."})),
     usgCard({name:"Lara · microphone audio sent to Google",used:micMin,big:micMin.toFixed(1)+" min",fmt:v=>v.toFixed(1),src:USG_SRC.m,
       sub:`${fInt(turns)} question${turns===1?"":"s"} · ${turns?(micMin/turns).toFixed(1):"—"} min of audio per question${turns&&micMin/turns>1?" — <b>too much: check the leak alert</b>":""}`,
       info:"Microphone frames (40 ms each) that Lara streamed to Google in the range. Google bills every second of streamed audio, silence included — this is what used up the $10 cap in October 2026. Healthy: well under 1 minute per question."}),
     usgCard({name:"Gemini tokens in the range",used:C.tot("in_audio")+C.tot("in_text")+C.tot("out_audio")+C.tot("out_text"),fmt:usgN,src:USG_SRC.m,link:USG_URL.usage,
-      sub:`main key ${usgN(C.meter.filter(r=>r.project==="main").reduce((n,r)=>n+USG_T.reduce((m,[k])=>m+usgTok(r,k),0),0))} · free backup key ${usgN(C.meter.filter(r=>r.project==="backup").reduce((n,r)=>n+USG_T.reduce((m,[k])=>m+usgTok(r,k),0),0))}`,
+      sub:C.RING.map(e=>`${esc(e.label)} ${usgN(C.meter.filter(r=>r.project===e.id).reduce((n,r)=>n+USG_T.reduce((m,[k])=>m+usgTok(r,k),0),0))}`).join(" · "),
       info:"All Gemini tokens used by Lara (live voice and standard voice) and by Ask SDM AI, as Google counted them for each answer. Text in is mostly Lara's instructions, which Google re-reads at every answer."}),
     usgCard({name:"Database size",used:s&&s.db_bytes,limit:(SL.db_mb||500)*1048576,fmt:usgMB,src:USG_SRC.d,link:USG_URL.sb,
       sub:s?`read ${usgWhen(s.at)}`:"press Sync",info:"pg_database_size of the SID database, read inside Postgres (free). Free plan limit 500 MB."}),
@@ -6065,7 +6088,7 @@ function usgCards(C){
 }
 function usgAlerts(C){
   const out=[], L=C.L, cap=+L.gemini_cap_usd||0;
-  if(cap&&C.mtd>=cap*.7) out.push(["red",`Gemini main key: ${usgUSD(C.mtd)} of the ${usgUSD(cap)} monthly cap used (${(C.mtd/cap*100).toFixed(0)} %).`]);
+  C.perKey.forEach(k=>{ const c=+k.cap_usd||cap; if(c&&k.mtd>=c*.7) out.push([k.mtd>=c*.9?"red":"amber",`Gemini ${esc(k.label)}: ${usgUSD(k.mtd)} of its ${usgUSD(c)} monthly cap used (${(k.mtd/c*100).toFixed(0)} %) — Lara moves to the next key when it is full.`]); });
   C.days.forEach(d=>{ const o=C.by[d]; if(o.turns>0&&o.mic/60/o.turns>1) out.push(["amber",`Possible audio leak on ${usgDM(d)}: ${(o.mic/60).toFixed(1)} min of microphone audio sent for ${o.turns} question${o.turns===1?"":"s"}.`]);
     else if(!o.turns&&o.mic>60) out.push(["red",`Audio leak on ${usgDM(d)}: ${(o.mic/60).toFixed(1)} min of microphone audio sent with no question asked.`]); });
   const costs=C.days.map(d=>C.by[d].costMain);
@@ -6085,7 +6108,7 @@ function usgItems(C){
     it.push({src,item,unit,v,total,peak,pd,avg:total/vs.length,limit}); };
   USG_T.forEach(([k,l])=>add(USG_SRC.m,"Gemini tokens · "+l,"tokens",d=>C.by[d][k]));
   add(USG_SRC.m,"Gemini answers (requests)","requests",d=>C.by[d].req);
-  add(USG_SRC.e,"Gemini cost · main key","USD",d=>C.by[d].costMain);
+  add(USG_SRC.e,"Gemini cost · paid keys","USD",d=>C.by[d].costMain);
   add(USG_SRC.m,"Lara · questions asked","questions",d=>C.by[d].turns);
   add(USG_SRC.m,"Lara · conversations","sessions",d=>C.by[d].sess);
   add(USG_SRC.m,"Lara · minutes connected","minutes",d=>C.by[d].secs/60);
@@ -6115,7 +6138,7 @@ function viewUsage(){
       ${D&&D.cron&&D.cron.length?" · daily snapshot by the database at 00:05 Cairo ✓":D?" · <b>daily snapshot not scheduled</b> (pg_cron off): trends come from Syncs only":""}</div>
     <form class="u-f" id="usgF" onsubmit="return false"><div class="u-seg">${[["7","7 days"],["30","30 days"],["90","90 days"],["month","This month"],["custom","Custom"]].map(([k,l])=>`<button type="button" data-p="${k}" class="${f.p===k?"on":""}">${l}</button>`).join("")}</div>
       ${f.p==="custom"?`<label>From<input type="date" name="from" value="${esc(f.from||a)}" max="${usgDay()}"></label><label>To<input type="date" name="to" value="${esc(f.to||b)}" max="${usgDay()}"></label>`:`<span class="u-rg">${usgDM(a)} – ${usgDM(b)}</span>`}
-      <div class="u-seg sm">${[["all","Both keys"],["main","Main (paid)"],["backup","Backup (free)"]].map(([k,l])=>`<button type="button" data-k="${k}" class="${USG.proj===k?"on":""}">${l}</button>`).join("")}</div></form>`;
+      <div class="u-seg sm">${[["all","All keys"],...usgRing().map(e=>[e.id,e.label+(e.tier==="free"&&!/free/i.test(e.label)?" · free":"")])].map(([k,l])=>`<button type="button" data-k="${esc(k)}" class="${USG.proj===k?"on":""}">${esc(l)}</button>`).join("")}</div></form>`;
   if(USG.err==="missing") return `<div class="set u-page">${head}<div class="mm-empty"><b>The Usage page is not switched on yet</b>An administrator runs step 9 (sql_9_usage.sql) in Supabase once.</div></div>`;
   if(USG.err) return `<div class="set u-page">${head}<div class="alarm"><b>Could not load:</b> ${esc(USG.err)}</div></div>`;
   if(!D) return `<div class="set u-page">${head}<div class="mm-empty"><b>Loading…</b></div></div>`;
@@ -6129,8 +6152,8 @@ function viewUsage(){
   <div class="u-cards">${usgCards(C)}</div>
   <section class="card wide u-sec"><h3>Gemini tokens per day <em>${USG_SRC.m}</em></h3>${usgBars("tok",C.days,tok,usgN,{label:"Gemini tokens per day by type"})}</section>
   <div class="u-two">
-    <section class="card u-sec"><h3>Estimated cost per day · main key <em>${USG_SRC.e}</em></h3>${usgBars("cost",C.days,[["c","Cost","#2a78d6",d=>C.by[d].costMain]],usgUSD,{label:"Estimated cost per day",half:1})}</section>
-    <section class="card u-sec"><h3>Spend this month vs the cap <em>${USG_SRC.e}</em></h3>${usgLine("cum",C.days,cumV,usgUSD,{label:"Month to date",half:1,line:+C.L.gemini_cap_usd?{v:+C.L.gemini_cap_usd,l:"cap "+usgUSD(+C.L.gemini_cap_usd)}:null,min:+C.L.gemini_cap_usd||0})}</section>
+    <section class="card u-sec"><h3>Estimated cost per day · paid keys <em>${USG_SRC.e}</em></h3>${usgBars("cost",C.days,[["c","Cost","#2a78d6",d=>C.by[d].costMain]],usgUSD,{label:"Estimated cost per day",half:1})}</section>
+    <section class="card u-sec"><h3>Spend this month vs the caps (all paid keys) <em>${USG_SRC.e}</em></h3>${usgLine("cum",C.days,cumV,usgUSD,{label:"Month to date",half:1,line:C.perKey.length?{v:C.perKey.reduce((s,k)=>s+(+k.cap_usd||0),0),l:"caps "+usgUSD(C.perKey.reduce((s,k)=>s+(+k.cap_usd||0),0))}:null,min:C.perKey.reduce((s,k)=>s+(+k.cap_usd||0),0)})}</section>
     <section class="card u-sec"><h3>Lara · microphone minutes sent per day <em>${USG_SRC.m}</em></h3>${usgBars("mic",C.days,[["m","Minutes sent","#4a3aa7",d=>C.by[d].mic/60]],v=>v.toFixed(1),{label:"Microphone minutes per day",half:1})}<p class="u-note">Should stay close to the time people actually talk to her. Questions per day are in the table below.</p></section>
     <section class="card u-sec"><h3>Gemini requests per day <em>${hasG?USG_SRC.g:USG_SRC.m}</em></h3>${hasG?usgBars("greq",C.days,[["ok","Answered","#1baf7a",d=>C.gReq[d]&&C.gReq[d].ok||0],["limit","Refused · limit (429)","#eda100",d=>C.gReq[d]&&C.gReq[d].limit||0],["error","Errors","#e34948",d=>C.gReq[d]&&C.gReq[d].error||0]],usgN,{label:"Gemini requests per day",half:1})
       :usgBars("greq",C.days,[["r","Answers","#1baf7a",d=>C.by[d].req]],usgN,{label:"Gemini answers per day",half:1})+`<p class="u-note">Google's own request and error counts appear here once the Google service account is connected (below).</p>`}</section>
@@ -6181,7 +6204,7 @@ function usgLimHtml(){
   const num=(id,v,st)=>`<input class="u-n" data-f="${id}" type="number" min="0" step="${st||"any"}" value="${v==null?"":v}">`;
   return `<details class="card wide u-sec" ${USG.open.lim?"open":""} data-k="lim"><summary><h3>Limits &amp; prices <em>checked ${esc(L.checked||"—")} / ${esc(P.checked||"—")}</em></h3></summary>
     <p class="u-note">No API gives these, so they are typed here. Check them on <a href="${USG_URL.pricing}" target="_blank" rel="noopener">Gemini pricing</a>, <a href="${USG_URL.spend}" target="_blank" rel="noopener">AI Studio → Spend</a> (cap) and <a href="${USG_URL.rate}" target="_blank" rel="noopener">AI Studio → Rate limits</a>. Saving stamps today's date.</p>
-    <div class="src-row"><label class="src-l" style="max-width:240px">Gemini monthly spend cap, main key (USD)${num("cap",L.gemini_cap_usd)}</label></div>
+    <div class="src-row"><label class="src-l" style="max-width:240px">Default spend cap per paid key (USD) — each key has its own in Settings → Gemini keys${num("cap",L.gemini_cap_usd)}</label></div>
     <h4 class="u-h4">Prices, USD per 1 million tokens</h4>
     <div class="tablewrap"><table class="tbl u-pt"><thead><tr><th>Model</th><th>Text in</th><th>Audio in</th><th>Text out</th><th>Audio out</th><th>Cached</th><th></th></tr></thead><tbody>
     ${Object.entries(M).map(([m,p])=>`<tr data-m="${esc(m)}"><td class="mono">${esc(m)}</td>${["in_text","in_audio","out_text","out_audio","cached"].map(k=>`<td>${num(k,p[k])}</td>`).join("")}<td><button class="ebtn u-rm" type="button">Remove</button></td></tr>`).join("")}
@@ -6241,7 +6264,7 @@ function usgXls(){
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(sum.length?sum:[{Item:"No usage in this range"}]),"Summary");
   const daily=C.days.map((d,i)=>{ const o={"Day (Cairo)":d}; it.forEach(x=>{ o[x.item+" ("+x.unit+")"]=x.v[i]==null?"":Math.round(x.v[i]*100)/100; }); return o; });
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(daily),"Per day");
-  const m=(C.meter||[]).map(r=>({"Day (Cairo)":r.day,"User":r.by_email,"Key":r.project,"Model":r.model,"Kind":r.kind,"Text in":(+r.in_text||0)+(+r.in_other||0),"Audio in":+r.in_audio||0,
+  const m=(C.meter||[]).map(r=>({"Day (Cairo)":r.day,"User":r.by_email,"Key":usgKL(r.project),"Model":r.model,"Kind":r.kind,"Text in":(+r.in_text||0)+(+r.in_other||0),"Audio in":+r.in_audio||0,
     "Text out + thinking":(+r.out_text||0)+(+r.thoughts||0),"Audio out":+r.out_audio||0,"Answers":+r.requests||0,"Conversations":+r.sessions||0,"Questions":+r.user_turns||0,
     "Minutes connected":Math.round((+r.secs_connected||0)/6)/10,"Mic minutes sent":Math.round((+r.mic_secs_sent||0)/6)/10,"Estimated USD":usgCost(r)==null?"no price":Math.round(usgCost(r)*10000)/10000}));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(m.length?m:[{"Day (Cairo)":"No Gemini usage in this range"}]),"Gemini by user");
@@ -6254,6 +6277,77 @@ function usgXls(){
     ["n/a","No source publishes it (egress, realtime messages, GitHub bandwidth) — see the official pages."]];
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(about),"About");
   XLSX.writeFile(wb,"SID_usage_"+C.a+"_to_"+C.b+".xlsx");
+}
+
+
+/* ============================================================================
+   V59 — GEMINI KEYS: the order Lara and the AI assistant try them in
+   ========================================================================== */
+const GK={ring:null,saved:{},err:"",busy:false,draft:null};
+const GK_IDS=["main","backup","k1","k2","k3","k4","k5","k6","k7","k8"];
+async function gkLoad(){
+  GK.busy=true; GK.err="";
+  try{ const r=await SB.rpc("sid_gemini_keys"); if(r.error) throw r.error;
+    let R=[]; try{ R=JSON.parse(r.data&&r.data.ring||"[]"); }catch(e){}
+    if(!Array.isArray(R)||!R.length) R=[{id:"main",label:"Main key",tier:"paid",cap_usd:10,on:true},{id:"backup",label:"Backup key",tier:"free",on:true}];
+    GK.ring=R; GK.saved=r.data&&r.data.saved||{}; GK.draft=JSON.parse(JSON.stringify(R)); }
+  catch(e){ GK.err=/sid_gemini_keys|Could not find the function|does not exist/i.test(e.message||"")?"missing":(e.message||String(e)); }
+  GK.busy=false; const el=$("#gkCard"); if(el){ el.outerHTML=gkCardHtml(); gkWire(); }
+}
+function gkCardHtml(){
+  const head=`<h3>Gemini keys <em class="u-un">Lara and Ask SDM AI try them in this order — when one is capped or limited, the next one answers</em></h3>`;
+  if(GK.err==="missing") return `<section class="card wide" id="gkCard">${head}<div class="mm-empty"><b>Not switched on yet</b>An administrator runs step 10 (sql_10_keys.sql) in Supabase once.</div></section>`;
+  if(GK.err) return `<section class="card wide" id="gkCard">${head}<div class="alarm"><b>Could not load:</b> ${esc(GK.err)}</div></section>`;
+  if(!GK.draft) return `<section class="card wide" id="gkCard">${head}<p class="note">Loading…</p></section>`;
+  const D=GK.draft, n=D.length;
+  return `<section class="card wide" id="gkCard">${head}
+    <p class="u-note" style="margin:0 0 10px">Recommended: first the keys covered by a Google AI Pro account's <b>$10 monthly credit</b> (tier “paid”, spend cap $10 in AI Studio → Spend, so they never cost real money and Google does not use the data), then the <b>free-tier</b> keys (no daily limit for Gemini 3.8 Live, but Google may use what is said to improve its products). Keys are stored encrypted in the Supabase Vault and can never be read back on this page.</p>
+    <div class="tablewrap"><table class="tbl gk-t"><thead><tr><th>#</th><th>Name</th><th>Tier</th><th>Spend cap (USD)</th><th>Key</th><th>On</th><th></th></tr></thead><tbody>
+    ${D.map((e,i)=>{ const saved=!!GK.saved[e.id], own=/^k[1-8]$/.test(e.id);
+      return `<tr data-i="${i}"><td class="mono">${i+1}</td>
+      <td><input class="gk-l" value="${esc(e.label||"")}" maxlength="60" placeholder="e.g. Pro account 2 · credit"></td>
+      <td><select class="gk-tier"><option value="paid" ${e.tier!=="free"?"selected":""}>Paid · credit-covered</option><option value="free" ${e.tier==="free"?"selected":""}>Free tier</option></select></td>
+      <td><input class="gk-cap" type="number" min="0" step="1" value="${e.tier==="free"?"":esc(e.cap_usd??10)}" ${e.tier==="free"?"disabled placeholder=\"free\"":""}></td>
+      <td class="gk-k">${own?`<input class="gk-key" type="password" autocomplete="off" placeholder="${saved?"saved ✓ — paste to replace":"paste the key (AIza…)"}">`:
+        `<span class="${saved?"u-ok":"gk-miss"}">${saved?"saved ✓":"missing"}</span> <em class="u-un">${e.id==="main"?"main key":"backup key"} · set in “Sales &amp; Land Bank display and the AI assistant” below</em>`}</td>
+      <td><input type="checkbox" class="gk-on" ${e.on!==false?"checked":""} aria-label="Use this key"></td>
+      <td class="gk-b"><button type="button" class="ebtn gk-up" ${i?"":"disabled"} aria-label="Move up">↑</button><button type="button" class="ebtn gk-dn" ${i<n-1?"":"disabled"} aria-label="Move down">↓</button>${own?`<button type="button" class="ebtn gk-rm">Remove</button>`:""}</td></tr>`; }).join("")}
+    </tbody></table></div>
+    <div class="src-act"><button class="ebtn" id="gkAdd" ${D.length>=10||!GK_IDS.some(id=>/^k/.test(id)&&!D.some(e=>e.id===id))?"disabled":""}>＋ Add a key</button>
+      <button class="applybtn" id="gkSave">Save keys &amp; order</button><span class="src-st" id="gkSt"></span></div>
+    <details class="src-more"><summary>How to get a credit-covered key from another Google AI Pro account</summary>
+      <ol class="gk-how"><li>Sign in to that Google account → <a href="https://developers.google.com/program" target="_blank" rel="noopener">Google Developer Program</a> → claim the monthly Google Cloud credit included with Google AI Pro.</li>
+      <li><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">AI Studio → Get API key</a> → Create API key in a <b>new project</b>; set up billing for that project with the account whose credit was claimed.</li>
+      <li><a href="https://aistudio.google.com/spend" target="_blank" rel="noopener">AI Studio → Spend</a> → set the project's monthly <b>spend cap to $10</b> (= the credit), so it can never charge real money.</li>
+      <li>Here: ＋ Add a key → name it, tier “Paid · credit-covered”, cap 10 → paste the key → Save. A free key: the same without billing, tier “Free tier”.</li></ol></details>
+  </section>`;
+}
+function gkRead(){ $$("#gkCard tbody tr").forEach(tr=>{ const e=GK.draft[+tr.dataset.i]; if(!e) return;
+  e.label=tr.querySelector(".gk-l").value.trim()||e.id; e.tier=tr.querySelector(".gk-tier").value; e.on=tr.querySelector(".gk-on").checked;
+  const c=tr.querySelector(".gk-cap"); if(e.tier==="free") delete e.cap_usd; else e.cap_usd=c&&c.value!==""?+c.value:10; }); }
+function gkRepaint(){ const el=$("#gkCard"); if(el){ const keys=[...$$("#gkCard .gk-key")].map(i=>[i.closest("tr").dataset.i,i.value]); el.outerHTML=gkCardHtml(); gkWire();
+  keys.forEach(([i,v])=>{ const inp=$(`#gkCard tr[data-i="${i}"] .gk-key`); if(inp) inp.value=v; }); } }
+function gkWire(){
+  const C=$("#gkCard"); if(!C) return; if(!GK.draft&&!GK.busy&&!GK.err){ gkLoad(); return; }
+  $$("#gkCard .gk-tier").forEach(s=>s.onchange=()=>{ gkRead(); gkRepaint(); });
+  $$("#gkCard .gk-up,#gkCard .gk-dn").forEach(b=>b.onclick=()=>{ gkRead(); const i=+b.closest("tr").dataset.i, j=b.classList.contains("gk-up")?i-1:i+1; const D=GK.draft; [D[i],D[j]]=[D[j],D[i]]; gkRepaint(); });
+  $$("#gkCard .gk-rm").forEach(b=>b.onclick=async()=>{ gkRead(); const i=+b.closest("tr").dataset.i, e=GK.draft[i];
+    if(GK.saved[e.id]&&!confirm(`Remove “${e.label}” and delete its saved key?`)) return;
+    if(GK.saved[e.id]){ const r=await SB.rpc("sid_del_secret",{p_name:"gemini_"+e.id}); if(r.error){ toast("Could not remove: "+r.error.message,true); return; } GK.saved[e.id]=false; }
+    GK.draft.splice(i,1); gkRepaint(); toast("Key removed — press Save to keep the new order"); });
+  const add=$("#gkAdd"); if(add) add.onclick=()=>{ gkRead(); const id=GK_IDS.find(x=>/^k/.test(x)&&!GK.draft.some(e=>e.id===x)); if(!id) return;
+    GK.draft.push({id,label:"Pro account "+(GK.draft.length+1)+" · credit",tier:"paid",cap_usd:10,on:true}); gkRepaint(); };
+  const sv=$("#gkSave"); if(sv) sv.onclick=async()=>{ gkRead(); const st=$("#gkSt"); sv.disabled=true; st.textContent="Saving…";
+    try{ for(const inp of $$("#gkCard .gk-key")){ const v=inp.value.trim(); if(!v) continue; const e=GK.draft[+inp.closest("tr").dataset.i];
+        if(!/^AIza[0-9A-Za-z_\-]{30,}$/.test(v)){ throw new Error(`“${e.label}”: that does not look like a Gemini API key (it starts with AIza)`); }
+        const r=await SB.rpc("sid_set_secret",{p_name:"gemini_"+e.id,p_value:v}); if(r.error) throw r.error; GK.saved[e.id]=true; inp.value=""; }
+      const ring=GK.draft.map(e=>({id:e.id,label:e.label,tier:e.tier,...(e.tier!=="free"?{cap_usd:+e.cap_usd||10}:{}),on:e.on!==false}));
+      const r=await SB.rpc("sid_gemini_ring_save",{p:ring}); if(r.error) throw r.error;
+      GK.ring=JSON.parse(JSON.stringify(ring)); if(USG.data&&USG.data.config) USG.data.config.gemini_keyring=JSON.stringify(ring);
+      const missing=ring.filter(e=>e.on&&!GK.saved[e.id]).map(e=>e.label);
+      toast("Gemini keys saved — "+ring.filter(e=>e.on&&GK.saved[e.id]).length+" in use"+(missing.length?" · no key yet for: "+missing.join(", "):""),!!missing.length); gkRepaint(); }
+    catch(e){ st.textContent=""; toast("Could not save: "+(e.message||e),true); }
+    sv.disabled=false; };
 }
 
 /* ---- plot card: Print menu ---- */
@@ -6724,7 +6818,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V58.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V59.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
@@ -11895,6 +11989,7 @@ function viewSettings(){
     <button class="ebtn" id="setReload">Refresh</button></div>
   ${SET.err?`<div class="alarm"><b>Could not load:</b> ${esc(SET.err)}</div>`:""}
   <section class="card wide u-link"><div><h3>Usage &amp; limits</h3><p class="u-note" style="margin:0">Gemini tokens and cost, the $ cap, Supabase database / storage / users and every free-tier limit — with daily trends. Read only when you press Sync.</p></div><button class="applybtn" type="button" onclick="go('usage')">Open Usage →</button></section>
+  ${gkCardHtml()}
   ${srcCardHtml()}
   ${mailCardHtml()}
   ${logCardHtml()}
@@ -11944,6 +12039,7 @@ function wireSettings(){
   if(!SRC.loaded) srcLoad(); else { srcWire(); mailWire(); }
   logWire();
   sbWire();
+  gkWire();
   const again=()=>{ const sc=C.scrollTop; C.innerHTML=viewSettings(); wireSettings(); C.scrollTop=sc; };
   const busy=async(fn,ok)=>{ try{ await fn(); if(ok) toast(ok); await setLoad(); }catch(e){ toast(e.message||String(e),true); } };
   const rl=$("#setReload"); if(rl) rl.onclick=()=>{ SET.users=null; again(); };
