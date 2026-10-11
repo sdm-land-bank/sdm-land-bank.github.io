@@ -2253,6 +2253,18 @@ body.m-moving .poi .poi-n,body.m-moving .tpin-c,body.m-moving .rt-km{-webkit-bac
 }
 .lara-ios .lara-aw{display:none!important}
 
+/* ---- V61: network round-trip beside the dot ---- */
+.lara-ms{position:absolute;left:calc(50% + 7px);top:-10px;z-index:3;pointer-events:none;white-space:nowrap;
+  font:600 9px/1 Inter,-apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.01em;
+  color:#fff;background:rgba(20,20,24,.62);padding:2px 4px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.lara-ms:empty{display:none}
+.lara-ms[data-q="slow"]{color:#FFD60A} .lara-ms[data-q="bad"]{color:#FF6961}
+.lara-ms.in-top{position:static;display:inline-block;vertical-align:middle;margin:0 6px 0 -3px;background:none;box-shadow:none;padding:0;
+  color:inherit;opacity:.7;font-size:10px}
+.lara-ms.in-top[data-q="slow"]{color:#B8860B;opacity:1} .lara-ms.in-top[data-q="bad"]{color:#D70015;opacity:1}
+.lara-dock.open .lara-orbbtn .lara-ms{display:none}
+.lara-dock[data-st="off"] .lara-orbbtn .lara-ms{opacity:.8}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
@@ -4208,13 +4220,14 @@ function laraPulseData(){
   return Object.keys(S.reg.parks).map(id=>({park:laraParkName(id),...laraStats({park:S.reg.parks[id].name})}));
 }
 function laraFirst(){ const n=(typeof SBME!=="undefined"&&SBME&&SBME.name)||""; return String(n).trim().split(/\s+/)[0]||""; }
+const LARA_EG_RULES="LANGUAGE — STRICT RULE: you speak ONLY Egyptian colloquial Arabic (العامية المصرية, the Cairo dialect) — NEVER Modern Standard Arabic (الفصحى). This is the default for every conversation, greeting and answer.\nSay it the Egyptian way: عايز/عايزة، دلوقتي، إزاي، كده، مش، فين، إيه، ليه، إمتى، أيوه، لأ، مفيش، فيه، حاضر، تمام، يا فندم، حضرتك، اللي، ده/دي/دول، هـ للمستقبل (هعرضلك، هبعتلك)، بـ للمضارع (بدوّر، بحسب)، عشان، بس، خلاص، معلش، ثانية واحدة، النهارده، بكره، أقدر.\nNever use فصحى words: ماذا، لماذا، كيف، أين، متى، سوف، سأ…، الآن، يمكنني، أستطيع، أود، أعتذر، عذراً، حسناً، نعم، لا يوجد، لديك، لدينا، هذا، هذه، الذي، التي، هؤلاء، ليس، جداً، فقط، أيضاً.\nYou are a woman: talk about yourself in the feminine (أنا جاهزة، عرضتلك، بعتّلك، شوفتلك).\nSay numbers the Egyptian way (مليون ونص، اتنين مليار وتلتمية مليون، تلاتين في المية، تلتاشر شهر، ألفين وخمسمية متر).\nEgyptians mix English words (plot, offer, cash, available, payment plan, PDF, sector, email, map…) — that is normal Egyptian Arabic: keep answering in Egyptian Arabic; you may keep those English terms, names and plot codes.\nSwitch to English ONLY when the user clearly asks for it (\"do you speak English?\", \"can you speak English?\", \"talk in English\", \"كلميني إنجليزي\"); then answer in English until they ask for Arabic again. A sentence in English WITHOUT such a request is still answered in Egyptian Arabic.\nThe user never speaks French, Italian, German or Spanish — if a sentence sounds like one, it was Egyptian Arabic.";
 function laraSystem(){
   const name=laraFirst(), pages=Object.keys(LARA_PAGES).filter(k=>{ const p=LARA_PAGES[k]; return laraCan(p[1]||p[0])&&laraCan(p[0]); });
-  const lang=LARA_PREF.lang==="ar"?"Always answer in Egyptian Arabic.":LARA_PREF.lang==="en"?"Always answer in English.":"The user speaks Egyptian Arabic or English (often mixed). Answer in the language of their last sentence: Egyptian Arabic (عامية مصرية) or English. They NEVER speak French, German, Spanish or any other language — if a sentence sounds like one, it was Egyptian Arabic: answer in Egyptian Arabic. Never answer in any other language.";
+  const lang=LARA_PREF.lang==="en"?"Answer in English unless the user asks for Arabic; when they do, speak ONLY Egyptian colloquial Arabic (عامية مصرية), never فصحى.":LARA_EG_RULES;
   const cl=LARA.convLang==="ar"?"THIS CONVERSATION IS IN EGYPTIAN ARABIC — keep answering in Egyptian Arabic (English plot codes and names are fine) until the user explicitly asks for English.":LARA.convLang==="en"?"THIS CONVERSATION IS IN ENGLISH — keep answering in English until the user explicitly asks for Arabic.":"";
   return `You are Lara, the live voice assistant inside SID Dashboard of Elsewedy Industrial Development (SID), an Egyptian developer of industrial parks. You talk with ${name||"the user"} by voice and you OPERATE the whole system with your tools while you speak — the user watches your cursor and the screen change.
 VOICE: warm, confident, natural — the best land advisor in Egypt. One to three short spoken sentences per turn. Never read tables, codes or long lists; give the key figure or the best one or two and offer more. Round numbers ("about four point two billion pounds"). Money is Egyptian pounds. ${lang}
-LANGUAGE LOCK: the language of the user's FIRST sentence is the language of the whole conversation. If they started in Egyptian Arabic, keep answering in Egyptian Arabic even when a later sentence contains English words, names or numbers; if they started in English, keep English even if they use some Arabic words. Switch only when the user clearly asks you to change language, then keep the new one. ${cl}
+LANGUAGE LOCK: keep the conversation language (Egyptian Arabic unless the user asked for English) for every answer; English words, names or numbers in the user's sentence never change it — only an explicit request does. ${cl}
 PLOT AVAILABILITY: only Available plots can be offered. Tool results list sold / reserved / EOI / on-hold plots under not_available with a "say" line — tell the user at once, in your own words (e.g. "E-8-7 is reserved for INP Egypt, so I left it out"); never merge or present such a plot silently.
 MAP SECTORS: in plot codes like E-11-8 the sector (قطاع / سيكتور / بلوك) is E-11; "A11" or "A 11" means A-11. For "which sector can I take whole?" call list_blocks; to take a whole sector call merge_plots with block. The MDS "sector" column is the industry, not the map sector.
 DATES: set the first payment date with payment_plan first_payment_date (5/11/2026 = 5 November 2026, day first). After any change on screen, say what the screen now shows; if a tool returns an error, say plainly that it did not change.
@@ -4390,9 +4403,9 @@ async function laraStart(opts={}){
   try{ localStorage.setItem("sid.lara.day",new Date().toDateString()); }catch(e){}
   const pre=LARA.pre||[]; LARA.pre=null;
   if(opts.text) laraSend(opts.text);
-  else if(rest.split(/\s+/).length>=3){ if(pre.length>20) pre.forEach(m=>LARA.ws.send(m)); else laraSend(rest); }
-  else if((!LARA.handle||!LARA.greeted)&&!(Date.now()-(LARA.lastEnd||0)<600000)) laraSend(`(The user just said "Hey Lara". Greet ${first||"them"} with good ${part} and "how may I help you today?" in one short sentence${firstToday?", and add ONE short interesting highlight from the PULSE":""}.)`);
-  else laraSend(`(The user said "Hey Lara" again. Say a two-word "Yes, ${first||""}?" style reply.)`);
+  else if(rest.split(/\s+/).filter(Boolean).length>=2&&(pre.length>20||LARA_EN.test(rest))){ if(pre.length>20) pre.forEach(m=>LARA.ws.send(m)); else laraSend(rest); }
+  else if((!LARA.handle||!LARA.greeted)&&!(Date.now()-(LARA.lastEnd||0)<600000)) laraSend(`(The user just said "Hey Lara". Greet ${first||"them"} with good ${part} and "how may I help you today?" in one short sentence ${LARA.convLang==="en"?"in English":"in Egyptian Arabic (صباح الخير / مساء الخير يا … أقدر أساعدك في إيه النهارده؟)"}${firstToday?", and add ONE short interesting highlight from the PULSE":""}.)`);
+  else laraSend(`(The user said "Hey Lara" again. Say a two-word ${LARA.convLang==="en"?"\"Yes, "+(first||"")+"?\"":"Egyptian \"أيوه يا "+(first||"فندم")+"؟\""} style reply.)`);
   LARA.greeted=true;
 }
 function laraSleep(quiet){ LARA.convLang=null; LARA.handle=null; if(!LARA.sleeping||LARA.ws||LARA.dozing){ laraTurnLog(); laraLog("end",quiet?"idle":"closed"); } laraLogFlush();
@@ -4408,7 +4421,7 @@ function laraFail(e){ laraLog("error",e&&e.message||String(e),{state:LARA.st}); 
 function laraWakeStart(){
   const R=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!R||!LARA_PREF.awake||LARA.ws||LARA.lite&&LARA.liteRec||LARA.wake||!laraOnline()||document.hidden) return;
-  const r=new R(); r.continuous=true; r.interimResults=true; r.lang=LARA_PREF.lang==="en"?"en-US":"ar-EG"; r.maxAlternatives=3;
+  const r=new R(); r.continuous=true; r.interimResults=true; r.lang="en-US"; r.maxAlternatives=3; laraWakeLocal(r);
   r.onresult=e=>{ LARA.wakeBeat=Date.now(); LARA.wakeErrN=0; for(let i=e.resultIndex;i<e.results.length;i++){ const res=e.results[i];
       for(let a=0;a<res.length;a++){ const tx=res[a].transcript, m=tx.match(LARA_WAKE);
         if(m&&!LARA.wakeHit){ LARA.wakeHit=Date.now(); LARA.wakeRest=tx.slice(m.index+m[0].length); laraStart({wake:true}); }
@@ -4416,7 +4429,7 @@ function laraWakeStart(){
         if(res.isFinal&&!m&&!LARA.wakeHit&&a===0&&/l[aeo]+u?r|لار|لور/i.test(tx)) laraLog("info","wake word near-miss",{heard:tx.slice(0,40),lang:r.lang});
         if(LARA.wakeHit&&res.isFinal){ LARA.wakeHit=null; try{ r.stop(); }catch(e){} return; } } } };
   r.onstart=()=>{ LARA.wakeBeat=Date.now(); }; r.onaudiostart=()=>{ LARA.wakeBeat=Date.now(); };
-  r.onerror=e=>{ if(!/no-speech|aborted/.test(e.error)) LARA.wakeErrN=(LARA.wakeErrN||0)+1; if(!/no-speech|aborted/.test(e.error)) laraLog("error","wake word: "+e.error,{lang:r.lang}); if(e.error==="not-allowed"||e.error==="service-not-allowed"){ LARA_PREF.awake=false; laraPrefSave(); laraState("off"); toast(e.error==="service-not-allowed"?"This browser can't listen for “Hey Lara” — tap Lara to talk":"“Hey Lara” needs the microphone — click the orb to talk instead",true); } };
+  r.onerror=e=>{ if(laraWakeLocalErr(r,e)) return; if(!/no-speech|aborted/.test(e.error)) LARA.wakeErrN=(LARA.wakeErrN||0)+1; if(!/no-speech|aborted/.test(e.error)) laraLog("error","wake word: "+e.error,{lang:r.lang}); if(e.error==="not-allowed"||e.error==="service-not-allowed"){ LARA_PREF.awake=false; laraPrefSave(); laraState("off"); toast(e.error==="service-not-allowed"?"This browser can't listen for “Hey Lara” — tap Lara to talk":"“Hey Lara” needs the microphone — click the orb to talk instead",true); } };
   r.onend=()=>{ if(LARA.wake===r) LARA.wake=null; if(LARA.wakeHit){ LARA.wakeHit=null; } if(LARA_PREF.awake&&!LARA.ws&&LARA.st==="wake") setTimeout(laraWakeStart,(LARA.wakeErrN||0)>2?Math.min(15000,1500*LARA.wakeErrN):350); };
   try{ r.start(); LARA.wake=r; if(LARA.st==="off") laraState("wake"); if(!LARA.wakeLogged){ LARA.wakeLogged=1; laraLog("info","wake word listening",{lang:r.lang}); } }catch(e){ laraLog("error","wake word did not start: "+(e&&e.message||e)); }
 }
@@ -4429,13 +4442,13 @@ function laraLiteStart(opts){
   const first=laraFirst();
   if(opts.text) laraLiteTurn(opts.text);
   else if((LARA.wakeRest||"").trim().split(/\s+/).length>=3){ const t=LARA.wakeRest; LARA.wakeRest=""; laraLiteTurn(t); }
-  else laraSay(`Hello${first?" "+first:""}, how may I help you today?`);
+  else laraSay(LARA.convLang==="en"?`Hello${first?" "+first:""}, how may I help you today?`:`أهلاً${first?" يا "+first:""}، أقدر أساعدك في إيه؟`);
   laraLiteListen();
 }
 function laraLiteListen(){
   const R=window.SpeechRecognition||window.webkitSpeechRecognition; if(!R||!LARA.lite||LARA.sleeping) return;
   if(LARA.liteRec) return;
-  const r=new R(); r.continuous=true; r.interimResults=true; r.lang=LARA_PREF.lang==="ar"?"ar-EG":"en-US";
+  const r=new R(); r.continuous=true; r.interimResults=true; r.lang=(LARA.convLang||LARA_PREF.lang)==="en"?"en-US":"ar-EG";
   r.onresult=e=>{ let fin="", tmp=""; for(let i=e.resultIndex;i<e.results.length;i++){ const x=e.results[i]; if(x.isFinal) fin+=x[0].transcript; else tmp+=x[0].transcript; }
     if(tmp){ laraCap("u",tmp,true); if(LARA.speaking){ try{ speechSynthesis.cancel(); }catch(e){} LARA.speaking=false; } }
     if(fin.trim()){ laraCap("u",fin,true); laraIdleArm(); laraLiteTurn(fin.trim()); } };
@@ -4493,7 +4506,7 @@ function laraUI(){
       <form class="lara-in" id="laraIn" autocomplete="off"><input id="laraTxt" placeholder="Type to Lara… or just talk"><button type="submit" aria-label="Send">${LARA_IC.send}</button></form>
       <div class="lara-set" id="laraSet" hidden>
         <label>Voice<select id="laraVoice">${LARA_VOICES.map(([v,l])=>`<option value="${v}" ${LARA_PREF.voice===v?"selected":""}>${l}</option>`).join("")}</select></label>
-        <label>Language<select id="laraLang"><option value="auto">Auto (English / العربية)</option><option value="en">English</option><option value="ar">العربية (Egyptian)</option></select></label>
+        <label>Language<select id="laraLang"><option value="auto">مصري — Egyptian Arabic (English only when asked)</option><option value="en">English</option><option value="ar">مصري فقط — Egyptian Arabic only</option></select></label>
         <label class="ck"><input type="checkbox" id="laraRoam" ${lbRoamOn()?"checked":""}> Walk around the screen (off = she stays where you put her)</label>
         <label class="ck"><input type="checkbox" id="laraSpk" ${LARA_PREF.speaker?"checked":""}> Speaker mode (no headphones) — Lara ignores her own voice</label>
         <p class="lara-note" id="laraModel"></p></div>
@@ -4915,7 +4928,7 @@ function lbPose(name,ms){ const B=LBOT, P=LB_POSE[name]; if(!B.ok||!P) return; m
   B.pose=name; B.poseT0=now; B.poseEnd=now+ms; B.lastPose=name; }
 function lbBubble(text,ms,pose){ const B=LBOT, d=$("#laraDock"); if(!B.ok||!d||d.classList.contains("open")) return;
   const sub=$("#laraSub"); if(sub&&!sub.hidden&&d.classList.contains("mini")) return;
-  const ar=(LARA.convLang||LARA_PREF.lang)==="ar";
+  const ar=(LARA.convLang||LARA_PREF.lang)!=="en";
   B.bub.innerHTML=text?esc(text):(ar?"<small>لارا</small>أقدر أساعدك في إيه النهارده؟":"<small>Lara</small>How may I help you today?");
   const r=d.getBoundingClientRect(); B.bub.classList.toggle("below",r.top<120); B.bub.classList.toggle("flip",r.left+r.width/2>innerWidth-170);
   B.bub.classList.add("on"); B.bubHover=!ms; clearTimeout(B.bubT); if(ms) B.bubT=setTimeout(()=>lbBubbleHide(0),ms); if(pose) lbPose(pose,2200); }
@@ -5171,7 +5184,7 @@ function laraLoopCheck(){
     laraLog("loop",LARA.rep>=2?"same answer 3 times":"3 answers without the user speaking",{last:out.slice(0,200),q:NET.q,rtt:NET.rtt,echo:!!LARA.echoGuard});
     LARA.rep=0; LARA.noUser=0; LARA.outs=[]; LARA.echoGuard=true;
     laraStopAudio(); laraChipDone(laraChip("I was repeating myself, so I stopped — just speak to continue"),false);
-    setTimeout(()=>{ if(LARA.ws){ if(LARA.manual) laraDoze(); else laraSleep(true); } },50);
+    setTimeout(()=>{ if(LARA.ws) laraSleep(true); },50);
     return true;
   }
   return false;
@@ -5611,6 +5624,85 @@ PAYMENT: when the user asks for instalments, a plan, "X months" or "X years", ca
 FOCUS: do what was asked, once. Never repeat the same tool call; if a tool fails twice, tell the user plainly what did not work.`;
 const laraSystemV60=laraSystem;
 laraSystem=function(){ return laraSystemV60()+"\n"+LARA_RULES_V60; };
+
+
+/* ============================================================================
+   V61 — "Hey Lara" (on-device English, name boosted) · Egyptian Arabic only · network ms
+   ========================================================================== */
+const LWAKE={local:null,checking:false,failAt:0};
+function laraWakeLocal(r){
+  if(LWAKE.local&&"processLocally" in r&&typeof SpeechRecognitionPhrase==="function"){
+    try{ r.processLocally=true; r.phrases=["Hey Lara","Hi Lara","Lara"].map(p=>new SpeechRecognitionPhrase(p,3)); r.__local=true; }
+    catch(e){ r.__local=false; try{ r.processLocally=false; r.phrases=[]; }catch(x){} } }
+  else setTimeout(laraWakePrep,0);
+}
+function laraWakeLocalErr(r,e){
+  if(!r.__local||/no-speech|aborted|not-allowed|audio-capture/.test(e.error)) return false;
+  LWAKE.local=false; LWAKE.failAt=Date.now(); laraLog("info","wake word: on-device model failed ("+e.error+") — using Chrome's online recognizer");
+  return true;   // its onend restarts the listener (online)
+}
+async function laraWakePrep(){
+  const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(LWAKE.checking||LWAKE.local||!R||typeof R.available!=="function"||!LARA_PREF.awake||LARA_IOS) return;
+  if(LWAKE.local===false&&Date.now()-LWAKE.failAt<3600000) return;
+  LWAKE.checking=true;
+  try{ const o={langs:["en-US"],processLocally:true}; let st=await R.available(o);
+    if((st==="downloadable"||st==="downloading")&&typeof R.install==="function"){ laraLog("info","wake word: installing Chrome's on-device English speech model");
+      st=(await R.install(o))?await R.available(o):"unavailable"; }
+    LWAKE.local=st==="available"; if(!LWAKE.local) LWAKE.failAt=Date.now();
+    laraLog("info","wake word recognizer: "+(LWAKE.local?"on-device, name boosted":"online"),{status:st});
+    if(LWAKE.local&&LARA.wake&&!LARA.wake.__local&&!LARA.wakeHit){ laraWakeStop(); setTimeout(laraWakeStart,250); } }
+  catch(e){ LWAKE.local=false; LWAKE.failAt=Date.now(); laraLog("info","wake word: on-device check failed",{msg:String(e&&e.message||e).slice(0,120)}); }
+  LWAKE.checking=false;
+}
+
+/* ---- language: Egyptian Arabic, always; English only when the user asks for it ---- */
+const LARA_ASK_EN=/\b(do|can|could|would|will)\s+(you|u)\s+(please\s+)?(start\s+|begin\s+)?(speak|speaking|talk|talking|answer|answering|reply|respond)\s+(in\s+)?english\b|\b(speak|speaking|talk|talking|answer|reply|respond)\b[^.?!؟]{0,12}\benglish\b|\b(switch|change|continue|go)\s+(back\s+)?(to|in)\s+english\b|\benglish,?\s+please\b|(اتكلمي|إتكلمي|كلميني|ردي|ردّي|تتكلمي|بتتكلمي|تعرفي\s*تتكلمي|نتكلم|خليكي|كملي|اتكلم|كلمني)\s*(معايا\s*)?(باللغة\s*)?(بال|ب)?(انجليزي|إنجليزي|انجلش|إنجلش|انقليزي|الانجليزي|الإنجليزي|الانجليزية|الإنجليزية|english)/i;
+const LARA_ASK_AR=/\b(speak|talk|answer|reply|respond|switch|go\s+back)\b[^.?!؟]{0,20}\b(arabic|egyptian)\b|(اتكلمي|إتكلمي|كلميني|ردي|ردّي|تتكلمي|نتكلم|خليكي|كملي|ارجعي|اتكلم|كلمني)\s*(معايا\s*)?(باللغة\s*)?(بال|ب)?(عربي|العربي|العربية|مصري|المصري)/i;
+laraLangFrom=function(text){ const t=String(text||""); if(!t.trim()) return null;
+  if(LARA_ASK_EN.test(t)) return {lang:"en",asked:true};
+  if(LARA_ASK_AR.test(t)) return {lang:"ar",asked:true};
+  const ar=(t.match(/[؀-ۿ]/g)||[]).length, la=(t.match(/[a-z]/gi)||[]).length; if(ar+la<3) return null;
+  const lang=ar>=la*0.6?"ar":"en"; if(lang==="en"&&!LARA_EN.test(t)) return null;   // Arabic heard as Italian / French
+  return {lang,asked:false}; };
+const LARA_FUSHA=/(^|[\s،,.؟?!:])(ماذا|لماذا|سوف|الآن|يمكنني|يمكنك|أستطيع|استطيع|أود|عذرا|عذراً|حسنا|حسناً|لديك|لدينا|لدي|هذه|هذا|الذي|التي|هؤلاء|ليس|ليست|كيف|أين|متى|نعم|جداً|أيضاً|فقط|سأقوم|سأ\S+|قمت|هل|تريد|تريدين|ترغب|أرغب|بإمكاني|بالطبع|بالتأكيد|هناك)(?=$|[\s،,.؟?!:])/g;
+const LARA_DIAL_NOTE="(Note, not a question — do not reply to this note: speak ONLY Egyptian colloquial Arabic — عامية مصرية, not فصحى and not English — in every answer, unless I ask for English.)";
+function laraDialCheck(out){ out=String(out||""); if(!out.trim()||LARA.convLang!=="ar") return;
+  const fus=(out.match(LARA_FUSHA)||[]).length, ar=(out.match(/[؀-ۿ]/g)||[]).length, la=(out.match(/[a-z]/gi)||[]).length;
+  const why=fus>=2?"فصحى words: "+fus:(la>ar*1.5&&la>25&&LARA_EN.test(out))?"answered in English":"";
+  if(why&&!LARA.dialDue){ LARA.dialDue=true; laraLog("info","dialect reminder queued",{why,said:out.slice(0,120)}); } }
+const laraLangTrackV61=laraLangTrack;
+laraLangTrack=function(text,typed){ laraLangTrackV61(text,typed);
+  if(LARA.dialDue&&!typed&&LARA.ws&&LARA.ws.readyState===1&&!LARA.lite&&LARA.convLang==="ar"&&String(text||"").trim()){
+    LARA.dialDue=false; try{ LARA.ws.send(JSON.stringify({realtimeInput:{text:LARA_DIAL_NOTE}})); }catch(e){} } };
+const laraSendV61=laraSend;
+laraSend=function(text){ text=String(text||"");
+  if(LARA.dialDue&&!/^\(/.test(text)&&LARA.convLang==="ar"){ LARA.dialDue=false; text=text+"\n"+LARA_DIAL_NOTE; }
+  return laraSendV61(text); };
+const laraMsgV61=laraMsg;
+laraMsg=function(m){ try{ const sc=m&&m.serverContent;
+    if(sc){ if(sc.outputTranscription&&sc.outputTranscription.text) LARA.v61out=(LARA.v61out||"")+sc.outputTranscription.text;
+      if(sc.turnComplete){ laraDialCheck(LARA.v61out); LARA.v61out=""; } } }catch(e){}
+  return laraMsgV61(m); };
+
+/* ---- every conversation: Egyptian Arabic, fresh loop counters ---- */
+const laraStartV61=laraStart;
+laraStart=function(opts){ if(!LARA.ws&&LARA.st!=="connecting"){
+    LARA.convLang=LARA_PREF.lang==="en"?"en":"ar"; LARA.dialDue=false; LARA.v61out="";
+    LARA.noUser=0; LARA.rep=0; LARA.outs=[]; LARA.echoTurn=false; LARA.toolTurn=false; }
+  return laraStartV61(opts); };
+
+/* ---- network: the round-trip time beside the dot ---- */
+function netMs(){ const t=NET.rtt!=null&&navigator.onLine?NET.rtt+" ms":navigator.onLine?"":"offline";
+  const b=$("#laraOrbBtn"); if(b&&!$("#laraMs")){ const i=document.createElement("b"); i.className="lara-ms"; i.id="laraMs"; b.appendChild(i); }
+  const d=$("#laraNetT"); if(d&&!$("#laraMsT")){ const i=document.createElement("b"); i.className="lara-ms in-top"; i.id="laraMsT"; d.after(i); }
+  $$(".lara-ms").forEach(el=>{ if(el.textContent!==t) el.textContent=t; el.dataset.q=NET.q; }); }
+const netSetV61=netSet;
+netSet=function(){ netSetV61(); try{ netMs(); }catch(e){} };
+const netTickV61=netTick;
+netTick=function(){ netTickV61();
+  if(!netAwake()&&!document.hidden&&navigator.onLine&&Date.now()-(NET.idlePing||0)>25000){ NET.idlePing=Date.now(); netPing(); } };
+setTimeout(()=>{ try{ netMs(); if(!netAwake()&&navigator.onLine){ NET.idlePing=Date.now(); netPing(); } if(LARA_PREF.awake) laraWakePrep(); }catch(e){} },1500);
 
 
 /* ============================================================================
@@ -7077,7 +7169,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V60.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V61.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
