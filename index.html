@@ -862,6 +862,12 @@ body.no-matchfin #fpOn,body.no-matchfin .fp-panel,body.no-matchfin .fp-sec,body.
   .src-row .applybtn{width:100%!important}
   .set .applybtn{white-space:normal}
 }
+/* V63: Settings on a phone — the keys table grows with its rows (no box scrolling inside the page), the role chips wrap,
+   key status lines in the normal font */
+#gkCard .tablewrap{max-height:none!important;overflow:visible!important}
+#gkCard .gk-use,#gkCard .gk-use *{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+.set-rl{flex-wrap:wrap}
+@media (max-width:820px){ .set-rl>*{max-width:100%} }
 
 #sbGate{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:radial-gradient(1200px 600px at 20% 0%,#3a0d16 0%,#141416 60%);padding:16px}
 .sbg-box{width:min(380px,100%);background:#fff;border-radius:18px;padding:26px 24px 22px;box-shadow:0 40px 90px -30px rgba(0,0,0,.7);display:flex;flex-direction:column;gap:12px;color:#15171b}
@@ -2282,6 +2288,8 @@ body.m-moving .poi .poi-n,body.m-moving .tpin-c,body.m-moving .rt-km{-webkit-bac
   aside.rail .stamp{min-height:24px;font-size:9px}
   #ntBell>svg,#sbOutRail>svg{flex:0 0 16px;margin:0 13px}
 }
+#laraDock.lb-crowd:not(.open):not(:hover) #laraOrbBtn{opacity:.42;transform:scale(.72);transform-origin:50% 100%}
+#laraDock #laraOrbBtn{transition:opacity .25s ease,transform .25s ease,width .3s,height .3s}
 body:has(aside.rail:hover) .lara-dock{opacity:0!important;pointer-events:none!important;transition:opacity .15s}
 
 </style>
@@ -5827,6 +5835,16 @@ laraRun=async function(name,a){ a=a||{};
       if(r2&&!r2.error){ laraLog("info","park on screen used",{tool:name,asked:a.park,used:cur});
         r2.note=(r2.note?r2.note+" ":"")+"Not found in "+a.park+", so I used the park on screen, "+cur+" — say it in one short phrase."; r=r2; } } }
   return r; };
+
+/* ---- Lara's place: re-checked right after every page change (was ~2.5 s later); on a page with no free corner
+   (register, data health, full tables) she shrinks to a faint badge until hovered ---- */
+const lbHomeV63=lbHome;
+lbHome=function(jump){ const r=lbHomeV63(jump);
+  try{ const R=LB_RM, b=LBOT.base, d=document.getElementById("laraDock"); if(R.home&&b&&d){ const sc=lbScore(R.home.x,R.home.y,b.w,b.h); d.classList.toggle("lb-crowd",sc>1); } }catch(e){}
+  return r; };
+const goV63=go;
+go=function(v){ const r=goV63(v); setTimeout(()=>{ try{ if(LBOT&&LBOT.base) lbHome(false); }catch(e){} },450); return r; };
+
 const LARA_RULES_V63=`PARK: the park the user means is the one ON SCREEN (park_on_screen in every tool result) unless they name another park in the same sentence. After open_park, the new park is the current one — never go back to a park from earlier in the conversation.
 EGYPTIAN WORDS: a plot is «أرض» or «قطعة أرض», plots are «أراضي» (e.g. «الأراضي دي»، «دمجتلك الأرضين»). Never say بلوت / بلوتات / البلوت in Arabic. A sector (E-11) is «قطاع».`;
 const laraSystemV63=laraSystem;
@@ -6398,12 +6416,20 @@ function usgCost(r){ const P=(usgCfg("usage_prices").models||{})[r.model]; if(!P
   return (tin*(P.in_text||0)+(+r.in_audio||0)*(P.in_audio??P.in_text??0)+tout*(P.out_text||0)+(+r.out_audio||0)*(P.out_audio??P.out_text??0))/1e6; }
 const usgTok=(r,k)=>k==="in_text"?(+r.in_text||0)+(+r.in_other||0):k==="out_text"?(+r.out_text||0)+(+r.thoughts||0):(+r[k]||0);
 
+/* what Google itself said about each key this month — a refused Lara connect is logged with the key and Google's reason */
+async function usgGoogleStatus(){ const o={};
+  try{ const m0=new Date(); m0.setUTCDate(1); m0.setUTCHours(8,0,0,0);
+    const g=await SB.from("sid_lara_log").select("at,data").eq("kind","error").like("text","voice model failed%").gte("at",m0.toISOString()).order("at",{ascending:false}).limit(300);
+    (g.data||[]).forEach(x=>{ const d=x.data||{}, k=d.key, msg=String(d.msg||""); if(!k||o[k]) return;
+      const why=/spending cap|spend cap/i.test(msg)?"cap":/quota|exhausted|429|rate/i.test(msg)?"quota":/API key|invalid|permission|denied|401|403/i.test(msg)?"key":"";
+      if(why) o[k]={why,at:x.at,msg:msg.slice(0,160)}; }); }catch(e){}
+  return o; }
 async function usgLoad(force){
   if(USG.busy) return; const [a,b]=usgRange();
   if(!force&&USG.data&&USG.win&&a>=USG.win[0]&&b<=USG.win[1]) return usgPaint();
   USG.busy=true; USG.err=""; usgPaint();
   const from=a<usgAdd(usgDay(),-91)?a:usgAdd(usgDay(),-91), to=usgDay();
-  try{ const r=await SB.rpc("sid_usage_read",{p_from:from,p_to:to}); if(r.error) throw r.error; USG.data=r.data; USG.win=[from,to]; }
+  try{ const r=await SB.rpc("sid_usage_read",{p_from:from,p_to:to}); if(r.error) throw r.error; USG.data=r.data; USG.win=[from,to]; USG.google=await usgGoogleStatus(); }
   catch(e){ USG.err=/sid_usage_read|Could not find the function|does not exist/i.test(e.message||"")?"missing":(e.message||String(e)); }
   USG.busy=false; usgPaint();
 }
@@ -6516,9 +6542,14 @@ function usgCards(C){
   const mailMax=Math.max(0,...C.mail.map(r=>+r.max_per_user||0));
   const site=(()=>{ try{ const e=performance.getEntriesByType("navigation")[0]; return e&&(e.decodedBodySize||e.encodedBodySize)||null; }catch(e){ return null; } })();
   return [
-    ...C.perKey.map(k=>usgCard({name:"Gemini spend this month · "+k.label,used:k.mtd,limit:+k.cap_usd||cap||null,fmt:usgUSD,src:USG_SRC.e,link:USG_URL.spend,
+    ...C.perKey.map(k=>{ const G=USG.google&&USG.google[k.id];
+      if(G&&G.why==="cap") return `<div class="u-card red"><div class="u-ch"><b>${esc("Gemini spend this month · "+k.label)}</b></div>
+        <div class="u-big">Blocked by Google</div><div class="u-bar"><i style="width:100%"></i></div><div class="u-pct">monthly spend cap reached ⛔</div>
+        <div class="u-sub">Google refused this key on ${esc(new Date(G.at).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",timeZone:"Africa/Cairo"}))} (Cairo): “${esc(G.msg)}”. Lara uses the next key until the cap resets on the 1st (Pacific time). SID's own count on this key since 8 Oct: ${usgUSD(k.mtd)} — the rest of the cap was used before that or by other apps on the same Google project.</div>
+        <div class="u-src">Lara's log · <a href="${USG_URL.spend}" target="_blank" rel="noopener">AI Studio → Spend ↗</a></div></div>`;
+      return usgCard({name:"Gemini spend this month · "+k.label,used:k.mtd,limit:+k.cap_usd||cap||null,fmt:usgUSD,src:USG_SRC.e,link:USG_URL.spend,
       sub:`${C.left} day${C.left===1?"":"s"} to the monthly reset (1st, Pacific time)${k.unknown?" · some models have no price — set it under Limits & prices":""}<br>Official cost: n/a here — <a href="${USG_URL.billing}" target="_blank" rel="noopener">Google Cloud Billing → Reports (group by SKU)</a>`,
-      info:"Equation: Σ tokens × price per 1M tokens (price list below, from ai.google.dev/pricing) for every answer on THIS key since the 1st of the month (Pacific time). Source: Google's own token counts sent with every answer (usageMetadata), added up by the dashboard. The limit is this key's spend cap (Settings → Gemini keys) — a Google AI Pro account's $10 monthly credit covers it."})),
+      info:"Equation: Σ tokens × price per 1M tokens (price list below, from ai.google.dev/pricing) for every answer on THIS key since the 1st of the month (Pacific time). Source: Google's own token counts sent with every answer (usageMetadata), added up by the dashboard. The limit is this key's spend cap (Settings → Gemini keys) — a Google AI Pro account's $10 monthly credit covers it."}); }),
     usgCard({name:"Lara · microphone audio sent to Google",used:micMin,big:micMin.toFixed(1)+" min",fmt:v=>v.toFixed(1),src:USG_SRC.m,
       sub:`${fInt(turns)} question${turns===1?"":"s"} · ${turns?(micMin/turns).toFixed(1):"—"} min of audio per question${turns&&micMin/turns>1?" — <b>too much: check the leak alert</b>":""}`,
       info:"Microphone frames (40 ms each) that Lara streamed to Google in the range. Google bills every second of streamed audio, silence included — this is what used up the $10 cap in October 2026. Healthy: well under 1 minute per question."}),
