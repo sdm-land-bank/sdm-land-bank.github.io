@@ -814,6 +814,7 @@ body.no-matchfin #fpOn,body.no-matchfin .fp-panel,body.no-matchfin .fp-sec,body.
 .gk-t .gk-on{accent-color:var(--signal);width:16px;height:16px}
 .gk-b{white-space:nowrap} .gk-b .ebtn{width:auto;height:28px;padding:0 9px;margin-left:3px}
 .gk-ur td{padding-top:0!important;border-top:none!important}
+.gk-gw{display:block;color:#B42318;margin-top:3px}
 .gk-use{font-size:12px;color:var(--ink-2);padding:0 0 10px;max-width:560px}
 .gk-ul{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline} .gk-left{margin-left:auto}
 .gk-use b{color:var(--ink);font-family:"IBM Plex Mono",monospace;font-weight:600} .gk-use em{display:block;font-style:normal;color:var(--mute);font-size:11px;margin-top:3px}
@@ -2265,6 +2266,24 @@ body.m-moving .poi .poi-n,body.m-moving .tpin-c,body.m-moving .rt-km{-webkit-bac
 .lara-dock.open .lara-orbbtn .lara-ms{display:none}
 .lara-dock[data-st="off"] .lara-orbbtn .lara-ms{opacity:.8}
 
+/* ---- V63: the sidebar fits without scrolling ---- */
+@media (min-width:821px){
+  aside.rail .brand{height:52px;flex:0 0 52px}
+  aside.rail .nav-group{gap:1px}
+  aside.rail .nav-cap{margin-top:6px!important;margin-bottom:1px!important;min-height:0!important}
+  aside.rail .nav-group:first-child .nav-cap{margin-top:6px!important}
+  aside.rail .nav-item{min-height:38px!important;padding:2px 0!important}
+  aside.rail .nav-ico{width:28px;height:28px;border-radius:8px}
+  aside.rail .nav-ico svg{width:15px;height:15px}
+  aside.rail .nav-h{display:none!important}
+  aside.rail .rail-scroll{padding-bottom:4px}
+  aside.rail .rail-foot{padding:5px 9px;gap:0}
+  aside.rail .railpin{min-height:31px}
+  aside.rail .stamp{min-height:24px;font-size:9px}
+  #ntBell>svg,#sbOutRail>svg{flex:0 0 16px;margin:0 13px}
+}
+body:has(aside.rail:hover) .lara-dock{opacity:0!important;pointer-events:none!important;transition:opacity .15s}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
@@ -3375,7 +3394,6 @@ function render(){
   if(S.view==="settings") content.innerHTML=viewSettings();
   if(S.view==="approvals") content.innerHTML=viewApprovals();
   if(S.view==="audit") content.innerHTML=viewAudit();
-  if(S.view==="usage") content.innerHTML=viewUsage();
   if(S.view==="portfolio"){ content.innerHTML=""; $("#mapshell").innerHTML=viewPortfolio(); }
   if(S.view==="sales"){ content.innerHTML=""; showLB(); } else hideLB();
   if(S.view==="absorption") content.innerHTML=viewAbsorption(rs);
@@ -3389,7 +3407,7 @@ function render(){
   if(S.view==="settings") wireSettings();
   if(S.view==="approvals") wireApprovals();
   if(S.view==="audit") wireAudit();
-  if(S.view==="usage") wireUsage();
+  if(S.view==="settings"&&USG.inline) wireUsage();
   applyHits();
   if(S.view==="inventory"||S.view==="portfolio") showMap(); else hideMap();
 }
@@ -5793,6 +5811,29 @@ laraSystem=function(){ return laraSystemV62()+"\n"+LARA_RULES_V62; };
 
 
 /* ============================================================================
+   V63 — Lara: the park on screen, Egyptian words for plots
+   ========================================================================== */
+const laraScreenPark=()=>{ try{ return S.park&&S.park!=="all"?laraParkName(S.park):null; }catch(e){ return null; } };
+const laraReplyLangV63=laraReplyLang;
+laraReplyLang=function(r){ r=laraReplyLangV63(r); if(r&&typeof r==="object"&&!Array.isArray(r)){ const p=laraScreenPark(); r.park_on_screen=p||"all parks (none chosen)"; } return r; };
+const laraRunV63=laraRun;
+laraRun=async function(name,a){ a=a||{};
+  let r=await laraRunV63(name,a);
+  if(/^(merge_plots|show_plot|list_blocks)$/.test(name)&&r&&r.error&&/not found|no plot|none of those|no such|unknown park/i.test(r.error)){
+    const cur=laraScreenPark(); let same=false;
+    try{ same=!!a.park&&laraParks(a.park).includes(S.park); }catch(e){}
+    if(cur&&a.park&&!same){
+      const r2=await laraRunV63(name,{...a,park:cur});
+      if(r2&&!r2.error){ laraLog("info","park on screen used",{tool:name,asked:a.park,used:cur});
+        r2.note=(r2.note?r2.note+" ":"")+"Not found in "+a.park+", so I used the park on screen, "+cur+" — say it in one short phrase."; r=r2; } } }
+  return r; };
+const LARA_RULES_V63=`PARK: the park the user means is the one ON SCREEN (park_on_screen in every tool result) unless they name another park in the same sentence. After open_park, the new park is the current one — never go back to a park from earlier in the conversation.
+EGYPTIAN WORDS: a plot is «أرض» or «قطعة أرض», plots are «أراضي» (e.g. «الأراضي دي»، «دمجتلك الأرضين»). Never say بلوت / بلوتات / البلوت in Arabic. A sector (E-11) is «قطاع».`;
+const laraSystemV63=laraSystem;
+laraSystem=function(){ return laraSystemV63()+"\n"+LARA_RULES_V63; };
+
+
+/* ============================================================================
    V48 — PLOT STATUS WORKFLOW: requests, approvals, holds, notifications
    ========================================================================== */
 const WF={live:new Map(), req:[], notif:[], ready:false, missing:false, ch:null, tab:null, focus:null, t:{}, lastTick:0};
@@ -6413,7 +6454,7 @@ function usgCalc(){
 }
 
 /* ---- charts (SVG, one axis, hover tooltip, table view = the detail table + Excel) ---- */
-function usgW(half){ const c=$("#content"), w=Math.max(300,(c&&c.clientWidth||900)-(innerWidth<=820?92:84)); return Math.round(half&&innerWidth>820?(w-14)/2-30:w-30); }
+function usgW(half){ const c=$("#usgInl")||$("#content"), w=Math.max(300,(c&&c.clientWidth||900)-(innerWidth<=820?92:84)); return Math.round(half&&innerWidth>820?(w-14)/2-30:w-30); }
 function usgBars(id,days,series,fmt,opt){ opt=opt||{};
   const W=opt.w||usgW(opt.half),H=opt.h||170,pl=46,pr=8,pt=10,pb=24, n=days.length||1, bw=Math.max(2,(W-pl-pr)/n-2);
   const tot=days.map(d=>series.reduce((s,[k,,,f])=>s+(f(d)||0),0)), mx=Math.max(opt.min||0,...tot,1e-9);
@@ -6551,7 +6592,7 @@ function viewUsage(){
   if(!SBME||!SBME.is_admin) return `<div class="mm-empty" style="margin:40px"><b>Administrators only</b></div>`;
   const f=USG.f, D=USG.data, [a,b]=usgRange(), sync=D&&D.syncs&&D.syncs[0];
   const head=`<div class="set-h"><div><b>Usage &amp; limits</b><span>Everything that costs money or has a free-tier limit. Nothing is read in the background — press Sync for fresh figures (at most every 5 minutes).</span></div>
-    <div class="u-tb"><button class="applybtn" id="usgSync" ${USG.syncing?"disabled":""}>${USG.syncing?"Syncing…":"⟳ Sync"}</button><button class="ebtn" id="usgXls" ${D?"":"disabled"}>Export to Excel</button></div></div>
+    <div class="u-tb">${S.view==="settings"?`<button class="ebtn" type="button" onclick="usgInline(false)">Close ▴</button>`:""}<button class="applybtn" id="usgSync" ${USG.syncing?"disabled":""}>${USG.syncing?"Syncing…":"⟳ Sync"}</button><button class="ebtn" id="usgXls" ${D?"":"disabled"}>Export to Excel</button></div></div>
     <div class="u-last">${sync?`Last synced <b>${usgWhen(sync.at)}</b> (Cairo) by ${esc(sync.by_email||"—")}${sync.ms!=null?` · took ${(sync.ms/1000).toFixed(1)} s`:""} · ${fInt(sync.calls||0)} outside call${sync.calls===1?"":"s"} · ${fInt(sync.rows_written||0)} row${sync.rows_written===1?"":"s"} written`:"Never synced — press Sync once to start."}
       ${D&&D.cron&&D.cron.length?" · daily snapshot by the database at 00:05 Cairo ✓":D?" · <b>daily snapshot not scheduled</b> (pg_cron off): trends come from Syncs only":""}</div>
     <form class="u-f" id="usgF" onsubmit="return false"><div class="u-seg">${[["7","7 days"],["30","30 days"],["90","90 days"],["month","This month"],["custom","Custom"]].map(([k,l])=>`<button type="button" data-p="${k}" class="${f.p===k?"on":""}">${l}</button>`).join("")}</div>
@@ -6633,8 +6674,15 @@ function usgLimHtml(){
     <tr class="u-new"><td><input id="usgNewF" placeholder="model name"></td>${["rpm","tpm","rpd"].map(k=>`<td><input class="u-n" data-f="n_${k}" placeholder="number or unlimited"></td>`).join("")}<td></td></tr></tbody></table></div>
     <div class="src-act"><button class="applybtn" id="usgLimSave">Save limits &amp; prices</button></div></details>`;
 }
-function rerenderUsage(){ const c=$("#content"); if(!c||S.view!=="usage") return; const sc=c.scrollTop; c.innerHTML=viewUsage(); wireUsage(); c.scrollTop=sc; }
-function usgPaint(){ if(S.view==="usage") rerenderUsage(); }
+function usgInlineHtml(){
+  if(!SBME||!SBME.is_admin) return "";
+  if(!USG.inline) return `<section class="card wide u-link" id="usgInl"><div><h3>Usage &amp; limits</h3><p class="u-note" style="margin:0">Gemini tokens and cost, the $ caps, Supabase database / storage / users and every free-tier limit — with daily trends. Read only when you press Sync.</p></div><button class="applybtn" type="button" onclick="usgInline(true)">Open usage ▾</button></section>`;
+  return `<section class="u-inl" id="usgInl">${viewUsage()}</section>`; }
+function usgInline(on){ USG.inline=!!on; const h=$("#usgInl"); if(!h) return; h.outerHTML=usgInlineHtml(); if(on){ wireUsage(); const n=$("#usgInl"); if(n) n.scrollIntoView({block:"start",behavior:"smooth"}); } }
+function rerenderUsage(){ const h=$("#usgInl"); if(!h||S.view!=="settings"||!USG.inline) return; const c=$("#content"), sc=c?c.scrollTop:0; h.innerHTML=viewUsage(); wireUsage(); if(c) c.scrollTop=sc; }
+function usgPaint(){ if(S.view==="settings"&&USG.inline) rerenderUsage(); }
+const goV63u=go;   // old links / bookmarks to the Usage page open it inside Settings
+go=function(id,...r){ if(id==="usage"){ USG.inline=true; id="settings"; } return goV63u(id,...r); };
 async function usgSecret(name,val,del){
   const r=del?await SB.rpc("sid_del_secret",{p_name:name}):await SB.rpc("sid_set_secret",{p_name:name,p_value:val});
   if(r.error){ toast("Could not save: "+r.error.message,true); return false; } return true; }
@@ -6710,7 +6758,14 @@ async function gkLoad(){
     if(!Array.isArray(R)||!R.length) R=[{id:"main",label:"Main key",tier:"paid",cap_usd:10,on:true},{id:"backup",label:"Backup key",tier:"free",on:true}];
     const pj=v=>{ try{ return typeof v==="string"?JSON.parse(v):v||{}; }catch(e){ return {}; } };
     GK.ring=R; GK.saved=r.data&&r.data.saved||{}; GK.usage=r.data&&r.data.usage||[]; GK.prices=pj(r.data&&r.data.prices); GK.limits=pj(r.data&&r.data.limits);
-    GK.draft=JSON.parse(JSON.stringify(R)); }
+    GK.draft=JSON.parse(JSON.stringify(R));
+    // what Google itself said about each key this month (Lara's log: a refused connect names the key and Google's reason)
+    GK.google={};
+    try{ const m0=new Date(); m0.setUTCDate(1); m0.setUTCHours(8,0,0,0);
+      const g=await SB.from("sid_lara_log").select("at,data").eq("kind","error").like("text","voice model failed%").gte("at",m0.toISOString()).order("at",{ascending:false}).limit(300);
+      (g.data||[]).forEach(x=>{ const d=x.data||{}, k=d.key, msg=String(d.msg||""); if(!k||GK.google[k]) return;
+        const why=/spending cap|spend cap/i.test(msg)?"cap":/quota|exhausted|429|rate/i.test(msg)?"quota":/API key|invalid|permission|denied|401|403/i.test(msg)?"key":"";
+        if(why) GK.google[k]={why,at:x.at,msg:msg.slice(0,160)}; }); }catch(e){} }
   catch(e){ GK.err=/sid_gemini_keys|Could not find the function|does not exist/i.test(e.message||"")?"missing":(e.message||String(e)); }
   GK.busy=false; const el=$("#gkCard"); if(el){ el.outerHTML=gkCardHtml(); gkWire(); }
 }
@@ -6723,13 +6778,19 @@ function gkUse(e){
     usd+=((+u.in_text||0)*(P.in_text||0)+(+u.in_audio||0)*(P.in_audio??P.in_text??0)+(+u.out_text||0)*(P.out_text||0)+(+u.out_audio||0)*(P.out_audio??P.out_text??0))/1e6; });
   const rest=typeof LKEY!=="undefined"&&(LKEY.cool[e.id]||0)>Date.now()?`<span class="gk-rest" title="This key failed a moment ago in this browser — Lara uses the next key until then">resting until ${new Date(LKEY.cool[e.id]).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</span>`:"";
   const n=v=>v>=1e6?(v/1e6).toFixed(2)+" M":v>=1e3?(v/1e3).toFixed(1)+" K":String(Math.round(v));
+  const G=GK.google&&GK.google[e.id], gAt=G?new Date(G.at).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",timeZone:"Africa/Cairo"}):"";
+  const used=`${n(tok)} tokens · ${ans} answers this month · ${today} today`;
+  if(G&&G.why==="cap") return `<div class="gk-use red"><div class="gk-ul"><span><b>Blocked by Google — this project's monthly spend cap is reached</b></span><span class="gk-left">Lara skips it until the cap resets on the 1st</span>${rest}</div>
+    <div class="gk-ub"><i style="width:100%"></i></div>
+    <em>Google refused it last on ${gAt} (Cairo): “${esc(G.msg)}” · SID's own use on this key this month: ${used}${usd?" ≈ $"+usd.toFixed(2):""} — the rest of the cap was used before SID counted (8 Oct) or by other apps on the same Google project. Exact figure: <a href="https://aistudio.google.com/spend" target="_blank" rel="noopener">AI Studio → Spend</a>; raise the cap there to use it again.</em></div>`;
+  if(G&&(G.why==="quota"||G.why==="key")) var gNote=`<em class="gk-gw">Google refused it last on ${gAt}: ${G.why==="key"?"the key was rejected":"quota / rate limit"} — “${esc(G.msg)}”</em>`;
   if(e.tier!=="free"){ const cap=+e.cap_usd||10, left=Math.max(0,cap-usd), pct=Math.min(100,usd/cap*100), lv=pct>=90?"red":pct>=70?"amber":"";
     return `<div class="gk-use ${lv}"><div class="gk-ul"><span><b>$${usd.toFixed(2)}</b> of $${cap} used this month</span><span class="gk-left"><b>$${left.toFixed(2)}</b> left by SID’s count</span>${rest}</div>
       <div class="gk-ub"><i style="width:${pct.toFixed(1)}%"></i></div>
-      <em>${n(tok)} tokens · ${ans} answers this month · ${today} today${unknown?" · some models have no price":""} · counted by SID since 8 Oct 2026 — use from before or outside SID is not included: Google's own figure is on <a href="https://aistudio.google.com/spend" target="_blank" rel="noopener">AI Studio → Spend</a></em></div>`; }
+      <em>${n(tok)} tokens · ${ans} answers this month · ${today} today${unknown?" · some models have no price":""} · counted by SID since 8 Oct 2026 — use from before or outside SID is not included: Google's own figure is on <a href="https://aistudio.google.com/spend" target="_blank" rel="noopener">AI Studio → Spend</a></em>${typeof gNote!=="undefined"&&gNote?gNote:""}</div>`; }
   const F=GK.limits&&GK.limits.free_models||{}, L=F["gemini-3.8-live"]||{};
   return `<div class="gk-use"><div class="gk-ul"><span><b>Free tier</b> — ${L.rpd?(L.rpd==="unlimited"?"no daily limit":L.rpd+" requests / day"):"daily limit n/a"}${L.tpm?", "+n(+L.tpm)+" tokens / minute":""}</span><span class="gk-left"><b>nothing to run out of</b></span>${rest}</div>
-    <em>${n(tok)} tokens · ${ans} answers this month · ${today} today · limits for Gemini 3.8 Live from AI Studio → Rate limits</em></div>`;
+    <em>${ans?`<b>${used}</b> — at paid prices this would be ≈ $${usd.toFixed(2)}; on the free tier it costs $0`:"Not used yet this month"} · limits for Gemini 3.8 Live from AI Studio → Rate limits</em>${typeof gNote!=="undefined"&&gNote?gNote:""}</div>`;
 }
 function gkCardHtml(){
   const head=`<h3>Gemini keys <em class="u-un">Lara and Ask SDM AI try them in this order — when one is capped or limited, the next one answers</em></h3>`;
@@ -7256,7 +7317,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V62.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V63.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
@@ -12131,7 +12192,6 @@ async function sbGate(){
   SBROLE=r.data; SBME=(await SB.rpc("sid_me")).data||{role:SBROLE,pages:[],can_edit:false,is_admin:false};
   if((SBME.wf||SBME.is_admin)&&!VIEWS.some(v=>v.id==="approvals")) VIEWS.splice(Math.max(0,VIEWS.findIndex(v=>v.id==="editor")),0,{id:"approvals",group:"data",label:"Approvals",hint:"Status-change requests, holds and MDS updates"});
   if(!VIEWS.some(v=>v.id==="audit")){ const ix=VIEWS.findIndex(v=>v.id==="editor"); VIEWS.splice(ix<0?VIEWS.length:ix,0,{id:"audit",group:"data",label:"Change log",hint:"Who changed which plot, and when"}); }
-  if(SBME.is_admin&&!VIEWS.some(v=>v.id==="usage")) VIEWS.push({id:"usage",group:"data",label:"Usage",hint:"AI tokens and cost, Supabase limits, daily trends"});
   if(SBME.is_admin&&!VIEWS.some(v=>v.id==="settings")) VIEWS.push({id:"settings",group:"data",label:"Settings",hint:"Users, roles and what each role can open"});
   gateMsg("Loading the plots and the MDS…");
   // the plots, register and MDS are kept in this browser and downloaded again only when the online copy changed
@@ -12426,7 +12486,7 @@ function viewSettings(){
   <div class="set-h"><div><b>Settings</b><span>Who can sign in, and what each role can open. Changes apply the next time that person opens the dashboard.</span></div>
     <button class="ebtn" id="setReload">Refresh</button></div>
   ${SET.err?`<div class="alarm"><b>Could not load:</b> ${esc(SET.err)}</div>`:""}
-  <section class="card wide u-link"><div><h3>Usage &amp; limits</h3><p class="u-note" style="margin:0">Gemini tokens and cost, the $ cap, Supabase database / storage / users and every free-tier limit — with daily trends. Read only when you press Sync.</p></div><button class="applybtn" type="button" onclick="go('usage')">Open Usage →</button></section>
+  ${usgInlineHtml()}
   ${gkCardHtml()}
   ${srcCardHtml()}
   ${mailCardHtml()}
