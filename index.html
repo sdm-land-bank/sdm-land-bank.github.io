@@ -4315,7 +4315,7 @@ async function laraMicOn(){
   src.connect(node); LARA.mic={st,src,node};
 }
 function laraMicOff(){ const m=LARA.mic; if(!m) return; try{ m.src.disconnect(); m.node.disconnect(); m.st.getTracks().forEach(t=>t.stop()); }catch(e){} LARA.mic=null; LARA.micLvl=0; }
-function laraOut(){ if(!LARA.ctxOut){ LARA.ctxOut=new AudioContext(); LARA.anOut=LARA.ctxOut.createAnalyser(); LARA.anOut.fftSize=512; LARA.anOut.connect(LARA.ctxOut.destination); } LARA.ctxOut.resume(); return LARA.ctxOut; }
+function laraOut(){ if(!LARA.ctxOut){ LARA.ctxOut=new AudioContext(); LARA.anOut=LARA.ctxOut.createAnalyser(); LARA.anOut.fftSize=512; const cp=LARA.ctxOut.createDynamicsCompressor(); cp.threshold.value=-18; cp.knee.value=10; cp.ratio.value=3; cp.attack.value=0.004; cp.release.value=0.3; const mk=LARA.ctxOut.createGain(); mk.gain.value=2.2; LARA.anOut.connect(cp); cp.connect(mk); mk.connect(LARA.ctxOut.destination); LARA.outComp=cp; } LARA.ctxOut.resume(); return LARA.ctxOut; }
 function laraPlay(b64){
   const ctx=laraOut(), bin=atob(b64), n=bin.length>>1; if(!n) return;
   const buf=ctx.createBuffer(1,n,24000), ch=buf.getChannelData(0);
@@ -5852,6 +5852,19 @@ laraSystem=function(){ return laraSystemV63()+"\n"+LARA_RULES_V63; };
 
 
 /* ============================================================================
+   V64 — Lara's voice: steady (lower temperature, fixed speech language, one voice, levelled loudness)
+   ========================================================================== */
+const laraSetupV64=laraSetup;
+laraSetup=function(model,lean){ const st=laraSetupV64(model,lean);
+  if(!lean) try{ const g=st.generationConfig||(st.generationConfig={}); g.temperature=0.35;
+    g.speechConfig=g.speechConfig||{}; g.speechConfig.languageCode=(LARA.convLang||LARA_PREF.lang)==="en"?"en-US":"ar-EG"; }catch(e){}
+  return st; };
+const LARA_RULES_V64=`VOICE: you are always the same woman — one steady, warm, calm female voice with the same pitch, speed and loudness in every answer, in Arabic and in English. Never change your voice, never imitate another voice, never whisper or shout.`;
+const laraSystemV64=laraSystem;
+laraSystem=function(){ return laraSystemV64()+"\n"+LARA_RULES_V64; };
+
+
+/* ============================================================================
    V48 — PLOT STATUS WORKFLOW: requests, approvals, holds, notifications
    ========================================================================== */
 const WF={live:new Map(), req:[], notif:[], ready:false, missing:false, ch:null, tab:null, focus:null, t:{}, lastTick:0};
@@ -7348,7 +7361,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V63.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V64.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
