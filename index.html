@@ -4377,7 +4377,7 @@ async function laraStart(opts={}){
   LLOG.sess=null; laraLog("start",opts.wake?"Hey Lara":opts.text?"typed":"clicked",{page:S.view,awake:LARA_PREF.awake,lite:!!LARA.lite});
   LARA.pre=[]; LARA.sleeping=false; LARA.dozing=false; LARA.manual=!opts.wake; LARA.endAfter=false; LARA.turnDone=false; laraPanel(true); if(opts.text) laraCap("u",opts.text,true); laraState("connecting");
   try{ laraOut(); await laraMicOn(); }
-  catch(e){ laraFail(new Error("Lara needs the microphone — allow it in the address bar and try again")); return; }
+  catch(e){ laraFail(new Error(laraMicMsg(e))); return; }
   if(LARA.lite){ laraLiteStart(opts); return; }
   try{ await laraConnect(); }
   catch(e){ if(/not set up|key/i.test(e.message)){ laraFail(e); return; }
@@ -4391,7 +4391,7 @@ async function laraStart(opts={}){
   const pre=LARA.pre||[]; LARA.pre=null;
   if(opts.text) laraSend(opts.text);
   else if(rest.split(/\s+/).length>=3){ if(pre.length>20) pre.forEach(m=>LARA.ws.send(m)); else laraSend(rest); }
-  else if(!LARA.handle||!LARA.greeted) laraSend(`(The user just said "Hey Lara". Greet ${first||"them"} with good ${part} and "how may I help you today?" in one short sentence${firstToday?", and add ONE short interesting highlight from the PULSE":""}.)`);
+  else if((!LARA.handle||!LARA.greeted)&&!(Date.now()-(LARA.lastEnd||0)<600000)) laraSend(`(The user just said "Hey Lara". Greet ${first||"them"} with good ${part} and "how may I help you today?" in one short sentence${firstToday?", and add ONE short interesting highlight from the PULSE":""}.)`);
   else laraSend(`(The user said "Hey Lara" again. Say a two-word "Yes, ${first||""}?" style reply.)`);
   LARA.greeted=true;
 }
@@ -5435,10 +5435,182 @@ const laraSleepV55=laraSleep;
 laraSleep=function(q){ if(LVAD.sent+LVAD.skipped>0){ laraLog("info","microphone frames sent / skipped",{sent:LVAD.sent,skipped:LVAD.skipped}); LVAD.sent=0; LVAD.skipped=0; } return laraSleepV55(q); };
 setInterval(()=>{ try{
   const now=Date.now();
-  if(LARA.ws&&!LARA.speaking&&now-(LARA.heardAt||now)>60000){ laraLog("end","no words for 60 s — disconnected to save the AI budget"); laraSleep(true); return; }
+  if(LARA.ws&&!LARA.speaking&&now-(LARA.heardAt||now)>90000){ laraLog("end","no words for 90 s — disconnected to save the AI budget"); laraSleep(true); return; }
   if(LARA.dozing&&now-(LARA.dozeAt||now)>300000){ laraLog("end","dozed 5 minutes — asleep"); laraSleep(true); }
 }catch(e){} },5000);
 document.addEventListener("visibilitychange",()=>{ try{ if(document.hidden&&(LARA.ws||LARA.dozing)){ laraLog("end","tab hidden — disconnected to save the AI budget"); laraSleep(true); } }catch(e){} });
+
+
+/* ============================================================================
+   V60 — Lara sets the payment plan the user asks for (sales offer + Investor Match)
+   ========================================================================== */
+setTimeout(function(){ const T=n=>LARA_TOOLS.find(t=>t.name===n);   // after the script: FP_TYPES is defined further down (TDZ)
+  const pd=T("print_document");
+  if(pd){ pd.description="Make a PDF of the selected plot(s) and download it. For sales_offer: payment='installments' with the plan the user asked for (months or years, frequency, down payment %, interest %), or payment='cash' ONLY when the user asked for cash. If the user asked for a payment plan earlier in this conversation, the sales offer uses that plan unless payment='cash'. If the user also wants it emailed, set email_to; then confirm with send_email.";
+    Object.assign(pd.parameters.properties,{payment:LT("STRING","sales_offer only: how the client pays",{enum:["cash","installments"]}),
+      months:LT("NUMBER","Instalment period in MONTHS — use it whenever the user says months (13 months → 13)"),years:LT("NUMBER","Instalment period in years"),
+      payment_type:LT("STRING","Instalment frequency (default Monthly when the user gives months)",{enum:Object.keys(FP_TYPES)}),
+      advance_pct:LT("NUMBER","Down payment %"),interest_pct:LT("NUMBER","Annual interest %"),every_instalment:LT("BOOLEAN","List every instalment on the offer")}); }
+  const pp=T("payment_plan");
+  if(pp){ pp.description="Set the instalment plan the user asks for. It applies to the sales offer draft AND the Investor Match financial offer, and returns the result. Pass every value the user said: '13 months' → months=13 (monthly unless they say otherwise); '20% down' → advance_pct=20.";
+    pp.parameters.properties.months=LT("NUMBER","Instalment period in MONTHS (13 months → 13)"); }
+},0);
+function laraPlanCfg(a,base){
+  const c={...FP_DEF,...(base||{})};
+  if(a.payment_type&&FP_TYPES[a.payment_type]) c.type=a.payment_type;
+  if(+a.months>0){ if(!(a.payment_type&&FP_TYPES[a.payment_type])) c.type="Monthly"; c.years=+a.months/12; }
+  else if(+a.years>0) c.years=+a.years;
+  if(a.advance_pct!=null&&isFinite(+a.advance_pct)) c.adv=+a.advance_pct;
+  if(a.interest_pct!=null&&isFinite(+a.interest_pct)) c.rate=+a.interest_pct;
+  if(a.escalation_pct!=null&&isFinite(+a.escalation_pct)) c.esc=+a.escalation_pct;
+  return c;
+}
+const laraPlanSum=c=>({months:Math.round((+c.years||0)*12),payment_type:c.type,advance_pct:c.adv,interest_pct:c.rate,escalation_pct:c.esc});
+function laraSOPlan(c){ if(typeof SO==="undefined"||!SO.f) return false;
+  SO.f.mode="plan"; SO.f.plan={...SO.f.plan,type:c.type,years:c.years,adv:c.adv,rate:c.rate,esc:c.esc,...(c.start?{start:c.start}:{})};
+  if(!SO.f.title||SO.f.title==="Sales Offer") SO.f.title="Initial Financial Offer";
+  soSave(); if(S.view==="offer"&&typeof render==="function") render(); return true; }
+const laraPlanV59=laraPlan;
+laraPlan=function(a){ a=a||{};
+  const c=laraPlanCfg(a,FPL.cfg);
+  let r;
+  if(laraCan("match.fin")){ r=laraPlanV59({...a,years:c.years,payment_type:c.type}); if(r&&r.error) return r; }
+  else if(laraCan("offer")) r={plan:laraPlanSum(c)};
+  else return {error:"This role does not include payment plans."};
+  LARA.planCfg=c; LARA.planAsked=true;
+  const so=laraSOPlan(c);
+  r.plan={...(r.plan||{}),...laraPlanSum(c)};
+  r.applied_to=[so?"the sales offer draft":null,laraCan("match.fin")?"the Investor Match financial offer":null].filter(Boolean);
+  r.say=`Plan set: ${r.plan.months} months, ${c.type.toLowerCase()}, ${c.adv}% down, ${c.rate}% interest. A sales offer made now uses this plan.`;
+  return r; };
+const laraPrintV59=laraPrint;
+laraPrint=async function(a){ a=a||{};
+  if(a.document!=="sales_offer") return laraPrintV59(a);
+  const plan=a.payment==="installments"||(a.payment!=="cash"&&(+a.months>0||+a.years>0||LARA.planAsked));
+  if(!plan) return laraPrintV59(a);
+  if(!laraCan("offer")) return {error:"This role cannot open the Sales offer."};
+  if(!S.sel.size){ if(LARA.cur) laraShow(LARA.cur); else return {error:"No plot is selected. Ask which plot, or find one first."}; await laraWait(450); }
+  const c=laraPlanCfg(a,LARA.planAsked&&LARA.planCfg?LARA.planCfg:(SO.f&&SO.f.plan)||FPL.cfg);
+  selOffer("plan"); await laraWait(400);
+  laraSOPlan(c); if(a.every_instalment!=null){ SO.f.listEach=!!a.every_instalment; soSave(); }
+  if(a.client_company){ SO.f.company=a.client_company; soSave(); }
+  LARA.planCfg=c; LARA.planAsked=true;
+  const doc=soPdf(), name=soFileName(); doc.save(name);
+  const pdf={name,b64:doc.output("datauristring").split(",")[1]}; if(typeof soPreview==="function") soPreview(true);
+  LARA.last=pdf; const p=soPlan();
+  const out={made:name,downloaded:true,payment:"installments",plan:laraPlanSum(c),
+    result:p?{instalments:p.n,each_instalment_egp:rnd(p.inst),down_payment_egp:rnd(p.adv),total_payable_egp:rnd(p.paid),price_per_sqm_with_instalments_egp:rnd(p.sqmI)}:null};
+  if(a.email_to) Object.assign(out,await laraDraft({to:a.email_to}));
+  return out; };
+
+/* ============================================================================
+   V60 — Lara smart again: plot codes, no tool loops, fresh documents, language, smooth follow-ups, a "Hey Lara" that listens
+   ========================================================================== */
+/* ---- plot codes: never a bare "not found" — the closest real codes ---- */
+const LARA_LSWAP={A:"EI",E:"AI",I:"AEY",Y:"I",B:"PV",P:"B",V:"BF",F:"V",S:"CXZ",C:"SK",K:"CQ",Q:"K",M:"N",N:"M",G:"J",J:"G",T:"D",D:"T",X:"S",Z:"S"};
+function laraCodeParts(u){ const s=String(u||"").toUpperCase().replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d));
+  return {L:(s.match(/[A-Z]+/)||[""])[0],N:(s.match(/\d+/g)||[]).map(x=>String(+x))}; }
+function laraSuggest(unit,park){
+  const pk=park?laraParks(park):[], want=laraCodeParts(unit); if(!want.N.length) return [];
+  const pool=new Map(), add=(u,p)=>{ if(u&&(!pk.length||pk.includes(p))) pool.set(u+"|"+p,{unit:u,park:p}); };
+  S.geo.features.forEach(f=>add(f.properties.unit,f.properties.park)); S.rows.forEach(r=>{ if(!r.dup) add(r.unit,r.park); });
+  const near=new Set([want.L,...String(LARA_LSWAP[want.L[0]]||"").split("").map(c=>c+want.L.slice(1))]), wN=want.N.join("-"), wD=want.N.join("");
+  const out=[];
+  pool.forEach(x=>{ const c=laraCodeParts(x.unit), cN=c.N.join("-");
+    const same=cN===wN, rev=c.N.slice().reverse().join("-")===wN, run=c.N.join("")===wD;
+    if(!same&&!rev&&!run) return;
+    let s=c.L===want.L?3:near.has(c.L)?2:!want.L?1:-1; if(s<0) return;
+    s+=same?3:run?2:1; out.push({...x,s}); });
+  out.sort((a,b)=>b.s-a.s); return out.slice(0,5);
+}
+const laraShowPlotV59=laraShowPlot;
+laraShowPlot=function(a){ a=a||{}; const r=laraShowPlotV59(a);
+  if(!(r&&r.error&&/^No plot/.test(r.error))) return r;
+  const sg=laraSuggest(a.unit,a.park); if(!sg.length) return r;
+  if(sg[0].s>=5&&(sg.length===1||sg[0].s>sg[1].s)){
+    const r2=laraShowPlotV59({...a,unit:sg[0].unit,park:laraParkName(sg[0].park)});
+    if(r2&&!r2.error) return {...r2,heard:a.unit,showing:sg[0].unit,say:`There is no plot "${a.unit}". Showing ${sg[0].unit}, the closest real code — say it again if it is another plot.`};
+  }
+  return {error:r.error,did_you_mean:sg.map(x=>x.unit+" ("+laraParkName(x.park)+")"),say:"That code does not exist. Ask the user which of these they mean."};
+};
+
+/* ---- payment_plan on the plots selected on the map; "cash" really means cash ---- */
+const laraPlanV60=laraPlan;
+laraPlan=function(a){ a=a||{};
+  const cash=a.payment==="cash"||+a.advance_pct>=100||(a.years!=null&&+a.years===0&&!(+a.months>0));
+  if(cash){ LARA.planAsked=false; if(typeof SO!=="undefined"&&SO.f){ SO.f.mode="cash"; soSave(); if(S.view==="offer"&&typeof render==="function") render(); }
+    if(LARA.lastDoc==="sales_offer") LARA.lastStale=true;
+    return {payment:"cash",say:"Switched to cash. A sales offer made now is a cash offer."}; }
+  const r=laraPlanV60(a); if(!r||r.error) return r;
+  if(!r.result&&S.sel&&S.sel.size){ try{
+    const rs=plotSum(selRows()).rows, area=rs.reduce((n,x)=>n+(+x.area||0),0), total=rs.reduce((n,x)=>{ const q=priceOf(x); return n+(q&&q.total||0); },0);
+    const p=area>0&&total>0?fpPlan(area,total/area,LARA.planCfg||FPL.cfg):null;
+    if(p){ r.for_plot=rs.map(x=>x.unit).join(", "); r.result={cash_value_egp:rnd(p.total),down_payment_egp:rnd(p.adv),instalments:p.n,each_instalment_egp:rnd(p.inst),
+      total_payable_egp:rnd(p.paid),price_per_sqm_with_instalments_egp:rnd(p.sqmI)}; r.note=null; } }catch(e){} }
+  if(!r.result) r.note="The plan is set. No plot is selected yet, so there are no amounts — select a plot to see them.";
+  return r; };
+setTimeout(()=>{ const pp=LARA_TOOLS.find(t=>t.name==="payment_plan"); if(pp) pp.parameters.properties.payment=LT("STRING","'cash' when the user wants to pay cash",{enum:["cash","installments"]}); },0);
+
+/* ---- no tool loops; a document made before a plan change is made again before it is emailed ---- */
+const LTURN={n:0,seen:{}};
+const laraRunV60=laraRun;
+laraRun=async function(name,a){ a=a||{};
+  LTURN.n++; const k=name+JSON.stringify(a); LTURN.seen[k]=(LTURN.seen[k]||0)+1;
+  if(LTURN.seen[k]>2){ laraLog("info","repeated tool call refused",{tool:name}); return {error:"Already done twice in this answer with the same values. Stop calling tools and tell the user the result you have (or plainly what did not work)."}; }
+  if(LTURN.n>8){ laraLog("info","too many actions in one answer",{tool:name}); return {error:"Too many actions in one answer. Stop now and tell the user what is done and what is not."}; }
+  if(name==="send_email"&&!a.document&&!a.cancel&&!a.confirmed&&LARA.lastStale&&LARA.lastDoc) a={...a,document:LARA.lastDoc};
+  const r=await laraRunV60(name,a);
+  if(name==="print_document"&&r&&!r.error){ LARA.lastDoc=a.document; LARA.lastStale=false; }
+  if(name==="send_email"&&a.document&&r&&!r.error){ LARA.lastDoc=a.document; LARA.lastStale=false; }
+  if(name==="payment_plan"&&r&&!r.error&&LARA.lastDoc&&LARA.lastDoc!=="technical_annex"){ LARA.lastStale=true; r.note=(r.note?r.note+" ":"")+"The "+LARA.lastDoc.replace(/_/g," ")+" made before is now outdated — make it again (print_document) before sending it."; }
+  return r; };
+const laraMsgV60=laraMsg;
+laraMsg=function(m){ try{ if(m&&m.serverContent&&m.serverContent.turnComplete){ LTURN.n=0; LTURN.seen={}; } }catch(e){} return laraMsgV60(m); };
+
+/* ---- language: Latin letters that are not English (Arabic heard as Italian / French) do not lock English ---- */
+const LARA_EN=/\b(the|a|an|i|you|me|my|is|are|to|of|in|on|and|what|how|show|plot|plots|please|can|could|want|need|sales|offer|price|available|open|map|yes|no|ok|okay|hello|hi|hey|thanks|thank|this|that|it|for|with|park|which|where|when|send|email|make|find|give|tell|good|lara)\b/i;
+const laraLangFromV60=laraLangFrom;
+laraLangFrom=function(t){ const r=laraLangFromV60(t); if(r&&!r.asked&&r.lang==="en"&&!LARA_EN.test(String(t||""))) return null; return r; };
+
+/* ---- smooth follow-ups: 40 s to answer after she speaks (the mic is sent only while someone talks) ---- */
+laraIdleArm=function(){ clearTimeout(LARA.idle); LARA.idle=setTimeout(()=>{ if(LARA.speaking) return;
+  if(LARA.lite){ laraSleep(true); return; }
+  if(LARA.ws){ laraLog("end","40 s without words after her answer — closed (tap Lara or say Hey Lara to continue)"); laraSleep(true); } },40000); };
+const laraSleepV60=laraSleep;
+laraSleep=function(q){ if(LARA.ws||LARA.lite) LARA.lastEnd=Date.now(); return laraSleepV60(q); };
+
+/* ---- the microphone: the real reason, not always "allow it in the address bar" ---- */
+function laraMicMsg(e){ const n=e&&e.name||"";
+  if(/NotAllowed|Security/.test(n)) return "Lara needs the microphone — click the lock icon in the address bar → Microphone → Allow, then try again";
+  if(/NotFound|Overconstrained/.test(n)) return "No microphone found — connect or select a microphone (System Settings → Sound → Input) and try again";
+  if(/NotReadable|Abort|TrackStart/.test(n)) return "The microphone is busy — another app (Zoom, Teams, a call) or another browser tab is using it. Close it and try again";
+  return "Lara could not open the microphone ("+(n||"unknown")+") — check it in System Settings → Sound → Input and try again"; }
+const laraMicOnV60=laraMicOn;
+laraMicOn=async function(){ try{ return await laraMicOnV60(); }catch(e){ laraLog("error","microphone: "+(e&&e.name||"error"),{msg:String(e&&e.message||e).slice(0,140)}); throw e; } };
+
+/* ---- "Hey Lara": a listener that is really running, checked every 4 s ---- */
+const laraWakeStartV60=laraWakeStart;
+laraWakeStart=function(){ laraWakeStartV60(); const r=LARA.wake;
+  if(r&&!r.__v60){ r.__v60=1;
+    r.addEventListener("start",()=>{ LARA.wakeRun=true; LARA.wakeBeat=Date.now();
+      if(Date.now()-(LARA.wakeLogAt||0)>120000){ LARA.wakeLogAt=Date.now(); laraLog("info","wake word listening",{lang:r.lang,after:LARA.lastEnd?Math.round((Date.now()-LARA.lastEnd)/1000)+" s":"page open"}); } });
+    r.addEventListener("end",()=>{ LARA.wakeRun=false; });
+    r.addEventListener("error",e=>{ if(e.error==="audio-capture"&&Date.now()-(LARA.micBusyAt||0)>120000){ LARA.micBusyAt=Date.now();
+      toast("“Hey Lara” can't hear: the microphone is busy (another app or tab) or not connected",true); } }); } };
+setInterval(()=>{ try{
+  if(LARA_IOS||!LARA_PREF.awake||document.hidden||LARA.ws||LARA.dozing||(LARA.lite&&!LARA.sleeping)) return;
+  if(["connecting","listening","speaking","thinking","error"].includes(LARA.st)) return;
+  if(LARA.st!=="wake") laraState("wake");
+  const gap=(LARA.wakeErrN||0)>2?Math.min(60000,4000*LARA.wakeErrN):4000;   // a broken mic: back off, do not flood the log
+  if(!LARA.wake||(!LARA.wakeRun&&Date.now()-(LARA.wakeTry||0)>gap)){ LARA.wakeTry=Date.now(); laraWakeStop(); laraWakeStart(); }
+}catch(e){} },4000);
+
+/* ---- what she is told ---- */
+const LARA_RULES_V60=`PLOT CODES: a code is letters + numbers, e.g. E-1-11, A-14, F-2-10. Keep the numbers in the ORDER the user says them ("E 1/11", "E one eleven", "إي واحد على حداشر" = E-1-11, never E-11-1). Arabic letter names: إي=E, ايه/إيه=A, بي=B, سي=C, دي=D, إف=F, جي=G, إتش=H, كيه=K, إل=L, إم=M, إن=N, إس=S, تي=T. If show_plot returns did_you_mean, ask which one; if it says it showed the closest code, say so.
+PAYMENT: when the user asks for instalments, a plan, "X months" or "X years", call payment_plan with every value they said (months=13 for 13 months), then make documents with that plan (print_document sales_offer with payment="installments"). Make a cash offer only when the user asks for cash. A document made before the plan changed is outdated: make it again before sending. Read the plan back from the tool result (months, number of instalments, each instalment); never say the screen shows something a tool did not confirm.
+FOCUS: do what was asked, once. Never repeat the same tool call; if a tool fails twice, tell the user plainly what did not work.`;
+const laraSystemV60=laraSystem;
+laraSystem=function(){ return laraSystemV60()+"\n"+LARA_RULES_V60; };
 
 
 /* ============================================================================
@@ -6905,7 +7077,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V59.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V60.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
