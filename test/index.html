@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script>(function(){var P="test:";["getItem","setItem","removeItem"].forEach(function(m){var o=Storage.prototype[m];Storage.prototype[m]=function(k){var a=[].slice.call(arguments);a[0]=P+k;return o.apply(this,a);};});var K=Storage.prototype.key;Storage.prototype.key=function(i){var n=0;for(var j=0;j<this.length;j++){var k=K.call(this,j);if(k&&k.indexOf(P)===0){if(n===i)return k.slice(P.length);n++;}}return null;};var O=IDBFactory.prototype.open;IDBFactory.prototype.open=function(n,v){return v===undefined?O.call(this,P+n):O.call(this,P+n,v);};var D=IDBFactory.prototype.deleteDatabase;IDBFactory.prototype.deleteDatabase=function(n){return D.call(this,P+n);};})();</script>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' data: blob: https://dumiqfihuebrwoyvxvfs.supabase.co wss://dumiqfihuebrwoyvxvfs.supabase.co https://*.cartocdn.com https://*.arcgisonline.com https://router.project-osrm.org https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' blob: data: https://www.teleport.eco https://teleport.eco; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -7780,7 +7780,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V66.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V67.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
@@ -12643,6 +12643,25 @@ async function sbCached(path,stamp,kind){
   if(stamp){ try{ await idb.set(k,{stamp,data}); }catch(e){} }
   return data;
 }
+async function sbSeedGate(){
+  const admin=(await SB.rpc("sid_is_admin")).data===true;
+  if(!admin){ gateMsg("This SID Dashboard has no plots and register online yet. An administrator loads them once — please try again later.",`<button class="ebtn" id="sbgOut">Sign out</button>`); await new Promise(()=>{}); }
+  gateMsg(`<b>This system is empty</b> — the plots (survey drawing), the base register and the MDS are not online yet.<br>Choose a <b>SID DASHBOARD … .html</b> file (e.g. the latest one in Downloads): its plots, register and built-in MDS are uploaded once for everyone.`,
+    `<label class="applybtn" style="display:inline-flex;align-items:center;justify-content:center;cursor:pointer;width:auto;padding:0 18px">Choose the dashboard file…<input type="file" id="sbgSeed" accept=".html,text/html" hidden></label> <button class="ebtn" id="sbgOut">Sign out</button><p class="sbg-err" id="sbgSeedSt"></p>`);
+  await new Promise(done=>{ const f=document.getElementById("sbgSeed"), st=document.getElementById("sbgSeedSt");
+    f.onchange=async()=>{ const file=f.files[0]; if(!file) return; st.textContent="Reading "+file.name+"…";
+      try{ const t=await file.text(), grab=id=>{ const m=t.match(new RegExp('<script id="'+id+'" type="application/(?:json|octet-stream)"[^>]*>([^<]*)</'+'script>')); return m?m[1]:null; };
+        const reg=grab("register-data"), geo=grab("geometry-data"), wb=grab("mds-workbook");
+        if(!reg||!geo||reg.length<100||geo.length<100) throw new Error("that file does not carry the plots and the register — choose a full SID DASHBOARD .html file");
+        for(const [p,body] of [["base/register.json",reg],["base/geometry.json",geo]]){ st.textContent="Uploading "+p+"…";
+          const r=await SB.storage.from("sid").upload(p,new Blob([body],{type:"application/json"}),{upsert:true}); if(r.error) throw r.error; }
+        if(wb&&wb.trim().length>100){ st.textContent="Uploading the MDS…"; const bin=atob(wb.trim()), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+          const path="mds/seed-"+Date.now()+".xlsx", r=await SB.storage.from("sid").upload(path,new Blob([u],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+          if(r.error) throw r.error; const ins=await SB.from("sid_mds_versions").insert({source:"Loaded from "+file.name,path}); if(ins.error) throw ins.error; }
+        st.textContent="Done — opening the dashboard…"; setTimeout(()=>location.reload(),800); done();
+      }catch(e){ st.textContent="Could not load it: "+(e.message||e); f.value=""; } }; });
+  await new Promise(()=>{});
+}
 async function sbGate(){
   if(!window.supabase||!window.supabase.createClient){ gateMsg("The sign-in service did not load — check the connection and reload the page."); throw new Error("supabase-js did not load"); }
   SB=window.supabase.createClient(SBC.url,SBC.key,{auth:{persistSession:true,autoRefreshToken:true}});
@@ -12660,6 +12679,8 @@ async function sbGate(){
   gateMsg("Loading the plots and the MDS…");
   // the plots, register and MDS are kept in this browser and downloaded again only when the online copy changed
   const L=await SB.storage.from("sid").list("base"); const st=n=>{ const f=(L.data||[]).find(x=>x.name===n); return f?(f.updated_at||"")+"|"+(f.metadata&&f.metadata.eTag||""):""; };
+  // a new, empty system (e.g. the TEST project): no plots / register online yet → say so; an administrator loads them from a dashboard file
+  if(!st("register.json")||!st("geometry.json")) await sbSeedGate();
   const [reg,geo,ver,kv]=await Promise.all([sbCached("base/register.json",st("register.json"),"text"),sbCached("base/geometry.json",st("geometry.json"),"text"),
     SB.from("sid_mds_versions").select("*").order("created_at",{ascending:false}).limit(1),SB.from("sid_kv").select("key,value,updated_at")]);
   const put=(id,txt)=>{ document.getElementById(id).textContent=txt;
