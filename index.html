@@ -5706,6 +5706,72 @@ setTimeout(()=>{ try{ netMs(); if(!netAwake()&&navigator.onLine){ NET.idlePing=D
 
 
 /* ============================================================================
+   V62 — Lara can really close what she opened; she may not claim an action no tool did
+   ========================================================================== */
+setTimeout(function(){ try{
+  const t=LARA_TOOLS.find(x=>x.name==="open_360_tour");
+  if(t){ t.description="Open or close the 360° virtual tour (Industria East or Industria West). To close it: action='close'.";
+    t.parameters.properties.action=LT("STRING","open (default) or close",{enum:["open","close"]}); delete t.parameters.required; }
+  if(!LARA_TOOLS.some(x=>x.name==="close_view")) LARA_TOOLS.push({name:"close_view",
+    description:"Close something that is open on screen: the 360° tour, the figures window, the park card, the plot card (clears the selection) or the presentation. 'top' (default) closes the front-most one. ALWAYS call this when the user asks to close / hide / exit / اقفل / اقفلي / شيل something — never just say it is closed.",
+    parameters:{type:"OBJECT",properties:{what:LT("STRING","What to close",{enum:["top","360_tour","figures_window","park_card","plot_card","presentation","all"]})}}});
+  LARA_CHIP.close_view=a=>"Closing "+String(a.what&&a.what!=="top"?a.what:"the window").replace(/_/g," ");
+}catch(e){ console.warn("V62 tools",e); } },0);
+
+function laraOpenNow(){ const o=[];
+  if($("#tourov")) o.push("360_tour");
+  const d=$("#drov"); if(d&&!d.hidden) o.push("figures_window");
+  const p=$("#parkcard"); if(p&&!p.hidden) o.push("park_card");
+  if(S.sel&&S.sel.size) o.push("plot_card");
+  if(document.body.classList.contains("presenting")) o.push("presentation");
+  return o; }
+function laraClose(a){
+  const before=laraOpenNow(); let w=String(a&&a.what||"top").toLowerCase().replace(/[\s-]+/g,"_");
+  if(/360|tour/.test(w)) w="360_tour";
+  const pick=w==="top"?before.filter(x=>x!=="presentation").slice(0,1):w==="all"?before:[w];
+  const done=[];
+  pick.forEach(k=>{ try{
+    if(k==="360_tour"){ LARA.tourClosedAt=Date.now(); if(closeTour()) done.push(k); }
+    else if(k==="figures_window"){ const d=$("#drov"); if(d&&!d.hidden){ closeDrill(); done.push(k); } }
+    else if(k==="park_card"){ const p=$("#parkcard"); if(p&&!p.hidden){ p.hidden=true; try{ clearRoutes("park"); }catch(e){} done.push(k); } }
+    else if(k==="plot_card"){ if(S.sel.size){ clearSel(); done.push(k); } }
+    else if(k==="presentation"){ if(document.body.classList.contains("presenting")){ stopPresentation(); done.push(k); } }
+  }catch(e){ console.warn("close_view",k,e); } });
+  if(w==="360_tour") LARA.tourClosedAt=Date.now();          // also stops a tour that is still flying in
+  const after=laraOpenNow(), failed=done.filter(k=>after.includes(k));
+  if(failed.length) return {error:"Tried to close "+failed.join(", ")+" but it is still open on screen — tell the user plainly.",still_open:after};
+  if(!done.length) return {closed:[],note:(w==="top"||w==="all")?"Nothing is open on screen to close — tell the user it is already closed.":w.replace(/_/g," ")+" is not open on screen — tell the user it is already closed.",open_now:after};
+  return {closed:done,still_open:after,say:"Closed: "+done.map(k=>k.replace(/_/g," ")).join(", ")+"."};
+}
+const openTourV62=openTour;
+openTour=function(t){ if(Date.now()-(LARA.tourClosedAt||0)<2500) return; return openTourV62(t); };
+
+const laraRunV62=laraRun;
+laraRun=async function(name,a){ a=a||{}; LARA.lastToolAt=Date.now();
+  if(name==="close_view"||(name==="open_360_tour"&&String(a.action||"").toLowerCase()==="close")){
+    LTURN.n++; return laraClose(name==="close_view"?a:{what:"360_tour"}); }
+  if(name==="open_360_tour") LARA.tourClosedAt=0;
+  return laraRunV62(name,a); };
+
+/* ---- honesty: "I closed it" with no tool in that answer → do it now, or say it did not happen ---- */
+const LARA_CLAIM=/(قفلت|قفلتلك|قفلتها|قفلته|فتحت|فتحتلك|فتحتها|عرضتلك|عرضتها|وريتك|بعتلك|بعتّلك|غيرتلك|غيّرت|غيرت|شلتلك|شلت|لغيت|حددتلك|اخترتلك|كبرتلك|صغرتلك|جهزتلك|عملتلك|نقلتك|طلعتلك|حطيتلك|وقفت|خرجت)(?=$|[\s،,.؟?!:])|\bI(?:'ve| have)?\s+(?:just\s+)?(?:closed|opened|shown|sent|changed|set|selected|cleared|removed|moved|zoomed|started|stopped|made|prepared|hidden|exited)\b/i;
+const LARA_CLAIM_NOTE="(Check, not a question: you just said you did something on screen, but you called NO tool in that answer, so nothing changed. Do it now with the right tool — to close the 360° tour or any window call close_view — or say plainly in one short sentence that it did not happen.)";
+const laraMsgV62=laraMsg;
+laraMsg=function(m){ try{ const sc=m&&m.serverContent;
+    if(sc){ if(sc.outputTranscription&&sc.outputTranscription.text) LARA.v62out=(LARA.v62out||"")+sc.outputTranscription.text;
+      if(sc.turnComplete){ const out=LARA.v62out||""; LARA.v62out="";
+        const noTool=(LTURN.n||0)===0&&Date.now()-(LARA.lastToolAt||0)>15000;
+        if(noTool&&LARA_CLAIM.test(out)&&Date.now()-(LARA.claimAt||0)>30000&&LARA.ws&&LARA.ws.readyState===1&&!LARA.lite){
+          LARA.claimAt=Date.now(); laraLog("info","claimed an action without a tool — asked to do it",{said:out.slice(0,160),open_now:laraOpenNow()});
+          setTimeout(()=>{ try{ if(LARA.ws&&LARA.ws.readyState===1) LARA.ws.send(JSON.stringify({realtimeInput:{text:LARA_CLAIM_NOTE}})); }catch(e){} },150); } } } }catch(e){}
+  return laraMsgV62(m); };
+
+const LARA_RULES_V62=`HONESTY: never say you did something on screen (opened, closed, showed, sent, changed…) unless a tool did it in THIS answer and its result confirmed it. To close the 360° tour, a figures window, the park card, the plot card or the presentation, call close_view (or open_360_tour with action "close"). If the tool says nothing was open, say it is already closed.`;
+const laraSystemV62=laraSystem;
+laraSystem=function(){ return laraSystemV62()+"\n"+LARA_RULES_V62; };
+
+
+/* ============================================================================
    V48 — PLOT STATUS WORKFLOW: requests, approvals, holds, notifications
    ========================================================================== */
 const WF={live:new Map(), req:[], notif:[], ready:false, missing:false, ch:null, tab:null, focus:null, t:{}, lastTick:0};
@@ -7169,7 +7235,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V61.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V62.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
