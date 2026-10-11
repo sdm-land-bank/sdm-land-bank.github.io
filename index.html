@@ -5766,7 +5766,28 @@ laraMsg=function(m){ try{ const sc=m&&m.serverContent;
           setTimeout(()=>{ try{ if(LARA.ws&&LARA.ws.readyState===1) LARA.ws.send(JSON.stringify({realtimeInput:{text:LARA_CLAIM_NOTE}})); }catch(e){} },150); } } } }catch(e){}
   return laraMsgV62(m); };
 
-const LARA_RULES_V62=`HONESTY: never say you did something on screen (opened, closed, showed, sent, changed…) unless a tool did it in THIS answer and its result confirmed it. To close the 360° tour, a figures window, the park card, the plot card or the presentation, call close_view (or open_360_tour with action "close"). If the tool says nothing was open, say it is already closed.`;
+
+/* ---- Gemini Live sometimes says the same answer twice (4 of 113 answers, 8–11 Oct): a second answer that repeats the
+   previous one within 10 s, with no new words from the user, is silenced as soon as its transcript shows the repeat ---- */
+const laraRepNorm=t=>String(t||"").toLowerCase().replace(/[\s.,،؟?!:;"'«»()\-–—]+/g,"");
+const laraSendV62=laraSend;
+laraSend=function(text){ if(!/^\(/.test(String(text||""))) LARA.v62userN=(LARA.v62userN||0)+1; return laraSendV62(text); };
+const laraMsgV62b=laraMsg;
+laraMsg=function(m){ try{ const sc=m&&m.serverContent;
+    if(sc){
+      if(sc.inputTranscription&&String(sc.inputTranscription.text||"").trim().length>1) LARA.v62userN=(LARA.v62userN||0)+1;
+      if(sc.outputTranscription&&sc.outputTranscription.text){
+        if(LARA.v62mute) delete sc.outputTranscription;
+        else { LARA.v62cur=(LARA.v62cur||"")+sc.outputTranscription.text;
+          const cur=laraRepNorm(LARA.v62cur), prev=laraRepNorm(LARA.v62prev);
+          if(prev&&cur.length>=10&&Date.now()-(LARA.v62prevAt||0)<10000&&(LARA.v62userN||0)===LARA.v62prevUserN&&prev.startsWith(cur.slice(0,prev.length))){
+            LARA.v62mute=true; laraStopAudio(); laraLog("info","repeated answer silenced",{said:String(LARA.v62prev).slice(0,120)}); delete sc.outputTranscription; } } }
+      if(LARA.v62mute&&sc.modelTurn&&sc.modelTurn.parts) sc.modelTurn.parts=sc.modelTurn.parts.filter(p=>!(p.inlineData&&/audio/i.test(p.inlineData.mimeType||"")));
+      if(sc.turnComplete){ if(!LARA.v62mute&&laraRepNorm(LARA.v62cur)){ LARA.v62prev=LARA.v62cur; LARA.v62prevAt=Date.now(); LARA.v62prevUserN=LARA.v62userN||0; }
+        LARA.v62cur=""; LARA.v62mute=false; } } }catch(e){}
+  return laraMsgV62b(m); };
+
+const LARA_RULES_V62=`HONESTY: never say you did something on screen (opened, closed, showed, sent, changed…) unless a tool did it in THIS answer and its result confirmed it. To close the 360° tour, a figures window, the park card, the plot card or the presentation, call close_view (or open_360_tour with action "close"). If the tool says nothing was open, say it is already closed. Say each result ONCE: after a tool returns, never repeat a sentence you already said.`;
 const laraSystemV62=laraSystem;
 laraSystem=function(){ return laraSystemV62()+"\n"+LARA_RULES_V62; };
 
