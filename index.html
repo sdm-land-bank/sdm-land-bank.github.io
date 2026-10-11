@@ -810,7 +810,11 @@ body.no-matchfin #fpOn,body.no-matchfin .fp-panel,body.no-matchfin .fp-sec,body.
 /* ---- V59 Gemini keys ---- */
 .gk-t td,.gk-t th{font-size:12px;vertical-align:middle;padding:5px 6px}
 .gk-t input:not([type=checkbox]),.gk-t select{height:30px;border-radius:7px;border:1px solid var(--rule-2);padding:0 8px;background:var(--panel);width:100%;min-width:90px}
-.gk-t input.gk-l{min-width:200px} .gk-t select.gk-tier{min-width:170px} .gk-t .gk-cap{width:80px;min-width:60px} .gk-t .gk-key{font-family:"IBM Plex Mono",monospace;min-width:200px}
+.gk-t input.gk-l{min-width:200px} .gk-t select.gk-tier{min-width:170px} .gk-t .gk-cap{width:80px;min-width:60px} .gk-t .gk-key{font-family:"IBM Plex Mono",monospace;min-width:200px;width:100%}
+.gk-kn{display:block;margin-top:3px;font-size:11px}
+.gk-res{margin:2px 0 6px;padding:7px 10px;border-radius:8px;font-size:12.5px;line-height:1.4}
+.gk-res.ok{background:#E9F8EF;color:#14532D} .gk-res.bad{background:#FDECEC;color:#8A1C1C}
+.gk-b{white-space:nowrap} .gk-b .ebtn{margin-left:4px}
 .gk-t .gk-on{accent-color:var(--signal);width:16px;height:16px}
 .gk-b{white-space:nowrap} .gk-b .ebtn{width:auto;height:28px;padding:0 9px;margin-left:3px}
 .gk-ur td{padding-top:0!important;border-top:none!important}
@@ -6836,6 +6840,36 @@ function gkUse(e){
   return `<div class="gk-use"><div class="gk-ul"><span><b>Free tier</b> — ${L.rpd?(L.rpd==="unlimited"?"no daily limit":L.rpd+" requests / day"):"daily limit n/a"}${L.tpm?", "+n(+L.tpm)+" tokens / minute":""}</span><span class="gk-left"><b>nothing to run out of</b></span>${rest}</div>
     <em>${ans?`<b>${used}</b> — at paid prices this would be ≈ $${usd.toFixed(2)}; on the free tier it costs $0`:"Not used yet this month"} · limits for Gemini 3.8 Live from AI Studio → Rate limits</em>${typeof gNote!=="undefined"&&gNote?gNote:""}</div>`;
 }
+/* Test = the real path Lara uses: sid-live makes a session token with THIS key (the key before it in the saved order is passed as
+   "after"), then a Gemini Live connection asks for one short answer. Google's own words are shown when it refuses. */
+async function gkTest(e,btn){
+  if(!e) return; GK.test=GK.test||{};
+  const show=(ok,html)=>{ GK.test[e.id]=`<div class="gk-res ${ok?"ok":"bad"}">${html}</div>`; const el=$("#gkTr_"+e.id); if(el) el.innerHTML=GK.test[e.id]; };
+  const inp=btn&&btn.closest("tr").querySelector(".gk-key"); if(inp&&inp.value.trim()){ show(false,"Press <b>Save keys &amp; order</b> first — the test uses the saved key."); return; }
+  const R=(GK.ring||[]).filter(x=>x.on!==false&&GK.saved[x.id]), at=R.findIndex(x=>x.id===e.id);
+  if(at<0){ show(false,"This key is switched off or not saved — switch it on and press <b>Save keys &amp; order</b> first."); return; }
+  if(btn){ btn.disabled=true; btn.textContent="Testing…"; } show(true,"Testing… asking Google for a short answer with this key");
+  const t0=performance.now(); let ws=null;
+  try{
+    const tok=await laraFn("sid-live",at?{after:R[at-1].id}:{});
+    if(!tok||tok.key_id!==e.id) throw new Error("Google would not create a session with this key"+(tok&&tok.key_id?" (Lara moved on to “"+(tok.label||tok.key_id)+"”)":"")+" — the key may be wrong, deleted or restricted.");
+    const token=tok.token||tok.name||tok.access_token, model=(tok.models&&tok.models[0])||"gemini-3.8-live";
+    const res=await new Promise(res=>{
+      ws=new WebSocket("wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained?access_token="+encodeURIComponent(token));
+      const to=setTimeout(()=>res({ok:false,msg:"No answer from Google within 15 s"}),15000);
+      ws.onopen=()=>ws.send(JSON.stringify({setup:{model:"models/"+model,generationConfig:{responseModalities:["AUDIO"]}}}));
+      ws.onmessage=async m=>{ let d={}; try{ d=JSON.parse(typeof m.data==="string"?m.data:await m.data.text()); }catch(_){}
+        if(d.setupComplete) ws.send(JSON.stringify({realtimeInput:{text:"Say only: OK"}}));
+        if(d.serverContent){ clearTimeout(to); res({ok:true,model}); } };
+      ws.onclose=c=>{ clearTimeout(to); res({ok:false,msg:(c.reason||"connection closed ("+c.code+")")}); }; });
+    if(!res.ok) throw new Error(res.msg);
+    show(true,`✓ <b>Works</b> — Google answered with ${esc(res.model)} in ${((performance.now()-t0)/1000).toFixed(1)} s. Lara can use this key.`);
+    if(GK.google) delete GK.google[e.id];
+    if(typeof LKEY!=="undefined"){ delete LKEY.cool[e.id]; try{ sessionStorage.setItem("sid.lara.kcool",JSON.stringify(LKEY.cool)); }catch(_){} }
+  }catch(err){ const m=String(err&&err.message||err);
+    show(false,`✗ <b>${/spending cap|spend cap/i.test(m)?"Blocked — monthly spend cap reached":/quota|exhausted|429|rate/i.test(m)?"Quota / rate limit reached":"Does not work"}</b> — Google said: “${esc(m.slice(0,220))}”`); }
+  finally{ try{ ws&&ws.readyState<2&&ws.close(); }catch(_){} if(btn){ btn.disabled=false; btn.textContent="Test"; } }
+}
 function gkCardHtml(){
   const head=`<h3>Gemini keys <em class="u-un">Lara and Ask SDM AI try them in this order — when one is capped or limited, the next one answers</em></h3>`;
   if(GK.err==="missing") return `<section class="card wide" id="gkCard">${head}<div class="mm-empty"><b>Not switched on yet</b>An administrator runs step 10 (sql_10_keys.sql) in Supabase once.</div></section>`;
@@ -6850,11 +6884,10 @@ function gkCardHtml(){
       <td><input class="gk-l" value="${esc(e.label||"")}" maxlength="60" placeholder="e.g. Pro account 2 · credit"></td>
       <td><select class="gk-tier"><option value="paid" ${e.tier!=="free"?"selected":""}>Paid · credit-covered</option><option value="free" ${e.tier==="free"?"selected":""}>Free tier</option></select></td>
       <td><input class="gk-cap" type="number" min="0" step="1" value="${e.tier==="free"?"":esc(e.cap_usd??10)}" ${e.tier==="free"?"disabled placeholder=\"free\"":""}></td>
-      <td class="gk-k">${own?`<input class="gk-key" type="password" autocomplete="off" placeholder="${saved?"saved ✓ — paste to replace":"paste the key (AQ.… or AIza…)"}">`:
-        `<span class="${saved?"u-ok":"gk-miss"}">${saved?"saved ✓":"missing"}</span> <em class="u-un">${e.id==="main"?"main key":"backup key"} · set in “Sales &amp; Land Bank display and the AI assistant” below</em>`}</td>
+      <td class="gk-k"><input class="gk-key" type="password" autocomplete="off" placeholder="${saved?"saved ✓ — paste a new key to replace":"paste the key (AQ.… or AIza…)"}"><em class="u-un gk-kn">${e.id==="main"?"main key":e.id==="backup"?"backup key":"extra key"} · stored encrypted, never shown again</em></td>
       <td><input type="checkbox" class="gk-on" ${e.on!==false?"checked":""} aria-label="Use this key"></td>
-      <td class="gk-b"><button type="button" class="ebtn gk-up" ${i?"":"disabled"} aria-label="Move up">↑</button><button type="button" class="ebtn gk-dn" ${i<n-1?"":"disabled"} aria-label="Move down">↓</button>${own?`<button type="button" class="ebtn gk-rm">Remove</button>`:""}</td></tr>
-      <tr class="gk-ur"><td></td><td colspan="6">${saved?gkUse(e):`<div class="gk-use"><em>No key saved yet — Lara skips this line.</em></div>`}</td></tr>`; }).join("")}
+      <td class="gk-b"><button type="button" class="ebtn gk-up" ${i?"":"disabled"} aria-label="Move up">↑</button><button type="button" class="ebtn gk-dn" ${i<n-1?"":"disabled"} aria-label="Move down">↓</button><button type="button" class="ebtn gk-test" ${saved?"":"disabled"} title="Ask Google for a real answer with this key">Test</button>${own?`<button type="button" class="ebtn gk-rm">Remove</button>`:""}</td></tr>
+      <tr class="gk-ur"><td></td><td colspan="6"><div class="gk-tr" id="gkTr_${e.id}">${GK.test&&GK.test[e.id]||""}</div>${saved?gkUse(e):`<div class="gk-use"><em>No key saved yet — Lara skips this line.</em></div>`}</td></tr>`; }).join("")}
     </tbody></table></div>
     <div class="src-act"><button class="ebtn" id="gkAdd" ${D.length>=10||!GK_IDS.some(id=>/^k/.test(id)&&!D.some(e=>e.id===id))?"disabled":""}>＋ Add a key</button>
       <button class="applybtn" id="gkSave">Save keys &amp; order</button><span class="src-st" id="gkSt"></span></div>
@@ -6880,10 +6913,16 @@ function gkWire(){
     GK.draft.splice(i,1); gkRepaint(); toast("Key removed — press Save to keep the new order"); });
   const add=$("#gkAdd"); if(add) add.onclick=()=>{ gkRead(); const id=GK_IDS.find(x=>/^k/.test(x)&&!GK.draft.some(e=>e.id===x)); if(!id) return;
     GK.draft.push({id,label:"Pro account "+(GK.draft.length+1)+" · credit",tier:"paid",cap_usd:10,on:true}); gkRepaint(); };
+  $$("#gkCard .gk-test").forEach(b=>b.onclick=()=>gkTest(GK.draft[+b.closest("tr").dataset.i],b));
   const sv=$("#gkSave"); if(sv) sv.onclick=async()=>{ gkRead(); const st=$("#gkSt"); sv.disabled=true; st.textContent="Saving…";
     try{ for(const inp of $$("#gkCard .gk-key")){ const v=inp.value.trim(); if(!v) continue; const e=GK.draft[+inp.closest("tr").dataset.i];
         if(!/^(AIza[0-9A-Za-z_\-]{30,}|AQ\.[0-9A-Za-z_\-.]{30,})$/.test(v)){ throw new Error(`“${e.label}”: that does not look like a Gemini API key (new keys start with AQ. — older ones with AIza)`); }
-        const r=await SB.rpc("sid_set_secret",{p_name:"gemini_"+e.id,p_value:v}); if(r.error) throw r.error; GK.saved[e.id]=true; inp.value=""; }
+        const r=/^k[1-8]$/.test(e.id)?await SB.rpc("sid_set_secret",{p_name:"gemini_"+e.id,p_value:v})
+          :await SB.from("sid_config").upsert({key:e.id==="main"?"gemini_key":"gemini_key_backup",value:v,updated_at:new Date().toISOString()});
+        if(r.error) throw r.error; GK.saved[e.id]=true; inp.value="";
+        if(GK.google) delete GK.google[e.id]; if(GK.test) delete GK.test[e.id];
+        if(typeof LKEY!=="undefined"){ delete LKEY.cool[e.id]; try{ sessionStorage.setItem("sid.lara.kcool",JSON.stringify(LKEY.cool)); }catch(_){} }
+        try{ const c=JSON.parse(localStorage.getItem("sid.lara.cool")||"{}"); Object.keys(c).forEach(k=>{ if(k.startsWith(e.id+":")) delete c[k]; }); localStorage.setItem("sid.lara.cool",JSON.stringify(c)); }catch(_){} }
       const ring=GK.draft.map(e=>({id:e.id,label:e.label,tier:e.tier,...(e.tier!=="free"?{cap_usd:+e.cap_usd||10}:{}),on:e.on!==false}));
       const r=await SB.rpc("sid_gemini_ring_save",{p:ring}); if(r.error) throw r.error;
       GK.ring=JSON.parse(JSON.stringify(ring)); if(USG.data&&USG.data.config) USG.data.config.gemini_keyring=JSON.stringify(ring);
@@ -7361,7 +7400,7 @@ function liveShareCopy(){
       ()=>`<script id="mds-workbook" type="application/octet-stream" data-date="${stamp}" data-fresh="1">`+b64(LIVE.cur.buf)+'</'+'script>');
   }catch(e){ toast("Could not build the copy: "+e.message,true); return; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-  a.download="SID DASHBOARD V64.0.html"; document.body.appendChild(a); a.click();
+  a.download="SID DASHBOARD V65.0.html"; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   toast("Saved — share this one file. It opens on today's data and syncs by itself.");
 }
