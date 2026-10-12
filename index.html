@@ -12865,7 +12865,7 @@ function slPlots(){ const out=[], seen=new Set();
   return out.slice(0,6000); }
 const slCanPush=()=>!!(typeof sbReady==="function"&&sbReady()&&SBME&&(SBME.is_admin||SBME.wf==="ops"));
 function slSnapSched(){ if(SLB.snapOff||!slCanPush()) return;
-  const last=+slStore("sid.sl.snap",undefined,true)||0, at=Math.max(Date.now()+20000,last+300000);
+  const last=+slStore("sid.sl.snap",undefined,true)||0, at=Math.max(Date.now()+20000,last+45000);
   clearTimeout(SLB.snapT); SLB.snapT=setTimeout(slSnap,at-Date.now()); }
 async function slSnap(){ SLB.snapT=null; if(SLB.snapBusy||!slCanPush()) return; SLB.snapBusy=true;
   try{ const plots=slPlots(); if(!plots.length) return;
