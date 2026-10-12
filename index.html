@@ -12809,6 +12809,7 @@ async function slSnap(){ SLB.snapT=null; if(SLB.snapBusy||!slCanPush()) return; 
   finally{ SLB.snapBusy=false; } }
 const slCommitV=commitRows;
 commitRows=function(){ const r=slCommitV.apply(this,arguments); try{ if(SLB.ready) slSnapSched(); }catch(e){} return r; };
+const slWfBootV=wfBoot; wfBoot=async function(){ const r=await slWfBootV.apply(this,arguments); try{ SLB.ready=true; slSnapSched(); }catch(e){} return r; }; /* sign-in finished: the first plot list is sent from here (the 1.5 s boot timer runs before sign-in) */
 
 /* ---- §5 links from Sales Leads: #hold=<key> (Change status → On hold) and #plot=<key> (plot card) ---- */
 function slLinkGrab(){ try{ const m=location.hash.match(/^#(hold|plot)=(.+)$/); if(!m) return false;
