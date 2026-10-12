@@ -12984,6 +12984,7 @@ async function slGate(type,run,o){ o=o||{};
         offerType:type,plots:info.plots.slice(0,50),totalValue:info.total==null?undefined:info.total,plan:info.plan,offer:slOfferState(type),summary:String((re?"Reprint of "+re.id+" · ":"")+info.summary).slice(0,480),docName:last.n}}); }
     catch(e){ const m=slErrMsg(e)+" The offer was not printed."; toast(m,true); if(o.lara) LARA.last=null; return {error:m}; }
     saves.forEach(s=>{ try{ s.sv.call(s.d,s.n,s.op); }catch(e){ console.error(e); } });
+    SLO.loaded=false;
     if(re) slReDone();
     toast(`${SL_TYPE_L[type]} for ${c.name||"the customer"} — downloaded and recorded in Sales Leads`);
     if(out&&typeof out==="object") out.customer=c.name||"";
@@ -13230,7 +13231,7 @@ viewOffer=function(){ if(!SLO.was){ SLO.was=true; SLO.tab=SLO.force?"new":"hist"
     <button type="button" class="ebtn" id="sloReX" title="Make it a new offer instead of a reprint">Not a reprint</button></div>`:"";
   return `<div class="slo-wrap">${tabs}${re}${SLO.tab==="new"?slCustBar():""}<div class="slo-main">${SLO.tab==="hist"?slHistHtml():slVO()}</div></div>`; };
 wireOffer=function(){ const w=document.querySelector(".slo-wrap");
-  if(w) w.querySelectorAll("[data-slo-tab]").forEach(b=>b.onclick=()=>{ if(SLO.tab===b.dataset.sloTab) return; SLO.tab=b.dataset.sloTab; render(); });
+  if(w) w.querySelectorAll("[data-slo-tab]").forEach(b=>b.onclick=()=>{ if(SLO.tab===b.dataset.sloTab) return; SLO.tab=b.dataset.sloTab; if(SLO.tab==="hist") SLO.loaded=false; render(); });
   slCustWire(); const sf=$("#soForm"); if(sf) sf.addEventListener("input",e=>{ if(e.target&&e.target.dataset&&e.target.dataset.so==="client") setTimeout(slCustRefresh,0); });
   const x=$("#sloReX"); if(x) x.onclick=()=>{ slReDone(); render(); };
   if(SLO.tab==="hist") return slHistWire(); return slWO(); };
