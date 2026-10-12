@@ -926,6 +926,8 @@ body.no-matchfin #fpOn,body.no-matchfin .fp-panel,body.no-matchfin .fp-sec,body.
 .slo-tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .slo-re{flex:none;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 20px;background:rgba(10,132,255,.08);border-bottom:1px solid rgba(10,132,255,.25);font-size:12.5px}
 .slo-re span{flex:1;min-width:200px}
+.slo-cust{flex:none;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 20px;border-bottom:1px solid var(--rule);background:var(--panel);font-size:13px}
+.slo-cl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)} .slo-cv{flex:1;min-width:180px} .slo-none{color:var(--mute);font-size:12px}
 .slo-main{position:relative;flex:1;min-height:0}
 .slo-hist{position:absolute;inset:0;overflow:auto;padding:16px 20px 60px;display:flex;flex-direction:column;gap:12px}
 .slo-f{display:flex;gap:8px;flex-wrap:wrap} .slo-f input{flex:1 1 260px;min-width:0} .slo-f input,.slo-f select{height:34px;border:1px solid var(--rule);border-radius:10px;padding:0 10px;background:var(--panel);color:inherit;font:inherit;font-size:13px}
@@ -12883,7 +12885,8 @@ const slWfBootV=wfBoot; wfBoot=async function(){ const r=await slWfBootV.apply(t
 
 /* ---- §5 links from Sales Leads: #hold=<key> (Change status → On hold) and #plot=<key> (plot card) ---- */
 function slLinkGrab(){ try{ const m=location.hash.match(/^#(hold|plot)=(.+)$/); if(!m) return false;
-    slStore("sid.sl.link",JSON.stringify({a:m[1],k:decodeURIComponent(m[2]),t:Date.now()}));
+    const parts=m[2].split("&"), extra=new URLSearchParams(parts.slice(1).join("&")), lead=String(extra.get("lead")||"").trim().slice(0,60);
+    slStore("sid.sl.link",JSON.stringify({a:m[1],k:decodeURIComponent(parts[0]),lead:lead||null,t:Date.now()}));
     history.replaceState(null,"",location.pathname+location.search); return true; }catch(e){ return false; } }
 slLinkGrab();
 function slFindRow(key){ key=String(key||"").trim(); if(!key) return null;
@@ -12903,8 +12906,14 @@ async function slLinkGo(){ let L=null; try{ L=JSON.parse(slStore("sid.sl.link")|
   if(r.status!=="ats"){ toast(`Plot ${r.unit} is no longer available (now ${(STATUS[r.status]||STATUS.unknown).label}) — it cannot be put on hold`,true); return; }
   if(!wfOn()){ toast(WF.missing?"The status workflow is not switched on yet":"Your role cannot request status changes — ask your sales manager or sales operation",true); return; }
   if(!keys.length){ toast(`Plot ${r.unit} is not drawn on the map, so its status cannot be changed here`,true); return; }
-  setTimeout(()=>{ wfDialog(keys); const i=document.querySelector('#wfDlg input[name=st][value="hold"]');
-    if(i&&!i.disabled){ i.checked=true; i.dispatchEvent(new Event("change",{bubbles:true})); } },800); }
+  /* §10.2 the lead behind the link: its customer (and, for operations, its salesperson) pre-filled — nothing is saved until the user presses the button */
+  const brief=L.lead?slFetch("/integration/lead-brief?leadId="+encodeURIComponent(L.lead)).catch(()=>null):Promise.resolve(null);
+  setTimeout(async()=>{ wfDialog(keys); const i=document.querySelector('#wfDlg input[name=st][value="hold"]');
+    if(i&&!i.disabled){ i.checked=true; i.dispatchEvent(new Event("change",{bubbles:true})); }
+    const b=await Promise.race([brief,new Promise(z=>setTimeout(()=>z(null),6000))]), F=document.querySelector("#wfDlg form"); if(!b||!F) return;
+    const put=(n,v,keep)=>{ const el=F.elements[n]; if(el&&v&&!(keep&&String(el.value||"").trim())) el.value=String(v).slice(0,120); };
+    put("client",b.customerName); put("company",b.companyName||b.customerName); if(F.elements.soldby) put("soldby",b.ownerEmail,true);   /* the lead's customer replaces the MDS's old names */
+    F.dispatchEvent(new Event("input",{bubbles:true})); },800); }
 function slBootWait(n){ n=n||0;
   const ok=typeof sbReady==="function"&&sbReady()&&SBME&&S.rows&&S.rows.length&&S.plots&&S.plots.size&&S.mapReady&&WF.ready;
   if(!ok){ const inGate=!(typeof sbReady==="function"&&sbReady()); if(n<300||inGate) setTimeout(()=>slBootWait(inGate?n:n+1),1000); return; }
@@ -12963,7 +12972,8 @@ async function slGate(type,run,o){ o=o||{};
   if(SLB.busy){ toast("Finish choosing the customer for the other offer first",true); return {error:"Another offer is waiting for its customer on screen."}; }
   const J=window.jspdf; if(!J||!J.jsPDF) return run();
   SLB.busy=true; const saves=[]; let Orig=null, mine=null;
-  try{ const re=slReFor(type), c=re&&re.contact?re.contact:await slPick(type);
+  try{ const re=slReFor(type), fc=type==="sales_offer"?slFormCust():null, c=fc||await slPick(type);
+    if(c&&type==="sales_offer"&&!fc) slSetCust(c,false);
     if(!c){ toast("No customer chosen — the offer was not printed",true); return {error:"The user did not choose a customer on screen, so the offer was not printed."}; }
     Orig=J.jsPDF; mine=function(...a){ const d=new Orig(...a), sv=d.save; d.save=function(n,op){ saves.push({d,sv,n,op}); return d; }; return d; };
     J.jsPDF=mine; SLB.inRun=true; let out;
@@ -13173,7 +13183,7 @@ function slPriceXls(){ const by=SLD.ps.by, rows=SLD.pv||[], r1=v=>v==null?null:M
 /* ============================================================================
    SALES OFFER PAGE: History | New offer · Print again · who got the offer for a plot
    ========================================================================== */
-const SLO={tab:"hist",was:false,force:false,f:{q:"",type:"",period:"all"},rows:[],total:0,busy:false,err:"",loaded:false,seq:0,re:null,qt:null};
+const SLO={cust:null,tab:"hist",was:false,force:false,f:{q:"",type:"",period:"all"},rows:[],total:0,busy:false,err:"",loaded:false,seq:0,re:null,qt:null};
 const SL_TYPE_S={sales_offer:"Sales offer",financial_offer:"Initial offer",proposal:"Proposal"};
 const SL_PPY={12:"monthly",6:"every 2 months",4:"quarterly",2:"semi-annual",1:"annual"};
 function slPlanTxt(p){ if(!p||!p.mode) return "—"; if(p.mode==="cash") return "Cash";
@@ -13201,17 +13211,27 @@ function slOfferState(type){ let o;
 const slFam=t=>t==="sales_offer"?"so":"mm";
 function slReFor(type){ const r=SLO.re; if(r&&Date.now()-r.at>30*60000){ SLO.re=null; return null; } return r&&slFam(r.type)===slFam(type)?r:null; }
 function slReDone(){ SLO.re=null; const b=document.getElementById("sloRe"); if(b) b.remove(); }
+/* the customer of the New offer form: valid for the download while "Client's name" still holds the chosen customer */
+const slNm=v=>String(v||"").trim().toLowerCase().replace(/\s+/g," ");
+function slFormCust(){ const c=SLO.cust; return c&&c.contact&&SO.f&&slNm(SO.f.client)===slNm(c.client)?c.contact:null; }
+function slSetCust(c,fill){ if(!c){ SLO.cust=null; return; } if(fill&&SO.f){ SO.f.client=c.name||SO.f.client; if(c.company) SO.f.company=c.company; soSave(); }
+  SLO.cust={contact:c,client:SO.f?SO.f.client:c.name}; SLB.pick=c; }
+function slCustWire(){ const cc=$("#sloCustCh"); if(cc) cc.onclick=async()=>{ const c=await slPick("sales_offer"); if(c){ slSetCust(c,true); render(); } }; }
+function slCustRefresh(){ const b=$("#sloCust"); if(!b) return; b.outerHTML=slCustBar(); slCustWire(); }
+function slCustBar(){ const c=slFormCust();
+  return `<div class="slo-cust" id="sloCust"><span class="slo-cl">Customer</span>${c?`<span class="slo-cv"><b>${esc(c.name||"—")}</b>${[c.company,c.serial].filter(Boolean).map(x=>" · "+esc(x)).join("")}</span>
+    <button type="button" class="ebtn" id="sloCustCh">Change</button>`:`<span class="slo-cv slo-none">Choose the Sales Leads customer first — fills Client's name and Company name</span><button type="button" class="ebtn pri" id="sloCustCh">Choose customer</button>`}</div>`; }
 
 /* ---- the page: tabs on top, History (default) or the existing form ---- */
 const slVO=viewOffer, slWO=wireOffer;
 viewOffer=function(){ if(!SLO.was){ SLO.was=true; SLO.tab=SLO.force?"new":"hist"; SLO.force=false; SLO.loaded=false; }
   const tabs=`<div class="slo-tabs" role="tablist"><button type="button" role="tab" data-slo-tab="hist" class="${SLO.tab==="hist"?"on":""}">History</button><button type="button" role="tab" data-slo-tab="new" class="${SLO.tab==="new"?"on":""}">New offer</button></div>`;
-  const re=SLO.re&&SLO.tab==="new"?`<div class="slo-re" id="sloRe"><span>Print again · offer <b>${esc(SLO.re.id)}</b> for ${SLO.re.contact?`<b>${esc(SLO.re.contact.name||"—")}</b>${SLO.re.contact.company?" · "+esc(SLO.re.contact.company):""}`:"<i>a customer you choose when you download</i>"}</span>
-    ${SLO.re.contact?`<button type="button" class="ebtn" id="sloReCh">Change customer</button>`:""}<button type="button" class="ebtn" id="sloReX" title="Not a reprint">×</button></div>`:"";
-  return `<div class="slo-wrap">${tabs}${re}<div class="slo-main">${SLO.tab==="hist"?slHistHtml():slVO()}</div></div>`; };
+  const R0=SLO.re, re=R0&&SLO.tab==="new"&&slFam(R0.type)==="so"?`<div class="slo-re" id="sloRe"><span>Printing again: offer of <b>${esc(R0.date?new Date(R0.date).toLocaleDateString("en-GB",{day:"numeric",month:"short"}):"earlier")}</b>${R0.contact?` for <b>${esc(R0.contact.name||"—")}</b>`:""}${R0.serial?` (${esc(R0.serial)})`:""}${R0.units&&R0.units.length?` · ${esc(R0.units.slice(0,6).join(", "))}${R0.units.length>6?" …":""}`:""}</span>
+    <button type="button" class="ebtn" id="sloReX" title="Make it a new offer instead of a reprint">Not a reprint</button></div>`:"";
+  return `<div class="slo-wrap">${tabs}${re}${SLO.tab==="new"?slCustBar():""}<div class="slo-main">${SLO.tab==="hist"?slHistHtml():slVO()}</div></div>`; };
 wireOffer=function(){ const w=document.querySelector(".slo-wrap");
   if(w) w.querySelectorAll("[data-slo-tab]").forEach(b=>b.onclick=()=>{ if(SLO.tab===b.dataset.sloTab) return; SLO.tab=b.dataset.sloTab; render(); });
-  const ch=$("#sloReCh"); if(ch) ch.onclick=()=>{ SLO.re.contact=null; render(); };
+  slCustWire(); const sf=$("#soForm"); if(sf) sf.addEventListener("input",e=>{ if(e.target&&e.target.dataset&&e.target.dataset.so==="client") setTimeout(slCustRefresh,0); });
   const x=$("#sloReX"); if(x) x.onclick=()=>{ slReDone(); render(); };
   if(SLO.tab==="hist") return slHistWire(); return slWO(); };
 const slSelOfferV=selOffer; selOffer=function(){ SLO.tab="new"; SLO.force=S.view!=="offer"; return slSelOfferV.apply(this,arguments); };
@@ -13271,7 +13291,10 @@ async function slAgain(id,btn){ if(btn){ btn.disabled=true; btn.textContent="Ope
     if(type==="sales_offer"&&o.f){
       const units=(o.units||[]).filter(k=>S.byKey.has(k)), lost=(o.units||[]).length-units.length;
       SO.park=o.park||""; SO.units=units; SO.all=!!o.all; SO.q=""; SO.f={...o.f}; soAutoFill(); if(o.f.price) SO.f.price=o.f.price; soSave();
-      SLO.re={id,type,contact,at:Date.now()}; SLO.tab="new"; slReWarn(units,lost); render(); return; }
+      if(contact&&!String(SO.f.client||"").trim()){ SO.f.client=contact.name; if(contact.company&&!String(SO.f.company||"").trim()) SO.f.company=contact.company; soSave(); }
+      if(contact) SLO.cust={contact,client:SO.f.client};
+      SLO.re={id,type,contact,at:Date.now(),date:row.printedAt||null,serial:row.contactSerial||row.contactId||"",units:(row.plots||[]).map(p=>p.unit).filter(Boolean)};
+      SLO.tab="new"; slReWarn(units,lost); render(); return; }
     const keys=(o.keys||[]).filter(k=>S.byKey.has(k)), ks=[]; keys.forEach(k=>laraRowKeys(S.byKey.get(k)).forEach(x=>{ if(!ks.includes(x)) ks.push(x); }));
     if(!ks.length) throw Object.assign(new Error("The plots of this offer are no longer on the map."),{code:400});
     if(o.fpl) Object.assign(FPL.cfg,o.fpl,{start:""}); if(o.company!=null) MM.form.company=o.company; if(o.contact!=null) MM.form.contact=o.contact;
