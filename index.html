@@ -578,6 +578,7 @@ body.presenting .plogo,body.presenting .tpin,body.presenting .poi{pointer-events
 .pres-tour iframe{width:100%;height:100%;border:0;display:block}
 
 .app[data-view="settings"] header.top,.app[data-view="settings"] .kpis{display:none}
+body.no-lara #laraDock,body.no-lara #laraEdge,body.no-lara #laraCursor{display:none!important}
 body.no-present #presBtn{display:none!important}
 body.sb-online #syncBtn{display:none!important}
 .src-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
@@ -3670,7 +3671,7 @@ const laraPrefSave=()=>{ try{ const {awake,...p}=LARA_PREF; localStorage.setItem
 const LARA={st:"off",ws:null,api:"v1beta",model:null,handle:null,mic:null,ctxIn:null,ctxOut:null,node:null,anOut:null,playT:0,playing:new Set(),
   lvl:0,micLvl:0,opts:{singles:[],merges:[]},cur:null,last:null,cap:{u:"",l:"",who:""},idle:null,wake:null,wakeHit:null,lite:false,hist:[],
   chips:[],endAfter:false,muted:false,greeted:false,raf:0,t0:0,busy:0,liteRec:null,speaking:false};
-const laraOnline=()=>typeof SB!=="undefined"&&!!SB&&typeof sbReady==="function"&&sbReady();
+const laraOnline=()=>typeof SB!=="undefined"&&!!SB&&typeof sbReady==="function"&&sbReady()&&(typeof canSee!=="function"||canSee("lara"));
 const laraCan=id=>typeof canSee!=="function"||canSee(id);
 const laraWait=ms=>new Promise(r=>setTimeout(r,ms));
 const LARA_WAKE=/(?:\b(?:hey|hi|hello|ok|okay|ya|yo)?[\s,]*(?:lara|laura|lora|larah|larra|lera|lawra|lara's|lorah)\b)|(?:(?:هاي|هاى|يا|اهلا|أهلا|ألو|الو)?\s*(?:لارا|لاره|لارة|لورا|لاورا|لارى))/i;
@@ -12582,7 +12583,8 @@ const SID_PAGES=[
   {id:"editor",label:"MDS register (editor)"},
   {id:"health",label:"Data health"},
   {id:"approvals",label:"Approvals (status requests)"},
-  {id:"demand",label:"Offer demand (from Sales Leads)"}
+  {id:"demand",label:"Offer demand (from Sales Leads)"},
+  {id:"lara",label:"Lara — voice assistant (button, wake word, microphone)"}
 ];
 const ALL_PAGE_IDS=SID_PAGES.flatMap(p=>[p.id,...(p.subs||[]).flatMap(g=>g.items.map(i=>i[0]))]);
 function canSee(id){
@@ -12603,6 +12605,7 @@ function sbApplyPerms(){
   const cls=document.body.classList;
   cls.toggle("no-present",!canSee("portfolio.present"));
   cls.toggle("no-matchfin",!canSee("match.fin"));
+  cls.toggle("no-lara",!canSee("lara"));
   if(!canSee("match.fin")) FPL.on=false;
 }
 /* Land Bank app (same-origin iframe): hide the views and cockpits the role cannot open */
