@@ -12874,14 +12874,14 @@ function slSnapSched(){ if(SLB.snapOff||!slCanPush()) return;
   clearTimeout(SLB.snapT); SLB.snapT=setTimeout(slSnap,at-Date.now()); }
 async function slSnap(){ SLB.snapT=null; if(SLB.snapBusy||!slCanPush()) return; SLB.snapBusy=true;
   try{ const plots=slPlots(); if(!plots.length) return;
-    const hash=await bufHash(new TextEncoder().encode(JSON.stringify(plots))); if(!hash||hash===SLB.sent) return;
+    const hash=await bufHash(new TextEncoder().encode(JSON.stringify(plots))); if(!hash||(hash===SLB.sent&&Date.now()-(SLB.touched||0)<540000)) return;
     slStore("sid.sl.snap",String(Date.now()),true);
-    const meta=await slFetch("/integration/plots-meta");
+    const meta=await slFetch("/integration/plots-meta?hash="+encodeURIComponent(hash)); SLB.touched=Date.now();
     if(meta.hash!==hash){ const r=await slFetch("/integration/plots-snapshot",{method:"POST",body:{hash,generatedAt:new Date().toISOString(),plots}});
       console.info("Sales Leads: plot list updated ("+(r.count!=null?r.count:plots.length)+" plots)"); }
     SLB.sent=hash; }
   catch(e){ if(e&&e.code===403) SLB.snapOff=true; if(!SLB.snapWarn){ SLB.snapWarn=true; console.warn("Sales Leads: plot list not sent —",e&&e.message); } }
-  finally{ SLB.snapBusy=false; } }
+  finally{ SLB.snapBusy=false; clearTimeout(SLB.touchT); SLB.touchT=setTimeout(slSnap,600000); } }   /* every 10 min while the page is open: confirms the list is current */
 const slCommitV=commitRows;
 commitRows=function(){ const r=slCommitV.apply(this,arguments); try{ if(SLB.ready) slSnapSched(); }catch(e){} return r; };
 const slWfBootV=wfBoot; wfBoot=async function(){ const r=await slWfBootV.apply(this,arguments); try{ SLB.ready=true; slSnapSched(); }catch(e){} return r; }; /* sign-in finished: the first plot list is sent from here (the 1.5 s boot timer runs before sign-in) */
