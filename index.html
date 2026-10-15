@@ -659,6 +659,11 @@ body.no-matchfin #fpOn,body.no-matchfin .fp-panel,body.no-matchfin .fp-sec,body.
 .wf-grid textarea{height:auto;padding:8px 10px;resize:vertical} .wf-grid .wf-wide{grid-column:1/-1}
 .wf-need.on::after{content:"required";font-size:9.5px;font-weight:700;color:var(--signal);letter-spacing:.06em;text-transform:uppercase}
 .wf-hold{font-size:12px;background:#f4f4f6;border-radius:10px;padding:9px 11px;margin:10px 0 0}
+.wf-hold .wf-days{display:flex;gap:8px;margin:4px 0 8px}
+.wf-hold .wf-days label{flex:1;display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--line,#d9d9de);border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;background:#fff}
+.wf-hold .wf-days label:has(input:checked){border-color:#A6192E;background:rgba(166,25,46,.07)}
+.wf-hold .wf-hp{margin:0;font-weight:400}
+
 .wf-path{font-size:12px;color:var(--ink-2);margin:10px 0 0}
 .wf-errm{display:block;min-height:16px;color:var(--signal);font-size:12px;font-style:normal;margin-top:6px}
 .wf-b{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
@@ -948,6 +953,13 @@ body.no-matchfin #fpOn,body.no-matchfin .fp-panel,body.no-matchfin .fp-sec,body.
   .slo-tbl tr{padding:10px 12px;border-bottom:1px solid var(--rule)} .slo-tbl td{border:0;padding:2px 0;text-align:right;overflow:hidden}
   .slo-tbl td::before{content:attr(data-l);float:left;font-size:11px;color:var(--mute);text-align:left;margin-right:10px} .slo-tbl td.slo-a{padding-top:6px}
   .slo-tbl td small{display:block} #slWho{top:auto;bottom:12px;max-height:45%} .slo-tabs{padding:8px 12px} }
+
+
+.so-act .pl-pick{margin:0}
+.pl-pick{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:inherit;margin:0 10px 0 0}
+.pl-pick span{opacity:.75;font-weight:500}
+.pl-sel{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line,#d9d9de);border-radius:10px;background:var(--panel,#fff);color:inherit;cursor:pointer;max-width:100%}
+.pdfo-box .pl-pick{display:flex;margin:12px 0 4px;justify-content:space-between}
 
 #sbGate{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:radial-gradient(1200px 600px at 20% 0%,#3a0d16 0%,#141416 60%);padding:16px}
 .sbg-box{width:min(380px,100%);background:#fff;border-radius:18px;padding:26px 24px 22px;box-shadow:0 40px 90px -30px rgba(0,0,0,.7);display:flex;flex-direction:column;gap:12px;color:#15171b}
@@ -3723,12 +3735,12 @@ const LARA_TOOLS=[
   {name:"clear_selection",description:"Clear the selected plots on the map."},
   {name:"print_document",description:"Make a PDF of the selected plot(s) and download it. If the user also wants it emailed, set email_to ('me' or an address) — a confirmation card appears; then confirm with send_email.",
    parameters:{type:"OBJECT",properties:{document:LT("STRING","Which document",{enum:["technical_annex","sales_offer","initial_financial_offer","investor_proposal"]}),
-     email_to:LT("STRING","'me' for the signed-in user, or an email address the user gave"),client_company:LT("STRING","Client company to put on a sales offer"),
+     email_to:LT("STRING","'me' for the signed-in user, or an email address the user gave"),client_company:LT("STRING","Client company to put on a sales offer"),client_name:LT("STRING","The client's name for a sales offer / priced proposal / initial financial offer — ASK the user for it; no customer has to be chosen on screen"),language:LT("STRING","Language of the printed PDF (default English); technical_annex is always English + Arabic",{enum:["en","ar","tr","zh"]}),
      with_prices:LT("BOOLEAN","investor_proposal only: show prices")},required:["document"]}},
   {name:"send_email",description:"Email a PDF from the company mailbox. Step 1 (no confirmed): prepares the email and shows a confirmation card. Step 2: after the user clearly says yes, call again with confirmed=true. cancel=true drops it.",
    parameters:{type:"OBJECT",properties:{to:LT("STRING","'me' (the signed-in user) or the recipient's email address, exactly as the user spelled it"),
      document:LT("STRING","Make this document first; omit to send the last PDF",{enum:["technical_annex","sales_offer","initial_financial_offer","investor_proposal"]}),
-     subject:LT("STRING","Subject line"),message:LT("STRING","Short message for the email body"),confirmed:LT("BOOLEAN","true only after the user confirmed the recipient"),cancel:LT("BOOLEAN","Cancel the prepared email")}}},
+     client_name:LT("STRING","Client name for the offer, when you make it here"),language:LT("STRING","Print language when you make the document here",{enum:["en","ar","tr","zh"]}),subject:LT("STRING","Subject line"),message:LT("STRING","Short message for the email body"),confirmed:LT("BOOLEAN","true only after the user confirmed the recipient"),cancel:LT("BOOLEAN","Cancel the prepared email")}}},
   {name:"query_mds",description:"Answer ANY numbers question from the live MDS register (every row): sales, collections, receivables (still to collect), prices, gross profit, areas, deals, clients, sales reps — by park, quarter, year, sector, status, client… Use it before saying a figure is unknown. Group totals are not deals; to find individual deals (e.g. losses) use gp and list.",
    parameters:{type:"OBJECT",properties:{scope:LT("STRING","Rows to use (default sales = sold+contracted+reserved)",{enum:["sales","available","on_hold","all"]}),
      park:LT("STRING","Park / project"),quarter:{type:"ARRAY",items:{type:"STRING"},description:"Quarters of sale, e.g. ['Q3 2026']"},year:{type:"ARRAY",items:{type:"NUMBER"},description:"Years of sale"},
@@ -4257,7 +4269,7 @@ function laraFixEmail(raw){
   return {to:t,notes};
 }
 async function laraDraft(a){
-  if(a.document){ const r=await laraPrint({document:a.document,client_company:a.client_company,with_prices:a.with_prices}); if(r.error) return r; }
+  if(a.document){ const r=await laraPrint({document:a.document,client_company:a.client_company,client_name:a.client_name,language:a.language,with_prices:a.with_prices}); if(r.error) return r; }
   const pdf=LARA.last; if(!pdf) return {error:"Make a document first (technical annex, sales offer, initial financial offer or investor proposal)."};
   const raw=String(a.to||"me").trim(), me0=/^(me|myself|my ?(own )?(email|inbox|mail)|the user|ليا|لي|انا|أنا|إيميلي|ايميلي)$/i.test(raw);
   const fx=me0?{to:"me",notes:[]}:laraFixEmail(raw), to=fx.to, me=to==="me";
@@ -4349,6 +4361,7 @@ FILTERS ON SCREEN: when the user asks to filter or "show" something (a year, a q
 CONTROL: navigate opens pages and cockpits; click_on_screen presses anything by its visible text (tabs, toggles, cards, "Show on map", "Download proposal", chart switches…); fill_field types into forms (Investor Match brief, Sales offer client, search); scroll_page scrolls. If unsure what is on screen, call read_screen first. You never delete or edit register data or change Settings — say the user does that.
 PLOTS: find_plots ranks available plots for a brief and flies the map to the best; show_option moves through results ("next one", "number two", "the merged one"); show_plot opens a plot by code; merge_plots combines neighbouring available plots to reach a size, or exact codes. payment_plan builds instalment plans (price per sqm with instalments = total payable ÷ area).
 EMAIL ADDRESSES: the system already knows the user's own email — when they want it sent to themselves ("send it to me", "my email", or they start spelling their own name), use to="me" and never ask them to spell it. Only for someone else ask for the address; if it is hard to dictate, tell them they can type or fix it in the box on the email card. A corrected domain or address comes back in "corrections".
+OFFERS WITHOUT PICKING A CLIENT ON SCREEN: for a sales offer, an initial financial offer or an investor proposal with prices, do NOT ask the user to choose a customer in the dashboard. Ask only for the client's name and the offer terms (cash, or instalments: months or years, frequency, down payment %, interest %) if they have not said them, then call print_document with client_name (and client_company if given) and the plan values; it prints straight away. PRINT LANGUAGE: if the user asks for the document in Arabic, Turkish or Chinese set language to ar, tr or zh (English by default; the technical annex stays English + Arabic). Names, numbers and EGP amounts do not change.
 DOCUMENTS & EMAIL: print_document makes the PDF of the plots on screen (technical annex, sales offer, initial financial offer, investor proposal) and downloads it. To email it: send_email (to = "me" for the user, or the address the user gives — repeat it back letter by letter if dictated). A confirmation card appears; ALWAYS ask "Shall I send it to …?" and only after a clear yes call send_email with confirmed=true. Never send without that yes.
 SYSTEM MAP: Map (home) — every project and plot, filters bar (status, sector, plot size, land type, phase, quarter, sold by, price), park and year pickers, Projects panel (stages, landbank, available area), Ports & airports, 3D, Satellite, plot card with utilities and Print. Sales & Land Bank — cockpits: overview, strategic intelligence, performance matrices, available inventory, project land bank, sales pipeline & forecast, executive financials, financial engine (with Cost Master Data), CEO brief, CEO cash & receivables, CEO pricing & land value, CEO inventory runway, CEO customers & bulk deals, CEO deal cycle & governance; plus change log and Excel grid; its own filters (projects, sectors, statuses, quarters, years, sales reps, area). Investor match — brief, ranking, merged blocks, financial offer, proposal PDF. Industrial Codes — IDA activity classification. Sales offer — one-page offer PDF. MDS register — the Excel view of every plot. Data health — plots that do not match. Presentation mode — full-screen investor tour with 360° views and nearest ports.
 COMPANY KNOWLEDGE: for anything about Elsewedy Industrial Development itself — who we are, vision, each park's location, size, incentives and target industries, services (logistics, October Dry Port, technical academy, legal support, smart parks), partners, sustainability, case studies, news and signed deals, why invest in Egypt, how to visit or contact — call company_info and answer from it. Combine it with the live MDS when both help (website = the story and facts about the parks; MDS = live plots, prices, sales). If they differ on availability, prices or sales, the MDS is current.
@@ -6072,7 +6085,9 @@ function wfDialog(keys){
       ${w==="ops"?`<label>Salesperson's email <em>(optional — sold by them)</em><input name="soldby" type="email" placeholder="name@company.com"></label>`:""}
       <label class="wf-wide">Note <em>(optional)</em><textarea name="note" rows="2" placeholder="Anything the approvers should know"></textarea></label>
     </div>
-    <p class="wf-hold" hidden>On hold for <b>4 days</b> from approval — back to Available automatically unless it is changed to EOI, Reserved or Sold. You get a reminder one day before.</p>
+    <div class="wf-hold" hidden><div class="wf-lbl">Hold duration</div>
+      <div class="wf-days"><label><input type="radio" name="hd" value="9" checked><span>9 days</span></label><label><input type="radio" name="hd" value="30"><span>30 days</span></label></div>
+      <p class="wf-hp">On hold for <b id="wfHdTxt">9 days</b> from approval — back to Available automatically unless it is changed to EOI, Reserved or Sold. You get a reminder one day before. The approver sees the days you ask for.</p></div>
     <p class="wf-path">${path}</p>
     <em class="wf-errm" id="wfErr"></em>
     <div class="wf-b"><button type="button" class="ebtn wf-cancel">Cancel</button><button type="submit" class="ebtn pri" disabled>${w==="ops"?"Change now":"Send for approval"}</button></div>
@@ -6080,14 +6095,14 @@ function wfDialog(keys){
   document.body.appendChild(ov);
   const F=ov.querySelector("form"), go=F.querySelector("[type=submit]"), err=$("#wfErr");
   const upd=()=>{ const st=(F.querySelector("input[name=st]:checked")||{}).value, need=wfCust(st);
-    ov.querySelectorAll(".wf-need").forEach(l=>l.classList.toggle("on",need)); ov.querySelector(".wf-hold").hidden=st!=="hold";
+    ov.querySelectorAll(".wf-need").forEach(l=>l.classList.toggle("on",need)); ov.querySelector(".wf-hold").hidden=st!=="hold"; { const hd=F.querySelector("input[name=hd]:checked"), t=ov.querySelector("#wfHdTxt"); if(t&&hd) t.textContent=hd.value+" days"; }
     go.disabled=!st||(need&&(!F.client.value.trim()||!F.company.value.trim())); };
   F.addEventListener("input",upd); F.addEventListener("change",upd);
   const close=()=>ov.remove(); ov.querySelector(".wf-x").onclick=close; ov.querySelector(".wf-cancel").onclick=close;
   ov.addEventListener("keydown",e=>{ if(e.key==="Escape") close(); });
   F.onsubmit=async e=>{ e.preventDefault(); const st=(F.querySelector("input[name=st]:checked")||{}).value; if(!st) return;
     const ok=rows.filter(r=>!wfPendingFor(r.key)); if(!ok.length){ err.textContent="All of these plots are already waiting for approval."; return; }
-    const p={to_status:st,client:F.client.value.trim(),company:F.company.value.trim(),note:F.note.value.trim(),sold_by_email:F.soldby?F.soldby.value.trim():"",
+    const p={to_status:st,hold_days:st==="hold"?((F.querySelector("input[name=hd]:checked")||{}).value==="30"?30:9):null,client:F.client.value.trim(),company:F.company.value.trim(),note:F.note.value.trim(),sold_by_email:F.soldby?F.soldby.value.trim():"",
       park:park.length===1?park[0]:"mixed",plots:ok.map(r=>({key:r.key,park:r.park,sheet:r.sheet,unit:r.unit,from:r.status,area:r.area?Math.round(r.area):null}))};
     go.disabled=true; go.textContent="Sending…"; err.textContent="";
     const r=await SB.rpc("sid_req_create",{p});
@@ -6117,6 +6132,10 @@ function viewApprovals(){
     ${WF.tab==="mds"?wfMdsHtml(mds):list.length?list.map(wfCard).join(""):`<div class="mm-empty"><b>${WF.tab==="todo"?"Nothing waiting for you":"Nothing here yet"}</b>${WF.tab==="todo"?"New requests appear here and as a notification.":"Select plots on the map and press “Change status”."}</div>`}
   </div>`;
 }
+/* V69: hold duration of a request: stored hold_days, else (older holds) the days between going live and the expiry */
+function wfHdDays(q){ if(!q||q.to_status!=="hold") return null; if(+q.hold_days>0) return +q.hold_days;
+  if(q.hold_until&&q.live_at){ const d=Math.round((new Date(q.hold_until)-new Date(q.live_at))/864e5); if(d>0) return d; } return null; }
+function wfHd(q){ const d=wfHdDays(q); return d?d+(d===1?" day":" days"):"—"; }
 function wfCard(q){
   const me=wfMe(), act=wfMine(q)&&(q.stage==="manager"||q.stage==="ops"), canCancel=q.by_email===me&&(q.stage==="manager"||q.stage==="ops");
   const P=q.plots||[], rows=P.map(p=>({p,r:S.byKey.get(p.key)}));
@@ -6130,7 +6149,7 @@ function wfCard(q){
       <div class="wf-to">${wfDot(P[0]&&P[0].from)}${esc(wfLabel(P[0]&&P[0].from))} → ${wfDot(q.to_status)}<b>${esc(wfLabel(q.to_status))}</b></div><span class="wf-pill">${stLbl}</span></div>
     <div class="wf-facts"><div><em>Client</em>${esc(q.client||"—")}</div><div><em>Company</em>${esc(q.company||"—")}</div><div><em>Sold by</em>${esc(q.sold_by||"—")}</div>
       <div><em>Asked by</em>${esc(q.by_name||q.by_email)}${q.team?` · ${esc(q.team)}`:""}</div><div><em>When</em>${wfWhen(q.created_at)}</div>
-      ${q.to_status==="hold"&&q.hold_until?`<div><em>Hold</em>${q.hold_ended_at?"ended "+wfWhen(q.hold_ended_at):"until "+wfWhen(q.hold_until)}</div>`:""}</div>
+      ${q.to_status==="hold"?`<div><em>Hold requested</em><b>${wfHd(q)}</b></div>`:""}${q.to_status==="hold"&&q.hold_until?`<div><em>Hold</em>${q.hold_ended_at?"ended "+wfWhen(q.hold_ended_at):"until "+wfWhen(q.hold_until)}</div>`:""}</div>
     ${q.note?`<p class="wf-qn">“${esc(q.note)}”</p>`:""}
     <div class="tablewrap"><table class="tbl wf-tbl"><thead><tr><th>Plot</th><th>Project</th><th class="r">Area sqm</th><th>Status now</th><th class="r">Price / sqm</th><th>Client now</th><th class="r">MVA</th></tr></thead><tbody>
       ${rows.slice(0,12).map(({p,r})=>{ const pr=r&&priceOf(r); return `<tr><td class="mono">${esc(p.unit)}</td><td>${esc(p.sheet||"")}</td><td class="r">${fInt(r?r.area:p.area)}</td><td>${wfDot(r?r.status:p.from)}${esc(wfLabel(r?r.status:p.from))}</td>
@@ -6223,7 +6242,7 @@ function wfNew(n){ if(!n||WF.notif.some(x=>x.id===n.id)) return; WF.notif.unshif
 const AUD={cur:null, prev:null, at:0, pend:null, cache:new Map(), missing:false, people:null,
   pg:{f:{}, rows:[], more:false, busy:false, loaded:false, err:""}};
 const AUD_ACT={request:"Asked to change",mgr_ok:"Approved by sales manager",mgr_no:"Rejected by sales manager",ops_no:"Rejected by sales operation",
-  cancel:"Request cancelled",live:"Status changed",hold_end:"Hold ended (4 days)",mds_ok:"Typed into the MDS",
+  cancel:"Request cancelled",live:"Status changed",hold_end:"Hold ended",mds_ok:"Typed into the MDS",
   edit:"Edited in the register",add:"Added to the register",remove:"Removed from the register",mds:"Changed in the MDS sheet"};
 const AUD_GROUPS=[["live","Status changes (live)",["live","hold_end"]],["req","Requests & approvals",["request","mgr_ok","mgr_no","ops_no","cancel"]],
   ["mdsok","Typed into the MDS",["mds_ok"]],["reg","Register edits",["edit","add","remove"]],["mds","MDS sheet changes",["mds"]]];
@@ -10568,6 +10587,7 @@ function openPdfOpts(){
     <label class="pdfo-o"><input type="radio" name="pk" value="match" ${FPL.on?"":"checked"}><span><b>Best-match plots only</b><em>The ranking, the layout of each plot and why it fits.</em></span></label>
     <label class="pdfo-o"><input type="radio" name="pk" value="fin" ${FPL.on?"checked":""}><span><b>Best-match plots + initial financial proposal</b><em>Adds each plot's payment plan and yearly collection${FPL.on?"":" — with the default plan; turn on <b>Financial offer</b> to adjust it"}.</em></span></label>
     <label class="pdfo-c"><input type="checkbox" id="pdfoP"><span><b>Show prices &amp; financial data</b><em>Off by default: no price, value or payment figure appears in the PDF.</em></span></label>
+    ${plPicker("pdfoLang")}
     <div class="pdfo-f"><button class="ebtn" id="pdfoC">Cancel</button><button class="ebtn pri" id="pdfoGo">Download PDF</button></div></div>`;
   const P=$("#pdfoP"), fin=()=>ov.querySelector('input[name=pk]:checked').value==="fin";
   const sync=()=>{ if(fin()){ P.checked=true; P.disabled=true; } else P.disabled=false; };
@@ -10660,15 +10680,16 @@ function soPayRows(){
 const f2=v=>(+v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const fA=v=>(+v||0).toLocaleString("en-US",{maximumFractionDigits:2});
 /* ---- the PDF, in points on A4, laid out like the Excel offers ---- */
-function soPdf(){
-  const {jsPDF}=window.jspdf, doc=new jsPDF({unit:"pt",format:"a4"}), f=SO.f, H=841.89;
+function soPdf(){ PL.on=PL.lang!=="en"; try{ return soPdf0(); } finally{ PL.on=false; } }
+function soPdf0(){
+  const {jsPDF}=window.jspdf, doc=plDoc(new jsPDF({unit:"pt",format:"a4"})), f=SO.f, H=841.89;
   const L=53, R=549, C1=221, C2=318, C3=402, GR=[217,217,217], BK=[0,0,0], RD=[230,0,0];
   const hex=h=>{ const m=String(h||"#000000").replace("#",""); return [0,2,4].map(i=>parseInt(m.substr(i,2),16)||0); };
   const font=(b,i,s)=>{ doc.setFont("helvetica",b&&i?"bolditalic":b?"bold":i?"italic":"normal"); doc.setFontSize(s||6.8); };
   const tx=(t,x,y,o={})=>{ font(o.b,o.i,o.s); doc.setTextColor(...(o.c||BK)); doc.text(pdfSafe(t),x,y,{align:o.a||"left",baseline:"middle"}); };
   const box=(x,y,w,h,fill)=>{ doc.setLineWidth(.6); doc.setDrawColor(...BK); if(fill){ doc.setFillColor(...fill); doc.rect(x,y,w,h,"FD"); } else doc.rect(x,y,w,h,"S"); };
-  const safe=t=>String(t??"").replace(/[\u0600-\u06FF]/g,ch=>AR2LAT[ch]||"").replace(/[^\x20-\x7E\u00A0-\u00FF\u2013\u2014\u2019\u2022]/g,"");
-  const rich=(t,x,y,o={})=>{ let cx=x; String(t).split(/(\{[^}]*\})/).forEach(pz=>{ if(!pz) return; const red=/^\{.*\}$/.test(pz), s=safe(red?pz.slice(1,-1):pz);
+  const safe=t=>PL.on?String(t??""):String(t??"").replace(/[\u0600-\u06FF]/g,ch=>AR2LAT[ch]||"").replace(/[^\x20-\x7E\u00A0-\u00FF\u2013\u2014\u2019\u2022]/g,"");
+  const rich=(t,x,y,o={})=>{ let cx=x; String(PL.on?plTr(t):t).split(/(\{[^}]*\})/).forEach(pz=>{ if(!pz) return; const red=/^\{.*\}$/.test(pz), s=safe(red?pz.slice(1,-1):pz);
       font(o.b||red,true,o.s); doc.setTextColor(...(red?RD:BK)); doc.text(s,cx,y,{baseline:"middle"}); cx+=doc.getTextWidth(s)+(red?1.5:0); }); };
   let y=0, page=1;
   const foot=()=>{ doc.setDrawColor(190,190,190); doc.setLineWidth(.4); doc.line(L,H-26,R,H-26);
@@ -10739,7 +10760,7 @@ function soPdf(){
   foot();
   return doc;
 }
-function soFileName(){ const f=SO.f; return ("Sales Offer - "+(f.project||"SID")+" - "+fInt(f.area)+" SQM"+(f.company?" - "+pdfSafe(f.company):"")).replace(/[\\/:*?"<>|]+/g," ").slice(0,90)+".pdf"; }
+function soFileName(){ const f=SO.f; return ("Sales Offer - "+(f.project||"SID")+" - "+fInt(f.area)+" SQM"+(f.company?" - "+pdfSafe(f.company):"")).replace(/[\\/:*?"<>|]+/g," ").slice(0,90)+(PL.lang!=="en"?" ["+PL.lang.toUpperCase()+"]":"")+".pdf"; }
 let SO_T=null, SO_URL=null;
 function soPreview(now){
   clearTimeout(SO_T); SO_T=setTimeout(()=>{ const fr=$("#soPrev"); if(!fr||typeof window.jspdf==="undefined") return;
@@ -10797,7 +10818,7 @@ function viewOffer(){
     <div class="mm-sec"><h4>Validity &amp; signatures</h4>
       ${inp("valid","This offer is valid for",{ph:"2 days"})}
       ${f.sign.map((s,i)=>`<div class="mm-2"><label>Title<input data-sos="${i}" data-k="0" value="${esc(s[0])}"></label><label>Name<input data-sos="${i}" data-k="1" value="${esc(s[1])}"></label></div>`).join("")}</div>
-    <div class="so-act"><button type="button" class="ebtn" id="soTpl">Reset to the park's template</button><button type="button" class="applybtn" id="soPdf" ${SO.park?"":"disabled"}>Download sales offer (PDF)</button></div>
+    <div class="so-act"><button type="button" class="ebtn" id="soTpl">Reset to the park's template</button>${plPicker("soLang")}<button type="button" class="applybtn" id="soPdf" ${SO.park?"":"disabled"}>Download sales offer (PDF)</button></div>
   </form>
   <section class="so-prev">${SO.park?`<iframe id="soPrev" title="Sales offer preview"></iframe>`:`<div class="mm-empty"><b>Choose a park and its plots</b>The offer is laid out like the team's Excel offers, with the park's logo, and the preview here is the PDF that downloads.</div>`}</section>
   </div>`;
@@ -10842,19 +10863,21 @@ function offerFromMatch(x){
 /* ---- the proposal (A4, English — the PDF fonts carry no Arabic shaping) ---- */
 const AR2LAT=Object.fromEntries(Object.entries(AR_LETTER).map(([l,a])=>[a,l]));
 function pdfSafe(s){
+  if(PL.on) return String(s??"").replace(/\s+/g," ").trim();
   return String(s??"").replace(/[\u0600-\u06FF]/g,ch=>AR2LAT[ch]||"").replace(/[^\x20-\x7E\u00A0-\u00FF\u2013\u2014\u2019\u2022]/g,"").replace(/\s+/g," ").trim();
 }
-function buildProposal(opt={}){
+function buildProposal(opt={}){ PL.on=PL.lang!=="en"; try{ return buildProposal0(opt); } finally{ PL.on=false; } }
+function buildProposal0(opt={}){
   const FIN=!!opt.fin, SHOWP=!!(opt.prices||opt.fin);
   // with the financial proposal, prices are instalment prices (total payable ÷ area); otherwise cash list prices
   const pInst=x=>FIN?fpPlanFor(x):null, pxS=x=>{ const q=pInst(x); return q?q.sqmI:fpPrice(x); }, pxT=x=>{ const q=pInst(x); return q?q.paid:fpTotal(x); };
   if(typeof window.jspdf==="undefined"){ toast("The PDF library did not load — check the connection and reload",true); return; }
   const picks=mmAll().filter(x=>MM.picked.has(x.id)).sort((a,b)=>b.score-a.score); if(!picks.length) return;
   const ptitle=p=>p.merge?`${p.members.length} merged plots`:`Plot ${pdfSafe(p.r.unit)}`;
-  const {jsPDF}=window.jspdf, doc=new jsPDF({unit:"mm",format:"a4"});
+  const {jsPDF}=window.jspdf, doc=plDoc(new jsPDF({unit:"mm",format:"a4"}));
   const W=210,H=297,M=18, RED=[166,25,46], INK=[21,23,27], MUTE=[134,139,149], RULE=[229,231,235], SOFT=[247,248,249];
   const f=MM.form, company=pdfSafe(f.company)||"our investor", today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
-  if(/[\u0600-\u06FF]/.test(f.company+f.contact)) toast("Arabic names are shown in Latin letters only in the PDF",false);
+  if(!PL.on&&/[\u0600-\u06FF]/.test(f.company+f.contact)) toast("Arabic names are shown in Latin letters only in the PDF",false);
   let page=1;
   const T=(txt,x,y,o={})=>{ doc.setFont("helvetica",o.b?"bold":"normal"); doc.setFontSize(o.s||10); doc.setTextColor(...(o.c||INK));
     doc.text(txt,x,y,{align:o.a||"left",maxWidth:o.w,lineHeightFactor:1.35}); };
@@ -11007,7 +11030,7 @@ function buildProposal(opt={}){
     // layout drawing
     const feats=S.geo.features.filter(ft=>ft.properties.park===park), bx={x:M,y:48,w:W-2*M,h:110};
     box(bx.x,bx.y,bx.w,bx.h,[255,255,255]);
-    if(feats.length){
+    if(feats.length){ if(doc.__mir) doc.__mir(false);
       const P=projector(feats[0].properties.c[1]), bb=bboxOf(feats,P), F=fitter(bb,{x:bx.x+6,y:bx.y+6,w:bx.w-12,h:bx.h-16});
       doc.setLineWidth(.12);
       feats.forEach(ft=>{ const st=S.plots.get(ft.properties.k)?.row?.status;
@@ -11032,6 +11055,7 @@ function buildProposal(opt={}){
       const lgx=bx.x+bx.w-70, lgy=bx.y+bx.h-6;
       [[RED,"Proposed plot"],[[214,209,202],"Sold / reserved"],[[246,244,241],"Other plots"]].forEach(([c,t],i)=>{
         doc.setFillColor(...c); doc.setDrawColor(150,145,140); doc.rect(lgx+i*23,lgy-2.6,3,3,"FD"); T(t,lgx+i*23+4,lgy,{s:6.5,c:MUTE}); });
+     if(doc.__mir) doc.__mir(true);
     } else T("No survey drawing for this park yet.",bx.x+8,bx.y+16,{s:9,c:MUTE});
     // facts
     y=bx.y+bx.h+9; T("KEY FACTS",M,y,{s:7.5,c:MUTE,b:true}); T("WHY IT FITS",W/2+4,y,{s:7.5,c:MUTE,b:true}); y+=6;
@@ -11066,7 +11090,7 @@ function buildProposal(opt={}){
   T("Elsewedy Industrial Development",M+6,y+9,{s:11,b:true});
   T("elsewedydevelopment.com",M+6,y+15.5,{s:9.5,c:RED});
   T("Indicative figures only. Plots are subject to availability at the time of reservation; prices, utilities and terms are confirmed in the formal offer. Distances are straight-line.",M+6,y+22,{s:7.5,c:MUTE,w:W-2*M-12});
-  doc.save(`Proposal_${company.replace(/[^\w]+/g,"_").slice(0,40)}${FIN?"_with_financial_offer":""}_${new Date().toISOString().slice(0,10)}.pdf`);
+  doc.save(`Proposal_${company.replace(/[^\w]+/g,"_").slice(0,40)}${FIN?"_with_financial_offer":""}_${new Date().toISOString().slice(0,10)}${PL.lang!=="en"?"_"+PL.lang.toUpperCase():""}.pdf`);
   toast("Proposal downloaded");
 }
 
@@ -12975,21 +12999,21 @@ async function slGate(type,run,o){ o=o||{};
   if(SLB.busy){ toast("Finish choosing the customer for the other offer first",true); return {error:"Another offer is waiting for its customer on screen."}; }
   const J=window.jspdf; if(!J||!J.jsPDF) return run();
   SLB.busy=true; const saves=[]; let Orig=null, mine=null;
-  try{ const re=slReFor(type), fc=type==="sales_offer"?slFormCust():null, c=fc||await slPick(type);
-    if(c&&type==="sales_offer"&&!fc) slSetCust(c,false);
+  try{ const re=slReFor(type), fc=type==="sales_offer"?slFormCust():null, c=fc||(o.lara&&o.agent?await slLaraCust(o.agent):await slPick(type));
+    if(c&&type==="sales_offer"&&!fc&&!c.agent) slSetCust(c,false);
     if(!c){ toast("No customer chosen — the offer was not printed",true); return {error:"The user did not choose a customer on screen, so the offer was not printed."}; }
     Orig=J.jsPDF; mine=function(...a){ const d=new Orig(...a), sv=d.save; d.save=function(n,op){ saves.push({d,sv,n,op}); return d; }; return d; };
     J.jsPDF=mine; SLB.inRun=true; let out;
     try{ out=await run(); } finally{ SLB.inRun=false; if(J.jsPDF===mine) J.jsPDF=Orig; }
     if(!saves.length) return out;
     const info=slInfo(type), last=saves[saves.length-1];
-    try{ await slFetch("/integration/offer-printed",{method:"POST",body:{contactId:c.id,leadId:Array.isArray(c.leadIds)&&c.leadIds.length===1?c.leadIds[0]:undefined,
+    if(!c.agent) try{ await slFetch("/integration/offer-printed",{method:"POST",body:{contactId:c.id,leadId:Array.isArray(c.leadIds)&&c.leadIds.length===1?c.leadIds[0]:undefined,
         offerType:type,plots:info.plots.slice(0,50),totalValue:info.total==null?undefined:info.total,plan:info.plan,offer:slOfferState(type),summary:String((re?"Reprint of "+re.id+" · ":"")+info.summary).slice(0,480),docName:last.n}}); }
     catch(e){ const m=slErrMsg(e)+" The offer was not printed."; toast(m,true); if(o.lara) LARA.last=null; return {error:m}; }
     saves.forEach(s=>{ try{ s.sv.call(s.d,s.n,s.op); }catch(e){ console.error(e); } });
     SLO.loaded=false;
     if(re) slReDone();
-    toast(`${SL_TYPE_L[type]} for ${c.name||"the customer"} — downloaded and recorded in Sales Leads`);
+    toast(`${SL_TYPE_L[type]} for ${c.name||"the customer"} — downloaded${c.agent?" (not recorded in Sales Leads: no customer matched)":" and recorded in Sales Leads"}`);
     if(out&&typeof out==="object") out.customer=c.name||"";
     return out; }
   catch(e){ console.error(e); toast("Could not build the offer: "+((e&&e.message)||e),true); return {error:String((e&&e.message)||e)}; }
@@ -13000,9 +13024,11 @@ buildProposal=function(opt){ opt=opt||{}; if(SLB.inRun||!(opt.prices||opt.fin)) 
 const slLP=laraPrint;
 laraPrint=async function(a){ a=a||{}; const d=a.document;
   const t=d==="sales_offer"?"sales_offer":d==="initial_financial_offer"?"financial_offer":d==="investor_proposal"&&a.with_prices?"proposal":null;
-  if(!t||SLB.inRun) return slLP(a);
-  const em=a.email_to, r=await slGate(t,()=>slLP({...a,email_to:undefined}),{lara:true});
-  if(r&&!r.error){ r.note="The customer was chosen on screen and the print is recorded in Sales Leads.";
+  if(!t||SLB.inRun){ if(a.client_name&&d!=="technical_annex") laraSetClient("proposal",a,String(a.client_name).trim()); return laraWithLang(a,()=>slLP(a)); }
+  const nm=String(a.client_name||a.client_company||(t==="sales_offer"?(SO.f&&SO.f.client)||"":(MM.form&&MM.form.company)||"")).trim();
+  if(!nm) return {error:"Ask the user for the client's name and the offer terms (cash, or the payment plan: months or years, frequency, down payment %, interest %), then call print_document again with client_name. The client does NOT need to be chosen on screen."};
+  const em=a.email_to, r=await laraWithLang(a,()=>slGate(t,()=>{ laraSetClient(t,a,nm); return slLP({...a,email_to:undefined}); },{lara:true,agent:{name:nm,company:a.client_company}}));
+  if(r&&!r.error){ r.note=r.customer&&r.customer!==nm?"Recorded in Sales Leads for "+r.customer+".":"Printed for the client name you were given"+(a.language&&a.language!=="en"?" in "+(PL_NAME[a.language]||a.language):"")+"; it is not recorded in Sales Leads unless the name matches one customer there.";
     if(em) Object.assign(r,await laraDraft({to:em})); }
   return r||{error:"No document was made."}; };
 
@@ -13329,6 +13355,377 @@ async function slWhoOpen(row){ const host=(typeof map!=="undefined"&&map&&S.view
       <em>${r.totalValue!=null?"EGP "+fInt(r.totalValue)+" · ":""}${esc(slPlanTxt(r.plan))}</em></div>`).join("")+(reqH||`<p class="sl-msg">No lead has requested this plot.</p>`)); }
   catch(e){ if(!el.isConnected) return; draw(`<div class="sld-err">${esc(e&&(e.code===401||e.code===403)?"Who got the offers is for Admin, Sales Operation, Sales Director and Executive accounts in Sales Leads.":slErrMsg(e))}</div>`); } }
 setTimeout(()=>{ document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ const w=document.getElementById("slWho"); if(w) w.remove(); } }); },0);
+
+/* ============================================================================
+   V69 — PRINT LANGUAGES: English · Arabic (right-to-left) · Turkish · Chinese (Simplified)
+   ----------------------------------------------------------------------------
+   The Sales offer and the Investor Match proposal (with or without the initial financial offer, also when Lara prints
+   them) are drawn with jsPDF, whose built-in fonts only know Latin. For a language other than English the finished
+   document is drawn by the SAME code, through a thin layer on the jsPDF document (plDoc):
+     • every text is looked up in the static tables below (exact label, then sentence patterns, then " · " pieces), so
+       fixed labels, headings, terms and legal notes are translated; what the user typed, names, plot / project names,
+       numbers and EGP amounts are printed as they are; anything without a translation stays in English (no key shown);
+     • the text is drawn with the computer's own fonts (system font stack, no network fonts) onto a small image, so
+       Arabic and Chinese render everywhere;
+     • Arabic mirrors the whole page (tables, columns, signatures run right to left); the plot map keeps its geography.
+   English prints are untouched: plDoc returns the document as it is.
+   ========================================================================== */
+var PL={lang:"en",on:false};
+try{ const v=localStorage.getItem("sid.pl"); if(/^(en|ar|tr|zh)$/.test(v||"")) PL.lang=v; }catch(e){}
+const PL_LANGS=[["en","English"],["ar","العربية · Arabic (RTL)"],["tr","Türkçe · Turkish"],["zh","中文 · Chinese (Simplified)"]];
+const PL_NAME={en:"English",ar:"Arabic",tr:"Turkish",zh:"Chinese"};
+function plPicker(id){ return `<label class="pl-pick" title="The language the PDF is printed in. Names, numbers and EGP amounts stay as they are; text you typed prints as typed."><span>Print language</span><select class="pl-sel"${id?` id="${id}"`:""} aria-label="Print language">${PL_LANGS.map(([k,l])=>`<option value="${k}"${PL.lang===k?" selected":""}>${l}</option>`).join("")}</select></label>`; }
+document.addEventListener("change",e=>{ const t=e.target; if(!t||!t.classList||!t.classList.contains("pl-sel")) return;
+  PL.lang=/^(en|ar|tr|zh)$/.test(t.value)?t.value:"en"; try{ localStorage.setItem("sid.pl",PL.lang); }catch(_){}
+  document.querySelectorAll(".pl-sel").forEach(x=>{ x.value=PL.lang; });
+  if(t.id==="soLang"&&typeof soPreview==="function") soPreview(true); });
+
+/* ---- plural helpers (Arabic has dual and few/many forms) ---- */
+const plAr=(n,one,two,few,many)=>n===1?one:n===2?two:(n>=3&&n<=10)?n+" "+few:n+" "+many;
+function plYrs(L,n){ n=+n; return L==="ar"?plAr(n,"سنة واحدة","سنتين","سنوات","سنة"):L==="tr"?n+" yıl":L==="zh"?n+"年":n+" years"; }
+function plMon(L,n){ n=+n; return L==="ar"?plAr(n,"شهر واحد","شهرين","أشهر","شهراً"):L==="tr"?n+" ay":L==="zh"?n+"个月":n+" months"; }
+function plDays(L,n){ n=+n; return L==="ar"?plAr(n,"يوم واحد","يومين","أيام","يوماً"):L==="tr"?n+" gün":L==="zh"?n+"天":n+" days"; }
+const plFreqs=[["Monthly","شهري","Aylık","按月"],["Bi-monthly","كل شهرين","İki aylık","每两个月"],["Quarterly","ربع سنوي","Üç aylık","按季度"],["Semi-annual","نصف سنوي","Altı aylık","每半年"],["Annual","سنوي","Yıllık","按年"]];
+const plCo=(L,w)=>({power:{ar:"الكهرباء",tr:"güç",zh:"电力"},water:{ar:"المياه",tr:"su",zh:"供水"}}[w]||{})[L]||w;
+
+/* ---- static tables: [English, Arabic, Turkish, Chinese] ---- */
+const PL_ROWS=[
+/* Sales offer */
+["Sales Offer","عرض بيع","Satış Teklifi","销售报价单"],
+["Client's name :","اسم العميل :","Müşteri adı :","客户名称："],
+["Company name :","اسم الشركة :","Şirket adı :","公司名称："],
+["Project name :","اسم المشروع :","Proje adı :","项目名称："],
+["Sector :","القطاع :","Sektör :","分区："],
+["Plots no.","أرقام القطع","Parsel no.","地块编号"],
+["Land type:","نوع الأرض:","Arazi tipi:","土地类型："],
+["Date :","التاريخ :","Tarih :","日期："],
+["Area :","المساحة :","Alan :","面积："],
+["M2","م²","m²","平方米"],
+["price / SQM","السعر / م²","Fiyat / m²","单价 / 平方米"],
+["Total value","القيمة الإجمالية","Toplam değer","总价值"],
+["Payment Method","طريقة السداد","Ödeme yöntemi","付款方式"],
+["Installments","عدد الأقساط","Taksit sayısı","期数"],
+["Amount","المبلغ","Tutar","金额"],
+["Duration","المدة","Vade","期限"],
+["Down Payment","الدفعة المقدمة","Peşinat","首付款"],
+["Immediately","فوراً","Derhal","立即"],
+["Total Installments","إجمالي الأقساط","Toplam taksitler","分期付款合计"],
+["Total Amount Due","إجمالي المبلغ المستحق","Toplam ödenecek tutar","应付总额"],
+["Item","البند","Kalem","项目"],
+["Percentage","النسبة","Oran","比例"],
+["Notes","ملاحظات","Notlar","备注"],
+["Infrastructure insurance","تأمين البنية التحتية","Altyapı teminatı","基础设施保证金"],
+["Upon contract","عند التعاقد","Sözleşme anında","签约时"],
+["Upon Contract","عند التعاقد","Sözleşme anında","签约时"],
+["Handover fees","رسوم التسليم","Teslim ücretleri","交付费用"],
+["Upon handover","عند التسليم","Teslim anında","交付时"],
+["(Excluding VAT)","(غير شامل ضريبة القيمة المضافة)","(KDV hariç)","（不含增值税）"],
+["Contract Fees","رسوم التعاقد","Sözleşme ücretleri","合同费用"],
+["Price/SQM","السعر/م²","Fiyat/m²","单价/平方米"],
+["Maintenance deposit","وديعة الصيانة","Bakım depozitosu","维护保证金"],
+["Additional Work :","أعمال إضافية :","Ek işler :","附加工程："],
+["Cost of Additional works","تكلفة الأعمال الإضافية","Ek işlerin bedeli","附加工程费用"],
+["IDA approval fees","رسوم موافقة هيئة التنمية الصناعية (IDA)","IDA onay ücretleri","IDA审批费用"],
+["Validity :","الصلاحية :","Geçerlilik :","有效期："],
+["Sales representative","مندوب المبيعات","Satış temsilcisi","销售代表"],
+["Sales & BD Director","مدير المبيعات وتطوير الأعمال","Satış ve İş Geliştirme Direktörü","销售及业务发展总监"],
+["CEO","الرئيس التنفيذي","Genel Müdür (CEO)","首席执行官"],
+["Chairman and Managing Director","رئيس مجلس الإدارة والعضو المنتدب","Yönetim Kurulu Başkanı ve Murahhas Üye","董事长兼董事总经理"],
+["Approved On payment terms and conditions","معتمد وفق شروط وأحكام السداد","Ödeme şart ve koşullarına uygun olarak onaylanmıştır","按付款条款和条件批准"],
+["Authorized signature for :","التوقيع المعتمد لـ :","Yetkili imza (adına) :","授权签字（代表）："],
+["Name:","الاسم:","Ad Soyad:","姓名："],
+["Signature:","التوقيع:","İmza:","签名："],
+["Generated automatically by the SID system. Preliminary version for discussion only - subject to management approval; figures may differ slightly in the final signed offer.",
+ "تم إنشاء هذا المستند تلقائياً بواسطة نظام SID. نسخة أولية للمناقشة فقط وتخضع لموافقة الإدارة؛ وقد تختلف الأرقام اختلافاً طفيفاً في العرض النهائي الموقّع.",
+ "SID sistemi tarafından otomatik olarak oluşturulmuştur. Yalnızca görüşme amaçlı ön sürümdür ve yönetim onayına tabidir; rakamlar imzalı nihai teklifte küçük farklılıklar gösterebilir.",
+ "本文件由SID系统自动生成。此为仅供讨论的初步版本，须经管理层批准；最终签署的报价单中的数字可能略有差异。"],
+/* the park templates' fixed notes (any note the user edits prints as typed) */
+["The client shall hand over all cheques {upon the reservation form}","يلتزم العميل بتسليم جميع الشيكات {عند توقيع نموذج الحجز}","Müşteri tüm çekleri {rezervasyon formunun imzalanması sırasında} teslim edecektir","客户应{在签署预订表时}交付全部支票"],
+["The client shall hand over all cheques {upon Signing the contract}","يلتزم العميل بتسليم جميع الشيكات {عند توقيع العقد}","Müşteri tüm çekleri {sözleşmenin imzalanması sırasında} teslim edecektir","客户应{在签订合同时}交付全部支票"],
+["Price includes Electricty 60 KVA","يشمل السعر الكهرباء بقدرة 60 ك.ف.أ","Fiyata 60 KVA elektrik dahildir","价格包含60千伏安电力"],
+["Price includes public utilities: Water, Roads, Sewage, Street lighting up to boundaries of land.","يشمل السعر المرافق العامة: المياه والطرق والصرف الصحي وإنارة الشوارع حتى حدود الأرض.","Fiyata kamu hizmetleri dahildir: su, yollar, kanalizasyon ve sokak aydınlatması (arazi sınırlarına kadar).","价格包含公共配套设施：供水、道路、排污、路灯，接至地块边界。"],
+["The contract shall be signed within 3 months from signing the reservation form.","يتم توقيع العقد خلال 3 أشهر من تاريخ توقيع نموذج الحجز.","Sözleşme, rezervasyon formunun imzalanmasından itibaren 3 ay içinde imzalanacaktır.","合同应在签署预订表之日起3个月内签订。"],
+["The contract shall be signed within 3 months of signing reservation form","يتم توقيع العقد خلال 3 أشهر من تاريخ توقيع نموذج الحجز","Sözleşme, rezervasyon formunun imzalanmasından itibaren 3 ay içinde imzalanacaktır","合同应在签署预订表之日起3个月内签订"],
+["Price includes electricity connections of 17 KVA/1000 Sqm to land boundary.","يشمل السعر توصيلات الكهرباء بواقع 17 ك.ف.أ لكل 1000 م² حتى حدود الأرض.","Fiyata, arazi sınırına kadar 1000 m² başına 17 KVA elektrik bağlantısı dahildir.","价格包含接至地块边界的电力接入，标准为每1000平方米17千伏安。"],
+["{The price doesn't include the electricity connections network from the external source to the selected plot.}","{لا يشمل السعر شبكة توصيلات الكهرباء من المصدر الخارجي حتى القطعة المختارة.}","{Fiyata, harici kaynaktan seçilen parsele kadar olan elektrik bağlantı şebekesi dahil değildir.}","{价格不包含从外部电源至所选地块的电力接入网络。}"],
+["Shall be paid upon handingover as a guarantee for our facilities and infrastructure during the period of construction of the client.","تُسدَّد عند التسليم كضمان لمرافقنا وبنيتنا التحتية خلال فترة قيام العميل بالبناء.","Müşterinin inşaat süresi boyunca tesislerimiz ve altyapımız için teminat olarak teslim anında ödenecektir.","于交付时支付，作为客户施工期间对我方设施及基础设施的担保。"],
+["After the client completes all construction without any damages to our infrastructure , the amount will be refunded.","بعد أن يُنهي العميل جميع أعمال البناء دون أي أضرار بالبنية التحتية الخاصة بنا، يُرَدّ المبلغ.","Müşterinin tüm inşaatı altyapımıza herhangi bir zarar vermeden tamamlamasının ardından tutar iade edilecektir.","客户完成全部施工且未对我方基础设施造成任何损坏后，该款项将予退还。"],
+["After the client completes all construction without any damages to our infrastructure , we will transfer that amount with interest to the account of annual maintenance expenses.","بعد أن يُنهي العميل جميع أعمال البناء دون أي أضرار بالبنية التحتية الخاصة بنا، سنقوم بتحويل هذا المبلغ مع فوائده إلى حساب مصروفات الصيانة السنوية.","Müşterinin tüm inşaatı altyapımıza herhangi bir zarar vermeden tamamlamasının ardından, söz konusu tutarı faiziyle birlikte yıllık bakım giderleri hesabına aktaracağız.","客户完成全部施工且未对我方基础设施造成任何损坏后，我方将把该款项连同利息转入年度维护费用账户。"],
+["Additional works included (site survey, handover fees, and house connection fees). {(Excluding VAT)}","تشمل الأعمال الإضافية (المسح الموقعي ورسوم التسليم ورسوم التوصيلات). {(غير شامل ضريبة القيمة المضافة)}","Ek işler şunları kapsar (saha ölçümü, teslim ücretleri ve bağlantı ücretleri). {(KDV hariç)}","附加工程包括（场地测量、交付费用及入户接入费用）。{(不含增值税)}"],
+["any","أي","herhangi","不限"],
+/* Investor Match proposal */
+["INVESTMENT PROPOSAL","عرض استثماري","YATIRIM TEKLİFİ","投资方案"],
+["YOUR PROJECT","مشروعك","PROJENİZ","您的项目"],
+["YOUR REQUIREMENTS","متطلباتك","GEREKSİNİMLERİNİZ","您的需求"],
+["OUR RECOMMENDATION","توصيتنا","ÖNERİMİZ","我们的推荐"],
+["MATCH","التوافق","UYUM","匹配度"],
+["RECOMMENDED PLOTS","القطع الموصى بها","ÖNERİLEN PARSELLER","推荐地块"],
+["Recommended plots","القطع الموصى بها","Önerilen parseller","推荐地块"],
+["HOW WE RANKED","أسس الترتيب","SIRALAMAYI NASIL YAPTIK","排序依据"],
+["NEXT STEPS","الخطوات التالية","SONRAKİ ADIMLAR","后续步骤"],
+["Next steps","الخطوات التالية","Sonraki adımlar","后续步骤"],
+["KEY FACTS","أهم المعلومات","TEMEL BİLGİLER","关键信息"],
+["WHY IT FITS","سبب الملاءمة","NEDEN UYGUN","适配理由"],
+["COLLECTION PER YEAR","التحصيلات السنوية","YILLIK TAHSİLAT","年度回款"],
+["MERGED BLOCK","كتلة مدمجة","BİRLEŞTİRİLMİŞ BLOK","合并地块组"],
+["FINANCIAL PROPOSAL","العرض المالي","FİNANSAL TEKLİF","财务方案"],
+["Proposed plot","القطعة المقترحة","Önerilen parsel","推荐地块"],
+["Sold / reserved","مباعة / محجوزة","Satılmış / rezerve","已售 / 已预订"],
+["Other plots","قطع أخرى","Diğer parseller","其他地块"],
+["No survey drawing for this park yet.","لا يوجد رسم مساحي لهذه المنطقة الصناعية بعد.","Bu park için henüz bir ölçüm çizimi yok.","该园区暂无测绘图。"],
+["N","ش","K","北"],
+["Open brief — best available plots across all parks","طلب مفتوح — أفضل القطع المتاحة في جميع المناطق الصناعية","Açık talep — tüm parklardaki en uygun mevcut parseller","开放式需求——全部园区内最合适的可售地块"],
+["Industrial activity to be confirmed","النشاط الصناعي قيد التأكيد","Sanayi faaliyeti teyit edilecek","工业活动类型待确认"],
+["our investor","المستثمر الكريم","değerli yatırımcımız","尊敬的投资者"],
+["Price on request — this plot has no list price in the MDS yet.","السعر عند الطلب — لا يوجد سعر معلن لهذه القطعة في MDS بعد.","Fiyat talep üzerine — bu parsel için MDS'de henüz liste fiyatı yok.","价格面议——该地块在MDS中暂无标价。"],
+["CASH VALUE","القيمة النقدية","PEŞİN DEĞER","现金价值"],
+["TOTAL PAYABLE","إجمالي المبلغ المستحق","TOPLAM ÖDENECEK","应付总额"],
+["advance + instalments","الدفعة المقدمة + الأقساط","peşinat + taksitler","首付 + 分期"],
+["no instalments","بدون أقساط","taksit yok","无分期"],
+["PRICE / SQM WITH INSTALMENTS","السعر / م² بالتقسيط","TAKSİTLİ FİYAT / m²","分期单价 / 平方米"],
+["No.","رقم","No.","序号"],
+["Date","التاريخ","Tarih","日期"],
+["Instalment","القسط","Taksit","分期金额"],
+["Additional annual","دفعة سنوية إضافية","Ek yıllık ödeme","年度追加款"],
+["Total paid","إجمالي المدفوع","Toplam ödenen","累计已付"],
+["Adv","مقدمة","Peşin","首付"],
+["Total","الإجمالي","Toplam","合计"],
+["Collection","التحصيل","Tahsilat","回款"],
+["Cumulative % of total","النسبة التراكمية من الإجمالي","Toplamın kümülatif %'si","占总额累计比例"],
+["Cumulative % of cash value","النسبة التراكمية من القيمة النقدية","Peşin değerin kümülatif %'si","占现金价值累计比例"],
+["Down payment","الدفعة المقدمة","Peşinat","首付款"],
+["Park","المنطقة الصناعية","Park","园区"],
+["Plot","القطعة","Parsel","地块"],
+["Area sqm","المساحة م²","Alan m²","面积（平方米）"],
+["Water","المياه","Su","供水"],
+["Price/sqm*","السعر/م²*","Fiyat/m²*","单价/平方米*"],
+["Total*","الإجمالي*","Toplam*","总价*"],
+["Port km","الميناء كم","Liman km","港口（公里）"],
+["Match","التوافق","Uyum","匹配"],
+["Area","المساحة","Alan","面积"],
+["Land type","نوع الأرض","Arazi tipi","土地类型"],
+["Phase","المرحلة","Faz","阶段"],
+["Power","الكهرباء","Güç","电力"],
+["Cash price","السعر النقدي","Peşin fiyat","现金价格"],
+["With instalments","بالتقسيط","Taksitli","分期价格"],
+["Price","السعر","Fiyat","价格"],
+["Total price","السعر الإجمالي","Toplam fiyat","总价"],
+["Nearest seaport","أقرب ميناء بحري","En yakın liman","最近海港"],
+["Nearest airport","أقرب مطار","En yakın havalimanı","最近机场"],
+["Cairo","القاهرة","Kahire","开罗"],
+["to confirm","يُؤكَّد لاحقاً","teyit edilecek","待确认"],
+["on request","عند الطلب","talep üzerine","面议"],
+["Chosen on the map","مختارة من الخريطة","Haritadan seçildi","地图上所选"],
+["Every plot shares a boundary with the block","كل قطعة تشترك في حد مع الكتلة","Her parsel blokla ortak sınıra sahip","每个地块均与该地块组共用边界"],
+["Compact combined footprint","مساحة مجمّعة متماسكة","Kompakt birleşik alan","合并后占地紧凑"],
+["Combined footprint is slightly irregular","المساحة المجمّعة غير منتظمة قليلاً","Birleşik alan biraz düzensiz","合并后占地略不规则"],
+["Irregular combined shape — check the layout","الشكل المجمّع غير منتظم — يُرجى مراجعة المخطط","Birleşik şekil düzensiz — yerleşim planını kontrol edin","合并后形状不规则——请核对布局"],
+["Not drawn on the survey map yet","لم تُرسم على الخريطة المساحية بعد","Henüz ölçüm haritasında çizilmedi","尚未绘制在测绘图上"],
+["No list price in the MDS — price on request","لا يوجد سعر معلن في MDS — السعر عند الطلب","MDS'de liste fiyatı yok — fiyat talep üzerine","MDS中无标价——价格面议"],
+["Size fit against your brief — 34%","ملاءمة المساحة لطلبك — 34%","Talebinize göre büyüklük uyumu — %34","与您需求的面积匹配度——34%"],
+["Logistics: distance to the nearest seaport and airport — 20%","اللوجستيات: المسافة إلى أقرب ميناء بحري ومطار — 20%","Lojistik: en yakın liman ve havalimanına uzaklık — %20","物流：与最近海港和机场的距离——20%"],
+["Utilities: power (MVA) and water capacity recorded for the plot — 18%","المرافق: سعة الكهرباء (MVA) والمياه المسجلة للقطعة — 18%","Altyapı: parsel için kayıtlı güç (MVA) ve su kapasitesi — %18","公用设施：地块登记的电力（MVA）和供水能力——18%"],
+["Neighbours: companies in your sector already operating in the park — 16%","الجوار: الشركات العاملة في قطاعك والموجودة بالفعل في المنطقة الصناعية — 16%","Komşular: parkta halihazırda faaliyet gösteren sektörünüzdeki şirketler — %16","邻近企业：您所在行业已在园区内运营的企业——16%"],
+["Price against your budget — 12%","السعر مقارنةً بميزانيتك — 12%","Fiyatın bütçenize göre durumu — %12","价格与您预算的匹配度——12%"],
+["Merged blocks: neighbouring available plots in one park and sector, combined to within about 3% of your size; every plot is needed to reach it","الكتل المدمجة: قطع متاحة متجاورة في المنطقة الصناعية والقطاع نفسيهما، مجمّعة بحيث تقترب مساحتها من مساحتك المطلوبة بفارق نحو 3%؛ وكل قطعة ضرورية لبلوغها","Birleştirilmiş bloklar: aynı park ve sektördeki bitişik mevcut parseller, talep ettiğiniz büyüklüğün yaklaşık %3 yakınına kadar birleştirilir; hedefe ulaşmak için her parsel gereklidir","合并地块组：同一园区、同一分区内相邻的可售地块，合并后面积与您需求相差约3%以内；每个地块均为达到该面积所必需"],
+["* List price of each plot in the MDS (SqM Price planned; total = Cash Value planned), in EGP. Final prices are confirmed in the offer.","* سعر القائمة لكل قطعة في MDS (سعر المتر المخطط؛ الإجمالي = القيمة النقدية المخططة)، بالجنيه المصري. تُؤكَّد الأسعار النهائية في العرض.","* Her parselin MDS'deki liste fiyatı (planlanan m² fiyatı; toplam = planlanan peşin değer), EGP cinsinden. Nihai fiyatlar teklifte teyit edilir.","* 各地块在MDS中的标价（计划单价；总价=计划现金价值），以EGP计。最终价格以报价单为准。"],
+["Prices and payment terms are provided in the sales offer.","الأسعار وشروط السداد مذكورة في عرض البيع.","Fiyatlar ve ödeme koşulları satış teklifinde yer almaktadır.","价格和付款条款详见销售报价单。"],
+["Indicative plan on the price and payment terms shown. Instalments include financing; the final schedule is confirmed in the signed sales offer.","خطة استرشادية وفق السعر وشروط السداد المعروضة. تتضمن الأقساط تكلفة التمويل، ويُؤكَّد الجدول النهائي في عرض البيع الموقّع.","Gösterilen fiyat ve ödeme koşullarına göre gösterge niteliğinde plan. Taksitler finansman maliyetini içerir; nihai ödeme planı imzalı satış teklifinde teyit edilir.","依据所示价格和付款条款制定的参考方案。分期款项含融资成本；最终付款计划以签署的销售报价单为准。"],
+["360° virtual tour of the park:","جولة افتراضية 360° للمنطقة الصناعية:","Parkın 360° sanal turu:","园区360°虚拟参观："],
+["Site visit","زيارة الموقع","Saha ziyareti","实地考察"],
+["Walk the plot and the park with our team, or start with the 360° virtual tour linked in this proposal.","تفقّد القطعة والمنطقة الصناعية برفقة فريقنا، أو ابدأ بالجولة الافتراضية 360° المرفقة رابطها في هذا العرض.","Parseli ve parkı ekibimizle birlikte gezin veya bu teklifte bağlantısı verilen 360° sanal turla başlayın.","与我们的团队一起实地查看地块和园区，或先通过本方案所附链接进行360°虚拟参观。"],
+["Walk the plot and the park with our team.","تفقّد القطعة والمنطقة الصناعية برفقة فريقنا.","Parseli ve parkı ekibimizle birlikte gezin.","与我们的团队一起实地查看地块和园区。"],
+["Reserve","الحجز","Rezervasyon","预订"],
+["A reservation form holds the plot while the offer and contract are prepared.","يضمن نموذج الحجز حجز القطعة لحين إعداد العرض والعقد.","Teklif ve sözleşme hazırlanırken rezervasyon formu parseli sizin için ayırır.","在报价和合同准备期间，预订表可为您保留该地块。"],
+["Licensing","التراخيص","Ruhsatlandırma","许可"],
+["We confirm your IDA activity code and licensing route with you.","سنؤكد معكم كود نشاطكم لدى هيئة التنمية الصناعية (IDA) ومسار الترخيص.","IDA faaliyet kodunuzu ve ruhsatlandırma sürecini sizinle birlikte teyit ederiz.","我们将与您确认IDA活动代码及许可流程。"],
+["Contract & handover","العقد والتسليم","Sözleşme ve teslim","签约与交付"],
+["Sign, pay per the agreed plan, and receive the plot with its utilities connections.","توقيع العقد والسداد وفق الخطة المتفق عليها، واستلام القطعة مع توصيلات المرافق.","Sözleşmeyi imzalayın, mutabık kalınan plana göre ödeyin ve parseli altyapı bağlantılarıyla teslim alın.","签署合同，按约定计划付款，并接收已接通公用设施的地块。"],
+["Indicative figures only. Plots are subject to availability at the time of reservation; prices, utilities and terms are confirmed in the formal offer. Distances are straight-line.","الأرقام استرشادية فقط. القطع خاضعة للتوافر وقت الحجز؛ وتُؤكَّد الأسعار والمرافق والشروط في العرض الرسمي. المسافات بخط مستقيم.","Rakamlar yalnızca gösterge niteliğindedir. Parseller rezervasyon anındaki müsaitliğe tabidir; fiyatlar, altyapı ve koşullar resmi teklifte teyit edilir. Mesafeler kuş uçuşudur.","所列数字仅供参考。地块以预订时的可售状态为准；价格、公用设施和条款以正式报价为准。距离均为直线距离。"],
+["Elsewedy Industrial Development","Elsewedy Industrial Development","Elsewedy Industrial Development","Elsewedy Industrial Development"]
+];
+plFreqs.forEach(([e,a,t,z])=>{ [e,e.toLowerCase(),e.toUpperCase()].forEach(k=>PL_ROWS.push([k,a,t,z])); });
+const PL_IDX={ar:1,tr:2,zh:3}, PL_T={ar:Object.create(null),tr:Object.create(null),zh:Object.create(null)}, PL_C={ar:Object.create(null),tr:Object.create(null),zh:Object.create(null)};
+PL_ROWS.forEach(r=>{ for(const L in PL_IDX) PL_T[L][r[0]]=r[PL_IDX[L]]; });
+
+/* ---- sentence patterns: [regex, ar, tr, zh]; $n = the matched text as it is, @n = the matched text translated ---- */
+const PL_PAT=[
+[/^plots (.+)$/,"القطع $1","parseller $1","地块 $1"],
+[/^Plot (.+)$/,"قطعة $1","Parsel $1","地块 $1"],
+[/^PLOT (.+)$/,"قطعة $1","PARSEL $1","地块 $1"],
+[/^(\d+) merged plots$/,(m)=>plAr(+m[1],"قطعة واحدة مدمجة","قطعتان مدمجتان","قطع مدمجة","قطعة مدمجة"),"$1 birleştirilmiş parsel","$1个合并地块"],
+[/^(\d+) merged$/,"$1 مدمجة","$1 birleşik","$1个合并"],
+[/^(\d+) adjacent plots$/,"$1 قطع متجاورة","$1 bitişik parsel","$1个相邻地块"],
+[/^(\d+) plots combined$/,"$1 قطع مدمجة","$1 parsel birleştirildi","$1个地块合并"],
+[/^Option (\d+) — (.+)$/,"الخيار $1 — @2","Seçenek $1 — @2","方案$1——@2"],
+[/^OPTION (\d+)( \(continued\))?$/,(m)=>"الخيار "+m[1]+(m[2]?" (تابع)":""),(m)=>"SEÇENEK "+m[1]+(m[2]?" (devam)":""),(m)=>"方案"+m[1]+(m[2]?"（续）":"")],
+[/^Initial financial proposal — (.+)$/,"العرض المالي المبدئي — @1","Ön finansal teklif — @1","初步财务方案——@1"],
+[/^Prepared for (.+)$/,"أُعِدَّ لـ @1","@1 için hazırlanmıştır","专为@1编制"],
+[/^Investment proposal for (.+)$/,"عرض استثماري لـ @1","@1 için yatırım teklifi","致@1的投资方案"],
+[/^Land: (.+) – (.+) sqm$/,"الأرض: @1 – @2 م²","Arazi: @1 – @2 m²","土地：@1 – @2 平方米"],
+[/^Power: (.+) MVA$/,"الكهرباء: $1 MVA","Güç: $1 MVA","电力：$1 MVA"],
+[/^Water: (.+) m3\/day$/,"المياه: $1 م³/يوم","Su: $1 m³/gün","供水：$1 立方米/天"],
+[/^Seaport within (.+) km$/,"ميناء بحري خلال $1 كم","$1 km içinde liman","$1公里内有海港"],
+[/^Airport within (.+) km$/,"مطار خلال $1 كم","$1 km içinde havalimanı","$1公里内有机场"],
+[/^Budget up to (.+) EGP\/sqm$/,"ميزانية تصل إلى $1 EGP/م²","$1 EGP/m²'ye kadar bütçe","预算上限$1 EGP/平方米"],
+[/^Land type: (.+)$/,"نوع الأرض: $1","Arazi tipi: $1","土地类型：$1"],
+[/^Sector: (.+)$/,"القطاع: $1","Sektör: $1","行业：$1"],
+[/^IDA activity (\S+) — (.+)$/,"نشاط IDA رقم $1 — $2","IDA faaliyeti $1 — $2","IDA活动 $1——$2"],
+[/^Sub-activity (\S+)$/,"النشاط الفرعي $1","Alt faaliyet $1","子活动 $1"],
+[/^product code (\S+)$/,"كود المنتج $1","ürün kodu $1","产品代码 $1"],
+[/^Licensing route: (.+) — a licence is required before operation$/,"مسار الترخيص: $1 — يلزم الحصول على ترخيص قبل التشغيل","Ruhsat süreci: $1 — işletmeden önce ruhsat gerekir","许可流程：$1——运营前须取得许可"],
+[/^Licensing route: (.+) — operation starts on notification$/,"مسار الترخيص: $1 — يبدأ التشغيل بمجرد الإخطار","Ruhsat süreci: $1 — işletme bildirimle başlar","许可流程：$1——通知后即可开始运营"],
+[/^Your activity \(IDA (.+?)\) follows the "(.+)" route: a licence is issued before operation — we start that file with you early\.$/,"يتبع نشاطكم (IDA $1) مسار «$2»: يُصدر الترخيص قبل التشغيل — وسنبدأ معكم إجراءات هذا الملف مبكراً.","Faaliyetiniz (IDA $1) \"$2\" sürecine tabidir: işletmeden önce ruhsat düzenlenir — bu dosyayı sizinle erkenden başlatırız.","您的活动（IDA $1）适用“$2”流程：运营前须先取得许可——我们将尽早与您启动该项手续。"],
+[/^Your activity \(IDA (.+?)\) follows the "(.+)" route: operation starts on notification to the authority\.$/,"يتبع نشاطكم (IDA $1) مسار «$2»: يبدأ التشغيل بمجرد إخطار الجهة المختصة.","Faaliyetiniz (IDA $1) \"$2\" sürecine tabidir: işletme, ilgili makama bildirimle başlar.","您的活动（IDA $1）适用“$2”流程：向主管机构通知后即可开始运营。"],
+[/^(\d+) options? selected from ([\d,]+) matching plots?(?: and ([\d,]+) merged blocks? of adjacent plots)?, ranked by fit to your brief\.$/,
+  (m)=>`تم اختيار ${m[1]} من الخيارات من بين ${m[2]} قطعة مطابقة${m[3]?` و${m[3]} كتلة مدمجة من القطع المتجاورة`:""}، مرتبةً حسب ملاءمتها لطلبك.`,
+  (m)=>`${m[2]} uygun parsel${m[3]?` ve bitişik parsellerden oluşan ${m[3]} birleştirilmiş blok`:""} arasından talebinize uyum sırasına göre ${m[1]} seçenek seçildi.`,
+  (m)=>`根据与您需求的匹配度，从${m[2]}个匹配地块${m[3]?`及${m[3]}个相邻地块合并组`:""}中遴选并排序了${m[1]}个方案。`],
+[/^\* With instalments: total payable ÷ area, on the payment plan in the financial proposal \(([\d.]+)% advance, (.+) over (\d+) years?, ([\d.]+)% a year\)\. Cash prices are on each plot's financial page\.$/,
+  (m)=>`* بالتقسيط: إجمالي المبلغ المستحق ÷ المساحة، وفق خطة السداد الواردة في العرض المالي (دفعة مقدمة ${m[1]}%، سداد ${plTr(m[2],"ar")} على مدى ${plYrs("ar",m[3])}، وبفائدة ${m[4]}% سنوياً). الأسعار النقدية مذكورة في الصفحة المالية لكل قطعة.`,
+  (m)=>`* Taksitli: toplam ödenecek tutar ÷ alan; finansal teklifteki ödeme planına göre (%${m[1]} peşinat, ${m[3]} yıl boyunca ${plTr(m[2],"tr").toLowerCase()} ödeme, yıllık %${m[4]}). Peşin fiyatlar her parselin finansal sayfasında yer almaktadır.`,
+  (m)=>`* 分期价格：应付总额÷面积，依据财务方案中的付款计划（首付${m[1]}%，${plTr(m[2],"zh")}支付，期限${m[3]}年，年利率${m[4]}%）。现金价格见各地块的财务页面。`],
+[/^([A-Za-z-]+) payments$/,"سداد @1","@1 ödemeler","@1付款"],
+[/^advance ([\d.]+)%$/,"دفعة مقدمة $1%","peşinat %$1","首付$1%"],
+[/^(\d+) years?$/,(m)=>plYrs("ar",m[1]),(m)=>plYrs("tr",m[1]),(m)=>plYrs("zh",m[1])],
+[/^instalments rise ([\d.]+)% a year$/,"ترتفع الأقساط بنسبة $1% سنوياً","taksitler yılda %$1 artar","分期金额每年递增$1%"],
+[/^fixed annual payment (.+) for (\d+) years?$/,(m)=>`دفعة سنوية ثابتة ${m[1]} لمدة ${plYrs("ar",m[2])}`,(m)=>`${m[2]} yıl boyunca sabit yıllık ödeme ${m[1]}`,(m)=>`固定年度付款${m[1]}，共${m[2]}年`],
+[/^(\d+) instalments over (\d+) yrs?$/,(m)=>`${m[1]} قسطاً على مدى ${plYrs("ar",m[2])}`,(m)=>`${m[2]} yıl boyunca ${m[1]} taksit`,(m)=>`${m[2]}年内分${m[1]}期`],
+[/^ADVANCE ([\d.]+)%$/,"الدفعة المقدمة $1%","PEŞİNAT %$1","首付$1%"],
+[/^(.+) INSTALMENT$/,"القسط @1","@1 TAKSİT","@1分期金额"],
+[/^on (\d{2}-[A-Za-z]{3}-\d{2,4})$/,"بتاريخ $1","$1 tarihinde","于$1"],
+[/^cash (.+)$/,"نقداً $1","peşin $1","现金 $1"],
+[/^(.+) combined$/,"$1 (إجمالي)","$1 (toplam)","合计$1"],
+[/^Year (\d+)$/,"السنة $1","$1. yıl","第$1年"],
+[/^Composition: (.+)$/,"التكوين: $1","Bileşim: $1","组成：$1"],
+[/^(.+) km \(straight line\)$/,"$1 كم (بخط مستقيم)","$1 km (kuş uçuşu)","$1公里（直线距离）"],
+[/^Within (\d+) months?$/,(m)=>"خلال "+plMon("ar",m[1]),(m)=>plMon("tr",m[1])+" içinde",(m)=>plMon("zh",m[1])+"内"],
+[/^on (\d+) Years?$/,(m)=>"على "+plYrs("ar",m[1]),(m)=>plYrs("tr",m[1])+" üzerinden",(m)=>"分"+plYrs("zh",m[1])],
+[/^Installment \((\d+)\)$/,"القسط ($1)","Taksit ($1)","第$1期"],
+[/^The Amount of installment (.+)$/,"قيمة القسط (@1)","Taksit tutarı (@1)","分期金额（@1）"],
+[/^The maximum installment period is (\d+) years with interest$/,(m)=>`الحد الأقصى لفترة التقسيط ${plYrs("ar",m[1])} مع الفائدة`,(m)=>`Azami taksit süresi faizli olarak ${m[1]} yıldır`,(m)=>`最长分期期限为${m[1]}年，附带利息`],
+[/^This is offer is valid for (.+)$/,"هذا العرض ساري لمدة @1","Bu teklif @1 süreyle geçerlidir","本报价有效期为@1"],
+[/^(\d+) days?$/,(m)=>plDays("ar",m[1]),(m)=>plDays("tr",m[1]),(m)=>plDays("zh",m[1])],
+[/^(\d+) months?$/,(m)=>plMon("ar",m[1]),(m)=>plMon("tr",m[1]),(m)=>plMon("zh",m[1])],
+[/^Will be paid upon signing the contract and it's equivalent to ([\d.,]+)\/1000 of the land value\. \{\(Excluding VAT\)\}$/,"تُسدَّد عند توقيع العقد وتعادل $1 من كل 1000 من قيمة الأرض. {(غير شامل ضريبة القيمة المضافة)}","Sözleşmenin imzalanması sırasında ödenir ve arazi bedelinin $1/1000'ine eşdeğerdir. {(KDV hariç)}","于签订合同时支付，相当于土地价值的$1/1000。{(不含增值税)}"],
+[/^Price with instalments \(interest included\)\. \{Cash price (.+?) EGP\/SQM - total (.+?) EGP\.\}$/,"السعر بالتقسيط (شامل الفائدة). {السعر النقدي $1 EGP/م² — الإجمالي $2 EGP.}","Taksitli fiyat (faiz dahil). {Peşin fiyat $1 EGP/m² — toplam $2 EGP.}","分期价格（含利息）。{现金价格$1 EGP/平方米——总价$2 EGP。}"],
+[/^(\d+) (.+) (?:company|companies) already here$/,"يوجد $1 من شركات قطاع $2 في المنطقة الصناعية بالفعل","Parkta zaten $1 adet $2 şirketi var","园区内已有$1家$2企业"],
+[/^No (.+) companies here yet$/,"لا توجد شركات في قطاع $1 هنا حتى الآن","Burada henüz $1 şirketi yok","园区内暂无$1企业"],
+[/^([\d,]+) sqm — within the brief$/,"$1 م² — ضمن نطاق الطلب","$1 m² — talep kapsamında","$1平方米——符合需求"],
+[/^([\d,]+) sqm — (\d+)% under minimum$/,"$1 م² — أقل من الحد الأدنى بنسبة $2%","$1 m² — asgarinin %$2 altında","$1平方米——低于下限$2%"],
+[/^([\d,]+) sqm — (\d+)% over maximum$/,"$1 م² — أعلى من الحد الأقصى بنسبة $2%","$1 m² — azami değerin %$2 üzerinde","$1平方米——超过上限$2%"],
+[/^(Power|Water)(?: \(combined\))? capacity not recorded — to confirm$/,(m)=>`سعة ${plCo("ar",m[1].toLowerCase())} غير مسجلة — يُؤكَّد لاحقاً`,(m)=>`${plCo("tr",m[1].toLowerCase())} kapasitesi kayıtlı değil — teyit edilecek`,(m)=>`${plCo("zh",m[1].toLowerCase())}能力未登记——待确认`],
+[/^([\d.]+) (\S+) (power|water)( \(combined\))? \(needs ([\d.]+)\)$/,(m)=>`${m[1]} ${m[2]} ${plCo("ar",m[3])}${m[4]?" (مجمّعة)":""} (المطلوب ${m[5]})`,(m)=>`${m[1]} ${m[2]} ${plCo("tr",m[3])}${m[4]?" (toplam)":""} (gereken ${m[5]})`,(m)=>`${m[1]} ${m[2]} ${plCo("zh",m[3])}${m[4]?"（合计）":""}（需求${m[5]}）`],
+[/^([\d.]+) (\S+) (power|water)( \(combined\))? — needs ([\d.]+), upgrade required$/,(m)=>`${m[1]} ${m[2]} ${plCo("ar",m[3])}${m[4]?" (مجمّعة)":""} — المطلوب ${m[5]}، يلزم الترقية`,(m)=>`${m[1]} ${m[2]} ${plCo("tr",m[3])}${m[4]?" (toplam)":""} — gereken ${m[5]}, yükseltme gerekli`,(m)=>`${m[1]} ${m[2]} ${plCo("zh",m[3])}${m[4]?"（合计）":""}——需求${m[5]}，需升级`],
+[/^([\d,]+) EGP\/sqm list price( — within budget| — above budget)?$/,(m)=>`سعر القائمة ${m[1]} EGP/م²${m[2]?(/within/.test(m[2])?" — ضمن الميزانية":" — أعلى من الميزانية"):""}`,(m)=>`Liste fiyatı ${m[1]} EGP/m²${m[2]?(/within/.test(m[2])?" — bütçe dahilinde":" — bütçenin üzerinde"):""}`,(m)=>`标价${m[1]} EGP/平方米${m[2]?(/within/.test(m[2])?"——在预算内":"——超出预算"):""}`],
+[/^Same park, same sector \((.+)\), all available$/,"نفس المنطقة الصناعية ونفس القطاع ($1)، وكلها متاحة","Aynı park, aynı sektör ($1), tümü mevcut","同一园区、同一分区（$1），均可售"],
+[/^(\d+) adjacent plots · ([\d,]+) sqm combined \(([+−]?)([\d.]+)% vs ([\d,]+) target\)$/,"$1 قطع متجاورة · $2 م² إجمالاً (‎$3$4% مقارنةً بالمستهدف $5)","$1 bitişik parsel · toplam $2 m² (hedef $5'e göre $3%$4)","$1个相邻地块 · 合计$2平方米（相对目标$5为$3$4%）"],
+[/^(\d+) m$/,"$1 م","$1 m","$1米"],
+[/^(\d+) km$/,"$1 كم","$1 km","$1公里"]
+];
+
+/* ---- dates and units, applied to every text (also to what has no table entry: they are fixed formats) ---- */
+const PL_MON={ar:["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"],tr:["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"]};
+const PL_EN3=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], PL_EN_FULL=["January","February","March","April","May","June","July","August","September","October","November","December"];
+function plDate(L,d,mi,y){ y=+y<100?2000+ +y:+y; d=+d; return L==="zh"?`${y}年${mi+1}月${d}日`:`${d} ${PL_MON[L][mi]} ${y}`; }
+function plPost(s,L){
+  s=s.replace(/\b(\d{1,2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{4}|\d{2})\b/g,(_,d,m,y)=>plDate(L,d,PL_EN3.indexOf(m),y));
+  s=s.replace(/\b(\d{1,2}) (January|February|March|April|May|June|July|August|September|October|November|December) (\d{4})\b/g,(_,d,m,y)=>plDate(L,d,PL_EN_FULL.indexOf(m),y));
+  const U={ar:{sqm:"م²",km:"كم",d:"م³/يوم"},tr:{sqm:"m²",km:"km",d:"m³/gün"},zh:{sqm:"平方米",km:"公里",d:"立方米/天"}}[L];
+  s=s.replace(/\bsqm\b/gi,U.sqm).replace(/\bSqm\b/g,U.sqm).replace(/\b(\d[\d,.]*) km\b/g,"$1 "+U.km).replace(/\bm[3³]\/day\b/g,U.d);
+  s=s.replace(/\bEGP (\d[\d.,]*)(Bn|M|K)\b/g,(_,n,u)=>"EGP "+n+(L==="ar"?" "+{Bn:"مليار",M:"مليون",K:"ألف"}[u]:L==="tr"?" "+{Bn:"milyar",M:"milyon",K:"bin"}[u]:{Bn:"十亿",M:"百万",K:"千"}[u]));
+  return s;
+}
+function plFill(t,m,L){ if(typeof t==="function") return t(m,L); return t.replace(/([$@])(\d)/g,(_,k,i)=>{ const g=m[+i]; if(g==null) return ""; const v=k==="@"?plTr(g,L):g; return L==="ar"?v+"\u200E":v; }); }
+function plTr1(core,L){
+  let r=PL_T[L][core]; if(r!==undefined) return r;
+  for(const p of PL_PAT){ const m=core.match(p[0]); if(m){ const o=plFill(p[PL_IDX[L]],m,L); if(o!=null) return o; } }
+  const bp=core.match(/^([•!*]+\s+)([\s\S]+)$/);                       /* bullet markers stay, the sentence is translated */
+  if(bp){ const t=plTr1(bp[2],L); return t===bp[2]?core:bp[1]+t; }
+  const parts=core.split(/\s+·\s+/);
+  if(parts.length>1){ let any=false; const o=parts.map(x=>{ const t=plTr1(x,L); if(t!==x) any=true; return t; }); return any?o.join(" · "):core; }
+  return core;
+}
+function plTr(s,L){ L=L||PL.lang; if(L==="en"||!PL_T[L]||s==null) return s; s=String(s); if(!s.trim()) return s;
+  const c=PL_C[L]; if(s in c) return c[s];
+  const lead=s.match(/^\s*/)[0], trail=s.match(/\s*$/)[0], core=s.trim();
+  let o=plPost(plTr1(core,L),L); o=lead+o+trail; c[s]=o; return o; }
+
+/* ---- the jsPDF layer: system-font text, mirrored layout for Arabic ---- */
+const PL_FONT='"Segoe UI","Helvetica Neue",Helvetica,Arial,"Noto Naskh Arabic","Noto Sans Arabic","Geeza Pro","Al Bayan","Arial Unicode MS","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC","WenQuanYi Micro Hei",sans-serif';
+const PL_K=5, PL_IMG=new Map();
+let PL_CV=null;
+function plCx(){ if(!PL_CV) PL_CV=document.createElement("canvas"); return PL_CV.getContext("2d"); }
+function plDoc(doc){
+  const L=PL.lang; if(L==="en"||!doc||doc.__pl||!PL_T[L]) return doc;
+  doc.__pl=1;
+  const rtl=L==="ar", u=1/doc.internal.scaleFactor, pw=()=>doc.internal.pageSize.getWidth();
+  let mir=rtl, inner=false;
+  doc.__mir=v=>{ mir=!!v&&rtl; };
+  const st={size:12,bold:false,italic:false,color:[0,0,0]}, O={};
+  ["setFont","setFontSize","setTextColor","rect","roundedRect","line","triangle","circle","lines","addImage","link"].forEach(n=>{ if(typeof doc[n]==="function") O[n]=doc[n].bind(doc); });
+  const guard=(n,f)=>{ if(!O[n]) return; doc[n]=function(...a){ if(inner) return O[n](...a); inner=true; try{ f(...a); } finally{ inner=false; } return doc; }; };
+  doc.setFont=function(name,style,w){ st.bold=/bold/i.test(String(style||""))||/bold/i.test(String(name||"")); st.italic=/italic|oblique/i.test(String(style||"")); return O.setFont(name,style,w); };
+  doc.setFontSize=function(s){ st.size=+s||st.size; return O.setFontSize(s); };
+  doc.setTextColor=function(...a){ let c=a;
+    if(typeof a[0]==="string"&&/^#?[0-9a-f]{6}$/i.test(a[0])){ const h=a[0].replace("#",""); c=[0,2,4].map(i=>parseInt(h.substr(i,2),16)); }
+    else if(a.length===1&&typeof a[0]==="number") c=[a[0],a[0],a[0]];
+    if(c.length>=3) st.color=c.slice(0,3).map(v=>Math.max(0,Math.min(255,+v||0)));
+    return O.setTextColor(...a); };
+  const fnt=()=>`${st.italic?"italic ":""}${st.bold?"700":"400"} ${st.size*PL_K}px ${PL_FONT}`;
+  const dirOf=t=>rtl&&/[\u0590-\u08FF]/.test(t)?"rtl":"ltr";   /* a name or a number inside an Arabic print stays left-to-right */
+  const wPt=t=>{ const cx=plCx(); cx.font=fnt(); cx.direction=dirOf(t); return cx.measureText(t).width/PL_K; };
+  doc.getTextWidth=t=>wPt(plTr(String(t==null?"":t),L))*u;
+  doc.splitTextToSize=function(t,w){
+    if(Array.isArray(t)) t=t.join("\n"); const out=[], lim=w/u, tx=plTr(String(t==null?"":t),L);
+    tx.split(/\r?\n/).forEach(par=>{ const toks=par.match(/[　-鿿＀-￯]|[^\s　-鿿＀-￯]+|\s+/g)||[""]; let line="";
+      toks.forEach(tk=>{ const cand=line+tk; if(line.trim()&&wPt(cand.trimEnd())>lim){ out.push(line.trim()); line=tk.trimStart(); } else line=cand; });
+      out.push(line.trim()); });
+    return out; };
+  const mx=(x,w)=>mir?pw()-x-w:x, MX=x=>mir?pw()-x:x;
+  guard("rect",(x,y,w,h,s)=>O.rect(mx(x,w),y,w,h,s));
+  guard("roundedRect",(x,y,w,h,rx,ry,s)=>O.roundedRect(mx(x,w),y,w,h,rx,ry,s));
+  guard("line",(x1,y1,x2,y2,s)=>O.line(MX(x1),y1,MX(x2),y2,s));
+  guard("triangle",(x1,y1,x2,y2,x3,y3,s)=>O.triangle(MX(x1),y1,MX(x2),y2,MX(x3),y3,s));
+  guard("circle",(x,y,r,s)=>O.circle(MX(x),y,r,s));
+  guard("lines",(v,x,y,sc,s,cl)=>mir?O.lines(v.map(a=>a.map((q,i)=>i%2===0?-q:q)),pw()-x,y,sc,s,cl):O.lines(v,x,y,sc,s,cl));
+  doc.addImage=function(src,fmt,x,y,w,h,...r){ if(inner||typeof x!=="number") return O.addImage(src,fmt,x,y,w,h,...r); inner=true; try{ O.addImage(src,fmt,mx(x,w),y,w,h,...r); } finally{ inner=false; } return doc; };
+  const drawLine=(ln,x,y,o)=>{
+    if(!ln||!ln.trim()) return 0; const wp=wPt(ln), w=wp*u; let al=o.align||"left", ax=x;
+    if(mir){ ax=pw()-x; al=al==="left"?"right":al==="right"?"left":al; }
+    const left=al==="center"?ax-w/2:al==="right"?ax-w:ax;
+    const b=o.baseline||"alphabetic", by=b==="middle"?y+st.size*.32*u:(b==="top"||b==="hanging")?y+st.size*.75*u:b==="bottom"?y-st.size*.2*u:y;
+    const pad=Math.ceil(st.size*PL_K*.15), cw=Math.ceil(wp*PL_K)+2*pad, ch=Math.ceil(st.size*PL_K*1.7), base=Math.round(st.size*PL_K*1.3);
+    const key=[L,dirOf(ln),st.bold?1:0,st.italic?1:0,st.size,st.color.join(","),ln].join("|");
+    let url=PL_IMG.get(key);
+    if(!url){ const cv=document.createElement("canvas"); cv.width=cw; cv.height=ch; const cx=cv.getContext("2d");
+      cx.font=fnt(); cx.direction=dirOf(ln); cx.textAlign="left"; cx.textBaseline="alphabetic"; cx.fillStyle=`rgb(${st.color.join(",")})`; cx.fillText(ln,pad,base);
+      url=cv.toDataURL("image/png"); if(PL_IMG.size>3000) PL_IMG.clear(); PL_IMG.set(key,url); }
+    inner=true; try{ O.addImage(url,"PNG",left-pad/PL_K*u,by-base/PL_K*u,cw/PL_K*u,ch/PL_K*u,"pl"+key.length+"_"+PL_hash(key),"FAST"); } finally{ inner=false; }
+    return w; };
+  doc.text=function(t,x,y,o){ o=o||{}; if(Array.isArray(t)) t=t.join("\n"); if(t==null) return doc;
+    let lines=plTr(String(t),L).split(/\r?\n/);
+    if(o.maxWidth>0) lines=lines.flatMap(l=>doc.splitTextToSize(l,o.maxWidth));
+    else if((o.align||"left")!=="center"){ const al=o.align||"left", mg=pw()*.07, av=al==="left"?pw()-x-mg:x-mg;   /* a translation longer than the English never leaves the page */
+      if(av>10*u&&lines.some(l=>wPt(l)*u>av)) lines=lines.flatMap(l=>doc.splitTextToSize(l,av)); }
+    const lh=st.size*(o.lineHeightFactor||1.15)*u; lines.forEach((ln,i)=>drawLine(ln,x,y+i*lh,o)); return doc; };
+  doc.textWithLink=function(t,x,y,o){ o=o||{}; const w=drawLine(String(t),x,y,o); const left=mir?pw()-x-w:x; if(o.url&&O.link) O.link(left,y-st.size*u*.8,w,st.size*u*1.1,{url:o.url}); return doc; };
+  return doc;
+}
+function PL_hash(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36); }
+
+
+/* ---- V69: Lara's customer for an offer = the name she was given (no picker). One clear Sales Leads match -> recorded on it. ---- */
+async function slLaraCust(ag){ const name=String((ag&&ag.name)||"").trim(), company=String((ag&&ag.company)||"").trim();
+  const c={id:null,name,company,agent:true};
+  try{ if(name.length>=2&&typeof slFetch==="function"){ const j=await slFetch("/integration/contacts?q="+encodeURIComponent(name)+"&limit=5");
+      const arr=Array.isArray(j&&j.contacts)?j.contacts:[]; if(arr.length===1&&arr[0]&&arr[0].id!=null) return arr[0]; } }catch(e){}
+  return c; }
+function laraSetClient(t,a,nm){
+  if(t==="sales_offer"){ if(!SO.f) soApplyTpl(); SO.f.client=nm; if(a.client_company) SO.f.company=String(a.client_company); soSave(); }
+  else if(typeof MM!=="undefined"&&MM.form){ MM.form.company=String(a.client_company||nm); MM.form.contact=nm; } }
+async function laraWithLang(a,fn){ const lg=a&&a.language&&/^(en|ar|tr|zh)$/.test(String(a.language))?String(a.language):null, was=PL.lang;
+  if(lg) PL.lang=lg; try{ return await fn(); } finally{ if(lg) PL.lang=was; } }
 
 document.addEventListener("DOMContentLoaded",()=>{ sbGate().then(()=>{ wireTop(); wireShell(); boot(); }).catch(e=>{ console.error(e); gateMsg("Could not load the data: "+esc(e.message||String(e))+". Reload the page to try again."); }); });
 
