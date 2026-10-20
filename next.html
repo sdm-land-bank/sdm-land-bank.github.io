@@ -14617,7 +14617,7 @@ if(typeof laraSystem==="function"){ const syV73=laraSystem; laraSystem=function(
 const DROP_ARGS=["client","company","sold_by","sales_rep","search","min_price","max_price","max_price_sqm","price","gp","loss","budget"];
 const BADKEY=/price|value|egp|usd|cash|client|company|customer|buyer|sold_?by|seller|sales_?rep|\brep\b|contract|collect|interest|revenue|deal|receiv|tpi|amount|gp|profit|margin|cost|pct|loss/i;
 let NAMES=null;
-const names=()=>{ if(NAMES) return NAMES; NAMES=new Set(); try{ S.rows.forEach(r=>[r.client,r.company,r.soldBy].forEach(v=>{ v=String(v||"").trim(); if(v.length>=4) NAMES.add(v.toLowerCase()); })); }catch(e){} return NAMES; };
+const names=()=>{ if(NAMES) return NAMES; NAMES=new Set(); try{ S.rows.forEach(r=>[r.client,r.company,r.soldBy].forEach(v=>{ v=String(v||"").trim(); if(v.length>=8||/\s/.test(v)&&v.length>=5) NAMES.add(v.toLowerCase());   // whole names only: a client called "Active" must not blank ordinary words })); }catch(e){} return NAMES; };
 const badStr=s=>{ if(/\bEGP\b|EGP\/|جنيه/i.test(s)) return true; const l=s.toLowerCase(); for(const n of names()) if(l.includes(n)) return true; return false; };
 const clean=o=>{ if(Array.isArray(o)) return o.map(clean); if(o&&typeof o==="object"){ const r={}; for(const [k,v] of Object.entries(o)){ if(BADKEY.test(k)&&!/_say$/.test(k)) continue; r[k]=clean(v); } return r; }
   if(typeof o==="string"&&badStr(o)) return "(not shown on the public screen)"; return o; };
