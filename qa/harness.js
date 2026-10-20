@@ -10,7 +10,7 @@ QA.init=async function(){
   const osc=QA.ctx.createOscillator(), g=QA.ctx.createGain(); g.gain.value=0.00001; osc.connect(g).connect(QA.dest); osc.start();   // keep the track alive
   QA.buf={};
   for(let i=1;i<=12;i++){ try{ const r=await fetch("qa/c"+i+".wav",{cache:"no-store"}); if(!r.ok) continue; QA.buf["c"+i]=await QA.ctx.decodeAudioData(await r.arrayBuffer()); }catch(e){} }
-  navigator.mediaDevices.getUserMedia=async()=>QA.dest.stream;
+  navigator.mediaDevices.getUserMedia=async()=>{ const d=QA.ctx.createMediaStreamDestination(); const o=QA.ctx.createOscillator(), g=QA.ctx.createGain(); g.gain.value=0.00001; o.connect(g).connect(d); o.start(); QA.dest=d; log("mic","new stream"); return d.stream; };   // a fresh stream each time, like a real microphone
   await QA.ctx.resume();
   // watch Lara
   const st0=laraState; laraState=function(s){ if(s!==LARA.st) log("state",s); return st0.apply(this,arguments); };
