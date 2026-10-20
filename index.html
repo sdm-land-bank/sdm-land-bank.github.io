@@ -1854,9 +1854,9 @@ mark{background:#FFF1B8;color:inherit;padding:0 4px;border-radius:4px}
 .kpi .s{font-size:9.5px!important;margin-top:1px!important;min-height:0!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .map-note{display:none!important}
 
-.kpis.map5{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+.kpis.map5{grid-template-columns:repeat(4,minmax(0,1fr))!important}
 .kpi .u-v small{font-size:11px;font-weight:600;color:var(--mute);margin-left:2px}
-@media (max-width:1100px){ .kpis.map5{grid-template-columns:repeat(3,minmax(0,1fr))!important} }
+@media (max-width:900px){ .kpis.map5{grid-template-columns:repeat(2,minmax(0,1fr))!important} }
 .selpanel{resize:both;min-width:280px;min-height:220px;max-width:calc(100% - 12px);max-height:calc(100% - 12px)}
 .selpanel .sp-top{cursor:grab;user-select:none}
 .selpanel.dragging{opacity:.94;box-shadow:0 30px 70px -20px rgba(0,0,0,.45)}
@@ -2387,6 +2387,34 @@ body:has(aside.rail:hover) .lara-dock{opacity:0!important;pointer-events:none!im
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
+<script>
+/* V72: the satellite picture is kept in this browser (Cache Storage) - read from there first, fetched only once */
+(function(){
+const CN="sid-sat-v1", N=window.SIDSAT={hit:0,miss:0,err:0};
+const key=u=>u.replace("//services.arcgisonline.com","//server.arcgisonline.com");
+let C=null; const box=()=>C||(C=caches.open(CN));
+async function get(url,signal){
+  try{ const c=await box(), h=await c.match(key(url)); if(h){ N.hit++; return await h.arrayBuffer(); } }catch(e){}
+  const r=await fetch(url,{signal,mode:"cors",credentials:"omit"}); if(!r.ok) throw new Error("tile "+r.status);
+  const buf=await r.arrayBuffer(); N.miss++;
+  box().then(c=>c.put(key(url),new Response(buf.slice(0),{headers:{"content-type":r.headers.get("content-type")||"image/jpeg"}}))).catch(()=>{});
+  return buf; }
+try{
+  if(window.caches&&window.maplibregl&&maplibregl.addProtocol&&location.protocol==="https:"){
+    maplibregl.addProtocol("sidsat",async(p,ac)=>{ try{ return {data:await get(p.url.replace(/^sidsat:/,"https:"),ac&&ac.signal)}; }catch(e){ if(e&&e.name!=="AbortError"){ N.err++; N.last=String(e&&e.message||e); } throw e; } });
+    window.__sidSatOK=1;
+    try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+  }
+}catch(e){ console.warn("satellite cache",e); }
+window.sidSat=u=>window.__sidSatOK?String(u).replace(/^https:/,"sidsat:"):u;
+/* fetch one tile into the cache (used by the advance download): true when it is there */
+window.sidSatFetch=async u=>{ if(!window.__sidSatOK){ const r=await fetch(u,{mode:"cors",credentials:"omit"}); if(r.ok) await r.blob(); return r.ok; }
+  try{ const c=await box(); if(await c.match(key(u))) return true; await get(u); return true; }catch(e){ return false; } };
+window.sidSatInfo=async()=>{ try{ const c=await box(), k=await c.keys(), e=navigator.storage&&navigator.storage.estimate?await navigator.storage.estimate():{};
+  return {tiles:k.length,usedMB:Math.round((e.usage||0)/1048576),quotaMB:Math.round((e.quota||0)/1048576),...N}; }catch(e){ return {error:String(e)}; } };
+})();
+</script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
 </head>
@@ -3626,8 +3654,7 @@ function kpisMap(rs){
     ["Active projects",dn(fInt(parks.size),"Projects in focus — "+sc.label,R),sc.label],
     ["Total area",dn(fSq(sc.area)+" sqm","Plots in focus — "+sc.label,R),dn(fInt(sc.plots)+" plots","Plots in focus — "+sc.label,R)],
     ["Sold area",dn(fSq(soldA)+" sqm","Sold + reserved — "+sc.label,sold),sc.area?pct(soldA,sc.area)+" of the area · sold + reserved":"sold + reserved"],
-    ["Revenue",dn(rev?fMon(rev,"EGP"):"—","Sales value — "+sc.label,sold),dn(fInt(sold.length)+" deals","Deals — "+sc.label,sold)+" · Cash Value (A)"],
-    ["Utilities",`<span class="u-v">${u(mva,1)}<small> MVA</small></span>`,`Water ${u(wat)} m³/d · Sewage ${u(sew)} m³/d · Gas n/a`]
+    ["Revenue",dn(rev?fMon(rev,"EGP"):"—","Sales value — "+sc.label,sold),dn(fInt(sold.length)+" deals","Deals — "+sc.label,sold)+" · Cash Value (A)"]
   ];
   return cells.map(([k,v,s])=>`<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s||""}</span></div>`).join("");
 }
@@ -8641,8 +8668,8 @@ const ESRI_LABELS="https://server.arcgisonline.com/ArcGIS/rest/services/Referenc
 const BASES={
   map:"https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
   sat:{version:8,glyphs:"https://basemaps.cartocdn.com/gl/positron-gl-style/{fontstack}/{range}.pbf",
-    sources:{e:{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}","https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256,maxzoom:SAT_MAX,attribution:"Imagery © Esri"},
-             l:{type:"raster",tiles:[ESRI_LABELS,ESRI_LABELS.replace("//server.","//services.")],tileSize:256,maxzoom:LABEL_MAX,attribution:"Labels © Esri"}},
+    sources:{e:{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}","https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"].map(u=>(window.sidSat||(x=>x))(u)),tileSize:256,maxzoom:SAT_MAX,attribution:"Imagery © Esri"},
+             l:{type:"raster",tiles:[ESRI_LABELS,ESRI_LABELS.replace("//server.","//services.")].map(u=>(window.sidSat||(x=>x))(u)),tileSize:256,maxzoom:LABEL_MAX,attribution:"Labels © Esri"}},
     layers:[{id:"e",type:"raster",source:"e",paint:{"raster-fade-duration":0}},{id:"l",type:"raster",source:"l",paint:{"raster-opacity":.95,"raster-fade-duration":0}}]}
 };
 let map=null, ctx=null, cv=null, raf=null, anchors=[], dims=null, iso=null;
@@ -11129,7 +11156,7 @@ function presScenes(){
       eye:"Logistics · "+name, title:"Nearest seaports", text:"Finding the road to the nearest seaports…", stats:[]});
     const tour=TOURS.find(t=>parks.includes(t.park));
     if(tour) sc.push({kind:"tour", tour, parks, dwell:24000, eye:"360° virtual tour", title:"Step inside "+name,
-      text:"This is the main gate today. Drag the view to look around.", stats:[]});
+      text:"This is the main gate today — one full turn around.", stats:[]});
   });
   sc.push({kind:"pipeline", cam:{center:[30.4,28.9],zoom:5.2,pitch:25,bearing:6}, dwell:9000,
     eye:"Pipeline & Future of Egypt", title:"The next decade",
@@ -13924,7 +13951,8 @@ async function prewarm(why,maxZ){ maxZ=maxZ||16;
   if(!urls.length){ window.__prewarm=0; return; }
   const list=urls.slice(0,2400); let i=0, ok=0;
   const worker=async()=>{ while(i<list.length){ if(document.hidden){ await new Promise(r=>setTimeout(r,2000)); continue; }
-      const u=list[i++]; try{ const r=await fetch(u,{mode:"cors",credentials:"omit"}); if(r.ok){ await r.blob(); ok++; } }catch(e){} } };
+      const u=list[i++]; try{ if(window.sidSatFetch){ if(await window.sidSatFetch(u)) ok++; continue; }
+        const r=await fetch(u,{mode:"cors",credentials:"omit"}); if(r.ok){ await r.blob(); ok++; } }catch(e){} } };
   await Promise.all(Array.from({length:6},worker));
   try{ localStorage.setItem(DAYKEY,day); }catch(e){}
   try{ if(typeof laraLog==="function") laraLog("info","map tiles fetched in advance",{why,tiles:ok}); }catch(e){}
@@ -13996,6 +14024,7 @@ window.sidViewAs=async function(me){
     window.SID_VIEWAS={...v,realName:me.name,realEmail:me.email};
     return {...me,email:v.email,name:v.name||v.email,role:v.role,label:r.label,pages:r.pages||[],can_edit:!!r.can_edit,is_admin:!!r.is_admin,wf:r.wf||null,viewAs:true}; }
   catch(e){ return me; } };
+window.sidViewAsPick=()=>pick();
 function exitViewAs(){ try{ sessionStorage.removeItem(KEY); }catch(e){} location.reload(); }
 async function pick(){
   let users=[]; try{ users=(await laraFn("sid-admin",{action:"list"})).users||[]; }catch(e){ toast("Could not read the users: "+e.message,true); return; }
@@ -14022,9 +14051,7 @@ const k=setInterval(()=>{ if(typeof SBME==="undefined"||!SBME||!window.__sidMeFi
   .va-l button:hover{border-color:#B3263D}.va-l em{grid-column:1/3;color:#8e8e93;font-style:normal;font-size:11.5px}.va-l span{color:#B3263D;font-weight:700;font-size:11.5px}`;
   document.head.appendChild(st);
   if(window.SID_VIEWAS){ const b=document.createElement("div"); b.className="va-bar"; b.innerHTML=`<span>Viewing as <b>${esc(window.SID_VIEWAS.name||window.SID_VIEWAS.email)}</b> · ${esc(window.SID_VIEWAS.role)}</span><button type="button">Exit</button>`; b.querySelector("button").onclick=exitViewAs; document.body.appendChild(b); }
-  else if(SBME.is_admin){ const b=document.createElement("button"); b.type="button"; b.className="va-btn"; b.title="See the dashboard as another user sees it";
-    b.innerHTML='<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2.2"/></svg>View as';
-    b.onclick=pick; document.body.appendChild(b); }
+  /* V72: the View as button lives in the side bar under Settings (web_roadshow3.py) */
 },500);
 })();
 </script>
@@ -14065,10 +14092,12 @@ openParkCard=function(p,coords){ const r=parkCardV70(p,coords);
 const selV70=showSelection;
 showSelection=function(){ const r=selV70.apply(this,arguments);
   try{ const el=document.getElementById("selpanel"); if(el&&!el.hidden&&!el.querySelector(".rq")){ const it=selRows()[0], park=it&&it.info&&it.info.park;
-      if(park){ const w=document.createElement("div"); w.innerHTML=qrBlock(park); const body=el.querySelector(".sp-body"); if(body) body.after(w.firstElementChild); qrLog(park); } } }catch(e){}
+      if(park){ const w=document.createElement("div"); w.innerHTML=qrBlock(park); const q=w.firstElementChild; q.classList.add("sm");
+        const body=el.querySelector(".sp-body"); if(body) body.appendChild(q); qrLog(park); } } }catch(e){}   // inside the scrolling body: it never squeezes the plot details
   return r; };
 /* the public screen and the presentation: a "Contact us" QR in the corner */
-function cornerQr(){ let c=document.getElementById("rqCorner"); const want=pub()||document.body.classList.contains("presenting");
+function cornerQr(){ let c=document.getElementById("rqCorner"); const pres=document.body.classList.contains("presenting");
+  const want=pres||pub()&&typeof S!=="undefined"&&(S.view==="inventory"||S.view==="portfolio")&&!document.querySelector("#parkcard:not([hidden]),#selpanel:not([hidden]),#cmpOv");
   if(!want){ if(c) c.remove(); return; }
   if(!c){ c=document.createElement("a"); c.id="rqCorner"; c.className="rq-corner"; c.href=CONTACT; c.target="_blank"; c.rel="noopener";
     c.innerHTML=qrSvg(CONTACT,3)+"<b>Talk to us</b><span>Scan to leave your details</span>"; document.body.appendChild(c); } }
@@ -14164,15 +14193,14 @@ async function summary(day){
       <p class="rs-n">How many people scanned a QR code is counted by the website, not here.</p>`;
   }catch(e){ ov.querySelector(".rs-b").textContent="Could not read the log: "+(e.message||e); }
 }
-setInterval(()=>{ if(typeof SBME==="undefined"||!SBME||!window.__sidMeFinal||!SBME.is_admin||window.SID_VIEWAS||document.querySelector(".rs-btn")) return;
-  const b=document.createElement("button"); b.type="button"; b.className="va-btn rs-btn"; b.textContent="Roadshow summary"; b.style.left="104px";
-  b.onclick=()=>summary(new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Cairo"}).format(new Date())); document.body.appendChild(b); },2000);
+/* V72: opened from the side bar under Settings (web_roadshow3.py) */
+window.sidRoadshowSummary=()=>summary(new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Cairo"}).format(new Date()));
 
 const st=document.createElement("style"); st.textContent=`
-.rq{display:flex;gap:10px;margin:10px 0 6px}.rq-i{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px;border:1px solid rgba(0,0,0,.08);border-radius:12px;background:#fff;color:#1c1c1e;text-decoration:none;text-align:center}
-.rq-i svg{width:96px;height:96px}.rq-i b{font:700 12px Inter,system-ui,sans-serif}.rq-i span{font:500 10.5px Inter,system-ui,sans-serif;color:#6c6c70}
-.rq-corner{position:fixed;right:16px;bottom:64px;z-index:9400;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px;border-radius:16px;background:rgba(255,255,255,.95);box-shadow:0 8px 24px rgba(0,0,0,.18);color:#1c1c1e;text-decoration:none;text-align:center}
-.rq-corner svg{width:118px;height:118px}.rq-corner b{font:800 13px Inter,system-ui,sans-serif;color:#B3263D}.rq-corner span{font:500 11px Inter,system-ui,sans-serif;color:#6c6c70}
+.rq{display:flex;gap:8px;margin:8px 0 4px;max-width:100%}.rq-i{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px;border:1px solid rgba(0,0,0,.08);border-radius:12px;background:#fff;color:#1c1c1e;text-decoration:none;text-align:center}
+.rq-i svg{width:64px;height:64px}.rq.sm .rq-i{flex-direction:row;text-align:left;gap:8px;align-items:center}.rq.sm .rq-i svg{width:54px;height:54px;flex:none}.rq.sm .rq-i b{display:block}.rq-i b{font:700 11.5px Inter,system-ui,sans-serif}.rq-i span{font:500 10px/1.25 Inter,system-ui,sans-serif;color:#6c6c70}
+.rq-corner{position:fixed;right:58px;bottom:28px;z-index:9400;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 8px 6px;border-radius:14px;background:rgba(255,255,255,.95);box-shadow:0 8px 24px rgba(0,0,0,.18);color:#1c1c1e;text-decoration:none;text-align:center}
+.rq-corner svg{width:80px;height:80px}.rq-corner b{font:800 12px Inter,system-ui,sans-serif;color:#B3263D}.rq-corner span{display:none}
 .cmp-btn{font-weight:700!important;color:#B3263D!important}
 .cmp-ov{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;padding:16px}
 .cmp-box{width:min(1000px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:18px;padding:18px;box-shadow:0 24px 70px rgba(0,0,0,.35);font:13px Inter,system-ui,sans-serif;color:#1c1c1e}
@@ -14188,6 +14216,223 @@ const st=document.createElement("style"); st.textContent=`
 .rs-d{margin-left:8px;padding:4px 8px;border:1px solid #d1d1d6;border-radius:8px;font:inherit}.rs-n{color:#8e8e93;font-size:11.5px}.rs-b h5{margin:14px 0 6px;font-size:13px}.rs-b li em{color:#8e8e93;font-style:normal;margin-right:6px}
 @media (max-width:760px){.rs-k{grid-template-columns:1fr 1fr}.rq-corner{display:none}}`;
 document.head.appendChild(st);
+})();
+</script>
+<style>
+.pres-tour .pt-pano{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+.pres-tour.pano-on .pt-pano:active{cursor:grabbing}
+</style>
+
+<script>
+/* ============================================================================
+   V72 ROADSHOW POLISH — Siri orb, 360 turn, roadshow limits, side-bar buttons
+   ========================================================================== */
+(function(){
+const pub=()=>typeof window.sidPublic==="function"&&window.sidPublic();
+
+/* ---------- 1. Lara: the Siri-style orb in the system colours, small, stays where she is put ---------- */
+if(typeof LARA!=="undefined"){
+  try{ lbLoad=function(){}; }catch(e){}                        // the robot is retired
+  try{ localStorage.setItem("sid.lara.roam","0"); }catch(e){}
+  const COL=[[255,45,85],[70,200,255],[190,28,58],[210,220,235,.55],[255,120,150,.6]];   // crimson, ice-cyan, deep crimson, silver, rose
+  const RING=[["#7a0e1f",0],["#d9dbe0",.17],["#7fdbff",.34],["#b3263d",.52],["#f4f5f7",.7],["#9fe6ff",.85],["#7a0e1f",1]];
+  laraAnim=function(){
+    const orb=$("#laraOrb"), wave=$("#laraWave"); if(!orb) return;
+    if(orb.width!==160){ orb.width=160; orb.height=160; }
+    const ox=orb.getContext("2d"), wx=wave?wave.getContext("2d"):null, td=new Float32Array(512);
+    if(typeof LARA.lvl!=="number") LARA.lvl=0;
+    const frame=t=>{
+      LARA.raf=requestAnimationFrame(frame);
+      const st=LARA.st, d=$("#laraDock"); if(!d) return;
+      const act=st==="speaking"||st==="listening"||st==="thinking"||st==="connecting", mv=typeof map!=="undefined"&&map&&map.isMoving&&map.isMoving();
+      if(t-(LARA.lastFr||0)<(act?(mv?50:33):(mv?220:110))) return; LARA.lastFr=t;
+      let target=0;
+      if(st==="speaking"&&LARA.lite) target=.4+.22*Math.sin(t/130)*Math.sin(t/57);
+      else if(st==="speaking"&&LARA.anOut){ LARA.anOut.getFloatTimeDomainData(td); let s=0; for(let i=0;i<td.length;i++) s+=td[i]*td[i]; target=Math.min(1,Math.sqrt(s/td.length)*5.5); }
+      else if(st==="listening") target=Math.min(1,(LARA.micLvl||0)*9)*((window.PTT&&LARA_PREF.ptt)?(PTT.down?1:.25):1);
+      else if(st==="thinking"||st==="connecting") target=.3+.12*Math.sin(t/180);
+      else target=.05;
+      LARA.lvl+=(target-LARA.lvl)*(target>LARA.lvl?.38:.1);
+      const L=LARA.lvl, sp=st==="thinking"||st==="connecting"?2.2:st==="speaking"?1.6:st==="listening"?1.1:.55, off=st==="off"||st==="wake";
+      const W=orb.width, R=W/2; ox.clearRect(0,0,W,W);
+      ox.save(); ox.beginPath(); ox.arc(R,R,R*.95,0,7); ox.clip();
+      const g0=ox.createRadialGradient(R,R*.8,R*.05,R,R,R); g0.addColorStop(0,"#140c18"); g0.addColorStop(.7,"#08070c"); g0.addColorStop(1,"#030305");
+      ox.fillStyle=g0; ox.fillRect(0,0,W,W);
+      // Siri-like ribbons of light: each colour is a stretched glow turning around the centre at its own speed; louder voice = bigger, brighter
+      ox.globalCompositeOperation="lighter";
+      COL.forEach((c,i)=>{ const a=t/1000*sp*(.55+i*.23)+i*2.1, k=R*(.36+.12*L+.05*Math.sin(t/800+i)), rr=R*(.58+.2*L);
+        const cx=R+Math.cos(a)*k, cy=R+Math.sin(a)*k, al=(off?.8:.95)*(c[3]||1);
+        ox.save(); ox.translate(cx,cy); ox.rotate(a+Math.PI/2+Math.sin(t/1300+i)*.6); ox.scale(1,.45);
+        const g=ox.createRadialGradient(0,0,0,0,0,rr); g.addColorStop(0,`rgba(${c[0]},${c[1]},${c[2]},${al.toFixed(2)})`); g.addColorStop(.45,`rgba(${c[0]},${c[1]},${c[2]},${(al*.55).toFixed(2)})`); g.addColorStop(1,`rgba(${c[0]},${c[1]},${c[2]},0)`);
+        ox.fillStyle=g; ox.beginPath(); ox.arc(0,0,rr,0,7); ox.fill(); ox.restore(); });
+      if(L>.12){ const gc=ox.createRadialGradient(R,R,0,R,R,R*(.2+.35*L)); gc.addColorStop(0,`rgba(255,240,245,${(.5*L).toFixed(2)})`); gc.addColorStop(1,"rgba(255,255,255,0)"); ox.fillStyle=gc; ox.fillRect(0,0,W,W); }
+      ox.globalCompositeOperation="source-over";
+      const hl=ox.createRadialGradient(R*.64,R*.42,0,R*.64,R*.42,R*.62); hl.addColorStop(0,"rgba(255,255,255,.32)"); hl.addColorStop(.55,"rgba(255,255,255,.04)"); hl.addColorStop(1,"rgba(255,255,255,0)");
+      ox.fillStyle=hl; ox.fillRect(0,0,W,W);
+      const rim=ox.createRadialGradient(R,R,R*.7,R,R,R*.96); rim.addColorStop(0,"rgba(0,0,0,0)"); rim.addColorStop(1,"rgba(0,0,0,.55)"); ox.fillStyle=rim; ox.fillRect(0,0,W,W);
+      ox.restore();
+      let rs="rgba(255,255,255,.32)";
+      if(ox.createConicGradient){ const cg=ox.createConicGradient(t/1000*sp*.9,R,R); RING.forEach(([c,o])=>cg.addColorStop(o,c)); rs=cg; }
+      ox.lineWidth=W*.03; ox.globalAlpha=off?.55:(.6+.4*Math.min(1,L*1.6)); ox.strokeStyle=rs; ox.beginPath(); ox.arc(R,R,R*.95,0,7); ox.stroke(); ox.globalAlpha=1;
+      d.style.setProperty("--lv",L.toFixed(3));
+      if(wx&&d.classList.contains("open")){
+        const WW=wave.width, H=wave.height; wx.clearRect(0,0,WW,H); wx.globalCompositeOperation="lighter";
+        [[179,38,61],[127,219,255],[255,55,95],[217,219,224]].forEach((c,k)=>{
+          const amp=H*.42*Math.max(.04,L)*(.65+.35*Math.sin(t/(260+k*70)+k)), fq=1.4+k*.55, ph=t/1000*sp*(2.2+k*.6)+k*1.3;
+          wx.beginPath(); wx.moveTo(0,H/2);
+          for(let x=0;x<=WW;x+=6){ const nx=x/WW*2-1, att=Math.pow(1-nx*nx,2.2); wx.lineTo(x,H/2+amp*att*Math.sin(nx*fq*Math.PI*2+ph)); }
+          for(let x=WW;x>=0;x-=6){ const nx=x/WW*2-1, att=Math.pow(1-nx*nx,2.2); wx.lineTo(x,H/2-amp*att*.55*Math.sin(nx*fq*Math.PI*2+ph+.6)); }
+          wx.closePath(); const g=wx.createLinearGradient(0,0,WW,0); g.addColorStop(0,`rgba(${c},0)`); g.addColorStop(.5,`rgba(${c},.6)`); g.addColorStop(1,`rgba(${c},0)`); wx.fillStyle=g; wx.fill(); });
+        wx.globalCompositeOperation="source-over";
+      }
+      const e=$("#laraEdge"); if(e){ e.style.setProperty("--lw",(4+L*7).toFixed(1)+"px"); e.style.setProperty("--lo",(st==="speaking"?.75+L*.25:.7).toFixed(2)); }
+    };
+    cancelAnimationFrame(LARA.raf); LARA.raf=requestAnimationFrame(frame);
+  };
+  if(typeof laraPlace==="function"){ const placeV71=laraPlace;
+    laraPlace=function(){ const r=placeV71.apply(this,arguments);
+      try{ const d=$("#laraDock"); if(!d||d.classList.contains("open")||innerWidth<=820) return r; const P=laraPos(); if(P.orb&&P.orb.x!=null) return r;
+        const rail=document.querySelector("aside.rail"), rx=rail?Math.max(0,rail.getBoundingClientRect().right):0, h=d.offsetHeight||54;
+        Object.assign(d.style,{left:Math.round(rx+18)+"px",top:Math.round(innerHeight-h-18)+"px",bottom:"auto",translate:"none"}); }catch(e){}
+      return r; }; }
+  // already on screen (rare: signed in before this script ran): drop the robot and start the orb
+  setTimeout(()=>{ try{ if(typeof LBOT!=="undefined"&&LBOT.ok) lbDrop(); const d=$("#laraDock"); if(d){ d.classList.remove("lb-on","lb-roam","lb-crowd"); laraAnim(); laraPlace(); } }catch(e){} },0);
+  setInterval(()=>{ try{ const d=$("#laraDock"); if(d&&!d.classList.contains("open")&&!d.classList.contains("drag")&&!(laraPos().orb||{}).x) laraPlace(); }catch(e){} },2500);   // the side bar can be pinned open or closed
+  const st=document.createElement("style"); st.textContent=`
+  .lara-dock:not(.open) .lara-orbbtn{width:54px!important;height:54px!important;flex:0 0 54px!important;border-radius:50%!important}
+  .lara-dock .lara-orbbtn{background:transparent;border-radius:50%;transform:scale(calc(1 + var(--lv,0) * .1));transition:transform .12s linear;
+    box-shadow:0 8px 22px -8px rgba(122,14,31,.65),0 0 0 1px rgba(255,255,255,.14),0 0 calc(4px + var(--lv,0) * 30px) rgba(179,38,61,.55),0 0 calc(2px + var(--lv,0) * 16px) rgba(127,219,255,.45)!important}
+  .lara-dock .lara-orbbtn:hover{transform:scale(1.06)}
+  .lara-dock .lara-orbbtn>#laraOrb{display:block!important}
+  .lara-dock[data-st="off"] .lara-orbbtn,.lara-dock[data-st="wake"] .lara-orbbtn{filter:none}
+  .lara-dock:not(.open) #laraMs,.lara-dock:not(.open)>.lara-aw{display:none!important}
+  /* phone: one place on every page (bottom right, above the tab bar) until the user drags her somewhere else */
+  @media (max-width:820px){
+    .app[data-view]~#laraDock:not(.open):not(.m-placed){right:14px!important;left:auto!important}
+    body:has(#mapwrap.sel-open:not([hidden]),#parkcard:not([hidden]),.view-inventory .pfside:not(.pf-closed)) .lara-dock:not(.open):not(.m-placed){top:auto!important;bottom:calc(var(--tab) + 14px)!important}
+  }
+  .lara-dock .lb-fig,.lara-dock .lb-shadow,.lara-dock .lb-bub,.lara-dock .lb-ico{display:none!important}
+  .lara-dock:not(.open){transform:none!important}
+  label:has(#laraRoam){display:none!important}
+  @media (max-width:820px){ .lara-dock:not(.open) .lara-orbbtn{width:46px!important;height:46px!important;flex-basis:46px!important} }`;
+  document.head.appendChild(st);
+}
+
+/* ---------- 3. 360 view in the presentation: one full turn to the right, then the next slide ---------- */
+const PANO={"https://www.teleport.eco/tour/44629/main-floor-ED8197FB":"https://360page.s3.us-east-1.amazonaws.com/captures/ed8197fb-94fb-4be2-a2f4-7cfb9a5d34d8/",
+  "https://www.teleport.eco/tour/44629-2/main-floor-ACA5B821":"https://360page.s3.us-east-1.amazonaws.com/captures/aca5b821-a691-4438-b0b4-29b45ca44c4b/"};
+const TURN=22000, FOV=72*Math.PI/180;
+const VS="attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
+const FS="precision highp float;uniform sampler2D T;uniform vec2 R;uniform float Y;uniform float F;"+
+  "void main(){vec2 q=gl_FragCoord.xy/R*2.-1.;float t=tan(F*.5);vec3 d=normalize(vec3(q.x*t*R.x/R.y,q.y*t,-1.));"+
+  "float c=cos(Y),s=sin(Y);d=vec3(d.x*c-d.z*s,d.y,d.x*s+d.z*c);"+
+  "float lon=atan(d.x,-d.z),lat=asin(clamp(d.y,-1.,1.));gl_FragColor=texture2D(T,vec2(lon/6.2831853+.5,.5-lat/3.1415927));}";
+function panoInto(el,base){
+  const cv=document.createElement("canvas"); cv.className="pt-pano";
+  const gl=cv.getContext("webgl",{antialias:false,alpha:false,preserveDrawingBuffer:false}); if(!gl) return;
+  const sh=(k,src)=>{ const o=gl.createShader(k); gl.shaderSource(o,src); gl.compileShader(o); if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+  const pr=gl.createProgram(); gl.attachShader(pr,sh(gl.VERTEX_SHADER,VS)); gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS)); gl.linkProgram(pr); gl.useProgram(pr);
+  const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const ap=gl.getAttribLocation(pr,"p"); gl.enableVertexAttribArray(ap); gl.vertexAttribPointer(ap,2,gl.FLOAT,false,0,0);
+  const uR=gl.getUniformLocation(pr,"R"), uY=gl.getUniformLocation(pr,"Y"), uF=gl.getUniformLocation(pr,"F");
+  el.dataset.pano="1";
+  const big=gl.getParameter(gl.MAX_TEXTURE_SIZE)>=4096;
+  const im=new Image(); im.crossOrigin="anonymous"; im.decoding="async";
+  const V={p:0,last:0,drag:0,dx:0,done:false,ready:false};
+  im.onload=()=>{
+    const tx=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,tx);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGB,gl.RGB,gl.UNSIGNED_BYTE,im);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    V.ready=true; const f=el.querySelector("iframe"); if(f) f.remove();       // the photo is here: the heavy viewer is not needed
+    el.classList.add("pano-on"); requestAnimationFrame(loop);
+  };
+  im.onerror=()=>{ cv.remove(); delete el.dataset.pano; };                     // keep the Teleport viewer
+  im.src=base+(big?"panorama.jpg":"panorama_web.jpg");
+  el.insertBefore(cv,el.firstChild);
+  // dragging looks left / right only (and holds the slide, like the viewer did)
+  let sx=null;
+  cv.addEventListener("pointerdown",e=>{ sx=e.clientX; V.drag=1; try{ cv.setPointerCapture(e.pointerId); }catch(x){} if(typeof PR!=="undefined"&&PR.on&&!PR.paused) presToggle(); el.classList.add("using"); });
+  cv.addEventListener("pointermove",e=>{ if(sx==null) return; V.dx-=(e.clientX-sx)/Math.max(1,cv.clientWidth)*FOV*1.6; sx=e.clientX; });
+  ["pointerup","pointercancel"].forEach(k=>cv.addEventListener(k,()=>{ sx=null; V.drag=0; }));
+  function loop(t){
+    if(!el.isConnected) return; requestAnimationFrame(loop);
+    const show=el.style.opacity==="1", dt=V.last?Math.min(100,t-V.last):0; V.last=t;
+    if(!show){ V.p=0; V.done=false; V.dx=0; return; }
+    const running=typeof PR!=="undefined"&&PR.on&&!PR.paused&&!V.drag;
+    if(running) V.p+=dt;
+    const k=Math.min(1,V.p/TURN), e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;   // a soft start and a soft stop
+    const dpr=Math.min(2,devicePixelRatio||1), w=Math.round(cv.clientWidth*dpr), h=Math.round(cv.clientHeight*dpr);
+    if(w<2||h<2) return; if(cv.width!==w||cv.height!==h){ cv.width=w; cv.height=h; }
+    gl.viewport(0,0,w,h); gl.uniform2f(uR,w,h); gl.uniform1f(uY,e*Math.PI*2+V.dx); gl.uniform1f(uF,FOV); gl.drawArrays(gl.TRIANGLES,0,3);
+    if(k>=1&&!V.done&&running){ V.done=true;
+      setTimeout(()=>{ try{ const s=PR.scenes[PR.i]; if(PR.on&&!PR.paused&&s&&s.kind==="tour"&&el.style.opacity==="1") presGo(PR.i+1); }catch(x){} },700); }
+  }
+}
+if(typeof presTourFrame==="function"){
+  const ptV71=presTourFrame;
+  presTourFrame=function(show){ const el=ptV71(show);
+    try{ if(el&&!el.dataset.pano&&PANO[el.dataset.url]) panoInto(el,PANO[el.dataset.url]); }catch(e){ console.warn("360 turn",e); }
+    return el; };
+}
+
+/* ---------- 4. the Roadshow account: what it may open ---------- */
+if(typeof canSee==="function"){
+  const csV71=canSee, NOPUB=new Set(["audit","codes","approvals","demand","offer","editor","health","usage","settings","match.fin"]);
+  canSee=function(id){ if(pub()&&NOPUB.has(String(id))) return false; return csV71(id); };
+}
+/* Investor match on the public screen: plots, sizes, utilities, logistics and the score - no prices, totals or proposals */
+function matchScrub(){ if(!pub()) return; const v=document.querySelector(".view-match"); if(!v) return;
+  v.querySelectorAll(".mm-kv>span").forEach(x=>{ if(/price|total|\bEGP\b/i.test(x.textContent)) x.style.display="none"; });
+  v.querySelectorAll(".mm-why>span").forEach(x=>{ if(/\bEGP\b|price/i.test(x.textContent)) x.style.display="none"; });
+  v.querySelectorAll("label").forEach(l=>{ const i=l.querySelector("input[name=price],input[name=company],input[name=contact]"); if(i) l.style.display="none"; });
+  v.querySelectorAll(".mm-h>span,p,.sub,.hint").forEach(p=>{ if(p.children.length===0&&/neighbours and price/.test(p.textContent)) p.textContent=p.textContent.replace(", neighbours and price"," and neighbours"); });
+  v.querySelectorAll(".mm-res>p.note").forEach(p=>p.style.display="none");
+  v.querySelectorAll("*").forEach(h=>{ if(h.children.length===0&&/^investor$/i.test(h.textContent.trim())) h.style.display="none"; });
+}
+setInterval(matchScrub,600);
+{ const st=document.createElement("style"); st.textContent=`
+  .mapbtns{flex-wrap:wrap;justify-content:flex-end;row-gap:6px}
+  .mapbtns button{white-space:nowrap}
+  .kpi .k{font-size:10px!important;letter-spacing:.06em}
+  @media (max-width:820px){
+    aside.rail .rail-scroll .nav-item{max-width:92px;min-width:58px}
+    aside.rail .nav-item .nav-h{display:none!important}
+    #presBtn .pin-t>span:first-child{font-size:0!important}
+    #presBtn .pin-t>span:first-child::after{content:"Present";font-size:11px}
+    #presBtn .pin-t .nav-k{display:none!important}
+    .aud-tw{overflow-x:hidden!important}
+    .aud-tbl,.aud-tbl tbody{display:block;width:100%}
+    .aud-tbl thead{display:none}
+    .aud-tbl tr{display:block;padding:10px 12px;border-bottom:1px solid rgba(60,60,67,.12)}
+    .aud-tbl td{display:flex;gap:10px;align-items:baseline;padding:2px 0!important;border:0!important;white-space:normal!important;min-width:0;text-align:left!important}
+    .aud-tbl td:empty{display:none}
+    .aud-tbl td::before{flex:0 0 78px;color:#8e8e93;font:600 10.5px/1.4 Inter,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em}
+    .aud-tbl td:nth-child(1)::before{content:"When"}.aud-tbl td:nth-child(2)::before{content:"User"}.aud-tbl td:nth-child(3)::before{content:"Action"}
+    .aud-tbl td:nth-child(4)::before{content:"Plot"}.aud-tbl td:nth-child(5)::before{content:"Project"}.aud-tbl td:nth-child(6)::before{content:"Change"}
+    .aud-tbl td:nth-child(7)::before{content:"Client"}.aud-tbl td:nth-child(8)::before{content:"Note"}
+  }
+  body.sid-public .kpis.map5{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body.sid-public #ntBell{display:none!important}
+  body.sid-public .mm-act label,body.sid-public .mm-offer,body.sid-public #mmPdf,body.sid-public #fpOn,body.sid-public .fp-tog{display:none!important}`;
+  document.head.appendChild(st); }
+
+/* ---------- 6. "View as" and "Roadshow summary" in the side bar, under Settings ---------- */
+const EYE='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2.2"/></svg>';
+const SUM='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 11V8M8 11V5M11 11V7"/></svg>';
+function navBtn(id,ico,label,hint,fn){ const b=document.createElement("button"); b.type="button"; b.className="nav-item nav-extra"; b.id=id; b.title=label+" — "+hint;
+  b.innerHTML=`<span class="nav-i" aria-hidden="true"><span class="nav-ico">${ico}</span></span><span class="nav-t rail-open-only"><span class="nav-row"><span class="nav-l">${label}</span></span><span class="nav-h">${hint}</span></span>`;
+  b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); fn(); }; return b; }
+function navExtras(){
+  if(typeof SBME==="undefined"||!SBME||!window.__sidMeFinal||!SBME.is_admin||window.SID_VIEWAS) return;
+  const s=document.querySelector('#nav .nav-item[data-view="settings"]'); if(!s||document.getElementById("navViewAs")) return;
+  const a=navBtn("navViewAs",EYE,"View as","See the dashboard exactly as another user sees it",()=>window.sidViewAsPick&&window.sidViewAsPick());
+  const r=navBtn("navRsSum",SUM,"Roadshow summary","What the roadshow screen did today",()=>window.sidRoadshowSummary&&window.sidRoadshowSummary());
+  s.after(a); a.after(r);
+}
+if(typeof buildNav==="function"){ const bnV71=buildNav; buildNav=function(){ const r=bnV71.apply(this,arguments); try{ navExtras(); }catch(e){} return r; }; }
+const kx=setInterval(()=>{ try{ navExtras(); if(document.getElementById("navViewAs")||window.SID_VIEWAS||(typeof SBME!=="undefined"&&SBME&&window.__sidMeFinal&&!SBME.is_admin)) clearInterval(kx); }catch(e){} },800);
+setTimeout(()=>clearInterval(kx),180000);
 })();
 </script>
 </body>
