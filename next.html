@@ -14234,7 +14234,7 @@ const pub=()=>typeof window.sidPublic==="function"&&window.sidPublic();
 if(typeof LARA!=="undefined"){
   try{ lbLoad=function(){}; }catch(e){}                        // the robot is retired
   try{ localStorage.setItem("sid.lara.roam","0"); }catch(e){}
-  const COL=[[179,38,61],[127,219,255],[255,55,95],[217,219,224],[122,14,31],[159,230,255]];
+  const COL=[[255,45,85],[70,200,255],[190,28,58],[210,220,235,.55],[255,120,150,.6]];   // crimson, ice-cyan, deep crimson, silver, rose
   const RING=[["#7a0e1f",0],["#d9dbe0",.17],["#7fdbff",.34],["#b3263d",.52],["#f4f5f7",.7],["#9fe6ff",.85],["#7a0e1f",1]];
   laraAnim=function(){
     const orb=$("#laraOrb"), wave=$("#laraWave"); if(!orb) return;
@@ -14253,26 +14253,27 @@ if(typeof LARA!=="undefined"){
       else if(st==="thinking"||st==="connecting") target=.3+.12*Math.sin(t/180);
       else target=.05;
       LARA.lvl+=(target-LARA.lvl)*(target>LARA.lvl?.38:.1);
-      const L=LARA.lvl, sp=st==="thinking"||st==="connecting"?2.4:st==="speaking"?1.7:st==="listening"?1.15:.5, off=st==="off"||st==="wake";
+      const L=LARA.lvl, sp=st==="thinking"||st==="connecting"?2.2:st==="speaking"?1.6:st==="listening"?1.1:.55, off=st==="off"||st==="wake";
       const W=orb.width, R=W/2; ox.clearRect(0,0,W,W);
       ox.save(); ox.beginPath(); ox.arc(R,R,R*.95,0,7); ox.clip();
-      const g0=ox.createRadialGradient(R,R*.82,R*.05,R,R,R); g0.addColorStop(0,"#2a0e18"); g0.addColorStop(.68,"#0e0a11"); g0.addColorStop(1,"#050507");
+      const g0=ox.createRadialGradient(R,R*.8,R*.05,R,R,R); g0.addColorStop(0,"#140c18"); g0.addColorStop(.7,"#08070c"); g0.addColorStop(1,"#030305");
       ox.fillStyle=g0; ox.fillRect(0,0,W,W);
+      // Siri-like ribbons of light: each colour is a stretched glow turning around the centre at its own speed; louder voice = bigger, brighter
       ox.globalCompositeOperation="lighter";
-      COL.forEach((c,i)=>{ const a=t/1000*sp*(.48+i*.19)+i*1.75, rr=R*(.36+.3*L+.06*Math.sin(t/650+i*1.3)), k=R*(.15+.3*L+.05*Math.sin(t/900+i));
-        const cx=R+Math.cos(a)*k, cy=R+Math.sin(a*1.31+i)*k*.92, al=off?.62:.8;
-        const g=ox.createRadialGradient(cx,cy,0,cx,cy,rr); g.addColorStop(0,`rgba(${c},${al})`); g.addColorStop(.5,`rgba(${c},${(al*.4).toFixed(2)})`); g.addColorStop(1,`rgba(${c},0)`);
-        ox.fillStyle=g; ox.beginPath(); ox.arc(cx,cy,rr,0,7); ox.fill(); });
-      const cr=R*(.14+.24*L), gc=ox.createRadialGradient(R,R,0,R,R,cr*2.2); gc.addColorStop(0,`rgba(255,255,255,${(.18+.55*L).toFixed(2)})`); gc.addColorStop(1,"rgba(255,255,255,0)");
-      ox.fillStyle=gc; ox.fillRect(0,0,W,W);
+      COL.forEach((c,i)=>{ const a=t/1000*sp*(.55+i*.23)+i*2.1, k=R*(.36+.12*L+.05*Math.sin(t/800+i)), rr=R*(.58+.2*L);
+        const cx=R+Math.cos(a)*k, cy=R+Math.sin(a)*k, al=(off?.8:.95)*(c[3]||1);
+        ox.save(); ox.translate(cx,cy); ox.rotate(a+Math.PI/2+Math.sin(t/1300+i)*.6); ox.scale(1,.45);
+        const g=ox.createRadialGradient(0,0,0,0,0,rr); g.addColorStop(0,`rgba(${c[0]},${c[1]},${c[2]},${al.toFixed(2)})`); g.addColorStop(.45,`rgba(${c[0]},${c[1]},${c[2]},${(al*.55).toFixed(2)})`); g.addColorStop(1,`rgba(${c[0]},${c[1]},${c[2]},0)`);
+        ox.fillStyle=g; ox.beginPath(); ox.arc(0,0,rr,0,7); ox.fill(); ox.restore(); });
+      if(L>.12){ const gc=ox.createRadialGradient(R,R,0,R,R,R*(.2+.35*L)); gc.addColorStop(0,`rgba(255,240,245,${(.5*L).toFixed(2)})`); gc.addColorStop(1,"rgba(255,255,255,0)"); ox.fillStyle=gc; ox.fillRect(0,0,W,W); }
       ox.globalCompositeOperation="source-over";
-      const hl=ox.createRadialGradient(R*.66,R*.48,0,R*.66,R*.48,R*.78); hl.addColorStop(0,"rgba(255,255,255,.36)"); hl.addColorStop(.5,"rgba(255,255,255,.05)"); hl.addColorStop(1,"rgba(255,255,255,0)");
+      const hl=ox.createRadialGradient(R*.64,R*.42,0,R*.64,R*.42,R*.62); hl.addColorStop(0,"rgba(255,255,255,.32)"); hl.addColorStop(.55,"rgba(255,255,255,.04)"); hl.addColorStop(1,"rgba(255,255,255,0)");
       ox.fillStyle=hl; ox.fillRect(0,0,W,W);
-      const rim=ox.createRadialGradient(R,R,R*.68,R,R,R*.96); rim.addColorStop(0,"rgba(0,0,0,0)"); rim.addColorStop(1,"rgba(0,0,0,.5)"); ox.fillStyle=rim; ox.fillRect(0,0,W,W);
+      const rim=ox.createRadialGradient(R,R,R*.7,R,R,R*.96); rim.addColorStop(0,"rgba(0,0,0,0)"); rim.addColorStop(1,"rgba(0,0,0,.55)"); ox.fillStyle=rim; ox.fillRect(0,0,W,W);
       ox.restore();
       let rs="rgba(255,255,255,.32)";
       if(ox.createConicGradient){ const cg=ox.createConicGradient(t/1000*sp*.9,R,R); RING.forEach(([c,o])=>cg.addColorStop(o,c)); rs=cg; }
-      ox.lineWidth=W*.035; ox.globalAlpha=off?.4:(.6+.4*Math.min(1,L*1.6)); ox.strokeStyle=rs; ox.beginPath(); ox.arc(R,R,R*.95,0,7); ox.stroke(); ox.globalAlpha=1;
+      ox.lineWidth=W*.03; ox.globalAlpha=off?.55:(.6+.4*Math.min(1,L*1.6)); ox.strokeStyle=rs; ox.beginPath(); ox.arc(R,R,R*.95,0,7); ox.stroke(); ox.globalAlpha=1;
       d.style.setProperty("--lv",L.toFixed(3));
       if(wx&&d.classList.contains("open")){
         const WW=wave.width, H=wave.height; wx.clearRect(0,0,WW,H); wx.globalCompositeOperation="lighter";
