@@ -14526,10 +14526,31 @@ if(typeof LARA!=="undefined"){
       return st; }; }
 }
 
+/* 6b. areas are handed to Lara already written out (she misread 1,039,877 as "1.4 million" and 3,270 as "thirty seventy") */
+const AR1=["","واحد","اتنين","تلاتة","أربعة","خمسة","ستة","سبعة","تمانية","تسعة","عشرة","حداشر","اتناشر","تلاتاشر","أربعتاشر","خمستاشر","ستاشر","سبعتاشر","تمنتاشر","تسعتاشر"];
+const AR10=["","","عشرين","تلاتين","أربعين","خمسين","ستين","سبعين","تمانين","تسعين"];
+const AR100=["","مية","ميتين","تلتمية","ربعمية","خمسمية","ستمية","سبعمية","تمنمية","تسعمية"];
+const AR_C={3:"تلات",4:"أربع",5:"خمس",6:"ست",7:"سبع",8:"تمن",9:"تسع",10:"عشر"};
+function ar999(n){ const h=Math.floor(n/100), r=n%100, p=[]; if(h) p.push(AR100[h]);
+  if(r){ if(r<20) p.push(AR1[r]); else p.push(r%10?AR1[r%10]+" و"+AR10[Math.floor(r/10)]:AR10[Math.floor(r/10)]); } return p.join(" و"); }
+function arGroup(n,one,two,few,many){ if(n===1) return one; if(n===2) return two; if(n<=10) return (AR_C[n]||ar999(n))+" "+few; return ar999(n)+" "+many; }
+function arNum(n){ n=Math.round(n); if(!n) return "صفر"; const p=[]; const m=Math.floor(n/1e6), t=Math.floor(n%1e6/1000), r=n%1000;
+  if(m) p.push(arGroup(m,"مليون","مليونين","ملايين","مليون")); if(t) p.push(arGroup(t,"ألف","ألفين","آلاف","ألف")); if(r) p.push(ar999(r)); return p.join(" و"); }
+function sayArea(v){ const n=+v; if(!isFinite(n)||n<1000) return null;
+  const r=n>=1e6?Math.round(n/1e4)*1e4:n>=1e5?Math.round(n/1e3)*1e3:n>=1e4?Math.round(n/100)*100:Math.round(n);
+  const en=n>=1e6?(r/1e6).toFixed(2).replace(/\.?0+$/,"")+" million square metres":r.toLocaleString("en-US")+" square metres";
+  return {en:(r!==Math.round(n)?"about ":"")+en, ar:(r!==Math.round(n)?"حوالي ":"")+arNum(r)+" متر مربع"}; }
+function addSay(o,d){ if(!o||typeof o!=="object"||d>5) return o; if(Array.isArray(o)){ o.forEach(x=>addSay(x,d+1)); return o; }
+  for(const k of Object.keys(o)){ const v=o[k]; if(typeof v==="number"&&/area|sqm|sellable|available|masterplan/i.test(k)&&!/_say$/.test(k)){ const s=sayArea(v); if(s) o[k+"_say"]=s; } else if(v&&typeof v==="object") addSay(v,d+1); }
+  return o; }
+if(typeof laraRun==="function"){ const runV72=laraRun;
+  laraRun=async function(name,a){ const r=await runV72(name,a); try{ addSay(r,0); }catch(e){} return r; }; }
+if(typeof laraSystem==="function"){ const s2=laraSystem; laraSystem=function(){ return s2()+"\nWhen a tool result has a field ending in _say, say THAT text (en or ar, in the reply language) for the number - never read the raw digits."; }; }
+
 /* 9. the map follows its frame (Safari did not redraw it when the bars above got shorter) */
 (function(){ let ro=null, raf=0;
   const hook=()=>{ if(ro||typeof map==="undefined"||!map||!map.getContainer) return false; const c=map.getContainer();
-    ro=new ResizeObserver(()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(()=>{ try{ map.resize(); }catch(e){} }); }); ro.observe(c);
+    let lw=0,lh=0; ro=new ResizeObserver(()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(()=>{ const w=c.clientWidth,h=c.clientHeight; if(w===lw&&h===lh) return; lw=w; lh=h; try{ map.resize(); }catch(e){} }); }); ro.observe(c);
     const w=document.getElementById("mapwrap"); if(w) ro.observe(w); return true; };
   const k=setInterval(()=>{ if(hook()) clearInterval(k); },700); })();
 { const st=document.createElement("style"); st.textContent=`
