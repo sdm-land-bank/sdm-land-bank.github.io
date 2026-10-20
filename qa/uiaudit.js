@@ -35,14 +35,19 @@ const MONEY=/\bEGP\b|\bUSD\b|price|revenue|collect|\bdeals?\b|sales value|cash v
 function leaks(){ const out=[]; const tw=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT); let n;
   while((n=tw.nextNode())&&out.length<10){ const t=n.textContent.trim(); if(!t||!MONEY.test(t)) continue; const el=n.parentElement; if(!el||!vis(el)||el.closest("script,style,#laraDock .lara-set,.va-bar,#laraConv")) continue;
     if(/^(price|price \/ sqm)$/i.test(t)&&el.closest("#fbar")) continue; out.push(name(el)+": "+t.slice(0,70)); } return out; }
+function frameLayout(f){ const d=f.contentDocument, w=f.contentWindow, R={}; const de=d.documentElement; R.hscroll=de.scrollWidth>de.clientWidth+1?de.scrollWidth-de.clientWidth:0;
+  const off=[]; d.querySelectorAll("body *").forEach(e=>{ if(off.length>=6) return; const s=w.getComputedStyle(e); if(s.display==="none"||s.visibility==="hidden") return; const r=e.getBoundingClientRect(); if(!r.width||!r.height) return;
+    if(r.right>w.innerWidth+2){ let x=e.parentElement, clipped=false; while(x&&x!==d.body){ const cs=w.getComputedStyle(x); if(/(auto|scroll|hidden|clip)/.test(cs.overflowX)){ const cr=x.getBoundingClientRect(); if(cr.right<=w.innerWidth+2){ clipped=true; break; } } x=x.parentElement; }
+      if(!clipped&&!(e.children.length&&[...e.children].some(k=>k.getBoundingClientRect().right>w.innerWidth+2))) off.push(e.tagName.toLowerCase()+"."+[...e.classList].slice(0,2).join(".")+" →"+Math.round(r.right)+" "+(e.innerText||"").trim().slice(0,20)); } });
+  if(off.length) R.offscreen=off; if(!R.hscroll) delete R.hscroll; return R; }
 async function check(v){
   const F={};
   try{
-    if(v==="inventory"){ F.parks=(parkPins().features||[]).length; F.kpis=[...document.querySelectorAll("#kpis .kpi .k")].filter(vis).map(k=>k.textContent).join(","); F.chips=[...document.querySelectorAll(".pfchips .chip, .legend .chip, .stchips button")].filter(vis).length; F.mapLoaded=map.loaded(); }
-    if(v==="sales"){ const f=document.querySelector("iframe"); F.iframe=!!f; await sleep(2500); try{ F.lbText=(f.contentDocument.body.innerText||"").length; }catch(e){ F.lbText="n/a"; } }
+    if(v==="inventory"){ F.pins=(parkPins().features||[]).length; F.kpis=[...document.querySelectorAll("#kpis .kpi .k")].filter(vis).map(k=>k.textContent).join(","); F.chips=[...document.querySelectorAll("button,span,label")].filter(e=>vis(e)&&/^(Sold|Reserved|Available|On hold|Not for sale)\s*[\d,]+$/.test((e.innerText||"").trim())).length; F.mapLoaded=map.loaded(); }
+    if(v==="sales"){ const f=[...document.querySelectorAll("iframe")].find(x=>vis(x)); F.iframe=!!f; await sleep(2500); try{ F.lbText=(f.contentDocument.body.innerText||"").length; F.frame=frameLayout(f); }catch(e){ F.lbText="n/a"; } }
     if(v==="match"){ const ta=document.querySelector(".view-match textarea"); if(ta){ ta.value="frozen vegetables"; ta.dispatchEvent(new Event("input",{bubbles:true})); const b=[...document.querySelectorAll("button")].find(b=>/find the best plots/i.test(b.textContent)); b&&b.click(); await sleep(3500); F.cards=document.querySelectorAll(".mm-card").length; F.pdf=!!document.getElementById("mmPdf")&&vis(document.getElementById("mmPdf")); } }
-    if(v==="codes"){ await sleep(1200); F.text=(document.querySelector("#content, main").innerText||"").length; }
-    if(v==="offer"){ await sleep(1500); F.rows=(document.querySelector("main").innerText.match(/Print again/g)||[]).length; }
+    if(v==="codes"){ await sleep(1500); const f=document.querySelector("#codeswrap iframe"); try{ F.text=f.contentDocument.body.innerText.length; F.frame=frameLayout(f); }catch(e){ F.text="n/a"; } }
+    if(v==="offer"){ await sleep(1800); F.rows=document.querySelectorAll("main tbody tr").length||(document.querySelector("main").innerText.match(/Print again/g)||[]).length; }
     if(v==="approvals"){ await sleep(1500); F.cards=document.querySelectorAll("main .wf-card, main [class*=wf-req]").length; }
     if(v==="audit"){ await sleep(2000); F.rows=document.querySelectorAll(".aud-tbl tbody tr").length; }
     if(v==="editor"){ await sleep(1500); F.rows=(document.querySelector("main").innerText.match(/Showing ([\d,]+)/)||[])[1]||"?"; }
