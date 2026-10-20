@@ -9273,7 +9273,7 @@ function draw(){
       ctx.strokeText(a.t,p.x,p.y);
       ctx.fillStyle=sat?"#fff":(dark?"#14171C":"#fff");
       ctx.fillText(a.t,p.x,p.y);
-      if(z>=16.2&&v&&v.row){ const q=priceOf(v.row);
+      if(z>=16.2&&v&&v.row&&!(window.sidPublic&&window.sidPublic())){ const q=priceOf(v.row);
         if(q&&q.sqm){ const pt=fInt(q.sqm)+" EGP/m²", y2=p.y+size*1.05;
           ctx.font=`500 ${Math.max(8,size*.72)}px Poppins,system-ui,sans-serif`;
           ctx.lineWidth=2.2; ctx.strokeText(pt,p.x,y2); ctx.fillText(pt,p.x,y2);
@@ -14580,6 +14580,76 @@ if(typeof presGo==="function"&&window.sidSatWarm){
     startPresentation=function(){ const r=spV72.apply(this,arguments);
       try{ if(PR&&PR.scenes){ warm(PR.scenes[0]); warm(PR.scenes[1]); } }catch(e){} return r; }; }
 }
+})();
+</script>
+
+<script>
+/* ============================================================================
+   V74 — the public (roadshow) screen never shows prices, buyers or staff, not even for a moment
+   ========================================================================== */
+(function(){
+const pub=()=>typeof window.sidPublic==="function"&&window.sidPublic();
+
+/* RS-01: numbers are plain text; the drill table and its Excel export are refused */
+if(typeof dn==="function"){ const dnV73=dn; dn=function(v,title,rows){ if(pub()) return String(v); return dnV73.apply(this,arguments); }; }
+if(typeof openDrill==="function"){ const odV73=openDrill; openDrill=function(id){ if(pub()) return; return odV73.apply(this,arguments); }; }
+if(typeof exportDrill==="function"){ const exV73=exportDrill; exportDrill=function(){ if(pub()) return; return exV73.apply(this,arguments); }; }
+
+/* RS-04: the search box looks at unit, sector and park only */
+if(typeof rowPass==="function"){ const rpV73=rowPass;
+  rowPass=function(r,skip){ if(!pub()||!S.search) return rpV73.apply(this,arguments);
+    const s=S.search; S.search=""; let ok;
+    try{ ok=rpV73.call(this,r,skip); } finally { S.search=s; }
+    if(!ok) return false;
+    const q=s.toLowerCase(); return [r.unit,r.sector,S.reg.parks[r.park]&&S.reg.parks[r.park].name].filter(Boolean).join(" ").toLowerCase().includes(q); }; }
+
+/* RS-03: no change history on the public screen */
+if(typeof audBtn==="function"){ const abV73=audBtn; audBtn=function(r){ if(pub()) return ""; return abV73.apply(this,arguments); }; }
+if(typeof audPlot==="function"){ const apV73=audPlot; audPlot=function(){ if(pub()) return; return apV73.apply(this,arguments); }; }
+
+/* RS-05 / RS-06: Lara on the public screen */
+if(typeof laraNA==="function"){ const naV73=laraNA; laraNA=function(x){ const n=naV73.apply(this,arguments); if(pub()&&n) n.client=null; return n; }; }
+if(typeof laraOpt==="function"){ const opV73=laraOpt; laraOpt=function(){ const o=opV73.apply(this,arguments);
+  if(pub()&&o){ delete o.price_egp_per_sqm; delete o.total_egp; if(Array.isArray(o.why)) o.why=o.why.filter(w=>!/EGP|price|budget|cost/i.test(w)); } return o; }; }
+if(typeof laraSystem==="function"){ const syV73=laraSystem; laraSystem=function(){ let t=syV73();
+  if(pub()) t=t.replace(/\s*\(e\.g\.[^)]*reserved for[^)]*\)/gi,"").replace(/HARD DATA QUESTIONS:[^\n]*(\n|$)/,"").replace(/Name the deals[^\n]*(\n|$)/gi,"");
+  return t; }; }
+const DROP_ARGS=["client","company","sold_by","sales_rep","search","min_price","max_price","max_price_sqm","price","gp","loss","budget"];
+const BADKEY=/price|value|egp|usd|cash|client|company|customer|buyer|sold_?by|seller|sales_?rep|\brep\b|contract|collect|interest|revenue|deal|receiv|tpi|amount|gp|profit|margin|cost|pct|loss/i;
+let NAMES=null;
+const names=()=>{ if(NAMES) return NAMES; NAMES=new Set(); try{ S.rows.forEach(r=>[r.client,r.company,r.soldBy].forEach(v=>{ v=String(v||"").trim(); if(v.length>=8||/\s/.test(v)&&v.length>=5) NAMES.add(v.toLowerCase());   /* whole names only: a client called "Active" must not blank ordinary words */ })); }catch(e){} return NAMES; };
+const badStr=s=>{ if(/\bEGP\b|EGP\/|جنيه/i.test(s)) return true; const l=s.toLowerCase(); for(const n of names()) if(l.includes(n)) return true; return false; };
+const clean=o=>{ if(Array.isArray(o)) return o.map(clean); if(o&&typeof o==="object"){ const r={}; for(const [k,v] of Object.entries(o)){ if(BADKEY.test(k)&&!/_say$/.test(k)) continue; r[k]=clean(v); } return r; }
+  if(typeof o==="string"&&badStr(o)) return "(not shown on the public screen)"; return o; };
+if(typeof laraRun==="function"){ const lrV73=laraRun;
+  laraRun=async function(name,a){ if(!pub()) return lrV73.apply(this,arguments);
+    const b={...(a||{})}; DROP_ARGS.forEach(k=>delete b[k]); if(b.sort&&!/area|size/i.test(String(b.sort))) delete b.sort;
+    if(name==="query_mds"&&a&&(a.client||a.sold_by||a.gp||a.company)) return {error:"Customer, sales and profit questions are not answered on the public screen. Say our sales team will be happy to help personally."};
+    return clean(await lrV73.call(this,name,b)); }; }
+if(typeof laraSetup==="function"){ const lsV73=laraSetup;
+  laraSetup=function(model,lean){ const st=lsV73.apply(this,arguments);
+    try{ if(pub()&&st.tools&&st.tools[0]&&st.tools[0].functionDeclarations){ st.tools[0].functionDeclarations=st.tools[0].functionDeclarations.map(t=>{ const c=JSON.parse(JSON.stringify(t)), P=c.parameters&&c.parameters.properties;
+        if(P) DROP_ARGS.concat(["sort"]).forEach(k=>{ if(k in P){ delete P[k]; if(Array.isArray(c.parameters.required)) c.parameters.required=c.parameters.required.filter(x=>x!==k); } }); return c; }); } }catch(e){}
+    return st; }; }
+
+/* RS-07: Investor match and the presentation are scrubbed before the screen is painted */
+function scrubMatch(root){ root.querySelectorAll(".mm-kv>span").forEach(x=>{ if(/price|total|\bEGP\b/i.test(x.textContent)) x.style.display="none"; });
+  root.querySelectorAll(".mm-why>span").forEach(x=>{ if(/\bEGP\b|price|budget/i.test(x.textContent)) x.style.display="none"; }); }
+function scrubPres(pr){ pr.querySelectorAll("div,li,span,p,b").forEach(el=>{ if(el.children.length>3) return; const t=el.textContent.replace(/\s+/g," ").trim();
+  if(t.length<48&&/\bsold\b|\bdeals?\b|revenue|sales value|\bEGP\b|\bvalue\b|مباع|مبيعات/i.test(t)){ const box=el.closest(".pres-stats>div")||el; box.style.display="none"; } }); }
+const mo=new MutationObserver(ms=>{ if(!pub()) return; for(const m of ms){ const t=m.target&&m.target.closest?m.target:null; if(!t) continue;
+    const v=t.closest(".view-match"); if(v) scrubMatch(v); const pr=t.closest("#pres")||(t.id==="pres"?t:null); if(pr) scrubPres(pr);
+    m.addedNodes&&m.addedNodes.forEach(n=>{ if(n.nodeType!==1) return; if(n.id==="pres"||n.querySelector&&n.querySelector("#pres")) scrubPres(n.id==="pres"?n:n.querySelector("#pres")); if(n.closest&&n.closest(".view-match")) scrubMatch(n.closest(".view-match")); }); } });
+const k=setInterval(()=>{ if(!window.__sidMeFinal||typeof SBME==="undefined"||!SBME) return; clearInterval(k); if(!pub()) return;
+  mo.observe(document.body,{childList:true,subtree:true}); NAMES=null;
+  const q=document.getElementById("q"); if(q) q.placeholder="Unit, sector or park…";
+  try{ if(typeof buildChrome==="function") buildChrome(); if(typeof render==="function") render(); }catch(e){} },500);
+/* the map picture always fills its frame (Safari left a band when the bars above changed height before the first frame) */
+setInterval(()=>{ try{ if(typeof map==="undefined"||!map||!map.getCanvas) return; const c=map.getCanvas(), w=map.getContainer();
+  if(!w.offsetParent) return; if(Math.abs(c.clientHeight-w.clientHeight)>2||Math.abs(c.clientWidth-w.clientWidth)>2) map.resize(); }catch(e){} },2000);
+{ const st=document.createElement("style"); st.textContent=`
+  body.sid-public .dn{pointer-events:none!important;cursor:default!important;text-decoration:none!important;border-bottom:0!important}
+  body.sid-public #drov,body.sid-public .sp-log,body.sid-public #audDlg{display:none!important}`; document.head.appendChild(st); }
 })();
 </script>
 </body>
