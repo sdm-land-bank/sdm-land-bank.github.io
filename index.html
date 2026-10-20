@@ -14075,8 +14075,8 @@ function cornerQr(){ let c=document.getElementById("rqCorner"); const want=pub()
 setInterval(cornerQr,1500);
 /* the presentation on the public screen: no sold share, deals or money */
 setInterval(()=>{ if(!pub()) return; const pr=document.getElementById("pres"); if(!pr) return;
-  pr.querySelectorAll("div,li,span").forEach(el=>{ if(el.children.length>3) return; const t=el.textContent.trim();
-    if(/^(\d[\d.,]*\s*%?\s*)?(sold|deals?|sales value|revenue|value)$/i.test(t.replace(/\s+/g," "))||/\bEGP\b/.test(t)&&el.children.length<=2) el.style.display="none"; }); },700);
+  pr.querySelectorAll("div,li,span,p").forEach(el=>{ if(el.children.length>3) return; const t=el.textContent.replace(/\s+/g," ").trim();
+    if(t.length<48&&/\bsold\b|\bdeals?\b|revenue|sales value|\bEGP\b|\bvalue\b/i.test(t)) el.style.display="none"; }); },700);
 
 /* ---- compare parks ---- */
 function parkFacts(k){
