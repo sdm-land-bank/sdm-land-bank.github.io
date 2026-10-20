@@ -12378,7 +12378,7 @@ async function sbGate(){
   const r=await SB.rpc("sid_role");
   if(r.error||!r.data){ gateMsg(`<b>${esc(SBU.email)}</b> is signed in but has no access to SID Dashboard yet. Ask the administrator to add this email.`,
     `<button class="ebtn" id="sbgOut">Sign out</button>`); await new Promise(()=>{}); }
-  SBROLE=r.data; SBME=(await SB.rpc("sid_me")).data||{role:SBROLE,pages:[],can_edit:false,is_admin:false}; if(window.sidViewAs) SBME=await window.sidViewAs(SBME);
+  SBROLE=r.data; SBME=(await SB.rpc("sid_me")).data||{role:SBROLE,pages:[],can_edit:false,is_admin:false}; if(window.sidViewAs) SBME=await window.sidViewAs(SBME); window.__sidMeFinal=1;
   if((SBME.wf||SBME.is_admin)&&!VIEWS.some(v=>v.id==="approvals")) VIEWS.splice(Math.max(0,VIEWS.findIndex(v=>v.id==="editor")),0,{id:"approvals",group:"data",label:"Approvals",hint:"Status-change requests, holds and MDS updates"});
   if(!VIEWS.some(v=>v.id==="audit")){ const ix=VIEWS.findIndex(v=>v.id==="editor"); VIEWS.splice(ix<0?VIEWS.length:ix,0,{id:"audit",group:"data",label:"Change log",hint:"Who changed which plot, and when"}); }
   if(slStatsOk()&&!VIEWS.some(v=>v.id==="demand")){ const ix=VIEWS.findIndex(v=>v.id==="sales"); VIEWS.splice(ix<0?VIEWS.length:ix+1,0,{id:"demand",group:"land",label:"Offer demand",hint:"What customers are offered — plots, projects, industries, payment plans"}); }
@@ -13960,16 +13960,19 @@ function scrubFbar(){ const f=document.getElementById("fbar"); if(!f||!isPub()) 
 function all(){ ["selpanel","parkcard","tip","sheet"].forEach(id=>scrub(document.getElementById(id))); scrubKpis(); scrubFbar(); }
 const mo=new MutationObserver(()=>{ if(isPub()) all(); });
 const start=setInterval(()=>{ const ids=["selpanel","parkcard","tip","kpis","fbar","sheet"].map(i=>document.getElementById(i)).filter(Boolean);
-  if(ids.length<4||typeof SBME==="undefined"||!SBME) return; clearInterval(start);
+  if(ids.length<4||typeof SBME==="undefined"||!SBME||!window.__sidMeFinal) return; clearInterval(start);
   if(!isPub()) return;
   document.body.classList.add("sid-public");
   ids.forEach(el=>mo.observe(el,{childList:true,subtree:true})); all();
+  const hideNav=()=>document.querySelectorAll("nav button, .rail button, aside button, header button").forEach(b=>{ if(/^(change log|sync now|notifications|approvals)/i.test(b.innerText.trim())) b.style.display="none"; });
+  hideNav(); setInterval(hideNav,3000);
   /* Lara: the same rule, in her instructions and in what her tools return */
   if(typeof laraSystem==="function"){ const sysV69=laraSystem;
     laraSystem=function(){ return sysV69()+"\nPUBLIC ROADSHOW SCREEN: you are talking to visitors and investors at a public roadshow. NEVER say prices, price per sqm, deal values, sales figures, revenues, collections, customer or company names of buyers, who sold a plot, contracts or any internal figure — even if a tool returns it. Share: the company, the parks, locations, sizes, available area, utilities, incentives, target industries, logistics (ports, airports), services and news from the website (company_info). If they ask for a price or an offer: say our sales team will prepare a personal offer and invite them to leave their contact or visit our stand. Keep answers short (2–3 sentences) and friendly."; }; }
   if(typeof laraRun==="function"){ const runV69=laraRun, NO=new Set(["print_document","send_email","payment_plan","fill_field","click_on_screen"]);
     const KEYS=/price|value|egp|usd|cash|client|company|customer|buyer|sold_?by|seller|rep\b|contract|collect|interest|revenue|deal|receiv|tpi|amount/i;
     const clean=o=>{ if(Array.isArray(o)) return o.map(clean); if(o&&typeof o==="object"){ const r={}; for(const [k,v] of Object.entries(o)){ if(KEYS.test(k)) continue; r[k]=clean(v); } return r; } return o; };
+    if(typeof laraPulseData==="function"){ const pV69=laraPulseData; laraPulseData=function(){ return clean(pV69()); }; }
     laraRun=async function(name,a){ if(NO.has(name)) return {error:"Not available on the public roadshow screen. Say that our sales team will prepare a personal offer and invite them to leave their contact."};
       return clean(await runV69(name,a)); }; }
 },700);
@@ -14006,7 +14009,7 @@ async function pick(){
   ov.querySelector(".va-q").oninput=e=>{ const q=e.target.value.toLowerCase(); ov.querySelectorAll(".va-l button").forEach(b=>{ b.hidden=!b.textContent.toLowerCase().includes(q); }); };
   ov.querySelectorAll(".va-l button").forEach(b=>b.onclick=()=>{ try{ sessionStorage.setItem(KEY,JSON.stringify({email:b.dataset.e,name:b.dataset.n,role:b.dataset.r})); }catch(e){} location.reload(); });
 }
-const k=setInterval(()=>{ if(typeof SBME==="undefined"||!SBME) return; clearInterval(k);
+const k=setInterval(()=>{ if(typeof SBME==="undefined"||!SBME||!window.__sidMeFinal) return; clearInterval(k);
   const st=document.createElement("style"); st.textContent=`
   .va-btn{position:fixed;left:14px;bottom:14px;z-index:9000;display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.92);backdrop-filter:blur(12px);font:600 12px Inter,system-ui,sans-serif;color:#1c1c1e;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.12)}
   .va-bar{position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:9500;display:flex;gap:10px;align-items:center;padding:6px 14px;border-radius:0 0 12px 12px;background:#B3263D;color:#fff;font:600 12.5px Inter,system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.2)}
