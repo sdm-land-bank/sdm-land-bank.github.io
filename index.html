@@ -14073,6 +14073,10 @@ function cornerQr(){ let c=document.getElementById("rqCorner"); const want=pub()
   if(!c){ c=document.createElement("a"); c.id="rqCorner"; c.className="rq-corner"; c.href=CONTACT; c.target="_blank"; c.rel="noopener";
     c.innerHTML=qrSvg(CONTACT,3)+"<b>Talk to us</b><span>Scan to leave your details</span>"; document.body.appendChild(c); } }
 setInterval(cornerQr,1500);
+/* the presentation on the public screen: no sold share, deals or money */
+setInterval(()=>{ if(!pub()) return; const pr=document.getElementById("pres"); if(!pr) return;
+  pr.querySelectorAll("div,li,span").forEach(el=>{ if(el.children.length>3) return; const t=el.textContent.trim();
+    if(/^(\d[\d.,]*\s*%?\s*)?(sold|deals?|sales value|revenue|value)$/i.test(t.replace(/\s+/g," "))||/\bEGP\b/.test(t)&&el.children.length<=2) el.style.display="none"; }); },700);
 
 /* ---- compare parks ---- */
 function parkFacts(k){
@@ -14160,7 +14164,7 @@ async function summary(day){
       <p class="rs-n">How many people scanned a QR code is counted by the website, not here.</p>`;
   }catch(e){ ov.querySelector(".rs-b").textContent="Could not read the log: "+(e.message||e); }
 }
-setInterval(()=>{ if(typeof SBME==="undefined"||!SBME||!SBME.is_admin||window.SID_VIEWAS||document.querySelector(".rs-btn")) return;
+setInterval(()=>{ if(typeof SBME==="undefined"||!SBME||!window.__sidMeFinal||!SBME.is_admin||window.SID_VIEWAS||document.querySelector(".rs-btn")) return;
   const b=document.createElement("button"); b.type="button"; b.className="va-btn rs-btn"; b.textContent="Roadshow summary"; b.style.left="104px";
   b.onclick=()=>summary(new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Cairo"}).format(new Date())); document.body.appendChild(b); },2000);
 
