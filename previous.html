@@ -2390,15 +2390,26 @@ body:has(aside.rail:hover) .lara-dock{opacity:0!important;pointer-events:none!im
 <script>
 /* V72: the satellite picture is kept in this browser (Cache Storage) - read from there first, fetched only once */
 (function(){
-const CN="sid-sat-v1", N=window.SIDSAT={hit:0,miss:0,err:0};
+const CN="sid-sat-v1", N=window.SIDSAT={mem:0,hit:0,miss:0,err:0};
 const key=u=>u.replace("//services.arcgisonline.com","//server.arcgisonline.com");
 let C=null; const box=()=>C||(C=caches.open(CN));
-async function get(url,signal){
-  try{ const c=await box(), h=await c.match(key(url)); if(h){ N.hit++; return await h.arrayBuffer(); } }catch(e){}
+/* V73: the last ~1,500 tiles are also kept in memory as small JPEG/PNG files (about 40 MB), so a tile shown a moment ago, or read
+   in advance for the next presentation slide, is drawn at once - Cache Storage alone took about a second per screen in Safari */
+const MEM=new Map(), MEMMAX=1500;
+const memGet=k=>{ const v=MEM.get(k); if(v){ MEM.delete(k); MEM.set(k,v); } return v; };
+const memPut=(k,b)=>{ MEM.set(k,b); if(MEM.size>MEMMAX) MEM.delete(MEM.keys().next().value); };
+async function get(url,signal,quiet){
+  const k=key(url); if(window.__satRec) window.__satRec(k);
+  const m=memGet(k); if(m){ if(!quiet) N.mem++; return m.slice(0); }
+  try{ const c=await box(), h=await c.match(k); if(h){ const b=await h.arrayBuffer(); memPut(k,b); if(!quiet) N.hit++; return b.slice(0); } }catch(e){}
   const r=await fetch(url,{signal,mode:"cors",credentials:"omit"}); if(!r.ok) throw new Error("tile "+r.status);
-  const buf=await r.arrayBuffer(); N.miss++;
-  box().then(c=>c.put(key(url),new Response(buf.slice(0),{headers:{"content-type":r.headers.get("content-type")||"image/jpeg"}}))).catch(()=>{});
-  return buf; }
+  const buf=await r.arrayBuffer(); N.miss++; memPut(k,buf);
+  box().then(c=>c.put(k,new Response(buf.slice(0),{headers:{"content-type":r.headers.get("content-type")||"image/jpeg"}}))).catch(()=>{});
+  return buf.slice(0); }
+/* read a list of tiles into memory ahead of time (cache first, internet only for the missing ones) */
+window.sidSatWarm=async(list,par)=>{ if(!window.__sidSatOK||!list||!list.length) return 0; let i=0,n=0; const L=list.slice(0,700);
+  const w=async()=>{ while(i<L.length){ const k=L[i++]; if(MEM.has(k)){ n++; continue; } try{ await get(k,undefined,true); n++; }catch(e){} } };
+  await Promise.all(Array.from({length:par||8},w)); return n; };
 try{
   if(window.caches&&window.maplibregl&&maplibregl.addProtocol&&location.protocol==="https:"){
     maplibregl.addProtocol("sidsat",async(p,ac)=>{ try{ return {data:await get(p.url.replace(/^sidsat:/,"https:"),ac&&ac.signal)}; }catch(e){ if(e&&e.name!=="AbortError"){ N.err++; N.last=String(e&&e.message||e); } throw e; } });
@@ -2409,9 +2420,9 @@ try{
 window.sidSat=u=>window.__sidSatOK?String(u).replace(/^https:/,"sidsat:"):u;
 /* fetch one tile into the cache (used by the advance download): true when it is there */
 window.sidSatFetch=async u=>{ if(!window.__sidSatOK){ const r=await fetch(u,{mode:"cors",credentials:"omit"}); if(r.ok) await r.blob(); return r.ok; }
-  try{ const c=await box(); if(await c.match(key(u))) return true; await get(u); return true; }catch(e){ return false; } };
+  try{ const c=await box(); if(await c.match(key(u))) return true; await get(u,undefined,true); return true; }catch(e){ return false; } };
 window.sidSatInfo=async()=>{ try{ const c=await box(), k=await c.keys(), e=navigator.storage&&navigator.storage.estimate?await navigator.storage.estimate():{};
-  return {tiles:k.length,usedMB:Math.round((e.usage||0)/1048576),quotaMB:Math.round((e.quota||0)/1048576),...N}; }catch(e){ return {error:String(e)}; } };
+  return {tiles:k.length,inMemory:MEM.size,usedMB:Math.round((e.usage||0)/1048576),quotaMB:Math.round((e.quota||0)/1048576),...N}; }catch(e){ return {error:String(e)}; } };
 })();
 </script>
 
@@ -8670,7 +8681,7 @@ const BASES={
   sat:{version:8,glyphs:"https://basemaps.cartocdn.com/gl/positron-gl-style/{fontstack}/{range}.pbf",
     sources:{e:{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}","https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"].map(u=>(window.sidSat||(x=>x))(u)),tileSize:256,maxzoom:SAT_MAX,attribution:"Imagery © Esri"},
              l:{type:"raster",tiles:[ESRI_LABELS,ESRI_LABELS.replace("//server.","//services.")].map(u=>(window.sidSat||(x=>x))(u)),tileSize:256,maxzoom:LABEL_MAX,attribution:"Labels © Esri"}},
-    layers:[{id:"e",type:"raster",source:"e",paint:{"raster-fade-duration":0}},{id:"l",type:"raster",source:"l",paint:{"raster-opacity":.95,"raster-fade-duration":0}}]}
+    layers:[{id:"sat-bg",type:"background",paint:{"background-color":"#2a2e26"}},{id:"e",type:"raster",source:"e",paint:{"raster-fade-duration":0}},{id:"l",type:"raster",source:"l",paint:{"raster-opacity":.95,"raster-fade-duration":0}}]}
 };
 let map=null, ctx=null, cv=null, raf=null, anchors=[], dims=null, iso=null;
 /* Dimensions for the CURRENT SELECTION. Hover dims are transient; these persist until
@@ -8698,7 +8709,7 @@ function mapError(msg){
   el.hidden=false; el.textContent=msg;
 }
 function initMap(){
-  map=new maplibregl.Map({container:"map",style:styleFor(S.base),fadeDuration:0,maxTileCacheSize:2000,refreshExpiredTiles:false,center:[31.6,29.9],zoom:5.6,maxZoom:MAX_ZOOM,attributionControl:{compact:true}});
+  map=new maplibregl.Map({container:"map",style:styleFor(S.base),fadeDuration:0,maxTileCacheSize:600,refreshExpiredTiles:false,center:[31.6,29.9],zoom:5.6,maxZoom:MAX_ZOOM,attributionControl:{compact:true}});
   map.addControl(new maplibregl.NavigationControl({showCompass:true,visualizePitch:true}),"bottom-right");
   /* Layers are (re)built on every style change. `styledata` is the event that reliably fires
      for both the first load and every setStyle; `style.load` does not fire consistently across
@@ -13840,7 +13851,7 @@ const liteListenV69=laraLiteListen;
 laraLiteListen=function(){ if(on()) return; return liteListenV69(); };
 
 /* she never closes the window by herself: silence, "I was repeating myself", errors and goodbyes only close the voice line */
-function pttIdle(){ clearTimeout(PTT.idleT); PTT.idleT=setTimeout(()=>{ if(PTT.down||LARA.speaking||!LARA.ws) return; pttSoft("2 min without a press"); },120000); }
+function pttIdle(){ clearTimeout(PTT.idleT); PTT.idleT=setTimeout(()=>{ if(PTT.down||LARA.speaking||!LARA.ws) return; pttSoft("8 min without a press"); },480000); }   // V73: an open line costs nothing while the button is not held (no audio is sent)
 function pttSoft(why){
   clearTimeout(LARA.idle); LARA.idle=null; LARA.endAfter=false;
   try{ laraStopAudio(); }catch(e){}
@@ -14356,7 +14367,8 @@ function panoInto(el,base){
   cv.addEventListener("pointermove",e=>{ if(sx==null) return; V.dx-=(e.clientX-sx)/Math.max(1,cv.clientWidth)*FOV*1.6; sx=e.clientX; });
   ["pointerup","pointercancel"].forEach(k=>cv.addEventListener(k,()=>{ sx=null; V.drag=0; }));
   function loop(t){
-    if(!el.isConnected) return; requestAnimationFrame(loop);
+    if(!el.isConnected){ try{ const x=gl.getExtension("WEBGL_lose_context"); if(x) x.loseContext(); }catch(e){} return; }   // V73: give the graphics memory back (Safari allows few at once)
+    requestAnimationFrame(loop);
     const show=el.style.opacity==="1", dt=V.last?Math.min(100,t-V.last):0; V.last=t;
     if(!show){ V.p=0; V.done=false; V.dx=0; return; }
     const running=typeof PR!=="undefined"&&PR.on&&!PR.paused&&!V.drag;
@@ -14433,6 +14445,141 @@ function navExtras(){
 if(typeof buildNav==="function"){ const bnV71=buildNav; buildNav=function(){ const r=bnV71.apply(this,arguments); try{ navExtras(); }catch(e){} return r; }; }
 const kx=setInterval(()=>{ try{ navExtras(); if(document.getElementById("navViewAs")||window.SID_VIEWAS||(typeof SBME!=="undefined"&&SBME&&window.__sidMeFinal&&!SBME.is_admin)) clearInterval(kx); }catch(e){} },800);
 setTimeout(()=>clearInterval(kx),180000);
+})();
+</script>
+
+<script>
+/* ============================================================================
+   V73 — Lara and map fixes from the Safari test
+   ========================================================================== */
+(function(){
+const pub=()=>typeof window.sidPublic==="function"&&window.sidPublic();
+const ptt=()=>typeof LARA_PREF!=="undefined"&&!!LARA_PREF.ptt;
+
+if(typeof LARA!=="undefined"){
+  /* 2. resting keys are remembered by this browser, not only this tab; a spending cap rests 6 h */
+  try{ const saved=JSON.parse(localStorage.getItem("sid.lara.kcool")||"{}")||{}; Object.keys(saved).forEach(k=>{ if(saved[k]>Date.now()&&!(LKEY.cool[k]>saved[k])) LKEY.cool[k]=saved[k]; }); }catch(e){}
+  if(typeof lkeyCool==="function"){ const kcV72=lkeyCool;
+    lkeyCool=function(id,ms,why){ if(/spending cap|spend cap|billing/i.test(String(why||""))) ms=Math.max(ms,6*3600e3);
+      const r=kcV72(id,ms,why); try{ localStorage.setItem("sid.lara.kcool",JSON.stringify(LKEY.cool)); }catch(e){} return r; }; }
+
+  /* the capped main key is skipped at once (it cost a second on every connect) */
+  if(typeof laraFn==="function"){ const fnV72=laraFn;
+    laraFn=function(name,body){ if(name==="sid-live"&&body&&!body.after&&!body.backup&&(LKEY.cool.main||0)>Date.now()) body={...body,after:"main"}; return fnV72.call(this,name,body); }; }
+  /* 1. hold-to-talk: no robotic fallback - retry the real voice, then say clearly what is wrong */
+  if(typeof laraConnect==="function"){ const cnV72=laraConnect;
+    laraConnect=async function(){ if(!ptt()) return cnV72();
+      let last=null;
+      for(let a=0;a<3;a++){
+        try{ return await cnV72(); }catch(e){ last=e; laraLog("error","voice connect attempt "+(a+1)+" failed",{msg:String(e&&e.message||e).slice(0,200)}); }
+        if(a<2){ try{ laraState("connecting"); }catch(x){} await laraWait(a?2500:1200);
+          Object.keys(LKEY.cool).forEach(k=>{ const why=(LKEY.why&&LKEY.why[k])||""; if(!/cap|billing/i.test(why)&&LKEY.cool[k]-Date.now()<35*60e3) delete LKEY.cool[k]; });   // rate limits pass quickly; try those keys again
+        } }
+      const m=String(last&&last.message||"");
+      throw new Error("Lara's voice service did not answer"+(/quota|rate|429|limit|exhaust/i.test(m)?" (the Gemini keys are at their limit)":"")+" - press the button again in a moment. Check Settings → Gemini keys if it repeats."); };
+  }
+  const startV72=laraStart;
+  laraStart=async function(opts){ if(ptt()){ LARA.lite=false; LARA.liteUntil=0; } return startV72.apply(this,arguments); };
+  if(typeof laraLiteStart==="function"){ const lsV72=laraLiteStart;
+    laraLiteStart=function(opts){ if(ptt()){ LARA.lite=false; laraLog("error","standard voice blocked in hold-to-talk mode"); laraFail(new Error("Lara's voice service did not answer - press the button again in a moment.")); return; }
+      return lsV72.apply(this,arguments); }; }
+  /* the standard voice (hands-free mode only) no longer adds a new bubble for every partial result */
+  if(typeof laraCap==="function"){ const capV72=laraCap;
+    laraCap=function(who,text,replace){
+      let t=String(text==null?"":text);
+      t=t.replace(/<\s*(no[ _-]?speech|noise|silence|unk|pause)[^>]*>/gi,"").replace(/\{\s*(pause|silence|noise|breath|laugh)[^}]*\}/gi,"");   // 4. Google's markers
+      if(!t.trim()&&String(text||"").trim()) return;
+      if(who==="u"&&replace&&LARA.lite&&LARA.cap&&LARA.cap.who==="u"&&LARA.cap.el){ LARA.cap.u=t; LARA.cap.el.textContent=t.trim(); LARA.tU=t; return; }
+      return capV72.call(this,who,t,replace); };
+  }
+  if(typeof laraLog==="function"){ const lgV72=laraLog;
+    laraLog=function(kind,text,data){ if(kind==="lara"&&!String(text||"").replace(/<[^>]*>|\{[^}]*\}/g,"").trim()) return; return lgV72.apply(this,arguments); }; }
+
+  /* 3. a fresh microphone pipeline for every conversation */
+  if(typeof laraMicOn==="function"){ const micV72=laraMicOn;
+    laraMicOn=async function(){ if(!LARA.mic&&LARA.ctxIn){ try{ LARA.ctxIn.close(); }catch(e){} LARA.ctxIn=null; LARA.wk=0; }
+      return micV72.apply(this,arguments); }; }
+  /* microphone level of each question (hold-to-talk) */
+  const M={n:0,max:0,sum:0,t0:0};
+  if(typeof window.laraPttFrame==="function"){ const pfV72=window.laraPttFrame;
+    window.laraPttFrame=function(pcm){ try{ if(window.PTT&&PTT.down){ const a=new Int16Array(pcm); let s=0; for(let i=0;i<a.length;i+=4){ const v=a[i]/32768; s+=v*v; } const r=Math.sqrt(s/(a.length/4)); M.n++; M.sum+=r; if(r>M.max) M.max=r; } }catch(e){} return pfV72(pcm); }; }
+  /* watch the button itself (the button, the Space key and the orb call Lara's own functions directly) */
+  let was=false;
+  setInterval(()=>{ if(!window.PTT) return; const d=!!PTT.down;
+    if(d&&!was){ M.n=0; M.max=0; M.sum=0; M.t0=PTT.t0||Date.now(); }
+    if(!d&&was){ const held=Date.now()-M.t0, frames=M.n, mx=M.max;
+      try{ if(held>=300){ LUSE.turns=(LUSE.turns||0)+1;                                        // 7. count the question
+          laraLog("info","mic",{held_ms:held,frames,max:+mx.toFixed(4),avg:frames?+(M.sum/frames).toFixed(4):0,ctx:LARA.ctxIn&&LARA.ctxIn.state});
+          if(held>900&&(frames<5||mx<0.003)){ laraLog("error","microphone silent while the button was held",{frames,max:mx}); try{ laraMicOff(); }catch(e){}
+            try{ laraChipDone(laraChip("The microphone sent silence - check it is not muted, then try again"),false); }catch(e){} } } }catch(e){} }
+    if(LARA.ws&&ptt()&&M.t0&&Date.now()-M.t0<480000) LARA.heardAt=Math.max(LARA.heardAt||0,Date.now()-60000);   // the 90 s watchdog: hold-to-talk keeps the line 8 min after the last press
+    was=d; },60);
+
+  /* 5 + 6. language of each question; numbers read whole; 8. only the tools the public screen may use */
+  if(typeof laraLangTrack==="function"){ const ltV72=laraLangTrack;
+    laraLangTrack=function(text,typed){ if(ptt()||pub()){ const r=laraLangFrom(text); if(r&&r.lang&&r.lang!==LARA.convLang){ LARA.convLang=r.lang; laraLog("info","conversation language: "+(r.lang==="ar"?"Egyptian Arabic":"English")+" (follows the question)"); } return; }
+      return ltV72.apply(this,arguments); }; }
+  if(typeof laraSystem==="function"){ const sysV72=laraSystem;
+    laraSystem=function(){ let t=sysV72();
+      if(ptt()||pub()) t+="\nLANGUAGE: answer every question in the language of THAT question — an English question gets an English answer, an Arabic question an Egyptian Arabic answer — even if the conversation started in the other language.";
+      t+="\nNUMBERS: read every number whole and exactly as the tool gives it (3,270 sqm = \"three thousand two hundred seventy square metres\" / \"تلات آلاف ميتين وسبعين متر مربع\"; 483,822 = \"four hundred eighty-three thousand\"). Never drop the thousands. Round big areas only to a clear figure (\"about 484 thousand square metres\").";
+      return t; }; }
+  if(typeof laraSetup==="function"){ const setV72=laraSetup, NO=new Set(["print_document","send_email","payment_plan","fill_field","click_on_screen"]);
+    laraSetup=function(model,lean){ const st=setV72(model,lean);
+      try{ if(pub()&&st.tools&&st.tools[0]&&st.tools[0].functionDeclarations) st.tools=[{functionDeclarations:st.tools[0].functionDeclarations.filter(t=>!NO.has(t.name))}]; }catch(e){}
+      return st; }; }
+}
+
+/* 6b. areas are handed to Lara already written out (she misread 1,039,877 as "1.4 million" and 3,270 as "thirty seventy") */
+const AR1=["","واحد","اتنين","تلاتة","أربعة","خمسة","ستة","سبعة","تمانية","تسعة","عشرة","حداشر","اتناشر","تلاتاشر","أربعتاشر","خمستاشر","ستاشر","سبعتاشر","تمنتاشر","تسعتاشر"];
+const AR10=["","","عشرين","تلاتين","أربعين","خمسين","ستين","سبعين","تمانين","تسعين"];
+const AR100=["","مية","ميتين","تلتمية","ربعمية","خمسمية","ستمية","سبعمية","تمنمية","تسعمية"];
+const AR_C={3:"تلات",4:"أربع",5:"خمس",6:"ست",7:"سبع",8:"تمن",9:"تسع",10:"عشر"};
+function ar999(n){ const h=Math.floor(n/100), r=n%100, p=[]; if(h) p.push(AR100[h]);
+  if(r){ if(r<20) p.push(AR1[r]); else p.push(r%10?AR1[r%10]+" و"+AR10[Math.floor(r/10)]:AR10[Math.floor(r/10)]); } return p.join(" و"); }
+function arGroup(n,one,two,few,many){ if(n===1) return one; if(n===2) return two; if(n<=10) return (AR_C[n]||ar999(n))+" "+few; return ar999(n)+" "+many; }
+function arNum(n){ n=Math.round(n); if(!n) return "صفر"; const p=[]; const m=Math.floor(n/1e6), t=Math.floor(n%1e6/1000), r=n%1000;
+  if(m) p.push(arGroup(m,"مليون","مليونين","ملايين","مليون")); if(t) p.push(arGroup(t,"ألف","ألفين","آلاف","ألف")); if(r) p.push(ar999(r)); return p.join(" و"); }
+function sayArea(v){ const n=+v; if(!isFinite(n)||n<1000) return null;
+  const r=n>=1e6?Math.round(n/1e4)*1e4:n>=1e5?Math.round(n/1e3)*1e3:n>=1e4?Math.round(n/100)*100:Math.round(n);
+  const en=n>=1e6?(r/1e6).toFixed(2).replace(/\.?0+$/,"")+" million square metres":r.toLocaleString("en-US")+" square metres";
+  return {en:(r!==Math.round(n)?"about ":"")+en, ar:(r!==Math.round(n)?"حوالي ":"")+arNum(r)+" متر مربع"}; }
+function addSay(o,d){ if(!o||typeof o!=="object"||d>5) return o; if(Array.isArray(o)){ o.forEach(x=>addSay(x,d+1)); return o; }
+  for(const k of Object.keys(o)){ const v=o[k]; if(typeof v==="number"&&/area|sqm|sellable|available|masterplan/i.test(k)&&!/_say$/.test(k)){ const s=sayArea(v); if(s) o[k+"_say"]=s; } else if(v&&typeof v==="object") addSay(v,d+1); }
+  return o; }
+if(typeof laraRun==="function"){ const runV72=laraRun;
+  laraRun=async function(name,a){ const r=await runV72(name,a); try{ addSay(r,0); }catch(e){} return r; }; }
+if(typeof laraSystem==="function"){ const s2=laraSystem; laraSystem=function(){ return s2()+"\nWhen a tool result has a field ending in _say, say THAT text (en or ar, in the reply language) for the number - never read the raw digits."; }; }
+
+/* 9. the map follows its frame (Safari did not redraw it when the bars above got shorter) */
+(function(){ let ro=null, raf=0;
+  const hook=()=>{ if(ro||typeof map==="undefined"||!map||!map.getContainer) return false; const c=map.getContainer();
+    let lw=0,lh=0; ro=new ResizeObserver(()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(()=>{ const w=c.clientWidth,h=c.clientHeight; if(w===lw&&h===lh) return; lw=w; lh=h; try{ map.resize(); }catch(e){} }); }); ro.observe(c);
+    const w=document.getElementById("mapwrap"); if(w) ro.observe(w); return true; };
+  const k=setInterval(()=>{ if(hook()) clearInterval(k); },700); })();
+{ const st=document.createElement("style"); st.textContent=`
+  body.sid-public .kpis.map5 .kpi{padding-top:8px!important;padding-bottom:8px!important;min-height:0!important}
+  body.sid-public .kpis.map5 .kpi .s{display:none!important}
+  body.sid-public .kpis.map5{padding-top:6px!important;padding-bottom:6px!important}`; document.head.appendChild(st); }
+
+/* 10. presentation: remember which tiles each slide used; read the next slide's tiles into memory while this one plays */
+if(typeof presGo==="function"&&window.sidSatWarm){
+  const KEY="sid.pres.tiles.v1"; let REC={}; try{ REC=JSON.parse(localStorage.getItem(KEY)||"{}")||{}; }catch(e){}
+  const sk=s=>s?[s.kind,(s.parks||[]).join("+"),s.tour?s.tour.park:"",s.name||""].join("|"):"";
+  let cur=null, curSet=null, saveT=0;
+  const save=()=>{ clearTimeout(saveT); saveT=setTimeout(()=>{ try{ localStorage.setItem(KEY,JSON.stringify(REC)); }catch(e){ REC={}; } },1500); };
+  window.__satRec=k=>{ if(!curSet||!document.body.classList.contains("presenting")) return; const short=k.replace("https://server.arcgisonline.com/ArcGIS/rest/services/","");
+    if(curSet.size<650&&!curSet.has(short)){ curSet.add(short); REC[cur]=[...curSet]; save(); } };
+  const full=x=>"https://server.arcgisonline.com/ArcGIS/rest/services/"+x;
+  const warm=s=>{ const L=s&&REC[sk(s)]; if(L&&L.length) window.sidSatWarm(L.map(full),10).catch(()=>{}); };
+  const goV72=presGo;
+  presGo=function(i){ const r=goV72.apply(this,arguments);
+    try{ if(PR&&PR.on&&PR.scenes){ const s=PR.scenes[PR.i]; cur=sk(s); curSet=new Set(REC[cur]||[]); warm(PR.scenes[PR.i+1]); if(PR.i===0) warm(PR.scenes[1]); } }catch(e){}
+    return r; };
+  if(typeof startPresentation==="function"){ const spV72=startPresentation;
+    startPresentation=function(){ const r=spV72.apply(this,arguments);
+      try{ if(PR&&PR.scenes){ warm(PR.scenes[0]); warm(PR.scenes[1]); } }catch(e){} return r; }; }
+}
 })();
 </script>
 </body>
