@@ -13851,7 +13851,7 @@ const liteListenV69=laraLiteListen;
 laraLiteListen=function(){ if(on()) return; return liteListenV69(); };
 
 /* she never closes the window by herself: silence, "I was repeating myself", errors and goodbyes only close the voice line */
-function pttIdle(){ clearTimeout(PTT.idleT); PTT.idleT=setTimeout(()=>{ if(PTT.down||LARA.speaking||!LARA.ws) return; pttSoft("2 min without a press"); },120000); }
+function pttIdle(){ clearTimeout(PTT.idleT); PTT.idleT=setTimeout(()=>{ if(PTT.down||LARA.speaking||!LARA.ws) return; pttSoft("8 min without a press"); },480000); }   // V73: an open line costs nothing while the button is not held (no audio is sent)
 function pttSoft(why){
   clearTimeout(LARA.idle); LARA.idle=null; LARA.endAfter=false;
   try{ laraStopAudio(); }catch(e){}
@@ -14463,6 +14463,9 @@ if(typeof LARA!=="undefined"){
     lkeyCool=function(id,ms,why){ if(/spending cap|spend cap|billing/i.test(String(why||""))) ms=Math.max(ms,6*3600e3);
       const r=kcV72(id,ms,why); try{ localStorage.setItem("sid.lara.kcool",JSON.stringify(LKEY.cool)); }catch(e){} return r; }; }
 
+  /* the capped main key is skipped at once (it cost a second on every connect) */
+  if(typeof laraFn==="function"){ const fnV72=laraFn;
+    laraFn=function(name,body){ if(name==="sid-live"&&body&&!body.after&&!body.backup&&(LKEY.cool.main||0)>Date.now()) body={...body,after:"main"}; return fnV72.call(this,name,body); }; }
   /* 1. hold-to-talk: no robotic fallback - retry the real voice, then say clearly what is wrong */
   if(typeof laraConnect==="function"){ const cnV72=laraConnect;
     laraConnect=async function(){ if(!ptt()) return cnV72();
@@ -14509,6 +14512,7 @@ if(typeof LARA!=="undefined"){
           laraLog("info","mic",{held_ms:held,frames,max:+mx.toFixed(4),avg:frames?+(M.sum/frames).toFixed(4):0,ctx:LARA.ctxIn&&LARA.ctxIn.state});
           if(held>900&&(frames<5||mx<0.003)){ laraLog("error","microphone silent while the button was held",{frames,max:mx}); try{ laraMicOff(); }catch(e){}
             try{ laraChipDone(laraChip("The microphone sent silence - check it is not muted, then try again"),false); }catch(e){} } } }catch(e){} }
+    if(LARA.ws&&ptt()&&M.t0&&Date.now()-M.t0<480000) LARA.heardAt=Math.max(LARA.heardAt||0,Date.now()-60000);   // the 90 s watchdog: hold-to-talk keeps the line 8 min after the last press
     was=d; },60);
 
   /* 5 + 6. language of each question; numbers read whole; 8. only the tools the public screen may use */
