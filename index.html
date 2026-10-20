@@ -12378,7 +12378,7 @@ async function sbGate(){
   const r=await SB.rpc("sid_role");
   if(r.error||!r.data){ gateMsg(`<b>${esc(SBU.email)}</b> is signed in but has no access to SID Dashboard yet. Ask the administrator to add this email.`,
     `<button class="ebtn" id="sbgOut">Sign out</button>`); await new Promise(()=>{}); }
-  SBROLE=r.data; SBME=(await SB.rpc("sid_me")).data||{role:SBROLE,pages:[],can_edit:false,is_admin:false};
+  SBROLE=r.data; SBME=(await SB.rpc("sid_me")).data||{role:SBROLE,pages:[],can_edit:false,is_admin:false}; if(window.sidViewAs) SBME=await window.sidViewAs(SBME);
   if((SBME.wf||SBME.is_admin)&&!VIEWS.some(v=>v.id==="approvals")) VIEWS.splice(Math.max(0,VIEWS.findIndex(v=>v.id==="editor")),0,{id:"approvals",group:"data",label:"Approvals",hint:"Status-change requests, holds and MDS updates"});
   if(!VIEWS.some(v=>v.id==="audit")){ const ix=VIEWS.findIndex(v=>v.id==="editor"); VIEWS.splice(ix<0?VIEWS.length:ix,0,{id:"audit",group:"data",label:"Change log",hint:"Who changed which plot, and when"}); }
   if(slStatsOk()&&!VIEWS.some(v=>v.id==="demand")){ const ix=VIEWS.findIndex(v=>v.id==="sales"); VIEWS.splice(ix<0?VIEWS.length:ix+1,0,{id:"demand",group:"land",label:"Offer demand",hint:"What customers are offered — plots, projects, industries, payment plans"}); }
@@ -13787,9 +13787,16 @@ async function pttUp(){
   if(!wsOpen()){ if(!(await waitOpen(12000))){ pttUi(); return; } flushStart(); }
   else flushStart();
   if(PTT.manual) send({realtimeInput:{activityEnd:{}}}); else send({realtimeInput:{audioStreamEnd:true}});
+  LARA.v62userN=(LARA.v62userN||0)+1; LARA.heardAt=Date.now();
   PTT.live=false; laraState("thinking"); pttUi(); pttIdle();
 }
 window.laraPttDown=pttDown; window.laraPttUp=pttUp;
+/* with the microphone closed while she talks she cannot hear herself: the echo and "repeating myself" checks only made false stops
+   (log 20 Oct 12:45: three different parks asked in a row were taken for her own echo and she closed) */
+const loopV69=laraLoopCheck;
+laraLoopCheck=function(){ if(on()){ LARA.turnAudio=false; LARA.echoTurn=false; LARA.toolTurn=false; LARA.rep=0; LARA.noUser=0; return false; } return loopV69(); };
+const echoV69=laraEchoCheck;
+laraEchoCheck=function(){ if(on()){ if((LARA.tU||"").trim()) LARA.heardAt=Date.now(); return false; } return echoV69(); };
 /* while the user holds the button, what is left of her previous answer is not played */
 const playV69=laraPlay;
 laraPlay=function(b64){ if(PTT.down) return; return playV69(b64); };
@@ -13901,7 +13908,7 @@ document.head.appendChild(st);
 (function(){
 try{ if(window.maplibregl&&maplibregl.setMaxParallelImageRequests) maplibregl.setMaxParallelImageRequests(48); }catch(e){}
 const DAYKEY="sid.prewarm";
-const isRoadshow=()=>{ try{ return /roadshow/i.test(String((typeof SBU!=="undefined"&&SBU&&SBU.email)||"")+" "+String((typeof SBROLE!=="undefined"&&SBROLE)||"")); }catch(e){ return false; } };
+const isRoadshow=()=>{ try{ return /roadshow/i.test(String((typeof SBME!=="undefined"&&SBME&&(SBME.role+" "+SBME.name))||"")+" "+String((typeof SBROLE!=="undefined"&&SBROLE)||"")); }catch(e){ return false; } };
 function tileXY(lon,lat,z){ const n=2**z, x=Math.floor((lon+180)/360*n), r=lat*Math.PI/180, y=Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n); return [x,y]; }
 function parkBoxes(){ const B=new Map(); try{ (S.geo&&S.geo.features||[]).forEach(f=>{ const k=f.properties&&f.properties.park; if(!k) return; const c=f.properties.c||null;
     const pts=c?[c]:[]; if(!pts.length) return; let b=B.get(k); if(!b){ b=[180,90,-180,-90]; B.set(k,b); } pts.forEach(p=>{ b[0]=Math.min(b[0],p[0]); b[1]=Math.min(b[1],p[1]); b[2]=Math.max(b[2],p[0]); b[3]=Math.max(b[3],p[1]); }); }); }catch(e){}
@@ -13937,7 +13944,7 @@ window.sidPrewarm=()=>{ try{ localStorage.removeItem(DAYKEY); }catch(e){} window
    (The pages a role may open are set in Settings → Roles; this hides the money and the names inside the pages it may open.)
    ========================================================================== */
 (function(){
-const isPub=()=>{ try{ return typeof SBME!=="undefined"&&SBME&&!SBME.is_admin&&(/roadshow|public/i.test(String(SBME.role||""))||/roadshow/i.test(String(SBME.email||""))); }catch(e){ return false; } };
+const isPub=()=>{ try{ return typeof SBME!=="undefined"&&SBME&&!SBME.is_admin&&(/roadshow|public/i.test(String(SBME.role||""))||/roadshow/i.test(String(SBME.email||""))||/^roadshow$/i.test(String(SBME.name||""))); }catch(e){ return false; } };
 window.sidPublic=isPub;
 const BAD=/^(price.*|total price|avg \/ sqm|total \+ interest|company|client|customer.*|buyer.*|sold by|sales ?rep.*|contract.*|actual sales|collected|still to collect.*|deals.*|sales value|sold|value|cash.*|revenue.*|interest.*|receivable.*|pipeline.*|reserved by)$/i;
 function scrub(root){ if(!root||!isPub()) return;
@@ -13967,6 +13974,55 @@ const start=setInterval(()=>{ const ids=["selpanel","parkcard","tip","kpis","fba
       return clean(await runV69(name,a)); }; }
 },700);
 const st=document.createElement("style"); st.textContent=`body.sid-public .sp-print,body.sid-public .sp-wf,body.sid-public .sp-edit{display:none!important}`; document.head.appendChild(st);
+})();
+</script>
+
+<script>
+/* ============================================================================
+   V70 VIEW AS (administrators): see the dashboard exactly as another user's role sees it (pages, Lara, public mode).
+   Reading rights stay the administrator's; nothing is saved as that user. Banner on top with Exit.
+   ========================================================================== */
+(function(){
+const KEY="sid.viewas";
+window.sidViewAs=async function(me){
+  let v=null; try{ v=JSON.parse(sessionStorage.getItem(KEY)||"null"); }catch(e){}
+  if(!v||!me||!me.is_admin) { try{ sessionStorage.removeItem(KEY); }catch(e){} return me; }
+  try{ const {data:r}=await SB.from("sid_roles").select("*").eq("role",v.role).maybeSingle();
+    if(!r) return me;
+    try{ SBROLE=v.role; }catch(e){}
+    window.SID_VIEWAS={...v,realName:me.name,realEmail:me.email};
+    return {...me,email:v.email,name:v.name||v.email,role:v.role,label:r.label,pages:r.pages||[],can_edit:!!r.can_edit,is_admin:!!r.is_admin,wf:r.wf||null,viewAs:true}; }
+  catch(e){ return me; } };
+function exitViewAs(){ try{ sessionStorage.removeItem(KEY); }catch(e){} location.reload(); }
+async function pick(){
+  let users=[]; try{ users=(await laraFn("sid-admin",{action:"list"})).users||[]; }catch(e){ toast("Could not read the users: "+e.message,true); return; }
+  const ov=document.createElement("div"); ov.className="va-ov";
+  ov.innerHTML=`<div class="va-box"><div class="va-h"><b>View as</b><button class="va-x" aria-label="Close">×</button></div>
+    <p>Pick a user: the dashboard opens with exactly the pages, Lara and limits of that user's role. Your own rights stay; nothing is saved as them.</p>
+    <input class="va-q" placeholder="Search name, e-mail or role">
+    <div class="va-l">${users.filter(u=>u.role).sort((a,b)=>String(a.name||a.email).localeCompare(String(b.name||b.email))).map(u=>`<button data-e="${esc(u.email)}" data-n="${esc(u.name||"")}" data-r="${esc(u.role)}"><b>${esc(u.name||u.email)}</b><span>${esc(u.role)}</span><em>${esc(u.email)}</em></button>`).join("")}</div></div>`;
+  document.body.appendChild(ov);
+  ov.querySelector(".va-x").onclick=()=>ov.remove(); ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+  ov.querySelector(".va-q").oninput=e=>{ const q=e.target.value.toLowerCase(); ov.querySelectorAll(".va-l button").forEach(b=>{ b.hidden=!b.textContent.toLowerCase().includes(q); }); };
+  ov.querySelectorAll(".va-l button").forEach(b=>b.onclick=()=>{ try{ sessionStorage.setItem(KEY,JSON.stringify({email:b.dataset.e,name:b.dataset.n,role:b.dataset.r})); }catch(e){} location.reload(); });
+}
+const k=setInterval(()=>{ if(typeof SBME==="undefined"||!SBME) return; clearInterval(k);
+  const st=document.createElement("style"); st.textContent=`
+  .va-btn{position:fixed;left:14px;bottom:14px;z-index:9000;display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.92);backdrop-filter:blur(12px);font:600 12px Inter,system-ui,sans-serif;color:#1c1c1e;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+  .va-bar{position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:9500;display:flex;gap:10px;align-items:center;padding:6px 14px;border-radius:0 0 12px 12px;background:#B3263D;color:#fff;font:600 12.5px Inter,system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+  .va-bar button{border:0;border-radius:8px;padding:4px 10px;background:#fff;color:#B3263D;font:700 12px Inter,system-ui,sans-serif;cursor:pointer}
+  .va-ov{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:16px}
+  .va-box{width:min(460px,100%);max-height:80vh;display:flex;flex-direction:column;background:#fff;border-radius:16px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);font:13px Inter,system-ui,sans-serif;color:#1c1c1e}
+  .va-h{display:flex;justify-content:space-between;align-items:center;font-size:16px}.va-x{border:0;background:none;font-size:22px;cursor:pointer}
+  .va-box p{color:#6c6c70;margin:6px 0 10px}.va-q{padding:9px 12px;border:1px solid #d1d1d6;border-radius:10px;margin-bottom:8px;font:inherit}
+  .va-l{overflow:auto;display:flex;flex-direction:column;gap:4px}.va-l button{display:grid;grid-template-columns:1fr auto;text-align:left;border:1px solid #e5e5ea;border-radius:10px;padding:8px 10px;background:#fff;cursor:pointer;font:inherit}
+  .va-l button:hover{border-color:#B3263D}.va-l em{grid-column:1/3;color:#8e8e93;font-style:normal;font-size:11.5px}.va-l span{color:#B3263D;font-weight:700;font-size:11.5px}`;
+  document.head.appendChild(st);
+  if(window.SID_VIEWAS){ const b=document.createElement("div"); b.className="va-bar"; b.innerHTML=`<span>Viewing as <b>${esc(window.SID_VIEWAS.name||window.SID_VIEWAS.email)}</b> · ${esc(window.SID_VIEWAS.role)}</span><button type="button">Exit</button>`; b.querySelector("button").onclick=exitViewAs; document.body.appendChild(b); }
+  else if(SBME.is_admin){ const b=document.createElement("button"); b.type="button"; b.className="va-btn"; b.title="See the dashboard as another user sees it";
+    b.innerHTML='<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2.2"/></svg>View as';
+    b.onclick=pick; document.body.appendChild(b); }
+},500);
 })();
 </script>
 </body>
