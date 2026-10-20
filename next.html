@@ -14644,6 +14644,9 @@ const k=setInterval(()=>{ if(!window.__sidMeFinal||typeof SBME==="undefined"||!S
   mo.observe(document.body,{childList:true,subtree:true}); NAMES=null;
   const q=document.getElementById("q"); if(q) q.placeholder="Unit, sector or park…";
   try{ if(typeof buildChrome==="function") buildChrome(); if(typeof render==="function") render(); }catch(e){} },500);
+/* the map picture always fills its frame (Safari left a band when the bars above changed height before the first frame) */
+setInterval(()=>{ try{ if(typeof map==="undefined"||!map||!map.getCanvas) return; const c=map.getCanvas(), w=map.getContainer();
+  if(!w.offsetParent) return; if(Math.abs(c.clientHeight-w.clientHeight)>2||Math.abs(c.clientWidth-w.clientWidth)>2) map.resize(); }catch(e){} },2000);
 { const st=document.createElement("style"); st.textContent=`
   body.sid-public .dn{pointer-events:none!important;cursor:default!important;text-decoration:none!important;border-bottom:0!important}
   body.sid-public #drov,body.sid-public .sp-log,body.sid-public #audDlg{display:none!important}`; document.head.appendChild(st); }
