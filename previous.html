@@ -2399,7 +2399,7 @@ const MEM=new Map(), MEMMAX=1500;
 const memGet=k=>{ const v=MEM.get(k); if(v){ MEM.delete(k); MEM.set(k,v); } return v; };
 const memPut=(k,b)=>{ MEM.set(k,b); if(MEM.size>MEMMAX) MEM.delete(MEM.keys().next().value); };
 async function get(url,signal,quiet){
-  const k=key(url); if(window.__satRec) window.__satRec(k);
+  const k=key(url); if(window.__satRec&&!quiet) window.__satRec(k);   // V74.2: read-ahead tiles are not recorded as the slide's own (R7)
   const m=memGet(k); if(m){ if(!quiet) N.mem++; return m.slice(0); }
   try{ const c=await box(), h=await c.match(k); if(h){ const b=await h.arrayBuffer(); memPut(k,b); if(!quiet) N.hit++; return b.slice(0); } }catch(e){}
   const r=await fetch(url,{signal,mode:"cors",credentials:"omit"}); if(!r.ok) throw new Error("tile "+r.status);
@@ -8709,7 +8709,7 @@ function mapError(msg){
   el.hidden=false; el.textContent=msg;
 }
 function initMap(){
-  map=new maplibregl.Map({container:"map",style:styleFor(S.base),fadeDuration:0,maxTileCacheSize:600,refreshExpiredTiles:false,center:[31.6,29.9],zoom:5.6,maxZoom:MAX_ZOOM,attributionControl:{compact:true}});
+  map=new maplibregl.Map({container:"map",style:styleFor(S.base),fadeDuration:0,maxTileCacheSize:(innerWidth>820?600:null),refreshExpiredTiles:false,center:[31.6,29.9],zoom:5.6,maxZoom:MAX_ZOOM,attributionControl:{compact:true}});
   map.addControl(new maplibregl.NavigationControl({showCompass:true,visualizePitch:true}),"bottom-right");
   /* Layers are (re)built on every style change. `styledata` is the event that reliably fires
      for both the first load and every setStyle; `style.load` does not fire consistently across
@@ -13807,6 +13807,7 @@ async function pttDown(){
   try{ laraStopAudio(); }catch(e){}                                       // pressing while she talks = interrupt her
   try{ if(typeof speechSynthesis!=="undefined") speechSynthesis.cancel(); }catch(e){}
   if(LARA.lite){ liteDown(); return; }
+  if(!LARA.mic&&(LARA.ws||LARA.dozing)&&!LARA.sleeping){ try{ await laraMicOn(); }catch(e){} }    // V74.2: the line is open but the mic was closed - reopen it (R3)
   if(!LARA.mic||LARA.sleeping||LARA.st==="off"||LARA.st==="wake"||LARA.st==="error"&&!LARA.ws){       // not running yet: open her (no greeting)
     LARA.pttNoGreet=true; LARA.pttUserClose=false;
     try{ await laraStart({}); }catch(e){}
@@ -13814,8 +13815,9 @@ async function pttDown(){
     LARA.dozing=false; laraState("connecting");
     try{ await laraConnect(); }catch(e){ laraFail(e); return; }
   }
+  if(!PTT.down){ pttUi(); return; }                                         // V74.2: let go while connecting - pttUp already sent the question (R2)
   laraState("listening");
-  if(await waitOpen(15000)) flushStart();
+  if(await waitOpen(15000)&&PTT.down) flushStart();
 }
 async function pttUp(){
   if(!PTT.down) return; PTT.down=false; const held=Date.now()-PTT.t0;
@@ -13881,7 +13883,8 @@ function pttUi(){ const b=document.getElementById("laraPtt"); if(!b) return; con
 function bindHold(el,opts){ if(!el||el.__ptt) return; el.__ptt=1;
   let t=null, started=false, sx=0, sy=0;
   const down=e=>{ if(!on()||e.button>0) return; sx=e.clientX; sy=e.clientY; started=false;
-    if(opts&&opts.delay){ t=setTimeout(()=>{ started=true; LARA.dragged=Date.now()+600; pttDown(); },opts.delay); }
+    if(opts&&opts.delay){ t=setTimeout(()=>{ started=true; LARA.dragged=Date.now()+600; pttDown();
+        addEventListener("pointerup",up,{once:true}); addEventListener("pointercancel",up,{once:true}); },opts.delay); }   // V74.2: let go anywhere (R8)
     else { e.preventDefault(); started=true; try{ el.setPointerCapture(e.pointerId); }catch(x){} pttDown(); } };
   const mv=e=>{ if(t&&Math.hypot(e.clientX-sx,e.clientY-sy)>8){ clearTimeout(t); t=null; } };
   const up=()=>{ if(t){ clearTimeout(t); t=null; } if(started){ started=false; LARA.dragged=Date.now(); pttUp(); } };
@@ -13890,8 +13893,8 @@ function bindHold(el,opts){ if(!el||el.__ptt) return; el.__ptt=1;
   el.addEventListener("contextmenu",e=>{ if(on()) e.preventDefault(); }); }
 function typing(e){ const t=e.target; return t&&(t.isContentEditable||/^(input|textarea|select)$/i.test(t.tagName)); }
 addEventListener("keydown",e=>{ if(!on()||e.code!=="Space"||e.altKey||e.ctrlKey||e.metaKey||typing(e)) return;
-  const d=document.getElementById("laraDock"); if(!d||!laraOnline()) return; e.preventDefault(); if(!e.repeat) pttDown(); },true);
-addEventListener("keyup",e=>{ if(e.code==="Space"&&PTT.down&&!typing(e)){ e.preventDefault(); pttUp(); } },true);
+  const d=document.getElementById("laraDock"); if(!d||!laraOnline()) return; e.preventDefault(); e.stopImmediatePropagation(); if(!e.repeat) pttDown(); },true);   // V74.2: Space no longer also pauses the presentation (R9)
+addEventListener("keyup",e=>{ if(e.code==="Space"&&PTT.down&&!typing(e)){ e.preventDefault(); e.stopImmediatePropagation(); pttUp(); } },true);
 addEventListener("blur",()=>{ if(PTT.down) pttUp(); });
 
 function install(){
@@ -13921,8 +13924,7 @@ function install(){
   if(on()){ try{ laraWakeStop(); }catch(e){} }
   pttUi(); return true;
 }
-const k=setInterval(()=>{ if(install()) clearInterval(k); },400);
-setTimeout(()=>clearInterval(k),120000);
+const k=setInterval(()=>{ if(install()) clearInterval(k); },400);   // V74.2: keeps trying until Lara is built (sign-in can take minutes) (R4)
 const st=document.createElement("style"); st.textContent=`
 .lara-ptt{display:flex;align-items:center;justify-content:center;gap:10px;width:calc(100% - 20px);margin:8px 10px 4px;min-height:58px;border:0;border-radius:16px;
   background:linear-gradient(135deg,#B3263D,#7d1426);color:#fff;font:700 16px/1.2 Inter,system-ui,sans-serif;cursor:pointer;touch-action:none;user-select:none;
@@ -13997,7 +13999,9 @@ function scrubKpis(){ const k=document.getElementById("kpis"); if(!k||!isPub()) 
 function scrubFbar(){ const f=document.getElementById("fbar"); if(!f||!isPub()) return;
   f.querySelectorAll("button,label,.fchip,.fb,[data-f]").forEach(b=>{ if(/sold by|price|sales rep|client|customer/i.test(b.textContent)) (b.closest(".fgrp,.fitem,label,button")||b).style.display="none"; }); }
 function all(){ ["selpanel","parkcard","tip","sheet"].forEach(id=>scrub(document.getElementById(id))); scrubKpis(); scrubFbar(); }
-const mo=new MutationObserver(()=>{ if(isPub()) all(); });
+const mo=new MutationObserver(ms=>{ if(!isPub()) return;        // V74.2: scrub only the part that changed (a map hover used to re-scan everything) (R11)
+  const roots=new Set(); ms.forEach(m=>{ ["selpanel","parkcard","tip","sheet","kpis","fbar"].forEach(id=>{ const r=document.getElementById(id); if(r&&(r===m.target||r.contains(m.target))) roots.add(id); }); });
+  roots.forEach(id=>{ if(id==="kpis") scrubKpis(); else if(id==="fbar") scrubFbar(); else scrub(document.getElementById(id)); }); });
 const start=setInterval(()=>{ const ids=["selpanel","parkcard","tip","kpis","fbar","sheet"].map(i=>document.getElementById(i)).filter(Boolean);
   if(ids.length<4||typeof SBME==="undefined"||!SBME||!window.__sidMeFinal) return; clearInterval(start);
   if(!isPub()) return;
@@ -14172,7 +14176,8 @@ try{ if(Array.isArray(LARA_TOOLS)&&!LARA_TOOLS.some(t=>t.name==="compare_parks")
 let lastTouch=Date.now(), attract=false;
 ["pointerdown","keydown","wheel","touchstart"].forEach(t=>addEventListener(t,()=>{ lastTouch=Date.now();
   if(attract&&typeof PR!=="undefined"&&PR.on){ attract=false; try{ stopPresentation(); }catch(e){} } },true));
-setInterval(()=>{ try{ if(!pub()||attract||typeof PR==="undefined"||PR.on||!map) return;
+setInterval(()=>{ try{ if(attract&&!(typeof PR!=="undefined"&&PR.on)) attract=false;      // V74.2: the run ended by itself - present again later (R5)
+  if(!pub()||attract||typeof PR==="undefined"||PR.on||!map) return;
   if(Date.now()-lastTouch<60000) return;
   if(typeof LARA!=="undefined"&&(LARA.ws||["speaking","thinking","connecting"].includes(LARA.st))) return;
   if(document.getElementById("cmpOv")||document.querySelector(".tour-ov,.pres-tour")) return;
@@ -14186,9 +14191,9 @@ async function summary(day){
   ov.querySelector(".rs-d").onchange=e=>summary(e.target.value);
   try{
     const users=(await laraFn("sid-admin",{action:"list"})).users||[], rs=users.filter(u=>u.role==="roadshow").map(u=>String(u.email).toLowerCase());
-    const from=new Date(day+"T00:00:00+03:00").toISOString(), to=new Date(day+"T23:59:59+03:00").toISOString();
-    const {data,error}=await SB.from("sid_lara_log").select("at,by_email,kind,text,data").gte("at",from).lte("at",to).order("at",{ascending:true}).limit(5000);
-    if(error) throw error;
+    const off=(()=>{ try{ const p=new Intl.DateTimeFormat("en-US",{timeZone:"Africa/Cairo",timeZoneName:"shortOffset"}).formatToParts(new Date(day+"T12:00:00Z")).find(x=>x.type==="timeZoneName").value; const m=p.match(/([+-])(\d+)(?::(\d+))?/); return m?(m[1]+String(m[2]).padStart(2,"0")+":"+(m[3]||"00")):"+02:00"; }catch(e){ return "+03:00"; } })();   // Cairo offset of that day (summer time) (R14)
+    const from=new Date(day+"T00:00:00"+off).toISOString(), to=new Date(day+"T23:59:59"+off).toISOString();
+    let data=[], page=0; for(;page<10;page++){ const {data:d,error}=await SB.from("sid_lara_log").select("at,by_email,kind,text,data").gte("at",from).lte("at",to).order("at",{ascending:true}).range(page*1000,page*1000+999); if(error) throw error; data=data.concat(d||[]); if(!d||d.length<1000) break; }
     const D=(data||[]).filter(r=>!rs.length||rs.includes(String(r.by_email||"").toLowerCase()));
     const n=k=>D.filter(r=>r.kind===k).length, rsN=t=>D.filter(r=>r.kind==="roadshow"&&r.text===t).length;
     const parks={}; D.forEach(r=>{ const pk=r.kind==="roadshow"&&r.data&&r.data.park||(r.kind==="tool"&&r.data&&r.data.args&&/open_park|show_plot|open_360_tour/.test(r.text)&&r.data.args.park);
@@ -14354,11 +14359,11 @@ function panoInto(el,base){
     const tx=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,tx);
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGB,gl.RGB,gl.UNSIGNED_BYTE,im);
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    const pot=n=>(n&(n-1))===0; gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,pot(im.width)&&pot(im.height)?gl.REPEAT:gl.CLAMP_TO_EDGE);   // (R15) gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
     V.ready=true; const f=el.querySelector("iframe"); if(f) f.remove();       // the photo is here: the heavy viewer is not needed
     el.classList.add("pano-on"); requestAnimationFrame(loop);
   };
-  im.onerror=()=>{ cv.remove(); delete el.dataset.pano; };                     // keep the Teleport viewer
+  im.onerror=()=>{ try{ const x=gl.getExtension("WEBGL_lose_context"); if(x) x.loseContext(); }catch(e){} cv.remove(); el.dataset.pano="fail"; };   // V74.2: no leak, no retry (R6)                     // keep the Teleport viewer
   im.src=base+(big?"panorama.jpg":"panorama_web.jpg");
   el.insertBefore(cv,el.firstChild);
   // dragging looks left / right only (and holds the slide, like the viewer did)
@@ -14390,7 +14395,7 @@ if(typeof presTourFrame==="function"){
 
 /* ---------- 4. the Roadshow account: what it may open ---------- */
 if(typeof canSee==="function"){
-  const csV71=canSee, NOPUB=new Set(["audit","codes","approvals","demand","offer","editor","health","usage","settings","match.fin"]);
+  const csV71=canSee, NOPUB=new Set(["sales","audit","codes","approvals","demand","offer","editor","health","usage","settings","match.fin"]);
   canSee=function(id){ if(pub()&&NOPUB.has(String(id))) return false; return csV71(id); };
 }
 /* Investor match on the public screen: plots, sizes, utilities, logistics and the score - no prices, totals or proposals */
@@ -14510,7 +14515,7 @@ if(typeof LARA!=="undefined"){
     if(!d&&was){ const held=Date.now()-M.t0, frames=M.n, mx=M.max;
       try{ if(held>=300){ LUSE.turns=(LUSE.turns||0)+1;                                        // 7. count the question
           laraLog("info","mic",{held_ms:held,frames,max:+mx.toFixed(4),avg:frames?+(M.sum/frames).toFixed(4):0,ctx:LARA.ctxIn&&LARA.ctxIn.state});
-          if(held>900&&(frames<5||mx<0.003)){ laraLog("error","microphone silent while the button was held",{frames,max:mx}); try{ laraMicOff(); }catch(e){}
+          if(held>900&&(frames<5||mx<0.003)){ laraLog("error","microphone silent while the button was held",{frames,max:mx});   // V74.2: the mic stays open (closing it left Lara deaf until the line closed)
             try{ laraChipDone(laraChip("The microphone sent silence - check it is not muted, then try again"),false); }catch(e){} } } }catch(e){} }
     if(LARA.ws&&ptt()&&M.t0&&Date.now()-M.t0<480000) LARA.heardAt=Math.max(LARA.heardAt||0,Date.now()-60000);   // the 90 s watchdog: hold-to-talk keeps the line 8 min after the last press
     was=d; },60);
@@ -14521,6 +14526,7 @@ if(typeof LARA!=="undefined"){
       return ltV72.apply(this,arguments); }; }
   if(typeof laraSystem==="function"){ const sysV72=laraSystem;
     laraSystem=function(){ let t=sysV72();
+      if(ptt()||pub()) t=t.replace(/LANGUAGE LOCK:[^\n]*/,"");                                // the old "keep the first language" rule contradicted the new one (R12)
       if(ptt()||pub()) t+="\nLANGUAGE: answer every question in the language of THAT question — an English question gets an English answer, an Arabic question an Egyptian Arabic answer — even if the conversation started in the other language.";
       t+="\nNUMBERS: read every number whole and exactly as the tool gives it (3,270 sqm = \"three thousand two hundred seventy square metres\" / \"تلات آلاف ميتين وسبعين متر مربع\"; 483,822 = \"four hundred eighty-three thousand\"). Never drop the thousands. Round big areas only to a clear figure (\"about 484 thousand square metres\").";
       return t; }; }
@@ -14603,6 +14609,13 @@ if(typeof rowPass==="function"){ const rpV73=rowPass;
     if(!ok) return false;
     const q=s.toLowerCase(); return [r.unit,r.sector,S.reg.parks[r.park]&&S.reg.parks[r.park].name].filter(Boolean).join(" ").toLowerCase().includes(q); }; }
 
+/* every screen: a single status / sector given as text works too; the 360 tour opens for the park on screen */
+if(typeof laraRun==="function"){ const lrFix=laraRun;
+  laraRun=function(name,a){ a=a&&typeof a==="object"?{...a}:a||{};
+    if(name==="set_filters") ["status","sector","quarter","quarters","years","year","land_type","phase"].forEach(k=>{ if(typeof a[k]==="string"&&a[k].trim()) a[k]=[a[k]]; else if(typeof a[k]==="number") a[k]=[a[k]]; });
+    if(name==="open_360_tour"&&!a.park&&typeof TOURS!=="undefined"){ const t=TOURS.find(x=>x.park===S.park); if(t) a.park=t.name; }
+    return lrFix.call(this,name,a); }; }
+
 /* RS-03: no change history on the public screen */
 if(typeof audBtn==="function"){ const abV73=audBtn; audBtn=function(r){ if(pub()) return ""; return abV73.apply(this,arguments); }; }
 if(typeof audPlot==="function"){ const apV73=audPlot; audPlot=function(){ if(pub()) return; return apV73.apply(this,arguments); }; }
@@ -14649,7 +14662,9 @@ setInterval(()=>{ try{ if(typeof map==="undefined"||!map||!map.getCanvas) return
   if(!w.offsetParent) return; if(Math.abs(c.clientHeight-w.clientHeight)>2||Math.abs(c.clientWidth-w.clientWidth)>2) map.resize(); }catch(e){} },2000);
 { const st=document.createElement("style"); st.textContent=`
   body.sid-public .dn{pointer-events:none!important;cursor:default!important;text-decoration:none!important;border-bottom:0!important}
-  body.sid-public #drov,body.sid-public .sp-log,body.sid-public #audDlg{display:none!important}`; document.head.appendChild(st); }
+  body.sid-public #drov,body.sid-public .sp-log,body.sid-public #audDlg{display:none!important}
+  @media (max-width:820px){ .kpis .kpi .k,.kpis.map5 .kpi .k{font-size:10px!important}
+    .aud-pl{min-height:30px;padding:4px 8px!important} button.poi{min-height:30px} }`; document.head.appendChild(st); }
 })();
 </script>
 </body>
