@@ -14715,8 +14715,10 @@ function addLayers(){
   map.addSource("pipe-bd",{type:"geojson",data:g.bd});
   map.addSource("pipe-pts",{type:"geojson",data:g.pts});
   map.addLayer({id:"pipe-fill",type:"fill",source:"pipe-bd",paint:{"fill-color":"#FFFFFF","fill-opacity":["interpolate",["linear"],["zoom"],8,.25,13,.06]}},before());
-  map.addLayer({id:"pipe-line",type:"line",source:"pipe-bd",paint:{"line-color":sat?"#FFFFFF":"#1C1C1F","line-width":["interpolate",["linear"],["zoom"],8,1,15,2.4],
-    "line-dasharray":["case",["==",["get","traced"],1],["literal",[1,0]],["literal",[3,2]]],"line-opacity":.95}},before());
+  const lw=["interpolate",["linear"],["zoom"],8,1,15,2.4], lc=sat?"#FFFFFF":"#1C1C1F";
+  map.addLayer({id:"pipe-line",type:"line",source:"pipe-bd",filter:["==",["get","traced"],1],paint:{"line-color":lc,"line-width":lw,"line-opacity":.95}},before());
+  // a land with a picture only: the dashed frame of the picture, not a border
+  map.addLayer({id:"pipe-frame",type:"line",source:"pipe-bd",filter:["!=",["get","traced"],1],paint:{"line-color":lc,"line-width":lw,"line-opacity":.8,"line-dasharray":[3,2]}},before());
   map.addLayer({id:"pipe-dot",type:"circle",source:"pipe-pts",paint:{"circle-radius":["interpolate",["linear"],["zoom"],4,4.5,10,7],"circle-color":"#FFFFFF",
     "circle-stroke-color":"#1C1C1F","circle-stroke-width":2,"circle-opacity":1}});
   map.addLayer({id:"pipe-label",type:"symbol",source:"pipe-pts",minzoom:5.4,
