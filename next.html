@@ -14850,22 +14850,20 @@ const projOf=name=>{ const D=P(); if(!D) return null; const p=D.projects.find(x=
   return {p,lands,traced:tr,total:tr.reduce((a,l)=>a+l.area,0),at,lg,pf}; };
 
 /* ---- 1. the top cards show the picked pipeline project ---- */
-let painting=false;
 function paintKpis(){
   const el=document.getElementById("kpis"), f=window.SID_PIPE&&window.SID_PIPE.focus; if(!el) return;
   if(!f){ if(el.dataset.pp){ delete el.dataset.pp; if(typeof render==="function") try{ render(); }catch(e){} } return; }
   const x=projOf(f); if(!x) return;
-  painting=true;
   el.dataset.pp=f;
-  el.innerHTML=`<div class="kpi"><span class="k">Pipeline project</span><span class="v">${esc(f)}</span><span class="s">Land only · no approved master plan</span></div>
+  el.innerHTML=`<div class="kpi" data-ppk="1"><span class="k">Pipeline project</span><span class="v">${esc(f)}</span><span class="s">Land only · no approved master plan</span></div>
     <div class="kpi"><span class="k">Land area</span><span class="v">${x.traced.length?sq(x.total)+" sqm":"—"}</span><span class="s">${x.traced.length?"from the drawn border":"border not drawn in the KMZ"}</span></div>
     <div class="kpi"><span class="k">Lands</span><span class="v">${x.lands.length}</span><span class="s">${x.pf&&x.pf.area?"Portfolio area "+sq(x.pf.area)+" sqm":"No portfolio area yet"}</span></div>
     <div class="kpi"><span class="k">Nearest seaport</span><span class="v">${x.lg?fKm(x.lg.port.km)+" km":"—"}</span><span class="s">${x.lg?esc(x.lg.port.name)+" · Cairo "+fKm(x.lg.cairo)+" km":""}</span></div>`;
-  painting=false;
 }
 window.__ppFocus=()=>paintKpis();
 { const k=setInterval(()=>{ const el=document.getElementById("kpis"); if(!el) return; clearInterval(k);
-    new MutationObserver(()=>{ if(!painting&&window.SID_PIPE&&window.SID_PIPE.focus&&el.dataset.pp!==undefined) paintKpis(); else if(!painting&&window.SID_PIPE&&window.SID_PIPE.focus) paintKpis(); }).observe(el,{childList:true}); },700); }
+    // repaint only when the app replaced the cards (our own cards carry data-ppk): never loops
+    new MutationObserver(()=>{ if(window.SID_PIPE&&window.SID_PIPE.focus&&!el.querySelector('[data-ppk]')) paintKpis(); }).observe(el,{childList:true}); },700); }
 
 /* ---- 2. Pipeline only / Active only ---- */
 let MODE=""; try{ MODE=localStorage.getItem("sid.pfMode")||""; }catch(e){}
