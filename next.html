@@ -14746,7 +14746,8 @@ function addPins(){
 /* the project menu: the pipeline projects in their own group; picking one flies there and opens its card */
 function addMenu(){
   const sel=[...document.querySelectorAll("select")].find(x=>x.querySelector('option[value="industria-east"]'));
-  if(!sel||sel.querySelector("optgroup.pp-grp")) return;
+  if(sel&&sel.querySelector("optgroup.pp-grp")){ if(PIPE.focus&&sel.value!=="pipe:"+PIPE.focus) sel.value="pipe:"+PIPE.focus; return; }
+  if(!sel) return;
   const g=document.createElement("optgroup"); g.className="pp-grp"; g.label="Pipeline — no master plan";
   PIPE.data.projects.forEach(p=>{ const o=document.createElement("option"); o.value="pipe:"+p.name; o.textContent=p.name; g.appendChild(o); });
   sel.appendChild(g);
