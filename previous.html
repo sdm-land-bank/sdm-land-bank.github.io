@@ -14661,6 +14661,7 @@ const k=setInterval(()=>{ if(!window.__sidMeFinal||typeof SBME==="undefined"||!S
 setInterval(()=>{ try{ if(typeof map==="undefined"||!map||!map.getCanvas) return; const c=map.getCanvas(), w=map.getContainer();
   if(!w.offsetParent) return; if(Math.abs(c.clientHeight-w.clientHeight)>2||Math.abs(c.clientWidth-w.clientWidth)>2) map.resize(); }catch(e){} },2000);
 { const st=document.createElement("style"); st.textContent=`
+  aside.rail,aside.rail *{scrollbar-width:none!important} aside.rail::-webkit-scrollbar,aside.rail *::-webkit-scrollbar{display:none!important;width:0!important}
   body.sid-public .dn{pointer-events:none!important;cursor:default!important;text-decoration:none!important;border-bottom:0!important}
   body.sid-public #drov,body.sid-public .sp-log,body.sid-public #audDlg{display:none!important}
   @media (max-width:820px){ .kpis .kpi .k,.kpis.map5 .kpi .k{font-size:10px!important}

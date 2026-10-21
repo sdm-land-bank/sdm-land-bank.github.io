@@ -12388,7 +12388,7 @@ function sbLoginUI(){
   return new Promise(res=>{
     const g=gateEl();
     g.innerHTML=`<form class="sbg-box" id="sbgForm" autocomplete="on"><img src="${BRAND.logo}" alt="Elsewedy Industrial Development">
-      <div class="sbg-t">SID Dashboard</div><p class="sbg-m">Sign in to open the land bank, sales and investor tools.</p>
+      <div class="sbg-t">SID Dashboard</div><p class="sbg-m">Sign in to open the land bank, sales and investor tools.</p>${(()=>{ try{ if(localStorage.getItem("sid.autoLogout")){ localStorage.removeItem("sid.autoLogout"); return `<p style="background:#fff4e0;color:#7a4a00;border:1px solid #f0c987;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.4;margin:0 0 4px">You were signed out automatically because there was no activity for 1 hour.</p>`; } }catch(e){} return ""; })()}
       <label>Email<input type="email" id="sbgE" autocomplete="username" required></label>
       <label>Password<input type="password" id="sbgP" autocomplete="current-password" required></label>
       <button class="applybtn" type="submit" id="sbgB">Sign in</button><p class="sbg-err" id="sbgErr"></p></form>`;
@@ -14666,6 +14666,52 @@ setInterval(()=>{ try{ if(typeof map==="undefined"||!map||!map.getCanvas) return
   body.sid-public #drov,body.sid-public .sp-log,body.sid-public #audDlg{display:none!important}
   @media (max-width:820px){ .kpis .kpi .k,.kpis.map5 .kpi .k{font-size:10px!important}
     .aud-pl{min-height:30px;padding:4px 8px!important} button.poi{min-height:30px} }`; document.head.appendChild(st); }
+})();
+</script>
+
+<script>
+/* ============================================================================
+   V75 — auto sign-out after 1 hour of inactivity (saves database, storage and bandwidth overnight)
+   ========================================================================== */
+(function(){
+const LIMIT=60*60e3, WARN=55*60e3, KEY="sid.lastActive", FLAG="sid.autoLogout";
+let mem=0, lastWrite=0, out=false, bar=null;
+const rd=()=>{ let v=0; try{ v=Number(localStorage.getItem(KEY))||0; }catch(e){} return Math.max(mem,v); };
+const wr=t=>{ mem=t; try{ localStorage.setItem(KEY,String(t)); }catch(e){} };
+function touch(){ const n=Date.now(); mem=n; if(n-lastWrite>10e3){ lastWrite=n; wr(n); } if(bar) hide(); }
+["pointerdown","mousedown","keydown","wheel","touchstart","touchmove","mousemove","click","input"].forEach(e=>window.addEventListener(e,touch,{capture:true,passive:true}));
+window.addEventListener("scroll",touch,{capture:true,passive:true});
+// typing or scrolling inside the offer-preview iframe does not reach this page: focus moving into a frame counts as activity
+window.addEventListener("blur",()=>{ setTimeout(()=>{ try{ if(document.activeElement&&document.activeElement.tagName==="IFRAME") touch(); }catch(e){} },0); });
+const signedIn=()=>{ try{ return typeof SB!=="undefined"&&SB&&typeof SBU!=="undefined"&&SBU; }catch(e){ return false; } };
+const kiosk=()=>typeof window.sidPublic==="function"&&window.sidPublic();
+const laraBusy=()=>{ try{ const d=document.getElementById("laraDock"); return !!(d&&d.classList.contains("open")&&d.dataset.st&&d.dataset.st!=="off"); }catch(e){ return false; } };
+function hide(){ if(bar){ bar.remove(); bar=null; } }
+function show(left){
+  if(!bar){ bar=document.createElement("div"); bar.id="idleWarn";
+    bar.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:100000;max-width:calc(100vw - 32px);display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center;background:#1c1c1f;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px 16px;font:500 14px/1.35 Inter,system-ui,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.4)";
+    bar.innerHTML='<span id="idleTxt"></span><button id="idleStay" style="background:#A6192E;color:#fff;border:0;border-radius:10px;padding:8px 14px;font:600 14px Inter,system-ui,sans-serif;cursor:pointer;min-height:36px">Stay signed in</button>';
+    document.body.appendChild(bar); bar.querySelector("#idleStay").onclick=()=>{ wr(Date.now()); lastWrite=Date.now(); hide(); }; }
+  const m=Math.max(1,Math.ceil(left/60e3)); bar.querySelector("#idleTxt").textContent="No activity for a while. You will be signed out automatically in "+m+" minute"+(m>1?"s":"")+".";
+}
+async function logout(){
+  if(out) return; out=true;
+  try{ localStorage.setItem(FLAG,String(Date.now())); }catch(e){}
+  try{ await SB.auth.signOut(); }catch(e){}
+  location.reload();
+}
+function tick(){
+  if(out||!signedIn()||kiosk()){ hide(); return; }
+  const idle=Date.now()-rd();
+  if(idle<0){ hide(); return; }                       // the clock moved back: never sign out because of it
+  if(idle>=LIMIT){ if(laraBusy()){ wr(Date.now()); return; } hide(); logout(); }
+  else if(idle>=WARN) show(LIMIT-idle); else hide();
+}
+setInterval(tick,15e3);
+["visibilitychange","focus","pageshow","online"].forEach(e=>window.addEventListener(e,()=>setTimeout(tick,200)));
+// no stamp yet (first visit): the hour starts now
+try{ if(!localStorage.getItem(KEY)) wr(Date.now()); }catch(e){}
+window.addEventListener("storage",e=>{ if(e.key===KEY) mem=Math.max(mem,Number(e.newValue)||0); });
 })();
 </script>
 </body>
