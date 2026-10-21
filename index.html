@@ -14738,7 +14738,7 @@ function addPins(){
   (PIPE.pins||[]).forEach(m=>m.remove()); PIPE.pins=[];
   PIPE.data.projects.forEach(p=>{ if(!p.at) return;
     const el=document.createElement("button"); el.type="button"; el.className="pp-pin"; el.setAttribute("aria-label",p.name+" — pipeline land");
-    el.innerHTML=`<span class="pp-pulse"></span><span class="pp-dot"></span><b>${esc(p.name)}</b>`;
+    el.innerHTML=`<span class="pp-pulse"></span><span class="pp-dot"></span><b>${esc(p.name)}<i>Pipeline · land only</i></b>`;
     el.addEventListener("click",e=>{ e.stopPropagation(); openCard(p.name); });
     ["mousedown","touchstart","pointerdown","dblclick"].forEach(t=>el.addEventListener(t,e=>e.stopPropagation()));
     PIPE.pins.push(new maplibregl.Marker({element:el,anchor:"left",offset:[-9,0]}).setLngLat(p.at).addTo(map)); });
@@ -14746,14 +14746,17 @@ function addPins(){
 /* the project menu: the pipeline projects in their own group; picking one flies there and opens its card */
 function addMenu(){
   const sel=[...document.querySelectorAll("select")].find(x=>x.querySelector('option[value="industria-east"]'));
-  if(!sel||sel.querySelector("optgroup.pp-grp")) return;
+  if(sel&&sel.querySelector("optgroup.pp-grp")){ if(PIPE.focus&&sel.value!=="pipe:"+PIPE.focus) sel.value="pipe:"+PIPE.focus; return; }
+  if(!sel) return;
   const g=document.createElement("optgroup"); g.className="pp-grp"; g.label="Pipeline — no master plan";
   PIPE.data.projects.forEach(p=>{ const o=document.createElement("option"); o.value="pipe:"+p.name; o.textContent=p.name; g.appendChild(o); });
   sel.appendChild(g);
   if(!sel.dataset.ppWired){ sel.dataset.ppWired="1"; let prev=sel.value;
     sel.addEventListener("focus",()=>{ if(!sel.value.startsWith("pipe:")) prev=sel.value; });
     sel.addEventListener("change",e=>{ if(!sel.value.startsWith("pipe:")){ prev=sel.value; return; }
-      e.stopImmediatePropagation(); const name=sel.value.slice(5); sel.value=prev; openCard(name); },true); }
+      e.stopImmediatePropagation(); openCard(sel.value.slice(5)); },true);
+    sel.addEventListener("change",()=>{ if(!sel.value.startsWith("pipe:")&&PIPE.focus){ PIPE.focus=null; try{ window.__ppFocus&&window.__ppFocus(null); }catch(e){} } }); }
+  if(PIPE.focus&&sel.value!=="pipe:"+PIPE.focus) sel.value="pipe:"+PIPE.focus;
 }
 function lazyImages(){
   if(!PIPE.data||!map) return;
@@ -14779,6 +14782,7 @@ function addImage(id){
 }
 function openCard(name){
   const D=PIPE.data; if(!D) return;
+  PIPE.focus=name; try{ window.__ppFocus&&window.__ppFocus(name); }catch(e){}
   const p=D.projects.find(x=>x.name===name)||{name,lands:D.lands.filter(l=>l.project===name).map(l=>l.id)};
   const lands=p.lands.map(id=>D.lands.find(l=>l.id===id)).filter(Boolean);
   const traced=lands.filter(l=>l.traced), total=traced.reduce((a,l)=>a+l.area,0);
@@ -14805,7 +14809,7 @@ function openCard(name){
     ${landHtml}
     <p class="note" style="margin:8px 0 0">Source: ${esc(D.source)} from the development team. Zoom in to see the drawing.</p>`;
   el.hidden=false;
-  el.querySelector(".pc-x").onclick=()=>{ el.hidden=true; };
+  el.querySelector(".pc-x").onclick=()=>{ el.hidden=true; PIPE.focus=null; try{ window.__ppFocus&&window.__ppFocus(null); }catch(e){} };
   el.querySelectorAll(".pp-copy").forEach(b=>b.onclick=async()=>{ const l=D.lands.find(x=>x.id===b.dataset.id); if(!l) return;
     const txt=l.name+"\n"+(l.traced?l.border.slice(0,-1):l.corners).map(ll).join("\n");
     try{ await navigator.clipboard.writeText(txt); b.textContent="Copied"; }catch(e){ b.textContent="Select the list and copy"; } setTimeout(()=>b.textContent="Copy coordinates",1800); });
@@ -14817,7 +14821,9 @@ window.sidPipeOpen=openCard;
   .pp-pin{display:flex;align-items:center;gap:7px;padding:0;border:0;background:none;cursor:pointer}
   .pp-pin .pp-dot{width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #1C1C1F;box-shadow:0 1px 4px rgba(0,0,0,.35);flex:none;position:relative;z-index:1}
   .pp-pin .pp-pulse{position:absolute;left:-6px;top:50%;width:26px;height:26px;margin-top:-13px;border-radius:50%;background:rgba(255,255,255,.7);animation:ppPulse 2.2s ease-out infinite;pointer-events:none}
-  .pp-pin b{font:700 11px/1 Inter,system-ui,sans-serif;color:#16181D;background:#fff;border-radius:999px;padding:5px 9px;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:nowrap}
+  .pp-pin b{display:flex;flex-direction:column;gap:2px;font:800 12.5px/1.1 Inter,system-ui,sans-serif;letter-spacing:.2px;color:#16181D;background:#fff;border-radius:10px;padding:6px 11px 6px 10px;border-left:3px solid #3A404A;box-shadow:0 3px 12px rgba(0,0,0,.28);white-space:nowrap}
+  .pp-pin b i{font:600 9px/1 Inter,system-ui,sans-serif;font-style:normal;letter-spacing:.8px;text-transform:uppercase;color:#6E737B}
+  .pp-pin:hover b i{color:#C9CCD1}
   .pp-pin:hover b{background:#16181D;color:#fff}
   @keyframes ppPulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.9);opacity:0}}
   @media (prefers-reduced-motion:reduce){.pp-pin .pp-pulse{animation:none;opacity:0}}
@@ -14827,6 +14833,114 @@ window.sidPipeOpen=openCard;
   .pp-pts{max-height:150px;overflow:auto;font:11px/1.5 ui-monospace,Menlo,monospace;background:var(--n100,#f2f2f7);border-radius:8px;padding:8px;margin:0 0 8px;user-select:text;white-space:pre}`;
   document.head.appendChild(st); }
 setInterval(()=>{ try{ if(pub()) return; if(!PIPE.data){ load(); return; } if(styleOk()&&!map.getSource("pipe-pts")){ addLayers(); refreshPins(); } addMenu(); }catch(e){} },1500);
+})();
+</script>
+
+<script>
+/* ============================================================================
+   V76.2 — pipeline: the top cards follow the picked project · "Pipeline only" / "Active only" · Lara knows the projects
+   ========================================================================== */
+(function(){
+const pub=()=>typeof window.sidPublic==="function"&&window.sidPublic();
+const P=()=>window.SID_PIPE&&window.SID_PIPE.data;
+const sq=n=>typeof fSq==="function"?fSq(n):Math.round(n).toLocaleString("en-US");
+const projOf=name=>{ const D=P(); if(!D) return null; const p=D.projects.find(x=>x.name===name); if(!p) return null;
+  const lands=p.lands.map(id=>D.lands.find(l=>l.id===id)).filter(Boolean), tr=lands.filter(l=>l.traced);
+  const at=p.at||lands[0].border[0]; let lg=null; try{ lg=logisticsAt(at); }catch(e){}
+  const pf=p.replaces&&typeof PORTFOLIO!=="undefined"?PORTFOLIO.find(x=>x.name===p.replaces):null;
+  return {p,lands,traced:tr,total:tr.reduce((a,l)=>a+l.area,0),at,lg,pf}; };
+
+/* ---- 1. the top cards show the picked pipeline project ---- */
+function paintKpis(){
+  const el=document.getElementById("kpis"), f=window.SID_PIPE&&window.SID_PIPE.focus; if(!el) return;
+  if(!f){ if(el.dataset.pp){ delete el.dataset.pp; if(typeof render==="function") try{ render(); }catch(e){} } return; }
+  const x=projOf(f); if(!x) return;
+  el.dataset.pp=f;
+  el.innerHTML=`<div class="kpi" data-ppk="1"><span class="k">Pipeline project</span><span class="v">${esc(f)}</span><span class="s">Land only · no approved master plan</span></div>
+    <div class="kpi"><span class="k">Land area</span><span class="v">${x.traced.length?sq(x.total)+" sqm":"—"}</span><span class="s">${x.traced.length?"from the drawn border":"border not drawn in the KMZ"}</span></div>
+    <div class="kpi"><span class="k">Lands</span><span class="v">${x.lands.length}</span><span class="s">${x.pf&&x.pf.area?"Portfolio area "+sq(x.pf.area)+" sqm":"No portfolio area yet"}</span></div>
+    <div class="kpi"><span class="k">Nearest seaport</span><span class="v">${x.lg?fKm(x.lg.port.km)+" km":"—"}</span><span class="s">${x.lg?esc(x.lg.port.name)+" · Cairo "+fKm(x.lg.cairo)+" km":""}</span></div>`;
+}
+window.__ppFocus=()=>paintKpis();
+{ const k=setInterval(()=>{ const el=document.getElementById("kpis"); if(!el) return; clearInterval(k);
+    // repaint only when the app replaced the cards (our own cards carry data-ppk): never loops
+    new MutationObserver(()=>{ if(window.SID_PIPE&&window.SID_PIPE.focus&&!el.querySelector('[data-ppk]')) paintKpis(); }).observe(el,{childList:true}); },700); }
+
+/* ---- 2. Pipeline only / Active only ---- */
+let MODE=""; try{ MODE=localStorage.getItem("sid.pfMode")||""; }catch(e){}
+const OPS_SRC=new Set(["plots","factories","pins"]);
+function applyMode(){
+  if(typeof map==="undefined"||!map||!map.style||!map.style._loaded) return;
+  document.body.classList.toggle("pp-only",MODE==="pipe"); document.body.classList.toggle("act-only",MODE==="act");
+  try{ (map.getStyle().layers||[]).forEach(l=>{
+    const ops=OPS_SRC.has(l.source), pp=/^pipe-/.test(l.id);
+    if(!ops&&!pp) return;
+    const want=(ops&&MODE==="pipe")||(pp&&MODE==="act")?"none":"visible";
+    if(map.getLayoutProperty(l.id,"visibility")!==want) map.setLayoutProperty(l.id,"visibility",want); }); }catch(e){}
+  document.querySelectorAll(".pp-mode").forEach(b=>b.classList.toggle("on",b.dataset.m===MODE));
+}
+function fitMode(){
+  try{ let pts=[];
+    if(MODE==="pipe"&&P()) P().lands.forEach(l=>l.border.forEach(c=>pts.push(c)));
+    if(MODE==="act"&&typeof PORTFOLIO!=="undefined") PORTFOLIO.filter(p=>p.stage==="operating").forEach(p=>pts.push([p.lng,p.lat]));
+    if(!pts.length) return;
+    const xs=pts.map(c=>c[0]), ys=pts.map(c=>c[1]);
+    map.fitBounds([[Math.min(...xs),Math.min(...ys)],[Math.max(...xs),Math.max(...ys)]],{padding:80,maxZoom:10,duration:typeof RM!=="undefined"&&RM?0:700}); }catch(e){}
+}
+function addButtons(){
+  if(pub()||!P()) return;
+  const bar=document.querySelector(".mapbtns"); if(!bar||bar.querySelector(".pp-mode")) return;
+  const ref=bar.querySelector("#p3Btn")||bar.firstElementChild;
+  [["pipe","Pipeline only","Show only the pipeline lands (no master plan yet)"],["act","Active only","Show only the operating parks"]].forEach(([m,t,ti])=>{
+    const b=document.createElement("button"); b.type="button"; b.className="pp-mode"; b.dataset.m=m; b.textContent=t; b.title=ti;
+    b.onclick=()=>{ MODE=MODE===m?"":m; try{ localStorage.setItem("sid.pfMode",MODE); }catch(e){} applyMode(); if(MODE) fitMode(); };
+    ref.after(b); });
+  // keep the two in reading order after 3D view
+  const bs=bar.querySelectorAll(".pp-mode"); if(bs.length===2&&bs[0].dataset.m==="act") bs[1].after(bs[0]);
+  applyMode();
+}
+{ const st=document.createElement("style"); st.textContent=`
+  body.pp-only .plogo,body.pp-only .tpin{display:none!important}
+  body.act-only .pp-pin{display:none!important}
+  .mapbtns .pp-mode.on{background:#16181D;color:#fff}`; document.head.appendChild(st); }
+setInterval(()=>{ try{ if(pub()){ MODE=""; return; } addButtons(); applyMode(); }catch(e){} },1500);
+
+/* ---- 3. Lara knows the pipeline projects and flies to them while she talks ---- */
+const AL={"Sephora":["sephora","سفورا","سيفورا"],"SID Sharkeyoun":["sharkeyoun","sharqiyoun","شرقيون","الشرقيون"],"Qantara":["qantara","kantara","القنطرة"],
+  "Serag Land":["serag","سراج"],"New Asher":["new asher","asher new","العاشر الجديدة","العاشر الجديد"],"Abo Rawash":["abo rawash","abu rawash","أبو رواش","ابو رواش"],
+  "New Capital":["new capital","administrative capital","العاصمة","العاصمة الإدارية"],"New October 2":["new october","october 2","أكتوبر الجديدة","اكتوبر الجديدة","أكتوبر 2"],
+  "Ras El Hekma":["ras el hekma","ras al hekma","hekma","رأس الحكمة","راس الحكمة"],"New Damietta":["damietta","دمياط","دمياط الجديدة"],
+  "Industria Safaga":["safaga","سفاجا"],"Dabaa":["dabaa","daba'a","dabaa corridor","الضبعة"],"Industria Menya":["menya","minya","المنيا"],"D75":["d75","d 75","دي 75"]};
+const norm=t=>String(t||"").toLowerCase().replace(/[إأآ]/g,"ا").replace(/industria|اندستريا|إندستريا|project|مشروع/g,"").replace(/[^a-z0-9؀-ۿ ]+/g," ").replace(/\s+/g," ").trim();
+function match(q){ const n=norm(q); if(!n||!P()) return null;
+  for(const [k,arr] of Object.entries(AL)) if(arr.concat([k]).some(a=>{ const m=norm(a); return m&&(n===m||(` ${n} `).includes(` ${m} `)); })) return P().projects.find(p=>p.name===k)?k:null;
+  return null; }
+// an operating park (Industria Asher, Industria October...) always wins over a pipeline name
+const opMatch=q=>{ try{ const n=norm(q); return PORTFOLIO.filter(p=>p.stage==="operating").some(p=>{ const m=norm(p.name); return m&&(m===n||m.startsWith(n+" ")||n===m.split(" ")[0]); }); }catch(e){ return false; } };
+function facts(name){ const x=projOf(name); if(!x) return null;
+  return {project:name, stage:"pipeline — land only, there is NO approved master plan yet (say so)",
+    total_land_area_sqm:x.traced.length?Math.round(x.total):null, lands:x.lands.map(l=>({name:l.name,area_sqm:l.traced?l.area:null})),
+    portfolio_area_sqm:x.pf&&x.pf.area||null, location:{lat:+x.at[1].toFixed(5),lng:+x.at[0].toFixed(5)},
+    nearest_seaport:x.lg?`${x.lg.port.name}, ${Math.round(x.lg.port.km)} km`:null, nearest_airport:x.lg?`${x.lg.air.name}, ${Math.round(x.lg.air.km)} km`:null,
+    km_to_cairo:x.lg?Math.round(x.lg.cairo):null, on_screen:"the map is flying to it now and its card is open; zoom in shows the concept drawing" }; }
+function laraList(){ const D=P(); if(!D) return "";
+  return D.projects.map(p=>{ const x=projOf(p.name); return `- ${p.name}${(AL[p.name]||[]).filter(a=>/[؀-ۿ]/.test(a)).slice(0,1).map(a=>" ("+a+")").join("")}: ${x.traced.length?Math.round(x.total/1e5)/10+"M sqm drawn border":"border not drawn"}${x.lg?", near "+x.lg.port.name+" ("+Math.round(x.lg.port.km)+" km), "+Math.round(x.lg.cairo)+" km from Cairo":""}`; }).join("\n"); }
+if(typeof LARA_TOOLS!=="undefined"&&Array.isArray(LARA_TOOLS)&&!LARA_TOOLS.some(t=>t.name==="open_pipeline_project"))
+  LARA_TOOLS.push({name:"open_pipeline_project",description:"Fly the map to one of the NEW pipeline projects (land only, no approved master plan) and open its card while you talk about it. Returns its area, location and logistics. Use list=true to get every pipeline project.",
+    parameters:{type:"OBJECT",properties:{project:{type:"STRING",description:"Pipeline project name, e.g. Dabaa, Ras El Hekma, New Capital"},list:{type:"BOOLEAN",description:"true to list all pipeline projects"}}}});
+if(typeof laraSystem==="function"){ const lsV762=laraSystem;
+  laraSystem=function(){ let t=lsV762.apply(this,arguments); try{ if(!pub()&&P()) t+=`\n\nPIPELINE PROJECTS (new lands, NO approved master plan yet — only the land, its location and outer border; no plots, no prices, no sales). When the user asks about pipeline / future / new projects or names one, CALL open_pipeline_project so the map flies there WHILE you speak, then describe it from the tool result. Say clearly there is no approved master plan yet. Never invent plot counts or prices for them.\n${laraList()}`; }catch(e){} return t; }; }
+if(typeof laraRun==="function"){ const lrV762=laraRun;
+  laraRun=async function(name,a){ a=a||{};
+    if(!pub()&&P()){
+      if(name==="open_pipeline_project"){
+        if(a.list||!a.project) return {pipeline_projects:P().projects.map(p=>facts(p.name))};
+        const k=match(a.project); if(!k) return {error:"No pipeline project called "+a.project,known:P().projects.map(p=>p.name)};
+        window.sidPipeOpen(k); return facts(k); }
+      if(name==="open_park"&&a.park){ const k=match(a.park); if(k&&!opMatch(a.park)){ window.sidPipeOpen(k); return facts(k); } }
+    }
+    if(name==="open_pipeline_project") return {error:"Pipeline projects are not available on this screen."};
+    return lrV762.apply(this,arguments); }; }
 })();
 </script>
 
