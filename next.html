@@ -14680,6 +14680,7 @@ const pub=()=>typeof window.sidPublic==="function"&&window.sidPublic();
 const ready=()=>{ try{ return typeof SB!=="undefined"&&SB&&typeof SBU!=="undefined"&&SBU&&typeof map!=="undefined"&&map; }catch(e){ return false; } };
 const fmtSq=n=>typeof fSq==="function"?fSq(n):Math.round(n).toLocaleString("en-US");
 const ll=p=>p[1].toFixed(6)+", "+p[0].toFixed(6);
+const styleOk=()=>{ try{ return !!(map&&map.style&&map.style._loaded); }catch(e){ return false; } };   // isStyleLoaded() can stay false while a source keeps loading
 const replaced=()=>new Set(((PIPE.data&&PIPE.data.projects)||[]).map(p=>p.replaces).filter(Boolean));
 
 async function load(){
@@ -14710,7 +14711,7 @@ function fc(){
 }
 function before(){ return map.getLayer("pin-dot")?"pin-dot":undefined; }
 function addLayers(){
-  if(!PIPE.data||!map.isStyleLoaded()||map.getSource("pipe-pts")) return;
+  if(!PIPE.data||!styleOk()||map.getSource("pipe-pts")) return;
   const g=fc(), sat=typeof S!=="undefined"&&S.base==="sat";
   map.addSource("pipe-bd",{type:"geojson",data:g.bd});
   map.addSource("pipe-pts",{type:"geojson",data:g.pts});
@@ -14770,7 +14771,7 @@ function lazyImages(){
 }
 function addImage(id){
   try{
-    const l=PIPE.data.lands.find(x=>x.id===id); if(!l||!PIPE.urls[id]||!map.isStyleLoaded()) return;
+    const l=PIPE.data.lands.find(x=>x.id===id); if(!l||!PIPE.urls[id]||!styleOk()) return;
     const sid="pipe-img-"+id; if(map.getSource(sid)) return;
     map.addSource(sid,{type:"image",url:PIPE.urls[id],coordinates:l.corners});
     map.addLayer({id:sid,type:"raster",source:sid,minzoom:11,paint:{"raster-opacity":.92,"raster-fade-duration":200}},map.getLayer("pipe-fill")?"pipe-fill":before());
@@ -14825,7 +14826,7 @@ window.sidPipeOpen=openCard;
   .pp-land summary{cursor:pointer;font-size:12.5px}
   .pp-pts{max-height:150px;overflow:auto;font:11px/1.5 ui-monospace,Menlo,monospace;background:var(--n100,#f2f2f7);border-radius:8px;padding:8px;margin:0 0 8px;user-select:text;white-space:pre}`;
   document.head.appendChild(st); }
-setInterval(()=>{ try{ if(pub()) return; if(!PIPE.data){ load(); return; } if(map&&map.isStyleLoaded&&map.isStyleLoaded()&&!map.getSource("pipe-pts")){ addLayers(); refreshPins(); } addMenu(); }catch(e){} },1500);
+setInterval(()=>{ try{ if(pub()) return; if(!PIPE.data){ load(); return; } if(styleOk()&&!map.getSource("pipe-pts")){ addLayers(); refreshPins(); } addMenu(); }catch(e){} },1500);
 })();
 </script>
 
