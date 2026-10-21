@@ -14671,6 +14671,138 @@ setInterval(()=>{ try{ if(typeof map==="undefined"||!map||!map.getCanvas) return
 
 <script>
 /* ============================================================================
+   V76 — pipeline lands (no master plan yet): exact location, border and drawing from the KMZ
+   ========================================================================== */
+(function(){
+const PIPE={data:null,urls:{},loading:{},stamps:{},failed:false};
+window.SID_PIPE=PIPE;
+const pub=()=>typeof window.sidPublic==="function"&&window.sidPublic();
+const ready=()=>{ try{ return typeof SB!=="undefined"&&SB&&typeof SBU!=="undefined"&&SBU&&typeof map!=="undefined"&&map; }catch(e){ return false; } };
+const fmtSq=n=>typeof fSq==="function"?fSq(n):Math.round(n).toLocaleString("en-US");
+const ll=p=>p[1].toFixed(6)+", "+p[0].toFixed(6);
+const replaced=()=>new Set(((PIPE.data&&PIPE.data.projects)||[]).map(p=>p.replaces).filter(Boolean));
+
+async function load(){
+  if(PIPE.data||PIPE.busy||PIPE.failed||!ready()||pub()) return;
+  PIPE.busy=true;
+  try{
+    const L=await SB.storage.from("sid").list("pipeline",{limit:200});
+    (L.data||[]).forEach(f=>{ PIPE.stamps[f.name]=(f.updated_at||"")+"|"+(f.metadata&&f.metadata.eTag||""); });
+    if(!PIPE.stamps["lands.json"]){ PIPE.failed=true; return; }      // nothing uploaded yet: stay quiet
+    const txt=await sbCached("pipeline/lands.json",PIPE.stamps["lands.json"],"text");
+    PIPE.data=JSON.parse(txt);
+    refreshPins();
+  }catch(e){ console.warn("pipeline lands:",e); PIPE.failed=true; }
+  finally{ PIPE.busy=false; }
+}
+/* the old approximate portfolio circles of these projects make way for the exact ones */
+if(typeof parkPins==="function"){
+  const ppV76=parkPins;
+  parkPins=function(){ const fc=ppV76(); try{ const r=replaced(); if(r.size) fc.features=fc.features.filter(f=>!(r.has(f.properties.name)&&!f.properties.park)); }catch(e){} return fc; };
+}
+function refreshPins(){ try{ const s=map.getSource("pins"); if(s) s.setData(parkPins()); }catch(e){} }
+
+function fc(){
+  const D=PIPE.data, F=[], B=[];
+  D.projects.forEach(p=>{ if(p.at) F.push({type:"Feature",properties:{name:p.name},geometry:{type:"Point",coordinates:p.at}}); });
+  D.lands.forEach(l=>B.push({type:"Feature",properties:{id:l.id,name:l.name,project:l.project,traced:l.traced?1:0},geometry:{type:"Polygon",coordinates:[l.border]}}));
+  return {pts:{type:"FeatureCollection",features:F},bd:{type:"FeatureCollection",features:B}};
+}
+function before(){ return map.getLayer("pin-dot")?"pin-dot":undefined; }
+function addLayers(){
+  if(!PIPE.data||!map.isStyleLoaded()||map.getSource("pipe-pts")) return;
+  const g=fc(), sat=typeof S!=="undefined"&&S.base==="sat";
+  map.addSource("pipe-bd",{type:"geojson",data:g.bd});
+  map.addSource("pipe-pts",{type:"geojson",data:g.pts});
+  map.addLayer({id:"pipe-fill",type:"fill",source:"pipe-bd",paint:{"fill-color":"#FFFFFF","fill-opacity":["interpolate",["linear"],["zoom"],8,.25,13,.06]}},before());
+  map.addLayer({id:"pipe-line",type:"line",source:"pipe-bd",paint:{"line-color":sat?"#FFFFFF":"#1C1C1F","line-width":["interpolate",["linear"],["zoom"],8,1,15,2.4],
+    "line-dasharray":["case",["==",["get","traced"],1],["literal",[1,0]],["literal",[3,2]]],"line-opacity":.95}},before());
+  map.addLayer({id:"pipe-dot",type:"circle",source:"pipe-pts",paint:{"circle-radius":["interpolate",["linear"],["zoom"],4,4.5,10,7],"circle-color":"#FFFFFF",
+    "circle-stroke-color":"#1C1C1F","circle-stroke-width":2,"circle-opacity":1}});
+  map.addLayer({id:"pipe-label",type:"symbol",source:"pipe-pts",minzoom:5.4,
+    layout:{"text-field":["get","name"],"text-font":["Open Sans Bold"],"text-size":11,"text-offset":[0,1.3],"text-anchor":"top","text-padding":4},
+    paint:{"text-color":sat?"#fff":"#16181D","text-halo-color":sat?"rgba(6,8,12,.8)":"rgba(255,255,255,.92)","text-halo-width":1.6}});
+  Object.keys(PIPE.urls).forEach(id=>addImage(id));
+  if(!PIPE.wired){ PIPE.wired=true;
+    ["pipe-dot","pipe-fill"].forEach(l=>{
+      map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer"); map.on("mouseleave",l,()=>map.getCanvas().style.cursor="");
+      map.on("click",l,e=>{ const f=e.features&&e.features[0]; if(!f) return; e.originalEvent&&e.originalEvent.stopPropagation&&e.originalEvent.stopPropagation();
+        const name=f.properties.project||f.properties.name; setTimeout(()=>openCard(name),0); });
+    });
+    map.on("moveend",lazyImages);
+  }
+  lazyImages();
+}
+/* a drawing is downloaded (once, then kept in this browser) only when the map is zoomed in near that land */
+function lazyImages(){
+  if(!PIPE.data||!map) return;
+  if(map.getZoom()<11.5) return;
+  const b=map.getBounds();
+  PIPE.data.lands.forEach(l=>{
+    if(PIPE.urls[l.id]||PIPE.loading[l.id]) return;
+    const xs=l.corners.map(c=>c[0]), ys=l.corners.map(c=>c[1]);
+    if(Math.max(...xs)<b.getWest()||Math.min(...xs)>b.getEast()||Math.max(...ys)<b.getSouth()||Math.min(...ys)>b.getNorth()) return;
+    PIPE.loading[l.id]=1;
+    const nm=l.img.split("/").pop();
+    sbCached(l.img,PIPE.stamps[nm]||"",'buf').then(buf=>{ PIPE.urls[l.id]=URL.createObjectURL(new Blob([buf],{type:"image/webp"})); addImage(l.id); })
+      .catch(e=>console.warn("pipeline drawing",l.id,e)).finally(()=>{ delete PIPE.loading[l.id]; });
+  });
+}
+function addImage(id){
+  try{
+    const l=PIPE.data.lands.find(x=>x.id===id); if(!l||!PIPE.urls[id]||!map.isStyleLoaded()) return;
+    const sid="pipe-img-"+id; if(map.getSource(sid)) return;
+    map.addSource(sid,{type:"image",url:PIPE.urls[id],coordinates:l.corners});
+    map.addLayer({id:sid,type:"raster",source:sid,minzoom:11,paint:{"raster-opacity":.92,"raster-fade-duration":200}},map.getLayer("pipe-fill")?"pipe-fill":before());
+  }catch(e){ console.warn("pipeline image",id,e); }
+}
+function openCard(name){
+  const D=PIPE.data; if(!D) return;
+  const p=D.projects.find(x=>x.name===name)||{name,lands:D.lands.filter(l=>l.project===name).map(l=>l.id)};
+  const lands=p.lands.map(id=>D.lands.find(l=>l.id===id)).filter(Boolean);
+  const traced=lands.filter(l=>l.traced), total=traced.reduce((a,l)=>a+l.area,0);
+  const pf=p.replaces&&typeof PORTFOLIO!=="undefined"?PORTFOLIO.find(x=>x.name===p.replaces):null;
+  const at=p.at||lands[0].border[0];
+  const st=typeof STAGE!=="undefined"&&STAGE.pipeline?STAGE.pipeline:{hex:"#8E8E93",label:"Pipeline"};
+  const el=$("#parkcard"); if(!el) return;
+  const landHtml=lands.map(l=>{ const pts=l.border.slice(0,-1);
+    return `<details class="pp-land"><summary><b>${esc(l.name)}</b> · ${l.traced?fmtSq(l.area)+" sqm":"border not drawn"}</summary>
+      <p class="note" style="margin:6px 0">${l.traced?`Outer border traced from the development team's drawing (${pts.length} points, latitude, longitude).`
+        :"The KMZ holds a picture only for this land, with no border: the dashed line is the picture's frame, not the land."}</p>
+      <pre class="pp-pts">${(l.traced?pts:l.corners).map(ll).join("\n")}</pre>
+      <button class="ebtn pp-copy" data-id="${esc(l.id)}">Copy coordinates</button></details>`; }).join("");
+  el.innerHTML=`<button class="pc-x" aria-label="Close">×</button>
+    <h4>${esc(p.name)}</h4>
+    <div class="pc-w"><span class="pc-stage" style="background:${st.hex}">${esc(st.label)}</span>Land only — no approved master plan yet</div>
+    <div class="pc-g">
+      <div><span>Land area (drawn border)</span><b>${traced.length?fmtSq(total)+" sqm":"—"}</b></div>
+      <div><span>Portfolio area</span><b>${pf&&pf.area?fmtSq(pf.area)+" sqm":"—"}</b></div>
+      <div><span>Lands</span><b>${lands.length}</b></div>
+      <div><span>Location</span><b>${ll(at)}</b></div>
+    </div>
+    ${(()=>{ try{ const lg=logisticsAt(at); return `<div class="pc-lg"><span>⚓ ${esc(lg.port.name)} <b>${fKm(lg.port.km)} km</b></span><span>✈ ${esc(lg.air.name)} <b>${fKm(lg.air.km)} km</b></span><span>Cairo <b>${fKm(lg.cairo)} km</b> · straight line</span></div>`; }catch(e){ return ""; } })()}
+    ${landHtml}
+    <p class="note" style="margin:8px 0 0">Source: ${esc(D.source)} from the development team. Zoom in to see the drawing.</p>`;
+  el.hidden=false;
+  el.querySelector(".pc-x").onclick=()=>{ el.hidden=true; };
+  el.querySelectorAll(".pp-copy").forEach(b=>b.onclick=async()=>{ const l=D.lands.find(x=>x.id===b.dataset.id); if(!l) return;
+    const txt=l.name+"\n"+(l.traced?l.border.slice(0,-1):l.corners).map(ll).join("\n");
+    try{ await navigator.clipboard.writeText(txt); b.textContent="Copied"; }catch(e){ b.textContent="Select the list and copy"; } setTimeout(()=>b.textContent="Copy coordinates",1800); });
+  const xs=lands.flatMap(l=>l.border.map(c=>c[0])), ys=lands.flatMap(l=>l.border.map(c=>c[1]));
+  try{ map.fitBounds([[Math.min(...xs),Math.min(...ys)],[Math.max(...xs),Math.max(...ys)]],{padding:{top:80,bottom:80,left:80,right:Math.min(420,innerWidth*.4)},maxZoom:14.5,duration:typeof RM!=="undefined"&&RM?0:700}); }catch(e){}
+}
+window.sidPipeOpen=openCard;
+{ const st=document.createElement("style"); st.textContent=`
+  .pp-land{border-top:1px solid var(--n200,#e5e5ea);padding:8px 0}
+  .pp-land summary{cursor:pointer;font-size:12.5px}
+  .pp-pts{max-height:150px;overflow:auto;font:11px/1.5 ui-monospace,Menlo,monospace;background:var(--n100,#f2f2f7);border-radius:8px;padding:8px;margin:0 0 8px;user-select:text;white-space:pre}`;
+  document.head.appendChild(st); }
+setInterval(()=>{ try{ if(pub()) return; if(!PIPE.data){ load(); return; } if(map&&map.isStyleLoaded&&map.isStyleLoaded()&&!map.getSource("pipe-pts")){ addLayers(); refreshPins(); } }catch(e){} },1500);
+})();
+</script>
+
+<script>
+/* ============================================================================
    V75 — auto sign-out after 1 hour of inactivity (saves database, storage and bandwidth overnight)
    ========================================================================== */
 (function(){
