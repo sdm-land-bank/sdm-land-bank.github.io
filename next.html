@@ -14719,14 +14719,10 @@ function addLayers(){
   map.addLayer({id:"pipe-line",type:"line",source:"pipe-bd",filter:["==",["get","traced"],1],paint:{"line-color":lc,"line-width":lw,"line-opacity":.95}},before());
   // a land with a picture only: the dashed frame of the picture, not a border
   map.addLayer({id:"pipe-frame",type:"line",source:"pipe-bd",filter:["!=",["get","traced"],1],paint:{"line-color":lc,"line-width":lw,"line-opacity":.8,"line-dasharray":[3,2]}},before());
-  map.addLayer({id:"pipe-dot",type:"circle",source:"pipe-pts",paint:{"circle-radius":["interpolate",["linear"],["zoom"],4,4.5,10,7],"circle-color":"#FFFFFF",
-    "circle-stroke-color":"#1C1C1F","circle-stroke-width":2,"circle-opacity":1}});
-  map.addLayer({id:"pipe-label",type:"symbol",source:"pipe-pts",minzoom:5.4,
-    layout:{"text-field":["get","name"],"text-font":["Open Sans Bold"],"text-size":11,"text-offset":[0,1.3],"text-anchor":"top","text-padding":4},
-    paint:{"text-color":sat?"#fff":"#16181D","text-halo-color":sat?"rgba(6,8,12,.8)":"rgba(255,255,255,.92)","text-halo-width":1.6}});
+  addPins();
   Object.keys(PIPE.urls).forEach(id=>addImage(id));
   if(!PIPE.wired){ PIPE.wired=true;
-    ["pipe-dot","pipe-fill"].forEach(l=>{
+    ["pipe-fill"].forEach(l=>{
       map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer"); map.on("mouseleave",l,()=>map.getCanvas().style.cursor="");
       map.on("click",l,e=>{ const f=e.features&&e.features[0]; if(!f) return; e.originalEvent&&e.originalEvent.stopPropagation&&e.originalEvent.stopPropagation();
         const name=f.properties.project||f.properties.name; setTimeout(()=>openCard(name),0); });
@@ -14736,6 +14732,28 @@ function addLayers(){
   lazyImages();
 }
 /* a drawing is downloaded (once, then kept in this browser) only when the map is zoomed in near that land */
+/* white pins with the project name written on them; a soft pulse (CSS, no map repaint) */
+function addPins(){
+  (PIPE.pins||[]).forEach(m=>m.remove()); PIPE.pins=[];
+  PIPE.data.projects.forEach(p=>{ if(!p.at) return;
+    const el=document.createElement("button"); el.type="button"; el.className="pp-pin"; el.setAttribute("aria-label",p.name+" — pipeline land");
+    el.innerHTML=`<span class="pp-pulse"></span><span class="pp-dot"></span><b>${esc(p.name)}</b>`;
+    el.addEventListener("click",e=>{ e.stopPropagation(); openCard(p.name); });
+    ["mousedown","touchstart","pointerdown","dblclick"].forEach(t=>el.addEventListener(t,e=>e.stopPropagation()));
+    PIPE.pins.push(new maplibregl.Marker({element:el,anchor:"left",offset:[-9,0]}).setLngLat(p.at).addTo(map)); });
+}
+/* the project menu: the pipeline projects in their own group; picking one flies there and opens its card */
+function addMenu(){
+  const sel=[...document.querySelectorAll("select")].find(x=>x.querySelector('option[value="industria-east"]'));
+  if(!sel||sel.querySelector("optgroup.pp-grp")) return;
+  const g=document.createElement("optgroup"); g.className="pp-grp"; g.label="Pipeline — no master plan";
+  PIPE.data.projects.forEach(p=>{ const o=document.createElement("option"); o.value="pipe:"+p.name; o.textContent=p.name; g.appendChild(o); });
+  sel.appendChild(g);
+  if(!sel.dataset.ppWired){ sel.dataset.ppWired="1"; let prev=sel.value;
+    sel.addEventListener("focus",()=>{ if(!sel.value.startsWith("pipe:")) prev=sel.value; });
+    sel.addEventListener("change",e=>{ if(!sel.value.startsWith("pipe:")){ prev=sel.value; return; }
+      e.stopImmediatePropagation(); const name=sel.value.slice(5); sel.value=prev; openCard(name); },true); }
+}
 function lazyImages(){
   if(!PIPE.data||!map) return;
   if(map.getZoom()<11.5) return;
@@ -14795,11 +14813,19 @@ function openCard(name){
 }
 window.sidPipeOpen=openCard;
 { const st=document.createElement("style"); st.textContent=`
+  .pp-pin{position:relative;display:flex;align-items:center;gap:7px;padding:0;border:0;background:none;cursor:pointer}
+  .pp-pin .pp-dot{width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #1C1C1F;box-shadow:0 1px 4px rgba(0,0,0,.35);flex:none;position:relative;z-index:1}
+  .pp-pin .pp-pulse{position:absolute;left:-6px;top:50%;width:26px;height:26px;margin-top:-13px;border-radius:50%;background:rgba(255,255,255,.7);animation:ppPulse 2.2s ease-out infinite;pointer-events:none}
+  .pp-pin b{font:700 11px/1 Inter,system-ui,sans-serif;color:#16181D;background:#fff;border-radius:999px;padding:5px 9px;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:nowrap}
+  .pp-pin:hover b{background:#16181D;color:#fff}
+  @keyframes ppPulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.9);opacity:0}}
+  @media (prefers-reduced-motion:reduce){.pp-pin .pp-pulse{animation:none;opacity:0}}
+  body.presenting .pp-pin{display:none}
   .pp-land{border-top:1px solid var(--n200,#e5e5ea);padding:8px 0}
   .pp-land summary{cursor:pointer;font-size:12.5px}
   .pp-pts{max-height:150px;overflow:auto;font:11px/1.5 ui-monospace,Menlo,monospace;background:var(--n100,#f2f2f7);border-radius:8px;padding:8px;margin:0 0 8px;user-select:text;white-space:pre}`;
   document.head.appendChild(st); }
-setInterval(()=>{ try{ if(pub()) return; if(!PIPE.data){ load(); return; } if(map&&map.isStyleLoaded&&map.isStyleLoaded()&&!map.getSource("pipe-pts")){ addLayers(); refreshPins(); } }catch(e){} },1500);
+setInterval(()=>{ try{ if(pub()) return; if(!PIPE.data){ load(); return; } if(map&&map.isStyleLoaded&&map.isStyleLoaded()&&!map.getSource("pipe-pts")){ addLayers(); refreshPins(); } addMenu(); }catch(e){} },1500);
 })();
 </script>
 
