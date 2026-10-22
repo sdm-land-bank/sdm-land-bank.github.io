@@ -15334,6 +15334,9 @@ function twoRows(){
   if(hd&&L){ hd.querySelectorAll(":scope > .legend").forEach(x=>x.remove()); L.classList.add("l2-lg"); hd.appendChild(L); }
   // row 2: cards stop where the buttons start
   const mb=document.querySelector(".maptools .mapbtns"); if(mb) document.documentElement.style.setProperty("--l2bw",Math.round(mb.getBoundingClientRect().width+24)+"px");
+  // narrower screens or zoomed-in browsers: the cards drop their small second line, the chips drop their counts' padding
+  const kp=document.getElementById("kpis"); if(kp&&mb){ const room=mb.getBoundingClientRect().left-kp.getBoundingClientRect().left; document.body.classList.toggle("l2-tight",room<720); }
+  const L2=document.querySelector("main > header.top > .legend"); if(L2) document.body.classList.toggle("l2-lgtight",L2.scrollWidth>L2.clientWidth+2&&!document.body.classList.contains("l2-lgtight")?true:document.body.classList.contains("l2-lgtight")&&innerWidth<1280);
 }
 setInterval(()=>{ try{ twoRows(); }catch(e){} },400); addEventListener("resize",()=>{ try{ twoRows(); }catch(e){} });
 // the Active projects card switches the map to the active projects, like the Pipeline card does
@@ -15407,6 +15410,9 @@ document.addEventListener("click",e=>{ const k=e.target.closest&&e.target.closes
   body.kpi-float #kpis .kpi{min-width:0!important;flex:0 1 auto!important;max-width:172px!important}
   body.kpi-float.l2 #kpis,body.kpi-float.l2 #kpis.kpis.map5.pp-k5{flex-wrap:nowrap!important}
   body.kpi-float #kpis .kpi .s{display:block;max-width:100%}
+  body.l2-tight #kpis .kpi .s{display:none!important}
+  body.l2-tight #kpis .kpi{padding:5px 9px!important}
+  body.l2-lgtight main > header.top > .legend .lg > span:not(.sw):not(.n){display:none!important}
   .poi.dry .poi-i{background:#8E5BD6!important}
 
   @media (min-width:821px){
