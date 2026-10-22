@@ -12399,7 +12399,12 @@ function sbLoginUI(){
       res(data.session); };
   });
 }
-async function sbDl(path){ const {data,error}=await SB.storage.from("sid").download(path); if(error) throw new Error(path+": "+(error.message||"not found")); return data; }
+// always fetch past the browser's HTTP cache (the file was replaced in place; this browser's own copy is kept in sbCached)
+async function sbDl(path){
+  try{ const t=(await SB.auth.getSession()).data.session.access_token;
+    const r=await fetch(SBC.url+"/storage/v1/object/authenticated/sid/"+path.split("/").map(encodeURIComponent).join("/"),{cache:"no-store",headers:{Authorization:"Bearer "+t,apikey:SBC.key}});
+    if(r.ok) return await r.blob(); }catch(e){}
+  const {data,error}=await SB.storage.from("sid").download(path); if(error) throw new Error(path+": "+(error.message||"not found")); return data; }
 async function sbCached(path,stamp,kind){
   const k="sbc:"+path;
   if(stamp){ try{ const c=await Promise.race([idb.get(k),new Promise(z=>setTimeout(()=>z(null),1500))]); if(c&&c.stamp===stamp&&c.data) return c.data; }catch(e){} }
