@@ -12399,7 +12399,12 @@ function sbLoginUI(){
       res(data.session); };
   });
 }
-async function sbDl(path){ const {data,error}=await SB.storage.from("sid").download(path); if(error) throw new Error(path+": "+(error.message||"not found")); return data; }
+// always fetch past the browser's HTTP cache (the file was replaced in place; this browser's own copy is kept in sbCached)
+async function sbDl(path){
+  try{ const t=(await SB.auth.getSession()).data.session.access_token;
+    const r=await fetch(SBC.url+"/storage/v1/object/authenticated/sid/"+path.split("/").map(encodeURIComponent).join("/"),{cache:"no-store",headers:{Authorization:"Bearer "+t,apikey:SBC.key}});
+    if(r.ok) return await r.blob(); }catch(e){}
+  const {data,error}=await SB.storage.from("sid").download(path); if(error) throw new Error(path+": "+(error.message||"not found")); return data; }
 async function sbCached(path,stamp,kind){
   const k="sbc:"+path;
   if(stamp){ try{ const c=await Promise.race([idb.get(k),new Promise(z=>setTimeout(()=>z(null),1500))]); if(c&&c.stamp===stamp&&c.data) return c.data; }catch(e){} }
@@ -15083,6 +15088,35 @@ function addProjBorders(){
   map.addLayer({id:"projb-line",type:"line",source:"proj-bd",paint:{"line-color":sat?"#FFFFFF":"#3A404A","line-width":["interpolate",["linear"],["zoom"],9,.8,15,2],"line-opacity":.85,"line-dasharray":[2,1.5]}},first&&first.id);
 }
 setInterval(()=>{ try{ addProjBorders(); }catch(e){} },1500);
+
+/* ---- V79: the surveyed (iPad) borders as a white highlight, with a Borders on/off button ---- */
+let BD=true; try{ BD=localStorage.getItem("sid.bdShow")!=="0"; }catch(e){}
+const BDL=["pipe-line","pipe-frame","projb-line"];
+function bdGlow(){
+  if(typeof map==="undefined"||!map||!map.style||!map.style._loaded) return;
+  // a soft white glow, a thin dark edge (so the white line still reads on the light map), then the white line itself
+  [["pipe-bd","pipe-glow","pipe-case","pipe-line"],["proj-bd","projb-glow","projb-case","projb-line"]].forEach(([src,id,cs,ref])=>{
+    if(!map.getSource(src)||!map.getLayer(ref)||map.getLayer(id)) return;
+    map.addLayer({id,type:"line",source:src,paint:{"line-color":"#FFFFFF","line-width":["interpolate",["linear"],["zoom"],8,4,15,9],"line-blur":4,"line-opacity":.45}},ref);
+    map.addLayer({id:cs,type:"line",source:src,paint:{"line-color":"#16181D","line-width":["interpolate",["linear"],["zoom"],8,2.6,15,4.4],"line-opacity":.55}},ref);
+  });
+  ["pipe-line","pipe-frame","projb-line"].forEach(l=>{ if(!map.getLayer(l)) return;
+    if(map.getPaintProperty(l,"line-color")!=="#FFFFFF") map.setPaintProperty(l,"line-color","#FFFFFF");
+    try{ if(String(map.getPaintProperty(l,"line-dasharray"))!=="1,0") map.setPaintProperty(l,"line-dasharray",[1,0]); }catch(e){} });
+  BDL.concat(["pipe-glow","projb-glow","pipe-case","projb-case"]).forEach(l=>{ if(!map.getLayer(l)) return;
+    const k="line-opacity", on=l.endsWith("glow")?.45:l.endsWith("case")?.55:.95;
+    if(map.getPaintProperty(l,k)!==(BD?on:0)) map.setPaintProperty(l,k,BD?on:0); });
+  const b=document.getElementById("ppBdBtn"); if(b) b.classList.toggle("on",BD);
+}
+function bdButton(){
+  if(pub()) return; const bar=document.querySelector(".mapbtns"); if(!bar||document.getElementById("ppBdBtn")) return;
+  const b=document.createElement("button"); b.type="button"; b.id="ppBdBtn"; b.className="pp-bdbtn"; b.textContent="Borders";
+  b.title="Show or hide the surveyed land borders (Google Earth, iPad version)";
+  b.onclick=()=>{ BD=!BD; try{ localStorage.setItem("sid.bdShow",BD?"1":"0"); }catch(e){} bdGlow(); };
+  const seg=bar.querySelector(".pp-seg"); (seg||bar.lastElementChild).after(b); bdGlow();
+}
+setInterval(()=>{ try{ bdButton(); bdGlow(); }catch(e){} },1500);
+{ const st=document.createElement("style"); st.textContent=`.mapbtns .pp-bdbtn{white-space:nowrap;flex:none}.mapbtns .pp-bdbtn.on{background:#16181D!important;color:#fff!important}`; document.head.appendChild(st); }
 
 /* ---- 3. Lara knows the pipeline projects and flies to them while she talks ---- */
 const AL={"Sephora":["sephora","سفورا","سيفورا"],"SID Sharkeyoun":["sharkeyoun","sharqiyoun","شرقيون","الشرقيون"],"Qantara":["qantara","kantara","القنطرة"],
