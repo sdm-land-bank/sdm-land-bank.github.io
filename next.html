@@ -15320,6 +15320,11 @@ function twoRows(){
   const ys=document.getElementById("yearSel"); if(ys){ const f=ys.closest(".field"); if(f) f.classList.add("l2-gone");
     if(ys.selectedIndex>0&&!ys.dataset.l2r){ ys.dataset.l2r="1"; ys.selectedIndex=0; ys.dispatchEvent(new Event("change",{bubbles:true})); } }
   document.querySelectorAll("#fbar .fbtn").forEach(b=>{ const t=(b.querySelector("span")||b).textContent.trim(); if(DROP.has(t)) b.classList.add("l2-gone"); });
+  // shorter chip and card names in this compact layout (the full name stays as the tooltip)
+  const CH={"EOI / Offer":"EOI","On hold":"Hold","Not for sale":"NFS","No register row":"No row"};
+  document.querySelectorAll("main > header.top > .legend .lg").forEach(g=>{ g.querySelectorAll("span").forEach(sp=>{ const t=sp.textContent.trim(); if(CH[t]&&!sp.children.length){ g.title=g.title||t; sp.textContent=CH[t]; } }); });
+  const CK={"active projects":"Active","pipeline projects":"Pipeline","total land bank":"Land bank","sold area":"Sold","pipeline land":"Pipeline land"};
+  document.querySelectorAll("#kpis > .kpi > .k").forEach(k=>{ const raw=(k.dataset.full||k.textContent).trim(), t=CK[raw.toLowerCase()]; if(t&&k.textContent.trim()!==t){ k.dataset.full=raw; k.parentElement.title=k.parentElement.title||raw; k.textContent=t; } });
   // shorter button names (full name stays as the tooltip)
   document.querySelectorAll(".mapbtns > button").forEach(b=>{ const t=b.textContent.trim(); if(SHORT[t]){ if(!b.title) b.title=t; b.textContent=SHORT[t]; } });
   if(!on) return;
@@ -15333,7 +15338,7 @@ function twoRows(){
 setInterval(()=>{ try{ twoRows(); }catch(e){} },400); addEventListener("resize",()=>{ try{ twoRows(); }catch(e){} });
 // the Active projects card switches the map to the active projects, like the Pipeline card does
 document.addEventListener("click",e=>{ const k=e.target.closest&&e.target.closest("#kpis .kpi"); if(!k||k.dataset.ppd||k.dataset.ppk) return;
-  const lab=((k.querySelector(".k")||{}).textContent||"").trim().toLowerCase();
+  const kk=k.querySelector(".k")||{}, lab=((kk.dataset&&kk.dataset.full)||kk.textContent||"").trim().toLowerCase();
   const m=lab==="active projects"?"act":lab==="total land bank"?"":null; if(m==null) return;
   const b=document.querySelector(`.pp-mode[data-m="${m}"]`); if(b) b.click(); },true);
 
@@ -15378,12 +15383,14 @@ document.addEventListener("click",e=>{ const k=e.target.closest&&e.target.closes
   body.l2 main > header.top,body.l2 main > .top{flex-wrap:nowrap!important;align-items:center!important;gap:8px!important;padding-top:8px!important;padding-bottom:8px!important;min-height:0!important}
   body.l2 #fbar{flex-wrap:nowrap!important;width:auto!important;flex:0 0 auto!important;margin:0!important;order:0}
   body.l2 main > header.top .field:has(#parkSel){flex:0 0 190px!important;width:190px!important}
-  body.l2 main > header.top .field:has(#q){flex:0 1 190px!important;width:190px!important;min-width:120px}
+  body.l2 main > header.top .field:has(#q){flex:0 1 170px!important;width:170px!important;min-width:110px;position:relative}
+  body.l2 main > header.top #q{width:100%!important;min-width:0!important;box-sizing:border-box}
+  body.l2 main > header.top .field:has(#parkSel) #parkSel{width:100%!important}
   body.l2 main > header.top .spacer{display:none!important}
   body:not(.l2) main > header.top > .legend{display:none!important}
   body.l2 main > header.top > .legend{display:flex!important;flex:1 1 auto;min-width:0;flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;max-width:none!important;gap:4px!important;margin:0!important;padding:0!important;background:transparent!important;box-shadow:none!important}
   body.l2 main > header.top > .legend::-webkit-scrollbar{display:none}
-  body.l2 main > header.top > .legend .lg{height:30px!important;padding:0 9px!important;font-size:11.5px!important;white-space:nowrap;flex:0 0 auto;background:#fff!important;box-shadow:0 0 0 1px rgba(16,18,24,.10)!important}
+  body.l2 main > header.top > .legend .lg{height:30px!important;padding:0 8px!important;gap:5px!important;font-size:11.5px!important;white-space:nowrap;flex:0 0 auto;background:#fff!important;box-shadow:0 0 0 1px rgba(16,18,24,.10)!important}
   body.l2 main > header.top > .legend .lg .n{font-size:10.5px!important}
   body.kpi-float.l2 #kpis{top:auto;right:var(--l2bw,560px)!important;padding:8px 0 0 14px!important;flex-wrap:nowrap!important;overflow:hidden}
   body.kpi-float.l2 .maptools{top:8px!important;justify-content:flex-end!important}
