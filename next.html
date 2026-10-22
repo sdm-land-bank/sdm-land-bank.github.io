@@ -14684,7 +14684,7 @@ const styleOk=()=>{ try{ return !!(map&&map.style&&map.style._loaded); }catch(e)
 const replaced=()=>new Set(((PIPE.data&&PIPE.data.projects)||[]).map(p=>p.replaces).filter(Boolean));
 
 async function load(){
-  if(PIPE.data||PIPE.busy||PIPE.failed||!ready()||pub()) return;
+  if(PIPE.data||PIPE.busy||PIPE.failed||!ready()) return;
   PIPE.busy=true;
   try{
     const L=await SB.storage.from("sid").list("pipeline",{limit:200});
@@ -14766,12 +14766,17 @@ function lazyImages(){
     if(PIPE.urls[l.id]||PIPE.loading[l.id]) return;
     const xs=l.corners.map(c=>c[0]), ys=l.corners.map(c=>c[1]);
     if(Math.max(...xs)<b.getWest()||Math.min(...xs)>b.getEast()||Math.max(...ys)<b.getSouth()||Math.min(...ys)>b.getNorth()) return;
-    PIPE.loading[l.id]=1;
-    const nm=l.img.split("/").pop();
-    sbCached(l.img,PIPE.stamps[nm]||"",'buf').then(buf=>{ PIPE.urls[l.id]=URL.createObjectURL(new Blob([buf],{type:"image/webp"})); addImage(l.id); })
-      .catch(e=>console.warn("pipeline drawing",l.id,e)).finally(()=>{ delete PIPE.loading[l.id]; });
+    loadImg(l);
   });
 }
+function loadImg(l){
+  if(PIPE.urls[l.id]||PIPE.loading[l.id]) return;
+  PIPE.loading[l.id]=1;
+  const nm=l.img.split("/").pop();
+  sbCached(l.img,PIPE.stamps[nm]||"",'buf').then(buf=>{ PIPE.urls[l.id]=URL.createObjectURL(new Blob([buf],{type:"image/webp"})); addImage(l.id); })
+    .catch(e=>console.warn("pipeline drawing",l.id,e)).finally(()=>{ delete PIPE.loading[l.id]; });
+}
+PIPE.prefetch=()=>{ if(PIPE.data) PIPE.data.lands.forEach(loadImg); };
 function addImage(id){
   try{
     const l=PIPE.data.lands.find(x=>x.id===id); if(!l||!PIPE.urls[id]||!styleOk()) return;
@@ -14832,7 +14837,7 @@ window.sidPipeOpen=openCard;
   .pp-land summary{cursor:pointer;font-size:12.5px}
   .pp-pts{max-height:150px;overflow:auto;font:11px/1.5 ui-monospace,Menlo,monospace;background:var(--n100,#f2f2f7);border-radius:8px;padding:8px;margin:0 0 8px;user-select:text;white-space:pre}`;
   document.head.appendChild(st); }
-setInterval(()=>{ try{ if(pub()) return; if(!PIPE.data){ load(); return; } if(styleOk()&&!map.getSource("pipe-pts")){ addLayers(); refreshPins(); } addMenu(); }catch(e){} },1500);
+setInterval(()=>{ try{ if(!PIPE.data){ load(); return; } if(styleOk()&&!map.getSource("pipe-pts")){ addLayers(); refreshPins(); } addMenu(); }catch(e){} },1500);
 })();
 </script>
 
@@ -14960,6 +14965,32 @@ function sideList(){
 }
 setInterval(()=>{ try{ if(!pub()) sideList(); }catch(e){} },1200);
 
+
+/* ---- presentation: the pipeline overview, then one slide per pipeline land (exact place, drawing, area, seaport) ---- */
+if(typeof presScenes==="function"){ const psV77=presScenes;
+  presScenes=function(){ const sc=psV77.apply(this,arguments);
+    try{ const D=P(); if(!D||!map) return sc; window.SID_PIPE.prefetch&&window.SID_PIPE.prefetch();
+      const i=sc.findIndex(x=>x.kind==="pipeline"); const at=i<0?sc.length-1:i;
+      const all=D.lands.flatMap(l=>l.border), xs=all.map(c=>c[0]), ys=all.map(c=>c[1]);
+      const ov=map.cameraForBounds([[Math.min(...xs),Math.min(...ys)],[Math.max(...xs),Math.max(...ys)]],{padding:{top:120,bottom:160,left:Math.min(560,innerWidth*.38),right:80}});
+      const tot=D.projects.reduce((a,p)=>a+projOf(p.name).total,0);
+      const out=[{kind:"pipeline", cam:ov?{center:ov.center,zoom:ov.zoom,pitch:25,bearing:6}:{center:[30.4,28.9],zoom:5.2,pitch:25,bearing:6}, dwell:8000,
+        eye:"Pipeline · the next decade", title:"New lands coming",
+        text:D.projects.length+" new projects — the land is secured, the master plans are still to be approved.",
+        stats:[[D.projects.length,"pipeline projects"],[sq(tot),"sqm of land drawn"]]}];
+      let turn=1;
+      D.projects.map(p=>({p,x:projOf(p.name)})).sort((a,b)=>b.x.at[1]-a.x.at[1]).forEach(({p,x})=>{
+        const pts=x.lands.flatMap(l=>l.border), px=pts.map(c=>c[0]), py=pts.map(c=>c[1]); turn*=-1;
+        const c=map.cameraForBounds([[Math.min(...px),Math.min(...py)],[Math.max(...px),Math.max(...py)]],{padding:{top:140,bottom:170,left:Math.min(600,innerWidth*.42),right:90},bearing:turn*14});
+        out.push({kind:"pipeland", cam:c?{center:c.center,zoom:Math.min(14.6,c.zoom-.15),pitch:52,bearing:turn*14}:{center:x.at,zoom:13,pitch:52,bearing:0}, dwell:8000, bearing:turn*14,
+          eye:"Pipeline · land only", title:p.name,
+          text:"No approved master plan yet"+(x.lg?" · "+Math.round(x.lg.cairo)+" km from Cairo":"")+".",
+          stats:[[x.traced.length?sq(x.total):"—","sqm of land"],[x.lg?Math.round(x.lg.port.km)+" km":"—",x.lg?"to "+x.lg.port.name:"to the nearest seaport"]]});
+      });
+      sc.splice(at,i<0?0:1,...out);
+    }catch(e){ console.warn("pipeline slides",e); }
+    return sc; }; }
+
 /* ---- 3. Lara knows the pipeline projects and flies to them while she talks ---- */
 const AL={"Sephora":["sephora","سفورا","سيفورا"],"SID Sharkeyoun":["sharkeyoun","sharqiyoun","شرقيون","الشرقيون"],"Qantara":["qantara","kantara","القنطرة"],
   "Serag Land":["serag","سراج"],"New Asher":["new asher","asher new","العاشر الجديدة","العاشر الجديد"],"Abo Rawash":["abo rawash","abu rawash","أبو رواش","ابو رواش"],
@@ -14984,10 +15015,10 @@ if(typeof LARA_TOOLS!=="undefined"&&Array.isArray(LARA_TOOLS)&&!LARA_TOOLS.some(
   LARA_TOOLS.push({name:"open_pipeline_project",description:"Fly the map to one of the NEW pipeline projects (land only, no approved master plan) and open its card while you talk about it. Returns its area, location and logistics. Use list=true to get every pipeline project.",
     parameters:{type:"OBJECT",properties:{project:{type:"STRING",description:"Pipeline project name, e.g. Dabaa, Ras El Hekma, New Capital"},list:{type:"BOOLEAN",description:"true to list all pipeline projects"}}}});
 if(typeof laraSystem==="function"){ const lsV762=laraSystem;
-  laraSystem=function(){ let t=lsV762.apply(this,arguments); try{ if(!pub()&&P()) t+=`\n\nPIPELINE PROJECTS (new lands, NO approved master plan yet — only the land, its location and outer border; no plots, no prices, no sales). When the user asks about pipeline / future / new projects or names one, CALL open_pipeline_project so the map flies there WHILE you speak, then describe it from the tool result. Say clearly there is no approved master plan yet. Never invent plot counts or prices for them.\n${laraList()}`; }catch(e){} return t; }; }
+  laraSystem=function(){ let t=lsV762.apply(this,arguments); try{ if(P()) t+=`\n\nPIPELINE PROJECTS (new lands, NO approved master plan yet — only the land, its location and outer border; no plots, no prices, no sales). When the user asks about pipeline / future / new projects or names one, CALL open_pipeline_project so the map flies there WHILE you speak, then describe it from the tool result. Say clearly there is no approved master plan yet. Never invent plot counts or prices for them.\n${laraList()}`; }catch(e){} return t; }; }
 if(typeof laraRun==="function"){ const lrV762=laraRun;
   laraRun=async function(name,a){ a=a||{};
-    if(!pub()&&P()){
+    if(P()){
       if(name==="open_pipeline_project"){
         if(a.list||!a.project) return {pipeline_projects:P().projects.map(p=>facts(p.name))};
         const k=match(a.project); if(!k) return {error:"No pipeline project called "+a.project,known:P().projects.map(p=>p.name)};
