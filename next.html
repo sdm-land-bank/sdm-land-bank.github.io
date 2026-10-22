@@ -15089,14 +15089,17 @@ let BD=true; try{ BD=localStorage.getItem("sid.bdShow")!=="0"; }catch(e){}
 const BDL=["pipe-line","pipe-frame","projb-line"];
 function bdGlow(){
   if(typeof map==="undefined"||!map||!map.style||!map.style._loaded) return;
-  [["pipe-bd","pipe-glow","pipe-line"],["proj-bd","projb-glow","projb-line"]].forEach(([src,id,ref])=>{
+  // a soft white glow, a thin dark edge (so the white line still reads on the light map), then the white line itself
+  [["pipe-bd","pipe-glow","pipe-case","pipe-line"],["proj-bd","projb-glow","projb-case","projb-line"]].forEach(([src,id,cs,ref])=>{
     if(!map.getSource(src)||!map.getLayer(ref)||map.getLayer(id)) return;
     map.addLayer({id,type:"line",source:src,paint:{"line-color":"#FFFFFF","line-width":["interpolate",["linear"],["zoom"],8,4,15,9],"line-blur":4,"line-opacity":.45}},ref);
-    map.setPaintProperty(ref,"line-color","#FFFFFF");
-    try{ map.setPaintProperty(ref,"line-dasharray",[1,0]); }catch(e){}
+    map.addLayer({id:cs,type:"line",source:src,paint:{"line-color":"#16181D","line-width":["interpolate",["linear"],["zoom"],8,2.6,15,4.4],"line-opacity":.55}},ref);
   });
-  BDL.concat(["pipe-glow","projb-glow"]).forEach(l=>{ if(!map.getLayer(l)) return;
-    const k=l.endsWith("glow")?"line-opacity":"line-opacity", on=l.endsWith("glow")?.45:.95;
+  ["pipe-line","pipe-frame","projb-line"].forEach(l=>{ if(!map.getLayer(l)) return;
+    if(map.getPaintProperty(l,"line-color")!=="#FFFFFF") map.setPaintProperty(l,"line-color","#FFFFFF");
+    try{ if(String(map.getPaintProperty(l,"line-dasharray"))!=="1,0") map.setPaintProperty(l,"line-dasharray",[1,0]); }catch(e){} });
+  BDL.concat(["pipe-glow","projb-glow","pipe-case","projb-case"]).forEach(l=>{ if(!map.getLayer(l)) return;
+    const k="line-opacity", on=l.endsWith("glow")?.45:l.endsWith("case")?.55:.95;
     if(map.getPaintProperty(l,k)!==(BD?on:0)) map.setPaintProperty(l,k,BD?on:0); });
   const b=document.getElementById("ppBdBtn"); if(b) b.classList.toggle("on",BD);
 }
