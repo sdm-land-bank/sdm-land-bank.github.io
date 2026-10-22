@@ -15335,12 +15335,17 @@ setInterval(()=>{ try{ kpiFloat(); }catch(e){} },400); addEventListener("resize"
   #selpanel .sp-kv b{overflow-wrap:anywhere}
   body.kpi-float main{position:relative}
   body.kpi-float #kpis{position:absolute!important;left:0;right:0;z-index:6;padding:8px 14px 0!important;gap:6px!important;pointer-events:none;background:transparent!important;border:0!important;box-shadow:none!important}
-  body.kpi-float #kpis .kpi{pointer-events:auto;padding:5px 11px 6px!important;border-radius:11px!important;background:rgba(255,255,255,.38)!important;
+  body.kpi-float #kpis,body.kpi-float #kpis.kpis.map5.pp-k5{display:flex!important;flex-wrap:wrap!important;grid-template-columns:none!important;justify-content:flex-start}
+  body.kpi-float #kpis .kpi{flex:0 0 auto!important;width:auto!important;min-width:132px;max-width:230px;pointer-events:auto;padding:5px 11px 6px!important;border-radius:11px!important;background:rgba(255,255,255,.38)!important;
     -webkit-backdrop-filter:blur(14px) saturate(180%)!important;backdrop-filter:blur(14px) saturate(180%)!important;border:1px solid rgba(255,255,255,.55)!important;box-shadow:0 4px 14px -8px rgba(16,18,24,.35)!important}
   body.kpi-float #kpis .kpi .k{font-size:9px!important;letter-spacing:.07em!important;margin:0!important}
   body.kpi-float #kpis .kpi .v{font-size:15px!important;line-height:1.15!important;margin:1px 0 0!important}
   body.kpi-float #kpis .kpi .s{font-size:10px!important;line-height:1.2!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   body.kpi-float .maptools{top:calc(var(--kpiH,60px) + 8px)!important}
+  /* the side bar: solid, no live blur of the map behind it (the blur re-paints on every mouse move and flickers) */
+  aside.rail{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:linear-gradient(180deg,#1C1D22 0%,#101114 100%)!important;contain:paint;isolation:isolate}
+  aside.rail .rail-scroll{scrollbar-width:none!important;overflow-x:hidden!important;contain:paint}
+  aside.rail .rail-scroll::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
   .poi.dry .poi-i{background:#8E5BD6!important}
 
   @media (min-width:821px){
