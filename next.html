@@ -15044,7 +15044,8 @@ if(typeof presScenes==="function"){ const psV77=presScenes;
 
 /* ---- top cards: pipeline count beside Active projects; Total area = the surveyed project area (iPad KMZ), plots area under it ---- */
 if(typeof mapScope==="function"){ const msV78=mapScope;
-  mapScope=function(){ const sc=msV78.apply(this,arguments); try{ window.__ppScope={all:/^All parks$/.test(sc.label||""),parks:new Set((sc.rows||[]).map(r=>r.park))}; }catch(e){} return sc; }; }
+  mapScope=function(){ const sc=msV78.apply(this,arguments); if(window.__ppInK) try{ window.__ppScope={all:/^All parks$/.test(sc.label||""),parks:new Set((sc.rows||[]).map(r=>r.park))}; }catch(e){} return sc; }; }
+if(typeof kpisMap==="function"){ const kmV78=kpisMap; kpisMap=function(){ window.__ppInK=true; try{ return kmV78.apply(this,arguments); } finally{ window.__ppInK=false; } }; }
 function decorateKpis(){
   const el=document.getElementById("kpis"), D=P(); if(!el||!D||(window.SID_PIPE&&window.SID_PIPE.focus)||el.querySelector("[data-ppd]")) return;
   const k=[...el.querySelectorAll(":scope > .kpi")]; if(!k.length) return;
