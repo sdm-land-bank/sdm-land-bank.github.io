@@ -15043,11 +15043,13 @@ if(typeof presScenes==="function"){ const psV77=presScenes;
 
 
 /* ---- top cards: pipeline count beside Active projects; Total area = the surveyed project area (iPad KMZ), plots area under it ---- */
+if(typeof mapScope==="function"){ const msV78=mapScope;
+  mapScope=function(){ const sc=msV78.apply(this,arguments); try{ window.__ppScope={all:/^All parks$/.test(sc.label||""),parks:new Set((sc.rows||[]).map(r=>r.park))}; }catch(e){} return sc; }; }
 function decorateKpis(){
   const el=document.getElementById("kpis"), D=P(); if(!el||!D||(window.SID_PIPE&&window.SID_PIPE.focus)||el.querySelector("[data-ppd]")) return;
   const k=[...el.querySelectorAll(":scope > .kpi")]; if(!k.length) return;
-  const pk=typeof S!=="undefined"?S.park:"all";
-  if(!pk||pk==="all"){
+  const sc=window.__ppScope||{all:true,parks:null};
+  if(sc.all){
     const tot=D.projects.reduce((a,p)=>a+projOf(p.name).total,0);
     const c=document.createElement("div"); c.className="kpi pp-kpi"; c.dataset.ppd="1"; c.setAttribute("role","button"); c.tabIndex=0; c.title="Show the pipeline lands";
     c.innerHTML=`<span class="k">Pipeline projects</span><span class="v">${D.projects.length}</span><span class="s">${sq(tot)} sqm of land · no master plan</span>`;
@@ -15056,7 +15058,8 @@ function decorateKpis(){
   }
   const parks=D.parks||[]; if(!parks.length) return;
   const ta=k.find(x=>/total area/i.test((x.querySelector(".k")||{}).textContent||"")); if(!ta) return;
-  const sel=!pk||pk==="all"?parks:parks.filter(x=>x.park===pk); if(!sel.length) return;
+  // the same parks the app's own cards count (what is in focus: view, park, filters)
+  const sel=sc.parks?parks.filter(x=>sc.parks.has(x.park)):parks; if(!sel.length) return;
   const area=sel.reduce((a,x)=>a+x.area,0), v=ta.querySelector(".v"), sub=ta.querySelector(".s");
   const plots=v?v.textContent.trim():"", n=sub?sub.textContent.trim():"";
   ta.dataset.ppd="1";
