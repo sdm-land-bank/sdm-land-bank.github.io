@@ -14997,7 +14997,7 @@ if(typeof presScenes==="function"){ const psV77=presScenes;
   let pos=null; try{ pos=JSON.parse(localStorage.getItem(KEY)||"null"); }catch(e){}
   const phone=()=>typeof isPhone==="function"&&isPhone();
   const clamp=(el,x,y)=>{ const r=el.getBoundingClientRect(), bx=r.left-(pos?pos.x:0), by=r.top-(pos?pos.y:0);
-    const minX=-bx+8, maxX=innerWidth-bx-Math.min(r.width,innerWidth)-8, minY=-by+8, maxY=innerHeight-by-60;
+    const minX=-bx+8, maxX=innerWidth-bx-Math.min(r.width,innerWidth)-8, minY=-by+8, maxY=Math.max(minY,innerHeight-by-Math.min(r.height,innerHeight-16)-8);
     return [Math.max(minX,Math.min(maxX,x)),Math.max(minY,Math.min(maxY,y))]; };
   const apply=el=>{ if(phone()){ el.style.translate=""; return; } el.style.translate=pos?`${pos.x}px ${pos.y}px`:""; };
   const wire=()=>{ const el=document.getElementById("parkcard"); if(!el) return;
