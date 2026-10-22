@@ -15310,6 +15310,34 @@ function kpiFloat(){
 }
 setInterval(()=>{ try{ kpiFloat(); }catch(e){} },400); addEventListener("resize",()=>{ try{ kpiFloat(); }catch(e){} });
 
+/* ---- V79.6: two rows. Row 1 = project menu, search, 4 filters, status chips. Row 2 = cards (left) + map buttons (right) ---- */
+const DROP=new Set(["Sector","Phase","Quarter","Sold by"]);
+const SHORT={"Hide ports":"Ports","Show ports":"Ports","3D view":"3D","2D view":"2D","Fit to plots":"Fit","Compare parks":"Compare"};
+function twoRows(){
+  const app=document.querySelector(".app"), on=app&&app.dataset.view==="inventory"&&innerWidth>820;
+  document.body.classList.toggle("l2",!!on);
+  // filters removed by the owner: All years, Sector, Phase, Quarter, Sold by (kept at "all" so nothing hidden still filters)
+  const ys=document.getElementById("yearSel"); if(ys){ const f=ys.closest(".field"); if(f) f.classList.add("l2-gone");
+    if(ys.selectedIndex>0&&!ys.dataset.l2r){ ys.dataset.l2r="1"; ys.selectedIndex=0; ys.dispatchEvent(new Event("change",{bubbles:true})); } }
+  document.querySelectorAll("#fbar .fbtn").forEach(b=>{ const t=(b.querySelector("span")||b).textContent.trim(); if(DROP.has(t)) b.classList.add("l2-gone"); });
+  // shorter button names (full name stays as the tooltip)
+  document.querySelectorAll(".mapbtns > button").forEach(b=>{ const t=b.textContent.trim(); if(SHORT[t]){ if(!b.title) b.title=t; b.textContent=SHORT[t]; } });
+  if(!on) return;
+  // row 1: the status chips sit in the header line, right after the filters
+  const fb=document.getElementById("fbar"), hd=document.querySelector("main > header.top, main > .top");
+  if(fb&&hd){ const r=fb.getBoundingClientRect(), h=hd.getBoundingClientRect();
+    document.documentElement.style.setProperty("--l2x",Math.round(r.right+10)+"px");
+    document.documentElement.style.setProperty("--l2y",Math.round(r.top+(r.height-30)/2)+"px"); }
+  // row 2: cards stop where the buttons start
+  const mb=document.querySelector(".maptools .mapbtns"); if(mb) document.documentElement.style.setProperty("--l2bw",Math.round(mb.getBoundingClientRect().width+24)+"px");
+}
+setInterval(()=>{ try{ twoRows(); }catch(e){} },400); addEventListener("resize",()=>{ try{ twoRows(); }catch(e){} });
+// the Active projects card switches the map to the active projects, like the Pipeline card does
+document.addEventListener("click",e=>{ const k=e.target.closest&&e.target.closest("#kpis .kpi"); if(!k||k.dataset.ppd||k.dataset.ppk) return;
+  const lab=((k.querySelector(".k")||{}).textContent||"").trim().toLowerCase();
+  const m=lab==="active projects"?"act":lab==="total land bank"?"":null; if(m==null) return;
+  const b=document.querySelector(`.pp-mode[data-m="${m}"]`); if(b) b.click(); },true);
+
 /* ---- look: glass that lets the map show through, and a map bar that wraps to fit any width or browser zoom ---- */
 { const st=document.createElement("style"); st.textContent=`
   /* the project menu stays the browser's own menu (as before), just more compact */
@@ -15346,6 +15374,25 @@ setInterval(()=>{ try{ kpiFloat(); }catch(e){} },400); addEventListener("resize"
   aside.rail{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:linear-gradient(180deg,#1C1D22 0%,#101114 100%)!important;contain:paint;isolation:isolate}
   aside.rail .rail-scroll{scrollbar-width:none!important;overflow-x:hidden!important;contain:paint}
   aside.rail .rail-scroll::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+  /* V79.6 two rows */
+  .l2-gone{display:none!important}
+  body.l2 main > header.top,body.l2 main > .top{flex-wrap:nowrap!important;align-items:center!important;gap:8px!important;padding-top:8px!important;padding-bottom:8px!important;min-height:0!important}
+  body.l2 #fbar{flex-wrap:nowrap!important;width:auto!important;flex:0 0 auto!important;margin:0!important;order:0}
+  body.l2 main > header.top .field:has(#parkSel){flex:0 0 190px!important;width:190px!important}
+  body.l2 main > header.top .field:has(#q){flex:0 1 190px!important;width:190px!important;min-width:120px}
+  body.l2 main > header.top .spacer{display:none!important}
+  body.l2 .maptools .legend{position:fixed!important;top:var(--l2y,10px)!important;left:var(--l2x,700px)!important;right:12px!important;z-index:30;
+    flex-wrap:nowrap!important;overflow:hidden!important;max-width:none!important;gap:4px!important;pointer-events:auto}
+  body.l2 .maptools .legend .lg{height:30px!important;padding:0 9px!important;font-size:11.5px!important;white-space:nowrap;flex:0 0 auto;background:#fff!important;box-shadow:0 0 0 1px rgba(16,18,24,.10)!important}
+  body.l2 .maptools .legend .lg .n{font-size:10.5px!important}
+  body.kpi-float.l2 #kpis{top:auto;right:var(--l2bw,560px)!important;padding:8px 0 0 14px!important;flex-wrap:nowrap!important;overflow:hidden}
+  body.kpi-float.l2 .maptools{top:8px!important;justify-content:flex-end!important}
+  body.kpi-float.l2 .maptools .mapbtns{margin-left:auto}
+  body.kpi-float #kpis .kpi{background:rgba(255,255,255,.86)!important;border:1px solid rgba(16,18,24,.08)!important}
+  body.kpi-float #kpis .kpi .k{color:#5A5F68!important;white-space:nowrap}
+  body.kpi-float #kpis .kpi .v{color:#16181D!important;white-space:nowrap}
+  body.kpi-float #kpis .kpi .s{color:#5A5F68!important}
+  body.kpi-float #kpis .kpi{min-width:0!important;flex:0 1 auto!important}
   .poi.dry .poi-i{background:#8E5BD6!important}
 
   @media (min-width:821px){
