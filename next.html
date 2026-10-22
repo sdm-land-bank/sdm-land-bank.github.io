@@ -15324,10 +15324,9 @@ function twoRows(){
   document.querySelectorAll(".mapbtns > button").forEach(b=>{ const t=b.textContent.trim(); if(SHORT[t]){ if(!b.title) b.title=t; b.textContent=SHORT[t]; } });
   if(!on) return;
   // row 1: the status chips sit in the header line, right after the filters
-  const fb=document.getElementById("fbar"), hd=document.querySelector("main > header.top, main > .top");
-  if(fb&&hd){ const r=fb.getBoundingClientRect(), h=hd.getBoundingClientRect();
-    document.documentElement.style.setProperty("--l2x",Math.round(r.right+10)+"px");
-    document.documentElement.style.setProperty("--l2y",Math.round(r.top+(r.height-30)/2)+"px"); }
+  // (moved into the header; the app redraws the chips inside the map, so the newest copy is moved each time and the old one dropped)
+  const hd=document.querySelector("main > header.top, main > .top"), L=document.querySelector(".maptools .legend");
+  if(hd&&L){ hd.querySelectorAll(":scope > .legend").forEach(x=>x.remove()); L.classList.add("l2-lg"); hd.appendChild(L); }
   // row 2: cards stop where the buttons start
   const mb=document.querySelector(".maptools .mapbtns"); if(mb) document.documentElement.style.setProperty("--l2bw",Math.round(mb.getBoundingClientRect().width+24)+"px");
 }
@@ -15381,10 +15380,11 @@ document.addEventListener("click",e=>{ const k=e.target.closest&&e.target.closes
   body.l2 main > header.top .field:has(#parkSel){flex:0 0 190px!important;width:190px!important}
   body.l2 main > header.top .field:has(#q){flex:0 1 190px!important;width:190px!important;min-width:120px}
   body.l2 main > header.top .spacer{display:none!important}
-  body.l2 .maptools .legend{position:fixed!important;top:var(--l2y,10px)!important;left:var(--l2x,700px)!important;right:12px!important;z-index:30;
-    flex-wrap:nowrap!important;overflow:hidden!important;max-width:none!important;gap:4px!important;pointer-events:auto}
-  body.l2 .maptools .legend .lg{height:30px!important;padding:0 9px!important;font-size:11.5px!important;white-space:nowrap;flex:0 0 auto;background:#fff!important;box-shadow:0 0 0 1px rgba(16,18,24,.10)!important}
-  body.l2 .maptools .legend .lg .n{font-size:10.5px!important}
+  body:not(.l2) main > header.top > .legend{display:none!important}
+  body.l2 main > header.top > .legend{display:flex!important;flex:1 1 auto;min-width:0;flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;max-width:none!important;gap:4px!important;margin:0!important;padding:0!important;background:transparent!important;box-shadow:none!important}
+  body.l2 main > header.top > .legend::-webkit-scrollbar{display:none}
+  body.l2 main > header.top > .legend .lg{height:30px!important;padding:0 9px!important;font-size:11.5px!important;white-space:nowrap;flex:0 0 auto;background:#fff!important;box-shadow:0 0 0 1px rgba(16,18,24,.10)!important}
+  body.l2 main > header.top > .legend .lg .n{font-size:10.5px!important}
   body.kpi-float.l2 #kpis{top:auto;right:var(--l2bw,560px)!important;padding:8px 0 0 14px!important;flex-wrap:nowrap!important;overflow:hidden}
   body.kpi-float.l2 .maptools{top:8px!important;justify-content:flex-end!important}
   body.kpi-float.l2 .maptools .mapbtns{margin-left:auto}
@@ -15392,7 +15392,9 @@ document.addEventListener("click",e=>{ const k=e.target.closest&&e.target.closes
   body.kpi-float #kpis .kpi .k{color:#5A5F68!important;white-space:nowrap}
   body.kpi-float #kpis .kpi .v{color:#16181D!important;white-space:nowrap}
   body.kpi-float #kpis .kpi .s{color:#5A5F68!important}
-  body.kpi-float #kpis .kpi{min-width:0!important;flex:0 1 auto!important}
+  body.kpi-float #kpis .kpi{min-width:0!important;flex:0 1 auto!important;max-width:172px!important}
+  body.kpi-float.l2 #kpis,body.kpi-float.l2 #kpis.kpis.map5.pp-k5{flex-wrap:nowrap!important}
+  body.kpi-float #kpis .kpi .s{display:block;max-width:100%}
   .poi.dry .poi-i{background:#8E5BD6!important}
 
   @media (min-width:821px){
