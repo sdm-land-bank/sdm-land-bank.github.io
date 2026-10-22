@@ -14797,7 +14797,7 @@ function openCard(name){
   const el=$("#parkcard"); if(!el) return;
   const landHtml=lands.map(l=>{ const pts=l.border.slice(0,-1);
     return `<details class="pp-land"><summary><b>${esc(l.name)}</b> · ${l.traced?fmtSq(l.area)+" sqm":"border not drawn"}</summary>
-      <p class="note" style="margin:6px 0">${l.traced?`Outer border traced from the development team's drawing (${pts.length} points, latitude, longitude).`
+      <p class="note" style="margin:6px 0">${l.traced?`${l.surveyed?"Land border from the development team's Google Earth survey":"Outer border traced from the development team's drawing"} (${pts.length} points, latitude, longitude).`
         :"The KMZ holds a picture only for this land, with no border: the dashed line is the picture's frame, not the land."}</p>
       <pre class="pp-pts">${(l.traced?pts:l.corners).map(ll).join("\n")}</pre>
       <button class="ebtn pp-copy" data-id="${esc(l.id)}">Copy coordinates</button></details>`; }).join("");
@@ -14805,7 +14805,7 @@ function openCard(name){
     <h4>${esc(p.name)}</h4>
     <div class="pc-w"><span class="pc-stage" style="background:${st.hex}">${esc(st.label)}</span>Land only — no approved master plan yet</div>
     <div class="pc-g">
-      <div><span>Land area (drawn border)</span><b>${traced.length?fmtSq(total)+" sqm":"—"}</b></div>
+      <div><span>Land area</span><b>${traced.length?fmtSq(total)+" sqm":"—"}</b></div>
       <div><span>Portfolio area</span><b>${pf&&pf.area?fmtSq(pf.area)+" sqm":"—"}</b></div>
       <div><span>Lands</span><b>${lands.length}</b></div>
       <div><span>Location</span><b>${ll(at)}</b></div>
@@ -14862,7 +14862,7 @@ function paintKpis(){
   const x=projOf(f); if(!x) return;
   el.dataset.pp=f;
   el.innerHTML=`<div class="kpi" data-ppk="1"><span class="k">Pipeline project</span><span class="v">${esc(f)}</span><span class="s">Land only · no approved master plan</span></div>
-    <div class="kpi"><span class="k">Land area</span><span class="v">${x.traced.length?sq(x.total)+" sqm":"—"}</span><span class="s">${x.traced.length?"from the drawn border":"border not drawn in the KMZ"}</span></div>
+    <div class="kpi"><span class="k">Land area</span><span class="v">${x.traced.length?sq(x.total)+" sqm":"—"}</span><span class="s">${x.traced.length?(x.traced.every(l=>l.surveyed)?"surveyed land border":"from the drawn border"):"border not drawn in the KMZ"}</span></div>
     <div class="kpi"><span class="k">Lands</span><span class="v">${x.lands.length}</span><span class="s">${x.pf&&x.pf.area?"Portfolio area "+sq(x.pf.area)+" sqm":"No portfolio area yet"}</span></div>
     <div class="kpi"><span class="k">Nearest seaport</span><span class="v">${x.lg?fKm(x.lg.port.km)+" km":"—"}</span><span class="s">${x.lg?esc(x.lg.port.name)+" · Cairo "+fKm(x.lg.cairo)+" km":""}</span></div>`;
 }
@@ -14989,7 +14989,7 @@ if(typeof presScenes==="function"){ const psV77=presScenes;
       const out=[{kind:"pipeline", cam:ov?{center:ov.center,zoom:ov.zoom,pitch:25,bearing:6}:{center:[30.4,28.9],zoom:5.2,pitch:25,bearing:6}, dwell:8000,
         eye:"Pipeline · the next decade", title:"New lands coming",
         text:D.projects.length+" new projects — the land is secured, the master plans are still to be approved.",
-        stats:[[D.projects.length,"pipeline projects"],[sq(tot),"sqm of land drawn"]]}];
+        stats:[[D.projects.length,"pipeline projects"],[sq(tot),"sqm of land"]]}];
       let turn=1;
       D.projects.map(p=>({p,x:projOf(p.name)})).sort((a,b)=>b.x.at[1]-a.x.at[1]).forEach(({p,x})=>{
         const pts=x.lands.flatMap(l=>l.border), px=pts.map(c=>c[0]), py=pts.map(c=>c[1]); turn*=-1;
@@ -15052,7 +15052,7 @@ function facts(name){ const x=projOf(name); if(!x) return null;
     nearest_seaport:x.lg?`${x.lg.port.name}, ${Math.round(x.lg.port.km)} km`:null, nearest_airport:x.lg?`${x.lg.air.name}, ${Math.round(x.lg.air.km)} km`:null,
     km_to_cairo:x.lg?Math.round(x.lg.cairo):null, on_screen:"the map is flying to it now and its card is open; zoom in shows the concept drawing" }; }
 function laraList(){ const D=P(); if(!D) return "";
-  return D.projects.map(p=>{ const x=projOf(p.name); return `- ${p.name}${(AL[p.name]||[]).filter(a=>/[؀-ۿ]/.test(a)).slice(0,1).map(a=>" ("+a+")").join("")}: ${x.traced.length?Math.round(x.total/1e5)/10+"M sqm drawn border":"border not drawn"}${x.lg?", near "+x.lg.port.name+" ("+Math.round(x.lg.port.km)+" km), "+Math.round(x.lg.cairo)+" km from Cairo":""}`; }).join("\n"); }
+  return D.projects.map(p=>{ const x=projOf(p.name); return `- ${p.name}${(AL[p.name]||[]).filter(a=>/[؀-ۿ]/.test(a)).slice(0,1).map(a=>" ("+a+")").join("")}: ${x.traced.length?Math.round(x.total/1e5)/10+"M sqm land":"border not drawn"}${x.lg?", near "+x.lg.port.name+" ("+Math.round(x.lg.port.km)+" km), "+Math.round(x.lg.cairo)+" km from Cairo":""}`; }).join("\n"); }
 if(typeof LARA_TOOLS!=="undefined"&&Array.isArray(LARA_TOOLS)&&!LARA_TOOLS.some(t=>t.name==="open_pipeline_project"))
   LARA_TOOLS.push({name:"open_pipeline_project",description:"Fly the map to one of the NEW pipeline projects (land only, no approved master plan) and open its card while you talk about it. Returns its area, location and logistics. Use list=true to get every pipeline project.",
     parameters:{type:"OBJECT",properties:{project:{type:"STRING",description:"Pipeline project name, e.g. Dabaa, Ras El Hekma, New Capital"},list:{type:"BOOLEAN",description:"true to list all pipeline projects"}}}});
