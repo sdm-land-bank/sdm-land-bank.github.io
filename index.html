@@ -15084,6 +15084,32 @@ function addProjBorders(){
 }
 setInterval(()=>{ try{ addProjBorders(); }catch(e){} },1500);
 
+/* ---- V79: the surveyed (iPad) borders as a white highlight, with a Borders on/off button ---- */
+let BD=true; try{ BD=localStorage.getItem("sid.bdShow")!=="0"; }catch(e){}
+const BDL=["pipe-line","pipe-frame","projb-line"];
+function bdGlow(){
+  if(typeof map==="undefined"||!map||!map.style||!map.style._loaded) return;
+  [["pipe-bd","pipe-glow","pipe-line"],["proj-bd","projb-glow","projb-line"]].forEach(([src,id,ref])=>{
+    if(!map.getSource(src)||!map.getLayer(ref)||map.getLayer(id)) return;
+    map.addLayer({id,type:"line",source:src,paint:{"line-color":"#FFFFFF","line-width":["interpolate",["linear"],["zoom"],8,4,15,9],"line-blur":4,"line-opacity":.45}},ref);
+    map.setPaintProperty(ref,"line-color","#FFFFFF");
+    try{ map.setPaintProperty(ref,"line-dasharray",[1,0]); }catch(e){}
+  });
+  BDL.concat(["pipe-glow","projb-glow"]).forEach(l=>{ if(!map.getLayer(l)) return;
+    const k=l.endsWith("glow")?"line-opacity":"line-opacity", on=l.endsWith("glow")?.45:.95;
+    if(map.getPaintProperty(l,k)!==(BD?on:0)) map.setPaintProperty(l,k,BD?on:0); });
+  const b=document.getElementById("ppBdBtn"); if(b) b.classList.toggle("on",BD);
+}
+function bdButton(){
+  if(pub()) return; const bar=document.querySelector(".mapbtns"); if(!bar||document.getElementById("ppBdBtn")) return;
+  const b=document.createElement("button"); b.type="button"; b.id="ppBdBtn"; b.className="pp-bdbtn"; b.textContent="Borders";
+  b.title="Show or hide the surveyed land borders (Google Earth, iPad version)";
+  b.onclick=()=>{ BD=!BD; try{ localStorage.setItem("sid.bdShow",BD?"1":"0"); }catch(e){} bdGlow(); };
+  const seg=bar.querySelector(".pp-seg"); (seg||bar.lastElementChild).after(b); bdGlow();
+}
+setInterval(()=>{ try{ bdButton(); bdGlow(); }catch(e){} },1500);
+{ const st=document.createElement("style"); st.textContent=`.mapbtns .pp-bdbtn{white-space:nowrap;flex:none}.mapbtns .pp-bdbtn.on{background:#16181D!important;color:#fff!important}`; document.head.appendChild(st); }
+
 /* ---- 3. Lara knows the pipeline projects and flies to them while she talks ---- */
 const AL={"Sephora":["sephora","سفورا","سيفورا"],"SID Sharkeyoun":["sharkeyoun","sharqiyoun","شرقيون","الشرقيون"],"Qantara":["qantara","kantara","القنطرة"],
   "Serag Land":["serag","سراج"],"New Asher":["new asher","asher new","العاشر الجديدة","العاشر الجديد"],"Abo Rawash":["abo rawash","abu rawash","أبو رواش","ابو رواش"],
