@@ -15257,8 +15257,8 @@ if(typeof sitesKey==="function"){ const skV793=sitesKey; sitesKey=function(){ sk
     if(n){ const s=document.createElement("span"); s.className="dry-k"; s.innerHTML=`<i style="background:#8E5BD6"></i>${n} dry ports`; k.appendChild(s); } } }catch(e){} }; }
 
 /* ---- "Show ports" / "Hide ports" ---- */
-function portsLabel(){ const b=document.getElementById("sitesBtn"); if(!b) return; const t=(typeof S!=="undefined"&&S.sites)?"Hide ports":"Show ports";
-  if(b.textContent!==t) b.textContent=t; b.title="Seaports, dry ports, airports and cities, with distance rings"; }
+function portsLabel(){ const b=document.getElementById("sitesBtn"); if(!b) return; const onP=typeof S!=="undefined"&&S.sites, t=document.body.classList.contains("l2")?"Ports":(onP?"Hide ports":"Show ports"); b.classList.toggle("on",!!onP);
+  if(b.textContent!==t) b.textContent=t; const tt=(onP?"Hide":"Show")+" seaports, dry ports, airports and cities"; if(b.title!==tt) b.title=tt; }
 if(typeof toggleSites==="function"){ const tsV793=toggleSites; toggleSites=function(){ const r=tsV793.apply(this,arguments); portsLabel(); return r; }; }
 
 setInterval(()=>{ try{ portsLabel(); }catch(e){} },600);
@@ -15312,7 +15312,7 @@ setInterval(()=>{ try{ kpiFloat(); }catch(e){} },400); addEventListener("resize"
 
 /* ---- V79.6: two rows. Row 1 = project menu, search, 4 filters, status chips. Row 2 = cards (left) + map buttons (right) ---- */
 const DROP=new Set(["Sector","Phase","Quarter","Sold by"]);
-const SHORT={"Hide ports":"Ports","Show ports":"Ports","3D view":"3D","2D view":"2D","Fit to plots":"Fit","Compare parks":"Compare"};
+const SHORT={"3D view":"3D","2D view":"2D","Fit to plots":"Fit","Compare parks":"Compare"};
 function twoRows(){
   const app=document.querySelector(".app"), on=app&&app.dataset.view==="inventory"&&innerWidth>820;
   document.body.classList.toggle("l2",!!on);
