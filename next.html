@@ -15282,6 +15282,19 @@ if(typeof showSelection==="function"){ const ssV794=showSelection; showSelection
     }); }catch(e){}
   return r; }; }
 
+/* ---- moving between projects: one slow, smooth flight (out, across, in) instead of a fast jump ---- */
+let FLY=0; const flyArm=()=>{ FLY=Date.now(); };
+document.addEventListener("change",e=>{ if(e.target&&e.target.id==="parkSel") flyArm(); },true);
+document.addEventListener("click",e=>{ if(e.target.closest&&e.target.closest(".pfside .pfr,.pp-pin,.pk-o")) flyArm(); },true);
+if(typeof window.sidPipeOpen==="function"){ const so=window.sidPipeOpen; window.sidPipeOpen=function(){ flyArm(); return so.apply(this,arguments); }; }
+{ const k=setInterval(()=>{ if(typeof map==="undefined"||!map||!map.fitBounds||map.__ppFly) return; clearInterval(k); map.__ppFly=1;
+  const armed=o=>Date.now()-FLY<1500&&!(typeof RM!=="undefined"&&RM)&&!(o&&o.duration===0);
+  const fb=map.fitBounds.bind(map), ea=map.easeTo.bind(map), fl=map.flyTo.bind(map);
+  map.fitBounds=function(b,o,ev){ if(armed(o)){ FLY=0; return fb(b,Object.assign({},o,{linear:false,duration:3200,curve:1.5,essential:true}),ev); } return fb(b,o,ev); };
+  map.easeTo=function(o,ev){ if(armed(o)&&o&&(o.center||o.zoom!=null)){ FLY=0; return fl(Object.assign({},o,{duration:3200,curve:1.5,essential:true}),ev); } return ea(o,ev); };
+  map.flyTo=function(o,ev){ if(armed(o)){ FLY=0; return fl(Object.assign({},o,{duration:3200,curve:1.5,essential:true}),ev); } return fl(o,ev); };
+},500); }
+
 /* ---- look: glass that lets the map show through, and a map bar that wraps to fit any width or browser zoom ---- */
 { const st=document.createElement("style"); st.textContent=`
   /* the project menu stays the browser's own menu (as before), just more compact */
