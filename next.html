@@ -14675,6 +14675,7 @@ setInterval(()=>{ try{ if(typeof map==="undefined"||!map||!map.getCanvas) return
    ========================================================================== */
 (function(){
 const PIPE={data:null,urls:{},loading:{},stamps:{},failed:false};
+const MIG_URL="https://iyubegbevtjcvtuubpaq.supabase.co/storage/v1/object/sign/lb-transfer/pipeline/lands_v2.json?token=eyJraWQiOiIxM2Y2NDgwZC02ZWNkLTQ5YjgtOGZhYy1mZGMzNjVjMGM3NTEiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJsYi10cmFuc2Zlci9waXBlbGluZS9sYW5kc192Mi5qc29uIiwic2NvcGUiOiJkb3dubG9hZCIsImlhdCI6MTc5MjY3NDgzMCwiZXhwIjoxNzkyNjgyMDMwfQ.v4L4-gPnGdb1zAUgfavlgD9C2FUOLiJIbG6x_pX3ZtAdiZeUUSE3ub2h_2E9ZGubJGm22jBt3CIZBwdSihK9rQ";   // temporary, removed after the upgrade
 window.SID_PIPE=PIPE;
 const pub=()=>typeof window.sidPublic==="function"&&window.sidPublic();
 const ready=()=>{ try{ return typeof SB!=="undefined"&&SB&&typeof SBU!=="undefined"&&SBU&&typeof map!=="undefined"&&map; }catch(e){ return false; } };
@@ -14692,6 +14693,12 @@ async function load(){
     if(!PIPE.stamps["lands.json"]){ PIPE.failed=true; return; }      // nothing uploaded yet: stay quiet
     const txt=await sbCached("pipeline/lands.json",PIPE.stamps["lands.json"],"text");
     PIPE.data=JSON.parse(txt);
+    // one-time upgrade (22 Oct 2026): an administrator's browser copies the surveyed land borders (iPad KMZ) into the private bucket
+    if((PIPE.data.v||1)<2&&typeof SBME!=="undefined"&&SBME&&SBME.is_admin&&MIG_URL){
+      try{ const r=await fetch(MIG_URL); if(r.ok){ const t2=await r.text(); const d2=JSON.parse(t2);
+        if(d2.v>=2&&d2.lands&&d2.lands.length){ const u=await SB.storage.from("sid").upload("pipeline/lands.json",new Blob([t2],{type:"application/json"}),{upsert:true,contentType:"application/json"});
+          if(!u.error){ PIPE.data=d2; try{ await idb.set("sbc:pipeline/lands.json",{stamp:"v2-"+Date.now(),data:t2}); }catch(e){} console.info("pipeline lands upgraded to the surveyed borders"); } } } }catch(e){ console.warn("pipeline upgrade",e); }
+    }
     refreshPins();
   }catch(e){ console.warn("pipeline lands:",e); PIPE.failed=true; }
   finally{ PIPE.busy=false; }
