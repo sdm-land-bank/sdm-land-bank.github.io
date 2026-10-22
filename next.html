@@ -14760,7 +14760,7 @@ function addMenu(){
     sel.addEventListener("focus",()=>{ if(!sel.value.startsWith("pipe:")) prev=sel.value; });
     sel.addEventListener("change",e=>{ if(!sel.value.startsWith("pipe:")){ prev=sel.value; return; }
       e.stopImmediatePropagation(); openCard(sel.value.slice(5)); },true);
-    sel.addEventListener("change",()=>{ if(!sel.value.startsWith("pipe:")&&PIPE.focus){ PIPE.focus=null; try{ window.__ppFocus&&window.__ppFocus(null); }catch(e){} } }); }
+    sel.addEventListener("change",()=>{ if(!sel.value.startsWith("pipe:")) closePipeCard(); }); }
   if(PIPE.focus&&sel.value!=="pipe:"+PIPE.focus) sel.value="pipe:"+PIPE.focus;
 }
 function lazyImages(){
@@ -14827,6 +14827,17 @@ function openCard(name){
   const xs=lands.flatMap(l=>l.border.map(c=>c[0])), ys=lands.flatMap(l=>l.border.map(c=>c[1]));
   try{ map.fitBounds([[Math.min(...xs),Math.min(...ys)],[Math.max(...xs),Math.max(...ys)]],{padding:{top:80,bottom:80,left:80,right:Math.min(420,innerWidth*.4)},maxZoom:14.5,duration:typeof RM!=="undefined"&&RM?0:700}); }catch(e){}
 }
+// the pipeline card closes as soon as the user moves to another project (menu, list, pins) or pans it out of sight
+function closePipeCard(){
+  const el=document.getElementById("parkcard");
+  if(el&&!el.hidden&&el.querySelector(".pc-x")&&/no approved master plan yet/.test(el.textContent)) el.hidden=true;
+  if(PIPE.focus){ PIPE.focus=null; try{ window.__ppFocus&&window.__ppFocus(null); }catch(e){} }
+}
+window.SID_PIPE.close=closePipeCard;
+{ const k=setInterval(()=>{ if(typeof map==="undefined"||!map||!map.on) return; clearInterval(k);
+    map.on("moveend",()=>{ try{ const f=PIPE.focus; if(!f||!PIPE.data) return; const D=PIPE.data, p=D.projects.find(x=>x.name===f); if(!p) return;
+      const b=map.getBounds(), pts=p.lands.map(id=>D.lands.find(l=>l.id===id)).filter(Boolean).flatMap(l=>l.border);
+      if(pts.length&&!pts.some(c=>b.contains(c))) closePipeCard(); }catch(e){} }); },800); }
 window.sidPipeOpen=openCard;
 { const st=document.createElement("style"); st.textContent=`
   .pp-pin{display:flex;align-items:center;gap:7px;padding:0;border:0;background:none;cursor:pointer}
@@ -15250,62 +15261,50 @@ function portsLabel(){ const b=document.getElementById("sitesBtn"); if(!b) retur
   if(b.textContent!==t) b.textContent=t; b.title="Seaports, dry ports, airports and cities, with distance rings"; }
 if(typeof toggleSites==="function"){ const tsV793=toggleSites; toggleSites=function(){ const r=tsV793.apply(this,arguments); portsLabel(); return r; }; }
 
-/* ---- the project menu: opens downward, with search and groups (the browser's own list opens over the page on a Mac) ---- */
-let DD=null;
-function ddClose(){ if(DD){ DD.remove(); DD=null; document.removeEventListener("mousedown",ddOut,true); } }
-function ddOut(e){ if(DD&&!DD.contains(e.target)&&!e.target.closest(".pk-dd")) ddClose(); }
-function ddOpen(sel,btn){
-  if(DD){ ddClose(); return; }
-  const r=btn.getBoundingClientRect();
-  DD=document.createElement("div"); DD.className="pk-menu"; DD.setAttribute("role","listbox");
-  DD.style.left=Math.round(r.left)+"px"; DD.style.top=Math.round(r.bottom+6)+"px"; DD.style.width=Math.max(280,Math.round(r.width))+"px";
-  DD.style.maxHeight=Math.max(220,innerHeight-r.bottom-24)+"px";
-  const groups=[]; let cur={label:"",opts:[]}; groups.push(cur);
-  [...sel.children].forEach(ch=>{ if(ch.tagName==="OPTGROUP"){ groups.push({label:ch.label,opts:[...ch.children]}); } else cur.opts.push(ch); });
-  if(groups[0].opts.length>1&&!groups[0].label) groups[0].label="Operating parks";
-  DD.innerHTML=`<input class="pk-q" type="search" placeholder="Search projects" aria-label="Search projects"><div class="pk-l">${groups.map(g=>`${g.label?`<div class="pk-g">${esc(g.label)}</div>`:""}${g.opts.map(o=>`<button type="button" class="pk-o${o.value===sel.value?" on":""}" data-v="${esc(o.value)}" role="option">${esc(o.text)}</button>`).join("")}`).join("")}</div>`;
-  document.body.appendChild(DD);
-  const q=DD.querySelector(".pk-q");
-  q.oninput=()=>{ const t=q.value.trim().toLowerCase(); DD.querySelectorAll(".pk-o").forEach(b=>b.style.display=!t||b.textContent.toLowerCase().includes(t)?"":"none");
-    DD.querySelectorAll(".pk-g").forEach(g=>{ let n=g.nextElementSibling, any=false; while(n&&!n.classList.contains("pk-g")){ if(n.style.display!=="none") any=true; n=n.nextElementSibling; } g.style.display=any?"":"none"; }); };
-  q.onkeydown=e=>{ if(e.key==="Escape") ddClose(); if(e.key==="Enter"){ const b=[...DD.querySelectorAll(".pk-o")].find(b=>b.style.display!=="none"); if(b) b.click(); } };
-  DD.querySelectorAll(".pk-o").forEach(b=>b.onclick=()=>{ const v=b.dataset.v; ddClose();
-    sel.dispatchEvent(new Event("focus")); sel.value=v; sel.dispatchEvent(new Event("change",{bubbles:true})); ddSync(); });
-  const on=DD.querySelector(".pk-o.on"); if(on) on.scrollIntoView({block:"nearest"});
-  document.addEventListener("mousedown",ddOut,true);
-  if(matchMedia("(pointer:fine)").matches) setTimeout(()=>q.focus(),0);
-}
-function ddSync(){
-  const sel=document.getElementById("parkSel"); if(!sel) return;
-  let btn=sel.parentElement.querySelector(".pk-dd");
-  if(!btn){ btn=document.createElement("button"); btn.type="button"; btn.className="pk-dd"; btn.setAttribute("aria-haspopup","listbox");
-    btn.onclick=e=>{ e.preventDefault(); ddOpen(sel,btn); }; sel.after(btn); sel.classList.add("pk-native"); }
-  const o=sel.options[sel.selectedIndex], t=o?o.text:"";
-  if(btn.dataset.t!==t){ btn.dataset.t=t; btn.innerHTML=`<span>${esc(t)}</span><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
-}
-addEventListener("resize",ddClose); addEventListener("scroll",ddClose,true);
-document.addEventListener("change",e=>{ if(e.target&&e.target.id==="parkSel") ddSync(); },true);
-setInterval(()=>{ try{ ddSync(); portsLabel(); }catch(e){} },600);
+setInterval(()=>{ try{ portsLabel(); }catch(e){} },600);
+
+/* ---- merged plots (one deal over several plots): one clear box instead of crowded lines ---- */
+if(typeof showSelection==="function"){ const ssV794=showSelection; showSelection=function(){ const r=ssV794.apply(this,arguments);
+  try{ const el=document.getElementById("selpanel"); if(!el||el.hidden) return r; const items=selRows(), boxes=[...el.querySelectorAll(".sp-item")];
+    items.forEach((x,i)=>{ const b=boxes[i], row=x.info&&x.info.row; if(!b||!row) return;
+      const units=(row._plots||[]).length>1?row._plots:null, n=units?units.length:((x.info.rows||[]).length>1?x.info.rows.length:0); if(n<2||b.querySelector(".mg-box")) return;
+      const gis=x.f.properties.gis, code=String(row.unit||"").split(/\s*,\s*/).filter(Boolean);
+      const box=document.createElement("div"); box.className="mg-box";
+      box.innerHTML=`<div class="mg-h"><span class="mg-t">Merged deal</span><span class="mg-n">${n} plots · one contract</span></div>
+        <div class="mg-u">${(code.length>1?code:(units||[]).map(u=>u.unit||u)).map(u=>`<span>${esc(u)}</span>`).join("")}</div>
+        <div class="mg-g"><div><span>Deal area (MDS)</span><b>${typeof fInt==="function"?fInt(row.area):row.area} sqm</b></div>
+          <div><span>This plot (GIS)</span><b>${gis?(typeof fInt==="function"?fInt(gis):gis)+" sqm":"—"}</b></div></div>`;
+      const kv=b.querySelector(".sp-kv"); if(kv) kv.before(box);
+      // the area line now repeats the box: keep it short
+      const a=kv&&[...kv.children].find(d=>/^Area$/.test((d.querySelector("span")||{}).textContent||"")); if(a){ const v=a.querySelector("b"); if(v&&gis) v.textContent=(typeof fInt==="function"?fInt(gis):gis)+" sqm (this plot)"; }
+      // the long "Part of one deal" note says the same thing
+      b.querySelectorAll(".sp-note").forEach(nt=>{ if(/one deal|MDS unit/i.test(nt.textContent)) nt.classList.add("mg-hide"); });
+    }); }catch(e){}
+  return r; }; }
 
 /* ---- look: glass that lets the map show through, and a map bar that wraps to fit any width or browser zoom ---- */
 { const st=document.createElement("style"); st.textContent=`
-  #parkSel.pk-native{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important}
-  .pk-dd{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:34px;padding:0 12px;border-radius:10px;
-    border:1px solid color-mix(in srgb,#16181D 12%,transparent);background:color-mix(in srgb,var(--panel,#fff) 70%,transparent);
-    -webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);font:600 13.5px/1.2 Inter,system-ui,sans-serif;color:inherit;cursor:pointer;text-align:left}
-  .pk-dd span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .pk-dd:hover{border-color:var(--signal,#B3263D)}
-  .pk-menu{position:fixed;z-index:9999;display:flex;flex-direction:column;border-radius:14px;overflow:hidden;
-    background:color-mix(in srgb,var(--panel,#fff) 92%,transparent);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);
-    border:1px solid color-mix(in srgb,#16181D 12%,transparent);box-shadow:0 18px 44px -12px rgba(16,18,24,.35)}
-  .pk-q{margin:8px;padding:8px 10px;border-radius:9px;border:1px solid color-mix(in srgb,#16181D 14%,transparent);background:transparent;font:500 13px Inter,system-ui,sans-serif;color:inherit;outline:none}
-  .pk-q:focus{border-color:var(--signal,#B3263D)}
-  .pk-l{overflow:auto;padding:0 6px 8px}
-  .pk-g{padding:10px 8px 4px;font:700 10px/1 Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#6E737B}
-  .pk-o{display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:8px;background:transparent;font:500 13px/1.25 Inter,system-ui,sans-serif;color:inherit;cursor:pointer}
-  .pk-o:hover{background:color-mix(in srgb,#16181D 7%,transparent)}
-  .pk-o.on{background:#16181D;color:#fff}
+  /* the project menu stays the browser's own menu (as before), just more compact */
+  #parkSel{min-height:30px!important;height:32px!important;padding-top:0!important;padding-bottom:0!important;font-size:13px!important}
 
+  /* the QR tiles in the plot panel: code on the left, title and line stacked on the right */
+  .rq.sm .rq-i{display:grid!important;grid-template-columns:54px minmax(0,1fr);grid-template-rows:auto auto;column-gap:10px;row-gap:2px;align-items:center;text-align:left}
+  .rq.sm .rq-i svg{grid-row:1 / 3}
+  .rq.sm .rq-i b{align-self:end;white-space:nowrap}
+  .rq.sm .rq-i span{align-self:start;overflow-wrap:normal;word-break:normal}
+
+  .mg-box{margin:8px 0 10px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,#FF9F0A 10%,transparent);border:1px solid color-mix(in srgb,#FF9F0A 35%,transparent)}
+  .mg-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+  .mg-t{font:800 11px/1 Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#8A5300}
+  .mg-n{font:600 11.5px/1.2 Inter,system-ui,sans-serif;color:#6E737B}
+  .mg-u{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+  .mg-u span{font:700 11.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;padding:4px 7px;border-radius:6px;background:rgba(255,255,255,.75);border:1px solid rgba(16,18,24,.1)}
+  .mg-g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .mg-g span{display:block;font:600 9.5px/1.2 Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#6E737B}
+  .mg-g b{font:700 13px/1.3 Inter,system-ui,sans-serif}
+  .sp-note.mg-hide{display:none!important}
+  @media (min-width:821px){ #selpanel{width:360px!important} }
+  #selpanel .sp-kv b{overflow-wrap:anywhere}
   .poi.dry .poi-i{background:#8E5BD6!important}
 
   @media (min-width:821px){
@@ -15318,7 +15317,14 @@ setInterval(()=>{ try{ ddSync(); portsLabel(); }catch(e){} },600);
   .maptools .mapbtns{background:rgba(255,255,255,.42)!important;-webkit-backdrop-filter:blur(16px) saturate(170%)!important;backdrop-filter:blur(16px) saturate(170%)!important}
   .maptools .mapbtns button:not(.on):not(.on3d):not(.hit):not(.pp-mode){background:transparent!important}
   .mapbtns .pp-seg{background:rgba(255,255,255,.35)!important}
-  #kpis .kpi{background:color-mix(in srgb,var(--panel,#fff) 62%,transparent)!important;-webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%)}
+  @media (min-width:821px){
+    #kpis{gap:8px!important;padding-top:6px!important;padding-bottom:6px!important}
+    #kpis .kpi{padding:7px 12px!important;min-height:0!important;border-radius:12px!important}
+    #kpis .kpi .k{font-size:9.5px!important}
+    #kpis .kpi .v{font-size:17px!important;line-height:1.15!important}
+    #kpis .kpi .s{font-size:10.5px!important}
+  }
+  #kpis .kpi{background:color-mix(in srgb,var(--panel,#fff) 45%,transparent)!important;box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 0 0 1px rgba(16,18,24,.06)!important;-webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%)}
   #kpis{background:transparent!important}
   `; document.head.appendChild(st); }
 })();
