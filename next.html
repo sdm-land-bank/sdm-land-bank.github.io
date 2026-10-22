@@ -14863,10 +14863,13 @@ const projOf=name=>{ const D=P(); if(!D) return null; const p=D.projects.find(x=
   return {p,lands,traced:tr,total:tr.reduce((a,l)=>a+l.area,0),at,lg,pf}; };
 
 /* ---- 1. the top cards show the picked pipeline project ---- */
+let SAVED=null;
 function paintKpis(){
   const el=document.getElementById("kpis"), f=window.SID_PIPE&&window.SID_PIPE.focus; if(!el) return;
-  if(!f){ if(el.dataset.pp){ delete el.dataset.pp; if(typeof render==="function") try{ render(); }catch(e){} } return; }
+  // closing: put the park cards back exactly as they were (no re-render: a render also re-fits the map and zooms out)
+  if(!f){ if(el.dataset.pp!==undefined){ delete el.dataset.pp; if(SAVED!=null){ el.innerHTML=SAVED; SAVED=null; } } return; }
   const x=projOf(f); if(!x) return;
+  if(el.dataset.pp===undefined||!el.querySelector("[data-ppk]")) SAVED=el.innerHTML;
   el.dataset.pp=f;
   el.innerHTML=`<div class="kpi" data-ppk="1"><span class="k">Pipeline project</span><span class="v">${esc(f)}</span><span class="s">Land only · no approved master plan</span></div>
     <div class="kpi"><span class="k">Land area</span><span class="v">${x.traced.length?sq(x.total)+" sqm":"—"}</span><span class="s">${x.traced.length?(x.traced.every(l=>l.surveyed)?"surveyed land border":"from the drawn border"):"border not drawn in the KMZ"}</span></div>
