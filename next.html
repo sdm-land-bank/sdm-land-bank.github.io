@@ -14866,6 +14866,7 @@ let SAVED=null;
 function paintKpis(){
   const el=document.getElementById("kpis"), f=window.SID_PIPE&&window.SID_PIPE.focus; if(!el) return;
   // closing: put the park cards back exactly as they were (no re-render: a render also re-fits the map and zooms out)
+  if(!f&&MODE==="pipe"&&P()&&!pub()){ return paintPipeSum(el); }
   if(!f){ if(el.dataset.pp!==undefined){ delete el.dataset.pp; if(SAVED!=null){ el.innerHTML=SAVED; SAVED=null; } } return; }
   const x=projOf(f); if(!x) return;
   if(el.dataset.pp===undefined||!el.querySelector("[data-ppk]")) SAVED=el.innerHTML;
@@ -14875,10 +14876,22 @@ function paintKpis(){
     <div class="kpi"><span class="k">Lands</span><span class="v">${x.lands.length}</span><span class="s">${x.pf&&x.pf.area?"Portfolio area "+sq(x.pf.area)+" sqm":"No portfolio area yet"}</span></div>
     <div class="kpi"><span class="k">Nearest seaport</span><span class="v">${x.lg?fKm(x.lg.port.km)+" km":"—"}</span><span class="s">${x.lg?esc(x.lg.port.name)+" · Cairo "+fKm(x.lg.cairo)+" km":""}</span></div>`;
 }
+// Pipeline view: the cards describe the pipeline lands only
+function paintPipeSum(el){
+  if(el.dataset.pp==="*sum"&&el.querySelector("[data-ppk]")) return;
+  const D=P(), xs=D.projects.map(p=>projOf(p.name)).filter(Boolean), tot=xs.reduce((a,x)=>a+x.total,0);
+  const big=xs.slice().sort((a,b)=>b.total-a.total)[0], near=xs.filter(x=>x.lg).sort((a,b)=>a.lg.port.km-b.lg.port.km)[0];
+  if(el.dataset.pp===undefined||!el.querySelector("[data-ppk]")) SAVED=el.innerHTML;
+  el.dataset.pp="*sum"; el.classList.remove("pp-k5");
+  el.innerHTML=`<div class="kpi" data-ppk="1"><span class="k">Pipeline projects</span><span class="v">${D.projects.length}</span><span class="s">${D.lands.length} lands · no approved master plan</span></div>
+    <div class="kpi"><span class="k">Pipeline land</span><span class="v">${sq(tot)} sqm</span><span class="s">surveyed land borders (Google Earth)</span></div>
+    <div class="kpi"><span class="k">Largest</span><span class="v">${big?esc(big.p.name):"—"}</span><span class="s">${big?sq(big.total)+" sqm":""}</span></div>
+    <div class="kpi"><span class="k">Closest to a seaport</span><span class="v">${near?esc(near.p.name):"—"}</span><span class="s">${near?fKm(near.lg.port.km)+" km · "+esc(near.lg.port.name):""}</span></div>`;
+}
 window.__ppFocus=()=>paintKpis();
 { const k=setInterval(()=>{ const el=document.getElementById("kpis"); if(!el) return; clearInterval(k);
     // repaint only when the app replaced the cards (our own cards carry data-ppk): never loops
-    new MutationObserver(()=>{ if(window.SID_PIPE&&window.SID_PIPE.focus&&!el.querySelector('[data-ppk]')) paintKpis(); }).observe(el,{childList:true}); },700); }
+    new MutationObserver(()=>{ if(((window.SID_PIPE&&window.SID_PIPE.focus)||MODE==="pipe")&&!el.querySelector('[data-ppk]')) paintKpis(); }).observe(el,{childList:true}); },700); }
 
 /* ---- 2. Pipeline only / Active only ---- */
 let MODE=""; try{ MODE=localStorage.getItem("sid.pfMode")||""; }catch(e){}
@@ -14900,6 +14913,9 @@ function applyMode(){
     Object.keys(HID.v).forEach(id=>{ if(want.has(id)) return; if(map.getLayer(id)) map.setLayoutProperty(id,"visibility",HID.v[id]); delete HID.v[id]; });
   }catch(e){}
   document.querySelectorAll(".pp-mode").forEach(b=>b.classList.toggle("on",b.dataset.m===MODE)); setTimeout(declutter,50);
+  if(applyMode.last!==MODE){ applyMode.last=MODE; try{ const el=document.getElementById("kpis");
+    if(!(window.SID_PIPE&&window.SID_PIPE.focus)){ if(MODE==="pipe") paintKpis(); else if(el&&el.dataset.pp==="*sum"){ delete el.dataset.pp; if(SAVED!=null){ el.innerHTML=SAVED; SAVED=null; } } }
+    if(el){ el.querySelectorAll("[data-ppd]").forEach(x=>{ if(x.classList.contains("pp-kpi")) x.remove(); else if(x.dataset.ppo!=null){ x.innerHTML=x.dataset.ppo; delete x.dataset.ppd; } }); decorateKpis(); } }catch(e){} }
 }
 function fitMode(){
   try{ let pts=[];
@@ -14931,8 +14947,7 @@ function addButtons(){
   .kpi.pp-kpi{cursor:pointer}
   .kpi.pp-kpi:hover{border-color:#3A404A}
   @media (max-width:820px){ .kpis.map5.pp-k5{grid-template-columns:repeat(2,minmax(0,1fr))!important} }
-  .mapbtns{flex-wrap:nowrap!important;gap:4px!important;max-width:calc(100vw - 120px);overflow-x:auto;scrollbar-width:none}
-  .mapbtns::-webkit-scrollbar{display:none}
+
   .mapbtns>button,.mapbtns .cmp-btn{padding:6px 10px!important;font-size:11.5px!important;white-space:nowrap;min-height:30px}
   .mapbtns .pp-seg{display:inline-flex;flex:none;border-radius:999px;padding:2px;gap:2px;background:color-mix(in srgb,var(--panel,#fff) 96%,transparent);border:1px solid color-mix(in srgb,#16181D 10%,transparent);box-shadow:var(--e2)}
   .mapbtns .pp-seg .pp-mode{border:0!important;box-shadow:none!important;background:transparent!important;padding:4px 10px!important;font-size:11.5px!important;border-radius:999px;min-height:26px;white-space:nowrap}
@@ -14971,10 +14986,14 @@ function sideList(){
   const list=document.querySelector(".pfside .pflist"); if(!list||!P()) return;
   const rep=new Set(P().projects.map(p=>p.replaces).filter(Boolean));
   list.querySelectorAll(".pfr").forEach(b=>{
-    if(b.dataset.ppw) return; b.dataset.ppw="1";
+    if(b.dataset.ppw||b.classList.contains("pp-r")) return; b.dataset.ppw="1";
     if(rep.has(b.dataset.name)){ b.style.display="none"; return; }   // shown below with its exact KMZ data
     b.onclick=e=>{ if(e.target.closest(".dn")) return;
       const p=PORTFOLIO.find(x=>x.name===b.dataset.name); if(!p) return;
+      // an operating park: pick it, exactly like the project menu does (flies there, plots and cards follow)
+      const sel=document.getElementById("parkSel"), nm=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"");
+      const o=sel&&[...sel.options].find(o=>!o.value.startsWith("pipe:")&&o.value!=="all"&&nm(o.text)===nm(p.name));
+      if(o){ if(window.SID_PIPE&&window.SID_PIPE.focus&&window.SID_PIPE.close) window.SID_PIPE.close(); sel.value=o.value; sel.dispatchEvent(new Event("change",{bubbles:true})); return; }
       const f=parkPins().features.find(x=>x.properties.name===p.name);
       if(f&&typeof openParkCard==="function") openParkCard(f.properties,f.geometry.coordinates);
       else if(p.lng) map.easeTo({center:[p.lng,p.lat],zoom:Math.max(map.getZoom(),11)}); };
@@ -14986,7 +15005,7 @@ function sideList(){
   P().projects.map(p=>({p,x:projOf(p.name)})).sort((a,b)=>b.x.total-a.x.total).forEach(({p,x})=>{
     const b=document.createElement("button"); b.className="pfr pp-r"; b.dataset.name=p.name; b.title=p.name;
     b.innerHTML=`<span class="pfbg" style="width:0"></span><span class="dot" style="background:#fff;box-shadow:inset 0 0 0 2px ${hex}"></span><span class="pfn">${esc(p.name)}</span><span class="pfa mono">${x.traced.length?sq(x.total):"—"}</span><span class="pfv mono"><em>land only</em></span>`;
-    b.onclick=()=>window.sidPipeOpen(p.name); list.appendChild(b); });
+    b.dataset.ppw="1"; b.onclick=e=>{ e.stopPropagation(); window.sidPipeOpen(p.name); }; list.appendChild(b); });
 }
 setInterval(()=>{ try{ if(!pub()) sideList(); }catch(e){} },1200);
 
@@ -15052,11 +15071,12 @@ if(typeof mapScope==="function"){ const msV78=mapScope;
   mapScope=function(){ const sc=msV78.apply(this,arguments); if(window.__ppInK) try{ window.__ppScope={all:/^All parks$/.test(sc.label||""),parks:new Set((sc.rows||[]).map(r=>r.park))}; }catch(e){} return sc; }; }
 if(typeof kpisMap==="function"){ const kmV78=kpisMap; kpisMap=function(){ window.__ppInK=true; try{ return kmV78.apply(this,arguments); } finally{ window.__ppInK=false; } }; }
 function decorateKpis(){
-  const el=document.getElementById("kpis"), D=P(); if(!el||!D||(window.SID_PIPE&&window.SID_PIPE.focus)||el.querySelector("[data-ppd]")) return;
+  const el=document.getElementById("kpis"), D=P(); if(!el||!D||(window.SID_PIPE&&window.SID_PIPE.focus)||MODE==="pipe"||el.querySelector("[data-ppk]")||el.querySelector("[data-ppd]")) return;
   const k=[...el.querySelectorAll(":scope > .kpi")]; if(!k.length) return;
   const sc=window.__ppScope||{all:true,parks:null};
-  if(sc.all){
-    const tot=D.projects.reduce((a,p)=>a+projOf(p.name).total,0);
+  const tot=D.projects.reduce((a,p)=>a+projOf(p.name).total,0);
+  el.classList.remove("pp-k5");
+  if(sc.all&&MODE===""){
     const c=document.createElement("div"); c.className="kpi pp-kpi"; c.dataset.ppd="1"; c.setAttribute("role","button"); c.tabIndex=0; c.title="Show the pipeline lands";
     c.innerHTML=`<span class="k">Pipeline projects</span><span class="v">${D.projects.length}</span><span class="s">${sq(tot)} sqm of land · no master plan</span>`;
     c.onclick=()=>{ const b=document.querySelector('.pp-mode[data-m="pipe"]'); if(b) b.click(); };
@@ -15068,7 +15088,13 @@ function decorateKpis(){
   const sel=sc.parks?parks.filter(x=>sc.parks.has(x.park)):parks; if(!sel.length) return;
   const area=sel.reduce((a,x)=>a+x.area,0), v=ta.querySelector(".v"), sub=ta.querySelector(".s");
   const plots=v?v.textContent.trim():"", n=sub?sub.textContent.trim():"";
-  ta.dataset.ppd="1";
+  ta.dataset.ppd="1"; ta.dataset.ppo=ta.innerHTML;
+  if(sc.all&&MODE===""){   // All: the whole land bank = operating project land + pipeline land
+    const k0=ta.querySelector(".k"); if(k0) k0.textContent="Total land bank";
+    if(v) v.innerHTML=`${sq(area+tot)} sqm`;
+    if(sub) sub.innerHTML=`active ${sq(area)} · pipeline ${sq(tot)} sqm`;
+    ta.title="All project land: the 11 operating projects plus the pipeline lands, from the surveyed Google Earth borders. Plots inside the operating projects: "+plots;
+    return; }
   if(v) v.innerHTML=`${sq(area)} sqm`;
   if(sub) sub.innerHTML=`project land (survey) · plots ${esc(plots)}${n?" · "+esc(n):""}`;
   ta.title="Total project land from the surveyed Google Earth border; the plots are the sellable part inside it";
@@ -15200,6 +15226,101 @@ setInterval(tick,15e3);
 // no stamp yet (first visit): the hour starts now
 try{ if(!localStorage.getItem(KEY)) wr(Date.now()); }catch(e){}
 window.addEventListener("storage",e=>{ if(e.key===KEY) mem=Math.max(mem,Number(e.newValue)||0); });
+})();
+</script>
+
+<script>
+/* V79.3 — map chrome */
+(function(){
+"use strict";
+const DRY=[{"n": "6th of October Dry Port", "at": [30.672083, 29.826194], "st": "operating", "src": "Wikidata Q115299627"}, {"n": "Badr Dry Port", "at": [31.7750437, 30.1074272], "st": "", "src": "OpenStreetMap (Nominatim: BADR DRY PORT)"}];
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---- dry ports join the sites layer (seaports, airports, cities); shown and hidden with the same button ---- */
+try{ if(typeof POIS!=="undefined"&&DRY.length&&!POIS.some(p=>p.t==="dry")){
+  DRY.forEach(d=>POIS.push({t:"dry",n:d.n,at:d.at,st:d.st}));
+  if(typeof POI_SVG!=="undefined") POI_SVG.dry='<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="12" height="7" rx="1"/><path d="M5 6V3h6v3M2 9.5h12"/></svg>';
+} }catch(e){}
+if(typeof sitesKey==="function"){ const skV793=sitesKey; sitesKey=function(){ skV793.apply(this,arguments);
+  try{ const k=document.getElementById("sitesKey"); if(k&&!k.querySelector(".dry-k")){ const n=POIS.filter(p=>p.t==="dry").length;
+    if(n){ const s=document.createElement("span"); s.className="dry-k"; s.innerHTML=`<i style="background:#8E5BD6"></i>${n} dry ports`; k.appendChild(s); } } }catch(e){} }; }
+
+/* ---- "Show ports" / "Hide ports" ---- */
+function portsLabel(){ const b=document.getElementById("sitesBtn"); if(!b) return; const t=(typeof S!=="undefined"&&S.sites)?"Hide ports":"Show ports";
+  if(b.textContent!==t) b.textContent=t; b.title="Seaports, dry ports, airports and cities, with distance rings"; }
+if(typeof toggleSites==="function"){ const tsV793=toggleSites; toggleSites=function(){ const r=tsV793.apply(this,arguments); portsLabel(); return r; }; }
+
+/* ---- the project menu: opens downward, with search and groups (the browser's own list opens over the page on a Mac) ---- */
+let DD=null;
+function ddClose(){ if(DD){ DD.remove(); DD=null; document.removeEventListener("mousedown",ddOut,true); } }
+function ddOut(e){ if(DD&&!DD.contains(e.target)&&!e.target.closest(".pk-dd")) ddClose(); }
+function ddOpen(sel,btn){
+  if(DD){ ddClose(); return; }
+  const r=btn.getBoundingClientRect();
+  DD=document.createElement("div"); DD.className="pk-menu"; DD.setAttribute("role","listbox");
+  DD.style.left=Math.round(r.left)+"px"; DD.style.top=Math.round(r.bottom+6)+"px"; DD.style.width=Math.max(280,Math.round(r.width))+"px";
+  DD.style.maxHeight=Math.max(220,innerHeight-r.bottom-24)+"px";
+  const groups=[]; let cur={label:"",opts:[]}; groups.push(cur);
+  [...sel.children].forEach(ch=>{ if(ch.tagName==="OPTGROUP"){ groups.push({label:ch.label,opts:[...ch.children]}); } else cur.opts.push(ch); });
+  if(groups[0].opts.length>1&&!groups[0].label) groups[0].label="Operating parks";
+  DD.innerHTML=`<input class="pk-q" type="search" placeholder="Search projects" aria-label="Search projects"><div class="pk-l">${groups.map(g=>`${g.label?`<div class="pk-g">${esc(g.label)}</div>`:""}${g.opts.map(o=>`<button type="button" class="pk-o${o.value===sel.value?" on":""}" data-v="${esc(o.value)}" role="option">${esc(o.text)}</button>`).join("")}`).join("")}</div>`;
+  document.body.appendChild(DD);
+  const q=DD.querySelector(".pk-q");
+  q.oninput=()=>{ const t=q.value.trim().toLowerCase(); DD.querySelectorAll(".pk-o").forEach(b=>b.style.display=!t||b.textContent.toLowerCase().includes(t)?"":"none");
+    DD.querySelectorAll(".pk-g").forEach(g=>{ let n=g.nextElementSibling, any=false; while(n&&!n.classList.contains("pk-g")){ if(n.style.display!=="none") any=true; n=n.nextElementSibling; } g.style.display=any?"":"none"; }); };
+  q.onkeydown=e=>{ if(e.key==="Escape") ddClose(); if(e.key==="Enter"){ const b=[...DD.querySelectorAll(".pk-o")].find(b=>b.style.display!=="none"); if(b) b.click(); } };
+  DD.querySelectorAll(".pk-o").forEach(b=>b.onclick=()=>{ const v=b.dataset.v; ddClose();
+    sel.dispatchEvent(new Event("focus")); sel.value=v; sel.dispatchEvent(new Event("change",{bubbles:true})); ddSync(); });
+  const on=DD.querySelector(".pk-o.on"); if(on) on.scrollIntoView({block:"nearest"});
+  document.addEventListener("mousedown",ddOut,true);
+  if(matchMedia("(pointer:fine)").matches) setTimeout(()=>q.focus(),0);
+}
+function ddSync(){
+  const sel=document.getElementById("parkSel"); if(!sel) return;
+  let btn=sel.parentElement.querySelector(".pk-dd");
+  if(!btn){ btn=document.createElement("button"); btn.type="button"; btn.className="pk-dd"; btn.setAttribute("aria-haspopup","listbox");
+    btn.onclick=e=>{ e.preventDefault(); ddOpen(sel,btn); }; sel.after(btn); sel.classList.add("pk-native"); }
+  const o=sel.options[sel.selectedIndex], t=o?o.text:"";
+  if(btn.dataset.t!==t){ btn.dataset.t=t; btn.innerHTML=`<span>${esc(t)}</span><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+}
+addEventListener("resize",ddClose); addEventListener("scroll",ddClose,true);
+document.addEventListener("change",e=>{ if(e.target&&e.target.id==="parkSel") ddSync(); },true);
+setInterval(()=>{ try{ ddSync(); portsLabel(); }catch(e){} },600);
+
+/* ---- look: glass that lets the map show through, and a map bar that wraps to fit any width or browser zoom ---- */
+{ const st=document.createElement("style"); st.textContent=`
+  #parkSel.pk-native{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important}
+  .pk-dd{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:34px;padding:0 12px;border-radius:10px;
+    border:1px solid color-mix(in srgb,#16181D 12%,transparent);background:color-mix(in srgb,var(--panel,#fff) 70%,transparent);
+    -webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);font:600 13.5px/1.2 Inter,system-ui,sans-serif;color:inherit;cursor:pointer;text-align:left}
+  .pk-dd span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pk-dd:hover{border-color:var(--signal,#B3263D)}
+  .pk-menu{position:fixed;z-index:9999;display:flex;flex-direction:column;border-radius:14px;overflow:hidden;
+    background:color-mix(in srgb,var(--panel,#fff) 92%,transparent);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);
+    border:1px solid color-mix(in srgb,#16181D 12%,transparent);box-shadow:0 18px 44px -12px rgba(16,18,24,.35)}
+  .pk-q{margin:8px;padding:8px 10px;border-radius:9px;border:1px solid color-mix(in srgb,#16181D 14%,transparent);background:transparent;font:500 13px Inter,system-ui,sans-serif;color:inherit;outline:none}
+  .pk-q:focus{border-color:var(--signal,#B3263D)}
+  .pk-l{overflow:auto;padding:0 6px 8px}
+  .pk-g{padding:10px 8px 4px;font:700 10px/1 Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#6E737B}
+  .pk-o{display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:8px;background:transparent;font:500 13px/1.25 Inter,system-ui,sans-serif;color:inherit;cursor:pointer}
+  .pk-o:hover{background:color-mix(in srgb,#16181D 7%,transparent)}
+  .pk-o.on{background:#16181D;color:#fff}
+
+  .poi.dry .poi-i{background:#8E5BD6!important}
+
+  @media (min-width:821px){
+    .maptools{flex-wrap:wrap!important;row-gap:6px!important;align-items:flex-start!important}
+    .maptools .legend{flex:1 1 360px!important;min-width:0;max-width:none!important}
+    .maptools .mapbtns{flex:0 1 auto!important;flex-wrap:wrap!important;justify-content:flex-end!important;overflow:visible!important;max-width:100%!important;margin-left:auto;row-gap:4px!important}
+    .mapbtns .pp-seg{flex-wrap:nowrap}
+  }
+  .maptools .legend .lg{background:rgba(255,255,255,.55)!important;-webkit-backdrop-filter:blur(16px) saturate(170%)!important;backdrop-filter:blur(16px) saturate(170%)!important}
+  .maptools .mapbtns{background:rgba(255,255,255,.42)!important;-webkit-backdrop-filter:blur(16px) saturate(170%)!important;backdrop-filter:blur(16px) saturate(170%)!important}
+  .maptools .mapbtns button:not(.on):not(.on3d):not(.hit):not(.pp-mode){background:transparent!important}
+  .mapbtns .pp-seg{background:rgba(255,255,255,.35)!important}
+  #kpis .kpi{background:color-mix(in srgb,var(--panel,#fff) 62%,transparent)!important;-webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%)}
+  #kpis{background:transparent!important}
+  `; document.head.appendChild(st); }
 })();
 </script>
 </body>
