@@ -14874,14 +14874,22 @@ window.__ppFocus=()=>paintKpis();
 /* ---- 2. Pipeline only / Active only ---- */
 let MODE=""; try{ MODE=localStorage.getItem("sid.pfMode")||""; }catch(e){}
 const OPS_SRC=new Set(["plots","factories","pins"]);
+const HID={style:null,v:{}};
 function applyMode(){
   if(typeof map==="undefined"||!map||!map.style||!map.style._loaded) return;
   document.body.classList.toggle("pp-only",MODE==="pipe"); document.body.classList.toggle("act-only",MODE==="act");
-  try{ (map.getStyle().layers||[]).forEach(l=>{
-    const ops=OPS_SRC.has(l.source)||/^(rings|route)/.test(l.id)||l.source==="rings"||l.source==="routes", pp=/^pipe-/.test(l.id);
-    if(!ops&&!pp) return;
-    const want=(ops&&MODE==="pipe")||(pp&&MODE==="act")?"none":"visible";
-    if(map.getLayoutProperty(l.id,"visibility")!==want) map.setLayoutProperty(l.id,"visibility",want); }); }catch(e){}
+  // hide only what this switch must hide, remember each layer's own visibility, and give back exactly that:
+  // the app keeps several layers hidden on purpose (dim, match, heat...) and must never see them switched on
+  try{
+    const style=map.getStyle(); if(HID.style!==map.style){ HID.style=map.style; HID.v={}; }
+    const want=new Set();
+    (style.layers||[]).forEach(l=>{
+      const ops=OPS_SRC.has(l.source)||l.source==="rings"||l.source==="routes", pp=/^pipe-/.test(l.id);
+      if((ops&&MODE==="pipe")||(pp&&MODE==="act")) want.add(l.id); });
+    want.forEach(id=>{ const v=map.getLayoutProperty(id,"visibility")||"visible";
+      if(!(id in HID.v)){ HID.v[id]=v; } if(v!=="none") map.setLayoutProperty(id,"visibility","none"); });
+    Object.keys(HID.v).forEach(id=>{ if(want.has(id)) return; if(map.getLayer(id)) map.setLayoutProperty(id,"visibility",HID.v[id]); delete HID.v[id]; });
+  }catch(e){}
   document.querySelectorAll(".pp-mode").forEach(b=>b.classList.toggle("on",b.dataset.m===MODE)); setTimeout(declutter,50);
 }
 function fitMode(){
@@ -14919,7 +14927,11 @@ function addButtons(){
   .pp-pin.pp-nolabel b{display:none}
   .pp-pin.pp-nolabel:hover b,.pp-pin.pp-nolabel:focus-visible b{display:flex;position:relative;z-index:3}
   .pfs-pp-h{padding:10px 15px 4px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--mute,#6E737B);border-top:1px solid var(--rule,#e5e5ea);margin-top:6px}`; document.head.appendChild(st); }
-setInterval(()=>{ try{ if(pub()){ MODE=""; return; } addButtons(); applyMode(); }catch(e){} },1500);
+let lastPark=null;
+setInterval(()=>{ try{ if(pub()){ MODE=""; return; }
+  const pk=typeof S!=="undefined"?S.park:null;
+  if(pk!==lastPark){ if(lastPark!==null&&pk&&pk!=="all"&&MODE==="pipe"){ MODE=""; try{ localStorage.setItem("sid.pfMode",""); }catch(e){} } lastPark=pk; }
+  addButtons(); applyMode(); }catch(e){} },1500);
 
 
 /* ---- names never sit on top of each other: a name that would overlap a bigger project's name or logo hides (hover shows it) ---- */
