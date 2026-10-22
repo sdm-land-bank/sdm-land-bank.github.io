@@ -15299,6 +15299,17 @@ if(typeof window.sidPipeOpen==="function"){ const so=window.sidPipeOpen; window.
   map.flyTo=function(o,ev){ if(armed(o)&&!INF){ INF=true; return fl(Object.assign({},o,{duration:3200,curve:1.5,essential:true}),ev); } if(armed(o)&&o&&o.duration!==3200) return this; return fl(o,ev); };
 },500); }
 
+/* ---- the top cards float over the map as a slim glass strip (the map shows through), instead of a white band above it ---- */
+function kpiFloat(){
+  const app=document.querySelector(".app"), k=document.getElementById("kpis"), top=document.querySelector("main > header.top, main > .top");
+  if(!app||!k) return; const on=app.dataset.view==="inventory"&&innerWidth>820;
+  document.body.classList.toggle("kpi-float",on);
+  if(!on) return;
+  const t=top?Math.round(top.getBoundingClientRect().height):0; if(k.style.top!==t+"px") k.style.top=t+"px";
+  const h=Math.round(k.getBoundingClientRect().height); document.documentElement.style.setProperty("--kpiH",h+"px");
+}
+setInterval(()=>{ try{ kpiFloat(); }catch(e){} },400); addEventListener("resize",()=>{ try{ kpiFloat(); }catch(e){} });
+
 /* ---- look: glass that lets the map show through, and a map bar that wraps to fit any width or browser zoom ---- */
 { const st=document.createElement("style"); st.textContent=`
   /* the project menu stays the browser's own menu (as before), just more compact */
@@ -15322,6 +15333,14 @@ if(typeof window.sidPipeOpen==="function"){ const so=window.sidPipeOpen; window.
   .sp-note.mg-hide{display:none!important}
   @media (min-width:821px){ #selpanel{width:360px!important} }
   #selpanel .sp-kv b{overflow-wrap:anywhere}
+  body.kpi-float main{position:relative}
+  body.kpi-float #kpis{position:absolute!important;left:0;right:0;z-index:6;padding:8px 14px 0!important;gap:6px!important;pointer-events:none;background:transparent!important;border:0!important;box-shadow:none!important}
+  body.kpi-float #kpis .kpi{pointer-events:auto;padding:5px 11px 6px!important;border-radius:11px!important;background:rgba(255,255,255,.38)!important;
+    -webkit-backdrop-filter:blur(14px) saturate(180%)!important;backdrop-filter:blur(14px) saturate(180%)!important;border:1px solid rgba(255,255,255,.55)!important;box-shadow:0 4px 14px -8px rgba(16,18,24,.35)!important}
+  body.kpi-float #kpis .kpi .k{font-size:9px!important;letter-spacing:.07em!important;margin:0!important}
+  body.kpi-float #kpis .kpi .v{font-size:15px!important;line-height:1.15!important;margin:1px 0 0!important}
+  body.kpi-float #kpis .kpi .s{font-size:10px!important;line-height:1.2!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body.kpi-float .maptools{top:calc(var(--kpiH,60px) + 8px)!important}
   .poi.dry .poi-i{background:#8E5BD6!important}
 
   @media (min-width:821px){
