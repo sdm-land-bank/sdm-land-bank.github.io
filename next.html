@@ -14991,6 +14991,36 @@ if(typeof presScenes==="function"){ const psV77=presScenes;
     }catch(e){ console.warn("pipeline slides",e); }
     return sc; }; }
 
+
+/* ---- the project card can be dragged anywhere (title bar), stays on screen, remembers its place; double-click the title resets ---- */
+{ const KEY="sid.cardPos";
+  let pos=null; try{ pos=JSON.parse(localStorage.getItem(KEY)||"null"); }catch(e){}
+  const phone=()=>typeof isPhone==="function"&&isPhone();
+  const clamp=(el,x,y)=>{ const r=el.getBoundingClientRect(), bx=r.left-(pos?pos.x:0), by=r.top-(pos?pos.y:0);
+    const minX=-bx+8, maxX=innerWidth-bx-Math.min(r.width,innerWidth)-8, minY=-by+8, maxY=innerHeight-by-60;
+    return [Math.max(minX,Math.min(maxX,x)),Math.max(minY,Math.min(maxY,y))]; };
+  const apply=el=>{ if(phone()){ el.style.translate=""; return; } el.style.translate=pos?`${pos.x}px ${pos.y}px`:""; };
+  const wire=()=>{ const el=document.getElementById("parkcard"); if(!el) return;
+    apply(el);
+    if(el.dataset.dragw) return; el.dataset.dragw="1";
+    el.addEventListener("pointerdown",e=>{
+      if(phone()||e.button!==0) return;
+      const h=e.target.closest("h4,.pc-w"); if(!h||e.target.closest("button,a,.dn,details")) return;
+      e.preventDefault(); const sx=e.clientX, sy=e.clientY, ox=pos?pos.x:0, oy=pos?pos.y:0;
+      el.classList.add("pc-drag"); try{ el.setPointerCapture(e.pointerId); }catch(x){}
+      const mv=ev=>{ const [x,y]=clamp(el,ox+ev.clientX-sx,oy+ev.clientY-sy); pos={x,y}; el.style.translate=`${x}px ${y}px`; };
+      const up=()=>{ el.classList.remove("pc-drag"); el.removeEventListener("pointermove",mv); el.removeEventListener("pointerup",up); el.removeEventListener("pointercancel",up);
+        try{ localStorage.setItem(KEY,JSON.stringify(pos)); }catch(x){} };
+      el.addEventListener("pointermove",mv); el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up); });
+    el.addEventListener("dblclick",e=>{ if(phone()||!e.target.closest("h4")) return; pos=null; try{ localStorage.removeItem(KEY); }catch(x){} apply(el); });
+  };
+  setInterval(wire,1000);
+  window.addEventListener("resize",()=>{ const el=document.getElementById("parkcard"); if(el&&pos&&!el.hidden){ const [x,y]=clamp(el,pos.x,pos.y); pos={x,y}; apply(el); } });
+  const st=document.createElement("style"); st.textContent=`
+    @media (min-width:821px){ #parkcard h4,#parkcard .pc-w{cursor:grab;user-select:none;-webkit-user-select:none} #parkcard.pc-drag{transition:none!important;box-shadow:0 18px 50px rgba(0,0,0,.35)} #parkcard.pc-drag h4{cursor:grabbing}
+      #parkcard h4::after{content:"⠿";float:right;margin-right:22px;color:var(--n400,#aeaeb2);font-size:14px;font-weight:400} }`;
+  document.head.appendChild(st); }
+
 /* ---- 3. Lara knows the pipeline projects and flies to them while she talks ---- */
 const AL={"Sephora":["sephora","سفورا","سيفورا"],"SID Sharkeyoun":["sharkeyoun","sharqiyoun","شرقيون","الشرقيون"],"Qantara":["qantara","kantara","القنطرة"],
   "Serag Land":["serag","سراج"],"New Asher":["new asher","asher new","العاشر الجديدة","العاشر الجديد"],"Abo Rawash":["abo rawash","abu rawash","أبو رواش","ابو رواش"],
