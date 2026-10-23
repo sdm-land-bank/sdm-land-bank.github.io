@@ -3079,7 +3079,7 @@ function totals(rs){
     b.n++; b.p+=np; b.area+=r.area;
     if(r.st.sellable) t.sellable+=r.area;
     if(isSale(r)){
-      t.soldN++; t.soldPlots+=np; t.soldArea+=r.area;
+      t.soldN++; t.soldPlots+=np; t.soldArea+=(r.soldArea||r.area);
       if(r.cash){ t.valueEGP+=egp(r); t.valueNative+=r.cash; curs.add(r.cur); }
     }
   });
@@ -3658,7 +3658,7 @@ function mapScope(rs){
 function kpisMap(rs){
   const sc=mapScope(rs), R=sc.rows, sold=R.filter(isSale), parks=new Set(R.map(r=>r.park));
   const sh=r=>sc.shares&&sc.shares.has(r)?sc.shares.get(r):1;     // part of a merged deal selected → its share only
-  const soldA=sumBy(sold,r=>(r.area||0)*sh(r)), rev=sumBy(sold,r=>(r.cash||0)*sh(r));
+  const soldA=sumBy(sold,r=>(r.soldArea||r.area||0)*sh(r)), rev=sumBy(sold,r=>(r.cash||0)*sh(r));
   const mva=sumBy(R,r=>r.mva), wat=sumBy(R,r=>r.water), sew=sumBy(R,r=>r.sewage);
   const u=(v,d)=>v?(d?(Math.round(v*10)/10).toLocaleString("en-US"):fInt(v)):"—";
   const cells=[
