@@ -3079,7 +3079,7 @@ function totals(rs){
     b.n++; b.p+=np; b.area+=r.area;
     if(r.st.sellable) t.sellable+=r.area;
     if(isSale(r)){
-      t.soldN++; t.soldPlots+=np; t.soldArea+=r.area;
+      t.soldN++; t.soldPlots+=np; t.soldArea+=(r.soldArea||r.area);
       if(r.cash){ t.valueEGP+=egp(r); t.valueNative+=r.cash; curs.add(r.cur); }
     }
   });
@@ -3658,13 +3658,13 @@ function mapScope(rs){
 function kpisMap(rs){
   const sc=mapScope(rs), R=sc.rows, sold=R.filter(isSale), parks=new Set(R.map(r=>r.park));
   const sh=r=>sc.shares&&sc.shares.has(r)?sc.shares.get(r):1;     // part of a merged deal selected → its share only
-  const soldA=sumBy(sold,r=>(r.area||0)*sh(r)), rev=sumBy(sold,r=>(r.cash||0)*sh(r));
+  const soldA=sumBy(sold,r=>(r.soldArea||r.area||0)*sh(r)), rev=sumBy(sold,r=>(r.cash||0)*sh(r));
   const mva=sumBy(R,r=>r.mva), wat=sumBy(R,r=>r.water), sew=sumBy(R,r=>r.sewage);
   const u=(v,d)=>v?(d?(Math.round(v*10)/10).toLocaleString("en-US"):fInt(v)):"—";
   const cells=[
     ["Active projects",dn(fInt(parks.size),"Projects in focus — "+sc.label,R),sc.label],
     ["Total area",dn(fSq(sc.area)+" sqm","Plots in focus — "+sc.label,R),dn(fInt(sc.plots)+" plots","Plots in focus — "+sc.label,R)],
-    ["Sold area",dn(fSq(soldA)+" sqm","Sold + reserved — "+sc.label,sold),sc.area?pct(soldA,sc.area)+" of the area · sold + reserved":"sold + reserved"],
+    ["Sold area",dn(fSq(soldA)+" sqm","Sold + reserved — "+sc.label,sold),(()=>{ const sa=sumBy(R.filter(r=>r.st&&r.st.sellable),r=>(r.area||0)*sh(r)); return sa?pct(soldA,sa)+" of sellable area · sold + reserved":"sold + reserved"; })()],
     ["Revenue",dn(rev?fMon(rev,"EGP"):"—","Sales value — "+sc.label,sold),dn(fInt(sold.length)+" deals","Deals — "+sc.label,sold)+" · Cash Value (A)"]
   ];
   return cells.map(([k,v,s])=>`<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s||""}</span></div>`).join("");
@@ -9036,7 +9036,7 @@ function parkPins(){
         color:STAGE[p.stage].hex, gross:p.area||0,
         hasReg:!!(t&&t.sellable),
         sellable:t?t.sellable:0, ats:t?t.byStatus.ats.area:0,
-        pct:t&&t.sellable?Math.round(t.byStatus.sold.area/t.sellable*100):0},
+        pct:t&&t.sellable?Math.round(t.soldArea/t.sellable*100):0, soldA:t?t.soldArea:0},
       geometry:{type:"Point",coordinates:at}});
   });
   return {type:"FeatureCollection",features:feats};
@@ -9081,7 +9081,7 @@ function openParkCard(p,coords){
     <div class="pc-g">
       <div><span>Masterplan</span><b>${fSq(p.gross)} sqm</b></div>
       <div><span>Sellable</span><b>${reg?fSq(p.sellable)+" sqm":"—"}</b></div>
-      <div><span>Sold</span><b>${reg?p.pct+"%":"—"}</b></div>
+      <div><span>Sold + reserved</span><b>${reg?p.pct+"% · "+fSq(p.soldA)+" sqm":"—"}</b></div>
       <div><span>Available</span><b>${reg?fSq(p.ats)+" sqm":"—"}</b></div>
       <div><span>Deals (sold + reserved)</span><b>${t?dn(fInt(t.soldN),p.name+" — deals",S.rows.filter(r=>r.park===p.park&&isSale(r)&&!r.dup)):"—"}</b></div>
       <div><span>Sales value</span><b>${t&&t.valueEGP?dn(fEGP(t.valueEGP),p.name+" — sales value",S.rows.filter(r=>r.park===p.park&&isSale(r)&&!r.dup)):"—"}</b></div>
@@ -9102,7 +9102,7 @@ function openParkCard(p,coords){
     el.hidden=true;
     const s=$("#parkSel"); s.value=p.park; S.park=p.park; render(); fitPlots();
   };
-  map.easeTo({center:coords,zoom:Math.max(map.getZoom(),9),duration:RM?0:500});
+  if(!window.__noFly) map.easeTo({center:coords,zoom:Math.max(map.getZoom(),9),duration:RM?0:500});
   drawRoutes({at:coords,n:p.name,t:"park"}, nearestPOIs(coords), {owner:"park",label:t=>"to "+t.n});
 }
 
@@ -15048,7 +15048,7 @@ if(typeof presScenes==="function"){ const psV77=presScenes;
 
 
 /* ---- the project card can be dragged anywhere (title bar), stays on screen, remembers its place; double-click the title resets ---- */
-{ const KEY="sid.cardPos";
+{ const KEY="sid.cardPos2";
   let pos=null; try{ pos=JSON.parse(localStorage.getItem(KEY)||"null"); }catch(e){}
   const phone=()=>typeof isPhone==="function"&&isPhone();
   const clamp=(el,x,y)=>{ const r=el.getBoundingClientRect(), bx=r.left-(pos?pos.x:0), by=r.top-(pos?pos.y:0);
@@ -15345,6 +15345,42 @@ document.addEventListener("click",e=>{ const k=e.target.closest&&e.target.closes
   const m=lab==="active projects"?"act":lab==="total land bank"?"":null; if(m==null) return;
   const b=document.querySelector(`.pp-mode[data-m="${m}"]`); if(b) b.click(); },true);
 
+/* ---- V79.7: park card at the side, also when a park is picked from the menu; sold = sold + reserved everywhere ---- */
+window.sidParkCard=function(parkId){
+  try{ if(typeof openParkCard!=="function"||typeof parkPins!=="function") return;
+    const f=parkPins().features.find(x=>x.properties.park===parkId); if(!f) return;
+    if(window.SID_PIPE&&window.SID_PIPE.focus&&window.SID_PIPE.close) window.SID_PIPE.close();
+    window.__noFly=true; try{ openParkCard(f.properties,f.geometry.coordinates); } finally{ window.__noFly=false; }
+    const go=document.querySelector("#parkcard .pc-go"); if(go) go.remove();      // already inside this park
+  }catch(e){}
+};
+document.addEventListener("change",e=>{ if(!e.target||e.target.id!=="parkSel") return; const v=e.target.value;
+  setTimeout(()=>{ try{ const el=document.getElementById("parkcard");
+    if(v==="all"){ if(el&&!el.hidden&&!/no approved master plan yet/.test(el.textContent)){ el.hidden=true; if(typeof clearRoutes==="function") clearRoutes("park"); } }
+    else if(!String(v).startsWith("pipe:")) window.sidParkCard(v); }catch(x){} },450); },true);
+document.addEventListener("keydown",e=>{ if(e.key!=="Escape") return; const el=document.getElementById("parkcard"); if(!el||el.hidden||/INPUT|TEXTAREA|SELECT/.test((document.activeElement||{}).tagName||"")) return;
+  const x=el.querySelector(".pc-x"); if(x) x.click(); });
+
+/* ---- the Projects panel counts: the same 11 active + 14 pipeline as the top cards, with the surveyed (iPad) areas ---- */
+function sideNums(){
+  const side=document.querySelector(".pfside"), D=window.SID_PIPE&&window.SID_PIPE.data; if(!side||!D||!D.parks||typeof PORTFOLIO==="undefined") return;
+  const rep=new Set(D.projects.map(p=>p.replaces).filter(Boolean)); rep.add("Asher D75");          // D75 is listed once, as a pipeline project
+  const ops=PORTFOLIO.filter(p=>p.stage==="operating"&&!rep.has(p.name)), pa=new Map(D.parks.map(x=>[x.park,x.area]));
+  const fa=n=>typeof fSq==="function"?fSq(n):Math.round(n).toLocaleString("en-US");
+  const opArea=ops.reduce((a,p)=>a+(pa.get(p.park)||0),0), plArea=D.lands.reduce((a,l)=>a+(l.traced?l.area:0),0);
+  const set=(el,t)=>{ if(el&&el.textContent!==t) el.textContent=t; };
+  const st=k=>side.querySelector(`.pstage[data-stage="${k}"]`);
+  const o=st("operating"), pl=st("pipeline"), fu=st("future");
+  if(o){ set(o.querySelector(".psn"),String(ops.length)); set(o.querySelector(".psa"),fa(opArea)); }
+  if(pl){ set(pl.querySelector(".psn"),String(D.projects.length)); set(pl.querySelector(".psa"),fa(plArea)); }
+  if(fu) fu.style.display="none";
+  side.querySelectorAll(".pflist .pfr").forEach(b=>{ const nm=b.dataset.name; if(b.classList.contains("pp-r")) return;
+    if(nm==="Asher D75"){ b.style.display="none"; return; }
+    const e=PORTFOLIO.find(p=>p.name===nm&&p.stage==="operating"&&p.park); if(!e||!pa.has(e.park)) return; set(b.querySelector(".pfa .dn")||b.querySelector(".pfa"),fa(pa.get(e.park))); });
+  const f=side.querySelector(".pfs-f > span"); if(f) set(f,`${ops.length} of ${ops.length+D.projects.length} projects have a plot register`.replace(/^\d+ of (\d+)/,`${ops.length} of $1`));
+}
+setInterval(()=>{ try{ sideNums(); }catch(e){} },700);
+
 /* ---- look: glass that lets the map show through, and a map bar that wraps to fit any width or browser zoom ---- */
 { const st=document.createElement("style"); st.textContent=`
   /* the project menu stays the browser's own menu (as before), just more compact */
@@ -15417,6 +15453,13 @@ document.addEventListener("click",e=>{ const k=e.target.closest&&e.target.closes
   body.l2-tight .maptools .mapbtns button{padding:6px 8px!important;font-size:11.5px!important}
   body.l2-tight .mapbtns .pp-seg .pp-mode{padding:4px 8px!important}
   body.l2-lgtight main > header.top > .legend .lg > span:not(.sw):not(.n){display:none!important}
+  /* the park / pipeline card: at the side of the screen, never in the middle of the map */
+  @media (min-width:821px){
+    #parkcard,.parkcard{left:auto!important;right:16px!important;top:128px!important;bottom:auto!important;transform:none;width:300px!important;max-height:calc(100vh - 150px);overflow:auto}
+    .sel-open .parkcard{display:none!important}
+  }
+  .pc-x{width:32px!important;height:32px!important;top:8px!important;right:10px!important;display:grid;place-items:center;border-radius:50%;font-size:22px!important}
+  .pc-x:hover{background:rgba(16,18,24,.07)}
   .poi.dry .poi-i{background:#8E5BD6!important}
 
   @media (min-width:821px){
