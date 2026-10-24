@@ -16132,11 +16132,12 @@ try{ if(typeof laraCap==="function"){ const lc=laraCap; laraCap=function(w,t){ i
 let autoTimer=0;
 window.SID_LARA_NARRATE_END=()=>{ if(!LARA.autoShow) return; clearTimeout(autoTimer); autoTimer=setTimeout(()=>{ try{ if(LARA.autoShow&&!LARA.speaking&&LARA.st==="listening"&&!running()){ LARA.autoShow=false; laraSleep(true); } }catch(e){} },9000); };
 window.SID_LARA_NARRATE=async(text,tok)=>{
-  const prompt="[SHOW NARRATION] Say this to the user now, in the language they speak, with exactly these figures, as one short natural sentence, and nothing else: "+text;
+  const lang=(LARA.convLang||(LARA_PREF.lang==="ar"?"ar":"en"))==="ar"?"Egyptian Arabic":"English";
+  const prompt="[SHOW NARRATION] Say this to the user now, in "+lang+", with exactly these figures, as one short natural sentence, and nothing else: "+text;
   const open=()=>LARA.ws&&LARA.ws.readyState===1;
   if(!open()){
     if(LARA.st==="connecting"){ for(let i=0;i<40&&!open();i++) await wait(250); }
-    else { try{ LARA.autoShow=true; await laraStart({text:prompt}); }catch(e){} for(let i=0;i<40&&!open();i++) await wait(250); if(open()) return waitSpoken(tok); }
+    else { try{ LARA.autoShow=true; await laraStart({text:prompt}); const d=document.getElementById("laraDock"); if(d){ d.classList.remove("open"); d.classList.add("mini"); laraPlace(); } }catch(e){} for(let i=0;i<40&&!open();i++) await wait(250); if(open()) return waitSpoken(tok); }
     if(!open()) return false;
   }
   try{ laraSend(prompt); }catch(e){ return false; }
