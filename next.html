@@ -15741,5 +15741,220 @@ body.l2 #exBtn span{display:none}
 `; document.head.appendChild(st); }
 })();
 </script>
+
+<script>
+/* V80 — time machine, sun, trucks */
+(function(){
+"use strict";
+const W=window.SID_WOW; if(!W) return; const H=W.helpers, EXP=W.EXP, q=H.q, esc=H.esc;
+const M=(i)=>{ const names=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return names[((i%12)+12)%12]+" "+Math.floor(i/12); };
+const midx=d=>{ const y=+String(d).slice(0,4), m=+String(d).slice(5,7); return (y&&m)?y*12+m-1:null; };
+const hasClass=c=>document.body.classList.contains(c);
+
+/* ============================================================
+   3. TIME MACHINE — every committed (sold or reserved) plot turns red on its reservation date, from the MDS
+   ============================================================ */
+EXP.time=function(park){
+  if(!H.ready()) return; if(hasClass("pp-only")){ H.toast("Switch to All or Active first",true); return; }
+  const scope=park==="all"?null:park, tok=H.newTok(); let raf=0, playing=false, T=0, last=0, rate=10;
+  const all=S.rows.filter(r=>!r.dup&&isSale(r)&&r.reserveDate).map(r=>({r,i:midx(r.reserveDate)})).filter(x=>x.i!=null);
+  const undated=S.rows.filter(r=>!r.dup&&isSale(r)&&(!r.reserveDate||midx(r.reserveDate)==null)).length;
+  const rows=all.filter(x=>!scope||x.r.park===scope).sort((a,b)=>a.i-b.i);
+  if(!rows.length){ H.toast("No sold or reserved plots with a date for this selection",true); return; }
+  const first=rows[0].i, lastI=rows[rows.length-1].i; T=lastI;
+  const sellable=totals(S.rows.filter(r=>!scope||r.park===scope)).sellable;
+  // map side: every committed plot of every park carries its month
+  const km=new Map(); all.forEach(({r,i})=>(r._plots||[]).forEach(k=>{ if(S.plots.has(k)&&(!km.has(k)||i<km.get(k))) km.set(k,i); }));
+  const feats=S.geo.features.filter(f=>km.has(f.properties.k)).map(f=>({type:"Feature",properties:{k:f.properties.k,tm:km.get(f.properties.k)},geometry:f.geometry}));
+  const op=["interpolate",["linear"],["zoom"],8,.6,12,.78,16,.7];
+  function build(){ try{
+    if(!map.getSource("tm-src")) map.addSource("tm-src",{type:"geojson",data:{type:"FeatureCollection",features:feats}});
+    if(!map.getLayer("tm-later")) map.addLayer({id:"tm-later",type:"fill",source:"tm-src",filter:[">",["get","tm"],T],paint:{"fill-color":STATUS.ats.color,"fill-opacity":op}},"fill");
+    if(!map.getLayer("tm-sold")) map.addLayer({id:"tm-sold",type:"fill",source:"tm-src",filter:["<=",["get","tm"],T],paint:{"fill-color":STATUS.sold.color,"fill-opacity":op}},"fill");
+    ["fill-sold","fill-reserved"].forEach(id=>{ if(map.getLayer(id)&&map.getLayoutProperty(id,"visibility")!=="none") map.setLayoutProperty(id,"visibility","none"); });
+  }catch(e){} }
+  function unbuild(){ try{ ["tm-sold","tm-later"].forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); }); if(map.getSource("tm-src")) map.removeSource("tm-src");
+    ["fill-sold","fill-reserved"].forEach(id=>{ if(map.getLayer(id)) map.setLayoutProperty(id,"visibility","visible"); }); }catch(e){} }
+  const saved=H.camNow();
+  H.wowStart("time",()=>{ tok.dead=true; cancelAnimationFrame(raf); unbuild(); map.off("styledata",build); try{ map.flyTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing,duration:1400,essential:true}); }catch(e){} });
+  build(); map.on("styledata",build);
+  const b=H.bar(`<div class="tm-top"><div class="ex-t"><b>Time machine</b><span>${esc(scope?H.parkName(scope):"All parks")}</span></div><button class="ex-x" type="button" aria-label="Close">×</button></div>
+    <div class="tm-date" id="tmDate"></div>
+    <input type="range" id="tmRange" min="${first-1}" max="${lastI}" value="${T}" step="1" aria-label="Month">
+    <div class="tm-ctl"><button class="ex-b on" id="tmPlay" type="button">Play</button>
+      <select id="tmSpd" class="ex-sel" aria-label="Speed"><option value="5">Slow</option><option value="10" selected>Normal</option><option value="22">Fast</option></select>
+      <button class="ex-b" id="tmEnd" type="button">Today</button></div>
+    <div class="tm-k"><div><em>Sold + reserved</em><b id="tmA"></b></div><div><em>Of sellable area</em><b id="tmP"></b></div><div><em>Deals</em><b id="tmN"></b></div><div><em>Sales value</em><b id="tmV"></b></div></div>
+    <div class="tm-n">Date = reservation date in the MDS. ${undated?undated+" deals have no date and are left out.":""} Plots not yet committed show as available.</div>`);
+  b.classList.add("ex-wide");
+  const el=id=>q("#"+id);
+  function draw(){ const t=Math.round(T);
+    el("tmDate").textContent=t<first?"Before "+M(first):M(t);
+    let a=0,n=0,v=0; for(const x of rows){ if(x.i>t) break; a+=(x.r.soldArea||x.r.area||0); n++; v+=(typeof egp==="function"?(egp(x.r)||0):(x.r.cash||0)); }
+    el("tmA").textContent=H.fs_(a)+" sqm"; el("tmP").textContent=sellable?Math.round(a/sellable*100)+"%":"—"; el("tmN").textContent=H.fi(n); el("tmV").textContent=v?fEGP(v):"—";
+    try{ if(map.getLayer("tm-sold")){ map.setFilter("tm-sold",["<=",["get","tm"],t]); map.setFilter("tm-later",[">",["get","tm"],t]); } }catch(e){}
+    el("tmRange").value=t; }
+  draw();
+  el("tmRange").oninput=e=>{ T=+e.target.value; draw(); };
+  el("tmSpd").onchange=e=>{ rate=+e.target.value; };
+  const setPlay=on=>{ playing=on; const p=el("tmPlay"); if(p) p.textContent=on?"Pause":"Play"; if(on){ if(T>=lastI) T=first-1; last=performance.now(); raf=requestAnimationFrame(tick); } else cancelAnimationFrame(raf); };
+  function tick(now){ if(tok.dead||!playing) return; const dt=now-last; last=now; const prev=Math.round(T); T=Math.min(lastI,T+dt/1000*rate); if(Math.round(T)!==prev) draw(); if(T>=lastI){ draw(); setPlay(false); return; } raf=requestAnimationFrame(tick); }
+  el("tmPlay").onclick=()=>setPlay(!playing); el("tmEnd").onclick=()=>{ setPlay(false); T=lastI; draw(); };
+  // frame the project (or the whole estate)
+  try{ const bb=scope?H.parkBounds(scope):null;
+    if(bb){ const c=map.cameraForBounds(bb,{padding:{top:90,bottom:230,left:60,right:60}}); map.flyTo({center:c.center,zoom:Math.min(c.zoom,16),pitch:0,bearing:0,duration:H.reduced()?0:1800,essential:true}); }
+    else{ const bx=[[180,90],[-180,-90]]; feats.forEach(f=>{ const g=f.geometry, ring=g.type==="Polygon"?g.coordinates[0]:g.coordinates[0][0]; const c=ring[0]; if(c[0]<bx[0][0])bx[0][0]=c[0]; if(c[1]<bx[0][1])bx[0][1]=c[1]; if(c[0]>bx[1][0])bx[1][0]=c[0]; if(c[1]>bx[1][1])bx[1][1]=c[1]; });
+      map.fitBounds(bx,{padding:{top:90,bottom:240,left:60,right:60},duration:H.reduced()?0:1800,maxZoom:9}); } }catch(e){}
+  setTimeout(()=>{ if(!tok.dead){ T=first-1; draw(); setPlay(true); } },H.reduced()?100:2000);
+};
+
+/* ============================================================
+   4. SUN & DAYLIGHT — computed on the device (no outside service); the light on the 3D blocks and a daylight tint follow the sun
+   ============================================================ */
+const rad=Math.PI/180, dayMs=864e5, J1970=2440588, J2000=2451545, eps=rad*23.4397;
+const toDays=d=>d.valueOf()/dayMs-.5+J1970-J2000;
+function sunPos(date,lat,lng){ const lw=rad*-lng, phi=rad*lat, d=toDays(date);
+  const Mn=rad*(357.5291+.98560028*d), C=rad*(1.9148*Math.sin(Mn)+.02*Math.sin(2*Mn)+.0003*Math.sin(3*Mn)), L=Mn+C+rad*102.9372+Math.PI;
+  const dec=Math.asin(Math.sin(L)*Math.sin(eps)), ra=Math.atan2(Math.sin(L)*Math.cos(eps),Math.cos(L)), Hh=rad*(280.16+360.9856235*d)-lw-ra;
+  const alt=Math.asin(Math.sin(phi)*Math.sin(dec)+Math.cos(phi)*Math.cos(dec)*Math.cos(Hh)), azS=Math.atan2(Math.sin(Hh),Math.cos(Hh)*Math.sin(phi)-Math.tan(dec)*Math.cos(phi));
+  return {alt:alt/rad, az:((azS/rad)+180+360)%360}; }
+const TZ="Africa/Cairo";
+function tzOff(utcMs){ const f=new Intl.DateTimeFormat("en-US",{timeZone:TZ,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).formatToParts(new Date(utcMs)); const g=k=>+f.find(x=>x.type===k).value; return (Date.UTC(g("year"),g("month")-1,g("day"),g("hour"),g("minute"),g("second"))-utcMs)/60000; }
+function cairoUTC(ds,min){ const [y,m,d]=ds.split("-").map(Number); const g=Date.UTC(y,m-1,d,0,0)+min*60000; return g-tzOff(g-2*3600000)*60000; }
+function cairoToday(){ const f=new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()); return f; }
+function cairoNowMin(){ const f=new Intl.DateTimeFormat("en-GB",{timeZone:TZ,hourCycle:"h23",hour:"2-digit",minute:"2-digit"}).formatToParts(new Date()); return (+f.find(x=>x.type==="hour").value)*60+(+f.find(x=>x.type==="minute").value); }
+const hhmm=m=>{ m=Math.round(m); return String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); };
+const dest=(c,az,d)=>{ const a=az*rad; return [c[0]+Math.sin(a)*d/(111320*Math.cos(c[1]*rad)), c[1]+Math.cos(a)*d/111320]; };
+const compass=az=>["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(az/22.5)%16];
+function dayInfo(ds,lat,lng){ let rise=null,set=null,maxA=-90,maxM=0; for(let m=0;m<1440;m+=2){ const p=sunPos(new Date(cairoUTC(ds,m)),lat,lng); if(p.alt>maxA){ maxA=p.alt; maxM=m; } if(p.alt>-.833){ if(rise==null) rise=m; set=m; } } return {rise,set,maxA,maxM}; }
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function tint(alt){ // multiply colour: white by day, gold at sunrise/sunset, blue-violet at dusk, deep blue at night
+  const stops=[[-16,[34,44,104]],[-8,[88,86,140]],[-2,[190,140,140]],[3,[255,205,160]],[12,[255,244,232]],[22,[255,255,255]]]; if(alt<=stops[0][0]) return stops[0][1]; if(alt>=stops[stops.length-1][0]) return stops[stops.length-1][1];
+  for(let i=0;i<stops.length-1;i++){ const [a0,c0]=stops[i],[a1,c1]=stops[i+1]; if(alt>=a0&&alt<=a1){ const t=(alt-a0)/(a1-a0); return c0.map((v,k)=>Math.round(lerp(v,c1[k],t))); } } return [255,255,255]; }
+EXP.sun=function(park){
+  if(!H.ready()) return; const tok=H.newTok(); let raf=0, playing=false;
+  const site=()=>{ const p=park!=="all"?pinAt(park):null; return p||map.getCenter().toArray(); };
+  let c=site(), ds=cairoToday(), min=cairoNowMin(); const light0=(map.getLight&&map.getLight())||null;
+  const wrap=q("#map")&&q("#map").parentElement||document.body; const tn=document.createElement("div"); tn.id="sunTint"; wrap.appendChild(tn);
+  function geo(){ if(!map.getSource("sun-src")) map.addSource("sun-src",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    if(!map.getLayer("sun-arc")) map.addLayer({id:"sun-arc",type:"line",source:"sun-src",filter:["==",["get","t"],"arc"],paint:{"line-color":"#FF9F0A","line-width":2.2,"line-opacity":.9,"line-dasharray":[1.4,1.4]}});
+    if(!map.getLayer("sun-ray")) map.addLayer({id:"sun-ray",type:"line",source:"sun-src",filter:["==",["get","t"],"ray"],paint:{"line-color":"#FFB020","line-width":1.4,"line-opacity":.8}});
+    if(!map.getLayer("sun-shadow")) map.addLayer({id:"sun-shadow",type:"line",source:"sun-src",filter:["==",["get","t"],"shadow"],paint:{"line-color":"#16181D","line-width":4,"line-opacity":.55,"line-cap":"round"}});
+    if(!map.getLayer("sun-pt")) map.addLayer({id:"sun-pt",type:"circle",source:"sun-src",filter:["==",["get","t"],"sun"],paint:{"circle-radius":11,"circle-color":"#FFC21A","circle-stroke-color":"#fff","circle-stroke-width":3,"circle-blur":.1}});
+    if(!map.getLayer("sun-pt-g")) map.addLayer({id:"sun-pt-g",type:"circle",source:"sun-src",filter:["==",["get","t"],"sun"],paint:{"circle-radius":24,"circle-color":"#FFC21A","circle-opacity":.28,"circle-blur":1}},"sun-pt"); }
+  function clean(){ try{ ["sun-pt","sun-pt-g","sun-shadow","sun-ray","sun-arc"].forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); }); if(map.getSource("sun-src")) map.removeSource("sun-src"); if(light0) map.setLight(light0); }catch(e){} tn.remove(); }
+  const saved=H.camNow();
+  H.wowStart("sun",()=>{ tok.dead=true; cancelAnimationFrame(raf); map.off("styledata",geo); clean(); try{ map.flyTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing,duration:1400,essential:true}); }catch(e){} });
+  geo(); map.on("styledata",geo);
+  const b=H.bar(`<div class="tm-top"><div class="ex-t"><b>Sun &amp; daylight</b><span>${esc(park!=="all"?H.parkName(park):"Map centre")} · Cairo time</span></div><button class="ex-x" type="button" aria-label="Close">×</button></div>
+    <div class="tm-date" id="suT"></div>
+    <input type="range" id="suR" min="0" max="1439" step="1" aria-label="Time of day">
+    <div class="tm-ctl"><button class="ex-b on" id="suPlay" type="button">Play day</button><input type="date" id="suD" class="ex-sel" aria-label="Date"><button class="ex-b" id="suNow" type="button">Now</button></div>
+    <div class="tm-k su"><div><em>Sunrise</em><b id="suRi"></b></div><div><em>Sunset</em><b id="suSe"></b></div><div><em>Daylight</em><b id="suDl"></b></div><div><em>Sun now</em><b id="suN"></b></div><div><em>Highest</em><b id="suMx"></b></div><div><em>Shadow, 20 m building</em><b id="suSh"></b></div></div>
+    <div class="tm-n">Worked out on this device from the date and place. The light on the 3D blocks follows the sun (tilt the map with 3D view); the tint shows daylight; no cast shadows.</div>`);
+  b.classList.add("ex-wide"); const el=id=>q("#"+id); el("suD").value=ds;
+  function arcPts(){ const pts=[]; for(let m=0;m<=1440;m+=15){ const p=sunPos(new Date(cairoUTC(ds,m)),c[1],c[0]); if(p.alt>-1) pts.push(dest(c,p.az,Math.max(120,1700*(1-clamp(p.alt,0,90)/90)+120))); } return pts; }
+  function draw(){ const info=dayInfo(ds,c[1],c[0]), p=sunPos(new Date(cairoUTC(ds,min)),c[1],c[0]);
+    el("suT").textContent=hhmm(min)+(p.alt>0?"":" · night"); el("suR").value=min;
+    el("suRi").textContent=info.rise!=null?hhmm(info.rise):"—"; el("suSe").textContent=info.set!=null?hhmm(info.set):"—"; el("suDl").textContent=info.rise!=null?((info.set-info.rise)/60).toFixed(1)+" h":"—";
+    el("suN").textContent=p.alt>0?Math.round(p.alt)+"° · "+compass(p.az):"below horizon"; el("suMx").textContent=Math.round(info.maxA)+"° at "+hhmm(info.maxM);
+    const sh=p.alt>1?20/Math.tan(p.alt*rad):null; el("suSh").textContent=sh?(sh<400?Math.round(sh)+" m":"very long"):"—";
+    // map light + tint + drawings
+    try{ const alt=p.alt, inten=alt>0?clamp(.28+.7*Math.pow(Math.sin(alt*rad),.55),.28,1):.12, warm=clamp(1-alt/16,0,1), col="rgb("+[255,Math.round(lerp(255,176,warm)),Math.round(lerp(255,112,warm))].join(",")+")";
+      map.setLight({anchor:"map",color:col,intensity:inten,position:[1.5,p.az,clamp(90-alt,0,170)]}); }catch(e){}
+    const t=tint(p.alt); tn.style.background="rgb("+t.join(",")+")";
+    const F=[]; const arc=arcPts(); if(arc.length>1) F.push({type:"Feature",properties:{t:"arc"},geometry:{type:"LineString",coordinates:arc}});
+    if(info.rise!=null){ [info.rise,info.set].forEach(m=>{ const pp=sunPos(new Date(cairoUTC(ds,m)),c[1],c[0]); F.push({type:"Feature",properties:{t:"ray"},geometry:{type:"LineString",coordinates:[c,dest(c,pp.az,1900)]}}); }); }
+    if(p.alt>0){ F.push({type:"Feature",properties:{t:"sun"},geometry:{type:"Point",coordinates:dest(c,p.az,Math.max(120,1700*(1-clamp(p.alt,0,90)/90)+120))}});
+      if(sh&&sh<400) F.push({type:"Feature",properties:{t:"shadow"},geometry:{type:"LineString",coordinates:[c,dest(c,(p.az+180)%360,sh)]}}); }
+    try{ const s=map.getSource("sun-src"); s&&s.setData({type:"FeatureCollection",features:F}); }catch(e){} }
+  draw();
+  el("suR").oninput=e=>{ min=+e.target.value; draw(); }; el("suD").onchange=e=>{ if(e.target.value){ ds=e.target.value; draw(); } };
+  el("suNow").onclick=()=>{ ds=cairoToday(); min=cairoNowMin(); el("suD").value=ds; draw(); };
+  const setPlay=on=>{ playing=on; el("suPlay").textContent=on?"Pause":"Play day"; if(on){ let t0=performance.now(), m0=min>=1430?0:min; const f=now=>{ if(tok.dead||!playing) return; min=Math.min(1439,m0+(now-t0)/1000*110); draw(); if(min>=1439){ setPlay(false); return; } raf=requestAnimationFrame(f); }; raf=requestAnimationFrame(f); } else cancelAnimationFrame(raf); };
+  el("suPlay").onclick=()=>setPlay(!playing);
+  try{ const bb=park!=="all"?H.parkBounds(park):null; if(bb){ const cc=map.cameraForBounds(bb,{padding:{top:90,bottom:260,left:60,right:60}}); map.flyTo({center:cc.center,zoom:Math.min(Math.max(cc.zoom-.6,12.2),15.2),pitch:55,bearing:-20,duration:H.reduced()?0:2000,essential:true}); } else map.flyTo({center:c,zoom:Math.max(map.getZoom(),11.5),pitch:45,duration:1500,essential:true}); }catch(e){}
+};
+
+/* ============================================================
+   5. TRUCKS TO THE PORT — three trucks drive the real road (OSRM) from the project or a chosen plot
+   ============================================================ */
+const TRUCK='<svg viewBox="0 0 20 40" width="20" height="40" aria-hidden="true"><rect x="3" y="14" width="14" height="25" rx="2" fill="#fff" stroke="#16181D" stroke-width="1.5"/><rect x="4" y="2" width="12" height="11" rx="2.5" fill="#B3263D" stroke="#16181D" stroke-width="1.5"/><rect x="6" y="4" width="8" height="4" rx="1" fill="#CFE6FF"/></svg>';
+function cumul(pts){ const c=[0]; for(let i=1;i<pts.length;i++) c.push(c[i-1]+hav(pts[i-1],pts[i])); return c; }
+function at(pts,cum,d){ const L=cum[cum.length-1]; d=clamp(d,0,L); let lo=0,hi=cum.length-1; while(hi-lo>1){ const m=(lo+hi)>>1; if(cum[m]<=d) lo=m; else hi=m; } const seg=cum[hi]-cum[lo]||1e-9, t=(d-cum[lo])/seg, a=pts[lo], b=pts[hi];
+  const p=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]; const br=(Math.atan2((b[0]-a[0])*Math.cos(a[1]*rad),(b[1]-a[1]))/rad+360)%360; return {p,br}; }
+EXP.truck=function(park){
+  if(!H.ready()) return; if(park==="all"){ H.toast("Pick a project in the list first",true); return; }
+  const tok=H.newTok(); let raf=0, follow=true, trip=null, marks=[], route=null, runId=0;
+  let from=pinAt(park), fromName=H.parkName(park);
+  try{ if(S.sel&&S.sel.size===1){ const it=selRows()[0]; if(it&&it.info&&it.info.park===park&&it.f.properties.c){ from=it.f.properties.c; fromName="Plot "+(it.f.properties.unit||"")+" · "+fromName; } } }catch(e){}
+  if(!from){ H.toast("This project has no position on the map",true); return; }
+  const ports=POIS.filter(p=>p.t==="port").map(p=>({...p,air:hav(from,p.at)})).sort((a,b)=>a.air-b.air).slice(0,3);
+  const air=POIS.filter(p=>p.t==="air").map(p=>({...p,air:hav(from,p.at)})).sort((a,b)=>a.air-b.air)[0];
+  const dests=[...ports.map(p=>({...p,k:"Port"})),...(air?[{...air,k:"Airport"}]:[]),{n:"Cairo centre",at:CAIRO,k:"City",air:hav(from,CAIRO)}];
+  const saved=H.camNow();
+  function geo(){ if(!map.getSource("tk-src")) map.addSource("tk-src",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    if(!map.getLayer("tk-glow")) map.addLayer({id:"tk-glow",type:"line",source:"tk-src",filter:["==",["get","t"],"all"],paint:{"line-color":"#0A84FF","line-width":9,"line-blur":5,"line-opacity":.35}});
+    if(!map.getLayer("tk-road")) map.addLayer({id:"tk-road",type:"line",source:"tk-src",filter:["==",["get","t"],"all"],paint:{"line-color":"#fff","line-width":3.2,"line-opacity":.95}});
+    if(!map.getLayer("tk-trail")) map.addLayer({id:"tk-trail",type:"line",source:"tk-src",filter:["==",["get","t"],"trail"],paint:{"line-color":"#B3263D","line-width":4.2,"line-opacity":1}}); }
+  function clean(){ marks.forEach(m=>m.remove()); marks=[]; try{ ["tk-trail","tk-road","tk-glow"].forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); }); if(map.getSource("tk-src")) map.removeSource("tk-src"); }catch(e){} }
+  H.wowStart("truck",()=>{ tok.dead=true; runId++; cancelAnimationFrame(raf); map.off("styledata",geo); clean(); try{ map.flyTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing,duration:1400,essential:true}); }catch(e){} });
+  geo(); map.on("styledata",geo);
+  const b=H.bar(`<div class="tm-top"><div class="ex-t"><b>Trucks</b><span>${esc(fromName)}</span></div><button class="ex-x" type="button" aria-label="Close">×</button></div>
+    <div class="tk-ch" id="tkCh">${dests.map((d,i)=>`<button type="button" class="ex-b${i===0?" on":""}" data-i="${i}">${esc(d.n.replace(/ Port$/,""))}</button>`).join("")}</div>
+    <div class="tk-h" id="tkH">Finding the road…</div>
+    <div class="tm-ctl"><button class="ex-b on" id="tkFol" type="button">Follow the truck</button><button class="ex-b" id="tkRe" type="button">Replay</button></div>
+    <div class="tm-n">Road and time from OpenStreetMap routing (a car profile — a loaded truck is slower). Distances are by road.</div>`);
+  b.classList.add("ex-wide"); const el=id=>q("#"+id);
+  const trucks=[0,1,2];
+  async function go(i){
+    const my=++runId; cancelAnimationFrame(raf); marks.forEach(m=>m.remove()); marks=[]; const d=dests[i]; el("tkH").textContent="Finding the road to "+d.n+"…";
+    let rt=null; try{ rt=await roadRoute(from,d.at); }catch(e){}
+    if(tok.dead||my!==runId) return;
+    const pts=rt?rt.pts:[from,d.at], straight=!rt, cum=cumul(pts), L=cum[cum.length-1];
+    el("tkH").innerHTML=`<b>${esc(fromName)}</b> → <b>${esc(d.n)}</b><br>${fKm(rt?rt.km:L)} km ${straight?"in a straight line (road not available right now)":"by road · about "+(typeof fDur==="function"?fDur(rt.min):Math.round(rt.min)+" min")}`;
+    try{ map.getSource("tk-src").setData({type:"FeatureCollection",features:[{type:"Feature",properties:{t:"all"},geometry:{type:"LineString",coordinates:pts}}]}); }catch(e){}
+    trucks.forEach(()=>{ const e=document.createElement("div"); e.className="tk-m"; e.innerHTML=TRUCK; const m=new maplibregl.Marker({element:e,rotationAlignment:"map",pitchAlignment:"map"}).setLngLat(from).addTo(map); marks.push(m); });
+    const DUR=clamp(L/7,12,30)*1000, GAP=1300, t0=performance.now(); let camB=map.getBearing(); let overview=false;
+    const bb=[[Math.min(...pts.map(p=>p[0])),Math.min(...pts.map(p=>p[1]))],[Math.max(...pts.map(p=>p[0])),Math.max(...pts.map(p=>p[1]))]];
+    const over=()=>{ overview=true; const c=map.cameraForBounds(bb,{padding:{top:90,bottom:250,left:80,right:80}}); map.flyTo({center:c.center,zoom:Math.min(c.zoom,13),pitch:30,bearing:0,duration:2200,essential:true}); };
+    if(!follow||H.reduced()) over(); else map.jumpTo({center:from,zoom:12.6,pitch:55});
+    const frame=now=>{ if(tok.dead||my!==runId) return; let done=0;
+      marks.forEach((m,k)=>{ const prog=clamp((now-t0-k*GAP)/DUR,0,1), s=at(pts,cum,L*ease_(prog)); m.setLngLat(s.p); m.setRotation(s.br); if(k===0){ lead=s; leadP=prog; } if(prog>=1) done++; });
+      try{ const tr=[]; const dd=L*ease_(leadP); for(let j=0;j<pts.length&&cum[j]<dd;j++) tr.push(pts[j]); tr.push(lead.p); const s=map.getSource("tk-src"); if(s){ const f=[{type:"Feature",properties:{t:"all"},geometry:{type:"LineString",coordinates:pts}}]; if(tr.length>1) f.push({type:"Feature",properties:{t:"trail"},geometry:{type:"LineString",coordinates:tr}}); s.setData({type:"FeatureCollection",features:f}); } }catch(e){}
+      if(follow&&!overview&&leadP<1){ let d=((lead.br-camB+540)%360)-180; camB+=d*.06; map.jumpTo({center:lead.p,bearing:camB,pitch:55,zoom:12.6}); }
+      if(leadP>=1&&!overview) over();
+      if(done<marks.length) raf=requestAnimationFrame(frame); };
+    let lead={p:from,br:0}, leadP=0; raf=requestAnimationFrame(frame);
+  }
+  const ease_=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+  el("tkCh").querySelectorAll("button").forEach(bn=>bn.onclick=()=>{ el("tkCh").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===bn)); go(+bn.dataset.i); });
+  el("tkFol").onclick=()=>{ follow=!follow; el("tkFol").classList.toggle("on",follow); };
+  el("tkRe").onclick=()=>{ const on=el("tkCh").querySelector("button.on"); go(on?+on.dataset.i:0); };
+  go(0);
+};
+
+/* ---------- look ---------- */
+{ const st=document.createElement("style"); st.textContent=`
+#exBar.ex-wide{flex-direction:column;align-items:stretch;gap:9px;border-radius:20px;padding:12px 16px 14px;width:min(600px,calc(100vw - 20px));bottom:18px}
+#exBar .tm-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#exBar .tm-date{font:800 26px/1 Inter,system-ui,sans-serif;letter-spacing:-.02em;text-align:center}
+#exBar input[type=range]{width:100%;accent-color:#B3263D;margin:0}
+#exBar .tm-ctl{display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap}
+#exBar .ex-sel{height:30px;border-radius:999px;border:1px solid rgba(16,18,24,.14);background:#fff;padding:0 10px;font:600 12px Inter,system-ui,sans-serif;color:#16181D}
+#exBar .tm-k{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+#exBar .tm-k.su{grid-template-columns:repeat(3,1fr)}
+#exBar .tm-k div{padding:8px 10px;border-radius:12px;background:rgba(16,18,24,.05);min-width:0}
+#exBar .tm-k em{display:block;font:700 9.5px/1.2 Inter,system-ui,sans-serif;letter-spacing:.07em;text-transform:uppercase;font-style:normal;color:#6E737B}
+#exBar .tm-k b{display:block;font:800 14.5px/1.25 Inter,system-ui,sans-serif;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#exBar .tm-n{font:500 10.5px/1.35 Inter,system-ui,sans-serif;color:#6E737B;text-align:center}
+#exBar .tk-ch{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#exBar .tk-h{font:600 13px/1.4 Inter,system-ui,sans-serif;text-align:center}
+.tk-m svg{display:block;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45))}
+#sunTint{position:absolute;inset:0;z-index:3;pointer-events:none;mix-blend-mode:multiply;transition:background .25s linear}
+@media (max-width:820px){ #exBar .tm-k{grid-template-columns:repeat(2,1fr)} #exBar .tm-k.su{grid-template-columns:repeat(2,1fr)} #exBar .tm-date{font-size:21px} }
+`; document.head.appendChild(st); }
+})();
+</script>
 </body>
 </html>
