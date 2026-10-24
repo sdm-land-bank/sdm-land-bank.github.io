@@ -15897,7 +15897,7 @@ function roadGraph(rings,mx,mz){
       const ax=pix[a]%W, ay=(pix[a]/W)|0, bx=pix[b]%W, by=(pix[b]/W)|0, L=Math.hypot(ax-bx,ay-by)*res; if(L>14) return;
       for(let t=0;t<=Math.ceil(L/1.5);t++){ const f=t/Math.max(1,Math.ceil(L/1.5)), cx=Math.round(ax+(bx-ax)*f), cy=Math.round(ay+(by-ay)*f); if(tight[cy*W+cx]) return; }
       adj[a].set(b,L); adj[b].set(a,L); }); });
-  let dead=new Uint8Array(NN); for(let pass=0;pass<4;pass++){ const kill=[]; for(let a=0;a<NN;a++){ if(dead[a]) continue; let c=0; adj[a].forEach((L,b)=>{ if(!dead[b]) c++; }); if(c<=1) kill.push(a); } if(!kill.length) break; kill.forEach(a=>{ dead[a]=1; }); }
+  let dead=new Uint8Array(NN); for(let pass=0;pass<600;pass++){ const kill=[]; for(let a=0;a<NN;a++){ if(dead[a]) continue; let c=0; adj[a].forEach((L,b)=>{ if(!dead[b]) c++; }); if(c<=1) kill.push(a); } if(!kill.length) break; kill.forEach(a=>{ dead[a]=1; }); }
   const comp=new Int32Array(NN).fill(-1); let best=-1, bestN=0, cn=0;
   for(let a=0;a<NN;a++){ if(dead[a]||comp[a]>=0) continue; const st=[a]; comp[a]=cn; let c=0; while(st.length){ const u=st.pop(); c++; adj[u].forEach((L,v)=>{ if(!dead[v]&&comp[v]<0){ comp[v]=cn; st.push(v); } }); } if(c>bestN){ bestN=c; best=cn; } cn++; }
   const nid=new Int32Array(NN).fill(-1); for(let a=0;a<NN;a++) if(!dead[a]&&comp[a]===best){ nid[a]=nodes.length; nodes.push({x:x0-M+(pix[a]%W+.5)*res,z:z0-M+(((pix[a]/W)|0)+.5)*res,out:[]}); }
