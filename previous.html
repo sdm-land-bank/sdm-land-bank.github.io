@@ -15523,74 +15523,6 @@ function loadThree(){ if(window.THREE) return Promise.resolve(); if(THREE_P) ret
   return THREE_P; }
 
 /* ============================================================
-   1. ORBIT FROM SPACE — night-side Earth, city lights, the parks lighting up over Egypt, then down into the map
-   ============================================================ */
-const TEX="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/";
-function loadTex(url){ return new Promise((ok,no)=>{ new THREE.TextureLoader().setCrossOrigin("anonymous").load(url,t=>{ t.anisotropy=4; ok(t); },undefined,()=>no(new Error("texture "+url))); }); }
-const ll2v=(lat,lng,R)=>{ const φ=lat*Math.PI/180, λ=lng*Math.PI/180; return new THREE.Vector3(R*Math.cos(φ)*Math.cos(λ),R*Math.sin(φ),-R*Math.cos(φ)*Math.sin(λ)); };
-async function runOrbit(opts){
-  opts=opts||{}; const tok=newTok(); let ov=null, renderer=null, raf=0, disposed=false, scene=null, landed=false;
-  const finishCam=opts.after||null, home=camNow();
-  function cleanup(){ if(disposed) return; disposed=true; cancelAnimationFrame(raf); try{ if(scene) scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ (o.material.map)&&o.material.map.dispose(); o.material.dispose(); } }); renderer&&renderer.dispose(); }catch(e){} if(ov) ov.remove(); }
-  const flyBack=(ms)=>{ const c=finishCam||home; try{ map.flyTo({center:c.center,zoom:c.zoom,pitch:c.pitch||0,bearing:c.bearing||0,duration:ms,essential:true,curve:1.5}); }catch(e){} };
-  if(!opts.keepMode) wowStart("orbit",()=>{ tok.dead=true; cleanup(); if(!landed) flyBack(900); });
-  if(reduced()){ flyBack(0); if(!opts.keepMode) wowStop(); return true; }
-  try{ await loadThree(); }catch(e){ toast("The 3D library could not load — check the connection",true); if(!opts.keepMode) wowStop(); return false; }
-  let dayT,nightT; try{ [dayT,nightT]=await Promise.all([loadTex(TEX+"earth_atmos_2048.jpg"),loadTex(TEX+"earth_lights_2048.png")]); }
-  catch(e){ toast("The Earth images could not load — check the connection",true); if(!opts.keepMode) wowStop(); return false; }
-  if(tok.dead&&!opts.keepMode) return false;
-  const lat0=29.9, lng0=31.6;
-  map.jumpTo({center:[lng0,lat0],zoom:3.4,pitch:0,bearing:0});
-  ov=document.createElement("div"); ov.id="spaceOv"; ov.innerHTML=`<canvas></canvas><div class="sp-t">ELSEWEDY INDUSTRIAL DEVELOPMENT</div><div class="sp-b" id="spB"></div><button class="sp-skip" type="button">Skip ›</button>`;
-  document.body.appendChild(ov); const cv=ov.querySelector("canvas");
-  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:false}); renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
-  const size=()=>{ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); };
-  scene=new THREE.Scene(); const cam=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.05,200); size(); const onR=()=>size(); window.addEventListener("resize",onR);
-  const sunDir=new THREE.Vector3(.95,.28,.45).normalize();
-  const earth=new THREE.Group(); scene.add(earth);
-  const mat=new THREE.ShaderMaterial({uniforms:{dayMap:{value:dayT},nightMap:{value:nightT},sunDir:{value:sunDir}},
-    vertexShader:"varying vec2 vUv; varying vec3 vW; varying vec3 vV; void main(){ vUv=uv; vW=normalize(mat3(modelMatrix)*normal); vV=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }",
-    fragmentShader:"uniform sampler2D dayMap; uniform sampler2D nightMap; uniform vec3 sunDir; varying vec2 vUv; varying vec3 vW; varying vec3 vV; void main(){ float d=dot(normalize(vW),normalize(sunDir)); float k=smoothstep(-.14,.2,d); vec3 day=texture2D(dayMap,vUv).rgb; vec3 night=texture2D(nightMap,vUv).rgb; vec3 dark=day*vec3(.05,.07,.12); vec3 nl=dark+night*vec3(1.9,1.45,.85); vec3 dl=day*(.5+.65*max(d,0.)); vec3 col=mix(nl,dl,k); float rim=pow(1.-max(vV.z,0.),3.); col+=vec3(.18,.42,1.)*rim*.6; gl_FragColor=vec4(col,1.); }"});
-  earth.add(new THREE.Mesh(new THREE.SphereGeometry(1,96,96),mat));
-  const atm=new THREE.Mesh(new THREE.SphereGeometry(1.09,64,64),new THREE.ShaderMaterial({transparent:true,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false,
-    vertexShader:"varying vec3 vN; void main(){ vN=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }",
-    fragmentShader:"varying vec3 vN; void main(){ float i=pow(.68-dot(vN,vec3(0.,0.,1.)),4.); gl_FragColor=vec4(.32,.62,1.,1.)*i*1.5; }"})); scene.add(atm);
-  const stars=new THREE.BufferGeometry(), N=1800, arr=new Float32Array(N*3);
-  for(let i=0;i<N;i++){ const r=40+Math.random()*60, u=Math.random()*2-1, a=Math.random()*Math.PI*2, s=Math.sqrt(1-u*u); arr[i*3]=r*s*Math.cos(a); arr[i*3+1]=r*u; arr[i*3+2]=r*s*Math.sin(a); }
-  stars.setAttribute("position",new THREE.BufferAttribute(arr,3)); scene.add(new THREE.Points(stars,new THREE.PointsMaterial({color:0xffffff,size:.16,sizeAttenuation:true,transparent:true,opacity:.85})));
-  // the parks: red for operating, white for the new lands (only places that exist in the data)
-  const pins=[], rings=[]; const addPin=(lat,lng,hex,sz)=>{ const p=ll2v(lat,lng,1.004); const m=new THREE.Mesh(new THREE.SphereGeometry(sz,12,12),new THREE.MeshBasicMaterial({color:hex})); m.position.copy(p); earth.add(m); pins.push(m);
-    const rg=new THREE.Mesh(new THREE.RingGeometry(.9*sz,1.25*sz,28),new THREE.MeshBasicMaterial({color:hex,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false})); rg.position.copy(p); rg.lookAt(p.clone().multiplyScalar(2)); rg.userData.ph=Math.random(); rg.userData.sz=sz; earth.add(rg); rings.push(rg); };
-  let nOps=0,nPipe=0; PORTFOLIO.filter(p=>p.stage==="operating"&&p.park&&p.lat!=null).forEach(p=>{ addPin(p.lat,p.lng,0xff3b4d,.0062); nOps++; });
-  try{ const D=window.SID_PIPE&&window.SID_PIPE.data; D&&D.projects.forEach(p=>{ if(p.at){ addPin(p.at[1],p.at[0],0xffffff,.0048); nPipe++; } }); }catch(e){}
-  const a0=-(Math.PI/2+lng0*Math.PI/180), b0=lat0*Math.PI/180;
-  const T=8800, t0=performance.now(); let fadeStarted=false;
-  ov.querySelector(".sp-skip").onclick=()=>{ tok.skip=true; };
-  const keyskip=e=>{ if(e.key==="Escape"||e.key===" "){ tok.skip=true; } }; document.addEventListener("keydown",keyskip);
-  const sb=ov.querySelector("#spB"); sb.textContent=`${nOps} industrial parks${nPipe?` · ${nPipe} new lands`:""} · Egypt`;
-  const end=()=>{ document.removeEventListener("keydown",keyskip); window.removeEventListener("resize",onR); setTimeout(()=>{ cleanup(); if(!opts.keepMode) wowStop(); },1400); };
-  return await new Promise(res=>{
-    const frame=now=>{
-      if(tok.dead){ document.removeEventListener("keydown",keyskip); window.removeEventListener("resize",onR); cleanup(); return res(false); }
-      let t=Math.min(1,(now-t0)/T); if(tok.skip&&t<.82){ tok.skip=false; /* jump to the landing */ opts._t0shift=(.82*T)-(now-t0); }
-      if(opts._t0shift){ t=Math.min(1,(now-t0+opts._t0shift)/T); }
-      const e=easeOut(Math.min(1,t/.8));
-      earth.rotation.y=a0+(1-e)*2.7; earth.rotation.x=b0*e+(1-e)*.25;
-      const dist=7.2-(7.2-1.55)*e; cam.position.set(0,0,dist);
-      rings.forEach(r=>{ const k=((now/1400)+r.userData.ph)%1; r.scale.setScalar(1+k*1.9); r.material.opacity=(1-k)*.8; });
-      pins.forEach((p,i)=>p.scale.setScalar(1+.25*Math.sin(now/260+i)));
-      renderer.render(scene,cam);
-      if(t>.14) ov.classList.add("t1"); if(t>.62) ov.classList.add("t2");
-      if(t>=.86&&!fadeStarted){ fadeStarted=true; landed=true; ov.classList.add("out"); flyBack(2800); end(); }
-      if(t<1) raf=requestAnimationFrame(frame); else res(true);
-    };
-    raf=requestAnimationFrame(frame);
-    if(!opts.keepMode) tok.finish=res;
-    // the caller waits for the fade to be under way, not for the cleanup
-  }).then(v=>{ return sleep(1000).then(()=>v); });
-}
-
-/* ============================================================
    2. FILM OF A PROJECT — space → project → slow orbit with the real numbers → road to the nearest port
    ============================================================ */
 function speakText(text,tok){
@@ -15605,19 +15537,18 @@ async function runFilm(park,opts){
   const rec=parkRec(park), bb=parkBounds(park); if(!rec||!bb){ toast("Pick a project with plots on the map",true); return; }
   if(typeof PR!=="undefined"&&PR.on){ toast("Close the presentation first",true); return; }
   const tok=newTok(); const saved=camNow(); let routeOn=false;
-  wowStart("film",()=>{ tok.dead=true; try{ clearRoutes&&clearRoutes("film"); }catch(e){} map.stop&&map.stop(); const sp=q("#spaceOv"); if(sp) sp.remove(); try{ map.flyTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing,duration:1600,essential:true}); }catch(e){} });
+  wowStart("film",()=>{ tok.dead=true; try{ clearRoutes&&clearRoutes("film"); }catch(e){} map.stop&&map.stop(); try{ map.flyTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing,duration:1600,essential:true}); }catch(e){} });
   bar(`<div class="ex-t"><b>Film</b><span>${esc(rec.name)}</span></div><button class="ex-b ${WOW.voice?"on":""}" id="exVoice" type="button" title="Narration on or off">Voice</button><button class="ex-b" id="exSkip" type="button">Skip ›</button><button class="ex-x" type="button" aria-label="Close">×</button>`);
   const vb=q("#exVoice"); if(vb) vb.onclick=()=>{ WOW.voice=!WOW.voice; try{ localStorage.setItem("sid.exVoice",WOW.voice?"1":"0"); }catch(e){} vb.classList.toggle("on",WOW.voice); if(!WOW.voice) try{ speechSynthesis.cancel(); }catch(e){} };
-  let skipPhase=false; const sk=q("#exSkip"); if(sk) sk.onclick=()=>{ skipPhase=true; try{ speechSynthesis.cancel(); }catch(e){} const so=q("#spaceOv .sp-skip"); if(so) so.click(); };
+  let skipPhase=false; const sk=q("#exSkip"); if(sk) sk.onclick=()=>{ skipPhase=true; try{ speechSynthesis.cancel(); }catch(e){}  };
   const t=totals(S.rows.filter(r=>r.park===park)), sold=t.soldArea, sell=t.sellable, ats=t.byStatus.ats.area;
   const pct=sell?Math.round(sold/sell*100):0, where=(S.reg.parks[park]&&S.reg.parks[park].where)||"", land=surveyArea(park)||rec.area;
   const pin=pinAt(park)||[ (bb[0][0]+bb[1][0])/2,(bb[0][1]+bb[1][1])/2 ];
   const cam0=map.cameraForBounds(bb,{padding:90,pitch:58,bearing:-20})||{center:pin,zoom:14};
   const say=async(html,text,min)=>{ cap(html); await Promise.all([sleep(min||3500,tok),text?speakText(text,tok):Promise.resolve()]); };
   try{
-    // (a) from space
-    if(opts.space!==false&&!reduced()){ cap(`<div class="c-k">Egypt</div><div class="c-v">From space</div>`); await runOrbit({keepMode:true,after:{center:[31.2,29.8],zoom:5.6,pitch:0,bearing:0}}); }
-    else { map.flyTo({center:[31.2,29.8],zoom:5.6,pitch:0,bearing:0,duration:reduced()?0:2200,essential:true}); await sleep(reduced()?200:2400,tok); }
+    // (a) up and over, then down to the project
+    map.flyTo({center:[31.2,29.8],zoom:5.8,pitch:0,bearing:0,duration:reduced()?0:2400,essential:true,curve:1.6}); await sleep(reduced()?200:2500,tok);
     if(tok.dead) return;
     // (b) down to the project
     cap(`<div class="c-k">${esc(where||"Egypt")}</div><div class="c-v">${esc(rec.name)}</div>`);
@@ -15647,75 +15578,60 @@ async function runFilm(park,opts){
     // (e) end card
     cap(`<div class="c-k">${esc(rec.name)}</div><div class="c-v">Thank you</div><div class="c-btns"><button class="ex-b" id="fEnd1" type="button">Replay</button><button class="ex-b on" id="fEnd2" type="button">Open this project</button></div>`);
     bar(`<div class="ex-t"><b>Film</b><span>finished</span></div><button class="ex-x" type="button" aria-label="Close">×</button>`);
-    const r1=q("#fEnd1"), r2=q("#fEnd2"); if(r1) r1.onclick=()=>{ try{ clearRoutes("film"); }catch(e){} runFilm(park,{space:false}); };
+    const r1=q("#fEnd1"), r2=q("#fEnd2"); if(r1) r1.onclick=()=>{ try{ clearRoutes("film"); }catch(e){} runFilm(park); };
     if(r2) r2.onclick=()=>{ WOW.stop=null; wowStop(); try{ clearRoutes("film"); }catch(e){} const s=q("#parkSel"); if(s){ s.value=park; s.dispatchEvent(new Event("change",{bubbles:true})); } };
   }catch(e){ if(e!=="stopped") console.warn("film",e); }
 }
 
 /* ============================================================
-   MENU
+   EXPLORE — inside the project card: one button, a list that opens in the card, each item starts for THIS project
    ============================================================ */
-function closeMenu(){ const m=q("#exMenu"); if(m) m.remove(); document.removeEventListener("pointerdown",menuOut,true); }
-function menuOut(e){ if(!e.target.closest("#exMenu,#exBtn")) closeMenu(); }
-const ICON={orbit:'<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.2"/><path d="M2.8 8h10.4M8 2.8c2 1.6 2 8.8 0 10.4M8 2.8c-2 1.6-2 8.8 0 10.4"/></svg>',
-  film:'<svg viewBox="0 0 16 16"><rect x="2" y="3.5" width="12" height="9" rx="1.6"/><path d="M6.8 6.2v3.6L10 8z"/></svg>',
+const ICON={film:'<svg viewBox="0 0 16 16"><rect x="2" y="3.5" width="12" height="9" rx="1.6"/><path d="M6.8 6.2v3.6L10 8z"/></svg>',
   time:'<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.4"/><path d="M8 4.8V8l2.4 1.6"/></svg>',
   truck:'<svg viewBox="0 0 16 16"><path d="M1.8 4.4h7.2v6.2H1.8zM9 6.4h2.8l2 2.1v2.1H9z"/><circle cx="4.6" cy="11.4" r="1.2"/><circle cx="11.4" cy="11.4" r="1.2"/></svg>',
   share:'<svg viewBox="0 0 16 16"><rect x="2.2" y="2.2" width="4.6" height="4.6" rx=".8"/><rect x="9.2" y="2.2" width="4.6" height="4.6" rx=".8"/><rect x="2.2" y="9.2" width="4.6" height="4.6" rx=".8"/><path d="M9.2 9.2h1.8v1.8H9.2zM12 12h1.8v1.8H12z"/></svg>',
   ar:'<svg viewBox="0 0 16 16"><path d="M8 1.8 13.6 5v6L8 14.2 2.4 11V5z"/><path d="M2.4 5 8 8.2 13.6 5M8 8.2v6"/></svg>'};
-const ITEMS=[["orbit","Orbit from space","Earth at night, the parks light up, then down into the map"],
-  ["film","Film of a project","A guided flight with the real numbers and a voice"],
+const ITEMS=[["film","Film of this project","A guided flight with the real numbers and a voice"],
   ["time","Time machine","Watch the plots sell, month by month"],
   ["truck","Trucks to the port","Animated trucks on the real road"],
-  ["share","Share a plot with a customer","A link and QR with only that plot"],
-  ["ar","AR table view","The park as a 3D model on your table (phone)"]];
-const EXP={};   // filled by the later sections: EXP.time(park), EXP.truck(park) ...
-function parkOptions(sel){ const ops=PORTFOLIO.filter(p=>p.stage==="operating"&&p.park&&S.rows.some(r=>r.park===p.park)).sort((a,b)=>a.name.localeCompare(b.name));
-  return `<option value="all"${sel==="all"?" selected":""}>All parks</option>`+ops.map(p=>`<option value="${p.park}"${sel===p.park?" selected":""}>${esc(p.name)}</option>`).join(""); }
-function toggleMenu(btn){
-  if(q("#exMenu")){ closeMenu(); return; }
-  if(!ready()){ toast("The map is still loading",true); return; }
-  const m=document.createElement("div"); m.id="exMenu"; m.setAttribute("role","menu");
-  const cur=S.park&&S.park!=="all"?S.park:"all";
-  m.innerHTML=`<div class="ex-h">Explore</div><label class="ex-p"><span>Project</span><select id="exPark">${parkOptions(cur)}</select></label>`+
-    ITEMS.map(([k,t,d])=>`<button type="button" class="ex-i" data-k="${k}" role="menuitem"><i>${ICON[k]}</i><span><b>${t}</b><em>${d}</em></span></button>`).join("");
-  document.body.appendChild(m);
-  const r=btn.getBoundingClientRect(); m.style.top=Math.round(r.bottom+8)+"px";
-  if(innerWidth<=820){ m.style.left="10px"; m.style.right="10px"; m.style.width="auto"; m.style.maxHeight=Math.max(240,innerHeight-r.bottom-96)+"px"; m.style.overflow="auto"; }
-  else m.style.right=Math.max(10,Math.round(innerWidth-r.right))+"px";
-  const need=(k)=>{ const v=q("#exPark").value; if(v==="all"){ toast("Pick a project in the list first",true); return null; } return v; };
-  m.querySelectorAll(".ex-i").forEach(b=>b.onclick=()=>{ const k=b.dataset.k, park=q("#exPark").value;
-    if(k==="orbit"){ closeMenu(); runOrbit(); return; }
-    if(k==="film"){ const p=need(); if(p){ closeMenu(); runFilm(p); } return; }
-    if(EXP[k]){ closeMenu(); EXP[k](park); return; }
-    toast("Not available yet",true); });
-  setTimeout(()=>document.addEventListener("pointerdown",menuOut,true),0);
+  ["ar","Park tour (AR and drive)","Tabletop model or drive between the factories"],
+  ["share","Share a plot with a customer","Select one available plot first"]];
+const EXP={};   // filled by the later sections: EXP.time(park), EXP.truck(park), EXP.ar(park), EXP.share()
+function closeMenu(){}
+function injectExplore(park){
+  const card=q("#parkcard"); if(!card||card.hidden||!park||pub()||card.querySelector(".pc-ex")) return;
+  const w=document.createElement("div"); w.className="pc-ex";
+  w.innerHTML=`<button type="button" class="pc-ex-b" aria-expanded="false"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5l1.4 3.9 3.9 1.4-3.9 1.4L8 12.1 6.6 8.2 2.7 6.8l3.9-1.4z"/></svg><span>Explore this project</span><i></i></button>
+    <div class="pc-ex-l" hidden>${ITEMS.map(([k,t,d])=>`<button type="button" class="pc-ex-i" data-k="${k}"><b>${ICON[k]}</b><span><strong>${t}</strong><em>${d}</em></span></button>`).join("")}</div>`;
+  const go=card.querySelector(".pc-go,.pc-tour,.rq"); if(go) go.parentNode.insertBefore(w,go); else card.appendChild(w);
+  const b=w.querySelector(".pc-ex-b"), l=w.querySelector(".pc-ex-l");
+  b.onclick=e=>{ e.stopPropagation(); const open=l.hidden; l.hidden=!open; b.setAttribute("aria-expanded",open?"true":"false"); w.classList.toggle("open",open); };
+  l.querySelectorAll(".pc-ex-i").forEach(i=>i.onclick=e=>{ e.stopPropagation(); const k=i.dataset.k;
+    if(!ready()){ toast("The map is still loading",true); return; }
+    if(k==="film"){ card.hidden=true; runFilm(park); return; }
+    if(k==="share"){ EXP.share(); return; }
+    if(EXP[k]){ card.hidden=true; EXP[k](park); } });
 }
-function addBtn(){ if(pub()||!ready()) return; const b0=q(".mapbtns"); if(!b0||q("#exBtn")) return;
-  const b=document.createElement("button"); b.type="button"; b.id="exBtn"; b.setAttribute("aria-label","Explore"); b.title="Explore — orbit, film, time machine, trucks, customer link, AR";
-  b.innerHTML=`<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5l1.4 3.9 3.9 1.4-3.9 1.4L8 12.1 6.6 8.2 2.7 6.8l3.9-1.4z"/><path d="M12.6 11l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5z"/></svg><span>Explore</span>`;
-  b.onclick=e=>{ e.stopPropagation(); toggleMenu(b); };
-  const bd=q("#ppBdBtn"); if(bd) bd.after(b); else b0.appendChild(b); }
-setInterval(()=>{ try{ addBtn(); }catch(e){} },1500);
+if(typeof openParkCard==="function"){ const opcV80=openParkCard; openParkCard=function(p){ const r=opcV80.apply(this,arguments); try{ injectExplore(p&&p.park); }catch(e){} return r; }; }
+window.sidParkCardPatched=true;
+// the card is also drawn by sidParkCard (menu pick): it calls openParkCard, so the wrapper above covers it
 
-window.SID_WOW={orbit:runOrbit,film:runFilm,stop:wowStop,EXP,helpers:{q,esc,sleep,newTok,wowStart,wowStop,bar,cap,camNow,ready,reduced,fi,fs_,parkRec,parkName,parkBounds,loadThree,say_num,speakText,ease,easeOut,ll2v,toast:(m,b)=>toast(m,b),closeMenu}};
+window.SID_WOW={film:runFilm,stop:wowStop,EXP,helpers:{q,esc,sleep,newTok,wowStart,wowStop,bar,cap,camNow,ready,reduced,fi,fs_,parkRec,parkName,parkBounds,loadThree,say_num,speakText,ease,easeOut,toast:(m,b)=>toast(m,b),closeMenu}};
 
 /* ---------- look ---------- */
 { const st=document.createElement("style"); st.textContent=`
-#exBtn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:none}
-#exBtn svg{flex:none}
-body.l2 #exBtn span{display:none}
-#exMenu{position:fixed;z-index:9300;width:330px;max-width:calc(100vw - 20px);padding:8px;border-radius:16px;background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);border:1px solid rgba(16,18,24,.1);box-shadow:0 22px 50px -14px rgba(16,18,24,.4);font-family:Inter,system-ui,sans-serif;color:#16181D}
-#exMenu .ex-h{padding:6px 8px 4px;font:800 10px/1 Inter,system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#6E737B}
-#exMenu .ex-p{display:flex;align-items:center;gap:8px;padding:4px 8px 8px}
-#exMenu .ex-p span{font:600 11px Inter,system-ui,sans-serif;color:#6E737B}
-#exMenu .ex-p select{flex:1;min-width:0;height:30px;border-radius:9px;border:1px solid rgba(16,18,24,.14);background:#fff;padding:0 8px;font:600 12.5px Inter,system-ui,sans-serif;color:#16181D}
-#exMenu .ex-i{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:8px;border:0;border-radius:11px;background:transparent;cursor:pointer;color:inherit}
-#exMenu .ex-i:hover{background:rgba(16,18,24,.06)}
-#exMenu .ex-i i{flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:#16181D;color:#fff}
-#exMenu .ex-i svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
-#exMenu .ex-i b{display:block;font:700 13px/1.2 Inter,system-ui,sans-serif}
-#exMenu .ex-i em{display:block;font:500 11px/1.3 Inter,system-ui,sans-serif;font-style:normal;color:#6E737B;margin-top:1px}
+.pc-ex{margin:10px 0 8px}
+.pc-ex-b{display:flex;align-items:center;gap:8px;width:100%;height:36px;padding:0 12px;border-radius:11px;border:1px solid rgba(16,18,24,.14);background:#16181D;color:#fff;font:700 12.5px Inter,system-ui,sans-serif;cursor:pointer}
+.pc-ex-b span{flex:1;text-align:left}
+.pc-ex-b i{width:7px;height:7px;border-right:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(45deg) translateY(-2px);transition:transform .2s}
+.pc-ex.open .pc-ex-b i{transform:rotate(-135deg) translateY(-2px)}
+.pc-ex-l{margin-top:6px;border-radius:12px;background:rgba(16,18,24,.05);padding:4px}
+.pc-ex-i{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:7px;border:0;border-radius:9px;background:transparent;cursor:pointer;color:inherit}
+.pc-ex-i:hover{background:rgba(16,18,24,.07)}
+.pc-ex-i b{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:#16181D;color:#fff}
+.pc-ex-i svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.pc-ex-i strong{display:block;font:700 12.5px/1.2 Inter,system-ui,sans-serif}
+.pc-ex-i em{display:block;font:500 10.5px/1.3 Inter,system-ui,sans-serif;font-style:normal;color:#6E737B;margin-top:1px}
 #exBar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9200;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 16px;border-radius:999px;background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(20px) saturate(170%);backdrop-filter:blur(20px) saturate(170%);border:1px solid rgba(16,18,24,.1);box-shadow:0 16px 40px -14px rgba(16,18,24,.45);font-family:Inter,system-ui,sans-serif;color:#16181D;max-width:calc(100vw - 20px)}
 #exBar .ex-t{display:flex;flex-direction:column;line-height:1.15;margin-right:6px}
 #exBar .ex-t b{font:800 10px Inter,system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#6E737B}
@@ -15730,13 +15646,6 @@ body.l2 #exBtn span{display:none}
 #exCap .c-v{font:800 30px/1.1 Inter,system-ui,sans-serif;letter-spacing:-.02em;margin-top:4px}
 #exCap .c-s{font:500 13px/1.35 Inter,system-ui,sans-serif;color:rgba(255,255,255,.82);margin-top:5px}
 #exCap .c-btns{display:flex;gap:8px;margin-top:12px}
-#spaceOv{position:fixed;inset:0;z-index:9100;background:#02030a;opacity:1;transition:opacity 1.3s ease}
-#spaceOv.out{opacity:0;pointer-events:none}
-#spaceOv canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-#spaceOv .sp-t{position:absolute;top:7vh;left:0;right:0;text-align:center;font:700 clamp(11px,1.6vw,15px) Inter,system-ui,sans-serif;letter-spacing:.42em;color:rgba(255,255,255,.88);opacity:0;transition:opacity 1.6s ease;text-shadow:0 2px 18px rgba(0,0,0,.8)}
-#spaceOv .sp-b{position:absolute;bottom:9vh;left:0;right:0;text-align:center;font:600 clamp(13px,1.8vw,18px) Inter,system-ui,sans-serif;letter-spacing:.06em;color:#fff;opacity:0;transition:opacity 1.4s ease;text-shadow:0 2px 18px rgba(0,0,0,.9)}
-#spaceOv.t1 .sp-t{opacity:1} #spaceOv.t2 .sp-b{opacity:1}
-#spaceOv .sp-skip{position:absolute;right:22px;bottom:22px;height:32px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);color:#fff;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 @media (max-width:820px){ #exCap{left:12px;bottom:150px;padding:12px 15px} #exCap .c-v{font-size:24px} #exBar{bottom:76px} }
 `; document.head.appendChild(st); }
 })();
@@ -15954,24 +15863,7 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&q("#exShare")){ cl
 /* ============================================================
    8. AR TABLE VIEW — the park as a 3D model in the camera picture (phone: move it around; others: drag to turn)
    ============================================================ */
-/* the park's real mapped roads (OpenStreetMap, from the map's own tiles) — gathered by looking at the park from above for a moment */
-async function roadsFor(lo,hi){
-  if(!map.getSource("protomaps")) return null;
-  const save=H.camNow(); const lines=new Map(); const midLat=(lo[1]+hi[1])/2, kx=111320*Math.cos(midLat*Math.PI/180), ky=110574;
-  const px=(hi[0]-lo[0])*.055, py=(hi[1]-lo[1])*.055, B=[[lo[0]-px,lo[1]-py],[hi[0]+px,hi[1]+py]], Z=15.2;
-  const mpp=156543.03*Math.cos(midLat*Math.PI/180)/Math.pow(2,Z), cw=map.getContainer().clientWidth, ch=map.getContainer().clientHeight;
-  const sx=Math.max(400,cw*mpp*.7)/kx, sy=Math.max(400,ch*mpp*.7)/ky, cs=[];
-  for(let x=B[0][0]+sx/2;x<B[1][0]+sx/2;x+=sx) for(let y=B[0][1]+sy/2;y<B[1][1]+sy/2;y+=sy) cs.push([Math.min(x,B[1][0]),Math.min(y,B[1][1])]);
-  if(cs.length>12) return null;
-  const inB=p=>p[0]>=B[0][0]&&p[0]<=B[1][0]&&p[1]>=B[0][1]&&p[1]<=B[1][1];
-  try{ for(const c of cs){ map.jumpTo({center:c,zoom:Z,pitch:0,bearing:0}); await new Promise(r=>{ let d=false; const f=()=>{ if(!d){ d=true; r(); } }; map.once("idle",f); setTimeout(f,5500); });
-      map.querySourceFeatures("protomaps",{sourceLayer:"roads"}).forEach(f=>{ const k=f.properties.kind; if(k!=="major_road"&&k!=="minor_road"&&k!=="highway"&&k!=="medium_road") return; const g=f.geometry, L=g.type==="LineString"?[g.coordinates]:g.type==="MultiLineString"?g.coordinates:[];
-        L.forEach(line=>{ let run=[]; const flush=()=>{ if(run.length>1){ let len=0; for(let i=1;i<run.length;i++) len+=Math.hypot((run[i][0]-run[i-1][0])*kx,(run[i][1]-run[i-1][1])*ky); if(len>=50){ const key=run[0].map(v=>v.toFixed(5))+"|"+run[run.length-1].map(v=>v.toFixed(5))+"|"+run.length; if(!lines.has(key)) lines.set(key,{pts:run.slice(),len,major:k==="major_road"||k==="highway"}); } } run=[]; };
-          line.forEach(pt=>{ if(inB(pt)) run.push(pt); else flush(); }); flush(); }); }); } }
-  finally{ try{ map.jumpTo({center:save.center,zoom:save.zoom,pitch:save.pitch,bearing:save.bearing}); }catch(e){} }
-  return [...lines.values()];
-}
-/* where OpenStreetMap has no roads for a park: the streets are the gaps between the plot rows, found from the plot outlines */
+/* the park's streets are the gaps between the plot rows, found from the plot outlines (same method for every park) */
 function gapRoads(rings,c0,kx,ky){
   const E=[]; rings.forEach(({r},pi)=>{ for(let i=0;i<r.length-1;i++){ const ax=(r[i][0]-c0[0])*kx, ay=(r[i][1]-c0[1])*ky, bx=(r[i+1][0]-c0[0])*kx, by=(r[i+1][1]-c0[1])*ky, L=Math.hypot(bx-ax,by-ay); if(L<25) continue; let th=Math.atan2(by-ay,bx-ax); if(th<0) th+=Math.PI; if(th>=Math.PI) th-=Math.PI; E.push({ax,ay,bx,by,L,th,pi,mx:(ax+bx)/2,my:(ay+by)/2}); } });
   const CELL=90, grid=new Map(), key=(x,y)=>Math.floor(x/CELL)+","+Math.floor(y/CELL); E.forEach((e,i)=>{ const k=key(e.mx,e.my); (grid.get(k)||grid.set(k,[]).get(k)).push(i); });
@@ -15984,111 +15876,155 @@ function gapRoads(rings,c0,kx,ky){
   // keep the long ones, drop near-duplicates
   segs.sort((a,b)=>b.len-a.len); const kept=[];
   for(const g of segs){ const mx=(g.x0+g.x1)/2, my=(g.y0+g.y1)/2; if(kept.some(k=>{ let dt=Math.abs(k.th-g.th); dt=Math.min(dt,Math.PI-dt); return dt<.1&&Math.hypot((k.x0+k.x1)/2-mx,(k.y0+k.y1)/2-my)<Math.max(8,Math.min(k.len,g.len)*.35); })) continue; kept.push(g); if(kept.length>=140) break; }
-  return kept.filter(g=>g.len>=40).map(g=>({pts:[[c0[0]+g.x0/kx,c0[1]+g.y0/ky],[c0[0]+g.x1/kx,c0[1]+g.y1/ky]],len:g.len,major:g.w>=34}));
+  return kept.filter(g=>g.len>=40).map(g=>({a:[g.x0,-g.y0],b:[g.x1,-g.y1],w:g.w,major:g.w>=34}));
+}
+
+function buildGraph(segs){
+  const EXT=16, n=segs.length, cuts=segs.map(()=>[]), dir=segs.map(g=>{ const dx=g.b[0]-g.a[0], dz=g.b[1]-g.a[1], L=Math.hypot(dx,dz)||1e-9; return {dx:dx/L,dz:dz/L,L}; });
+  for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){ const A=segs[i],B=segs[j],da=dir[i],db=dir[j], den=da.dx*db.dz-da.dz*db.dx; if(Math.abs(den)<.2) continue;
+    const rx=B.a[0]-A.a[0], rz=B.a[1]-A.a[1], t=(rx*db.dz-rz*db.dx)/den, u=(rx*da.dz-rz*da.dx)/den;
+    if(t>=-EXT&&t<=da.L+EXT&&u>=-EXT&&u<=db.L+EXT){ cuts[i].push(t); cuts[j].push(u); } }
+  const nodes=[], key=new Map(), nid=(x,z)=>{ const k=Math.round(x/3)+","+Math.round(z/3); if(key.has(k)) return key.get(k); nodes.push({x,z,out:[]}); key.set(k,nodes.length-1); return nodes.length-1; };
+  const ribbons=[];
+  segs.forEach((g,i)=>{ const d=dir[i], L=d.L, ts=[0,L,...cuts[i]].map(t=>Math.max(-EXT,Math.min(L+EXT,t))).sort((x,y)=>x-y), pts=[];
+    ts.forEach(t=>{ if(!pts.length||t-pts[pts.length-1]>6) pts.push(t); else pts[pts.length-1]=(pts[pts.length-1]+t)/2; });
+    if(pts.length>1) ribbons.push({a:[g.a[0]+d.dx*pts[0],g.a[1]+d.dz*pts[0]],b:[g.a[0]+d.dx*pts[pts.length-1],g.a[1]+d.dz*pts[pts.length-1]],w:g.w,major:g.major});
+    for(let k=1;k<pts.length;k++){ const a=nid(g.a[0]+d.dx*pts[k-1],g.a[1]+d.dz*pts[k-1]), b=nid(g.a[0]+d.dx*pts[k],g.a[1]+d.dz*pts[k]); if(a===b) continue; const len=pts[k]-pts[k-1]; nodes[a].out.push({to:b,len}); nodes[b].out.push({to:a,len}); } });
+  return {nodes,ribbons};
+}
+/* a vehicle that drives the graph: keeps going, turns at junctions, only turns round at a dead end */
+function mkWalker(G,startEdge){ const nodes=G.nodes, heat=n=>1+Math.min(6,(n.heat||0)); let from=startEdge[0], to=startEdge[1]; const e0=nodes[from].out.find(o=>o.to===to); let len=e0?e0.len:10, t=Math.random()*len, nxt=null;
+  const A=()=>nodes[from], B=()=>nodes[to];
+  const pick=()=>{ const o=nodes[to].out, back=o.filter(x=>x.to!==from), c=back.length?back:o; if(c.length===1) return c[0]; const dx=B().x-A().x, dz=B().z-A().z, L=Math.hypot(dx,dz)||1; const w=c.map(x=>{ const ex=nodes[x.to].x-B().x, ez=nodes[x.to].z-B().z, EL=Math.hypot(ex,ez)||1, cs=(dx*ex+dz*ez)/(L*EL); return (.35+Math.max(0,cs)*2.2)*heat(nodes[x.to]); }); let r=Math.random()*w.reduce((a,b)=>a+b,0); for(let i=0;i<c.length;i++){ r-=w[i]; if(r<=0) return c[i]; } return c[c.length-1]; };
+  nxt=pick();
+  const at=(tt)=>{ const k=Math.max(0,Math.min(1,tt/len)); return [A().x+(B().x-A().x)*k, A().z+(B().z-A().z)*k]; };
+  return {
+    step(d){ t+=d; while(t>=len){ t-=len; from=to; to=nxt.to; len=nxt.len; nxt=pick(); } },
+    pos(){ return at(t); },
+    look(ahead){ let r=len-t; if(r>=ahead) return at(t+ahead); const nx=nodes[nxt.to], k=Math.min(1,(ahead-r)/nxt.len); return [B().x+(nx.x-B().x)*k, B().z+(nx.z-B().z)*k]; } };
+}
+
+async function satTexture(lo,hi){
+  const mx=(hi[0]-lo[0])*.06, my=(hi[1]-lo[1])*.06, L=[lo[0]-mx,lo[1]-my], U=[hi[0]+mx,hi[1]+my];
+  const tl=(lng,lat,z)=>{ const n=Math.pow(2,z), r=lat*Math.PI/180; return [(lng+180)/360*n,(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n]; };
+  const cnt=z=>{ const a=tl(L[0],U[1],z), b=tl(U[0],L[1],z); return (Math.floor(b[0])-Math.floor(a[0])+1)*(Math.floor(b[1])-Math.floor(a[1])+1); };
+  const lim=innerWidth>820?110:42, cap=innerWidth>820?4096:2048; let z=17; while(z>14&&cnt(z)>lim) z--;
+  const a=tl(L[0],U[1],z), b=tl(U[0],L[1],z), x0=Math.floor(a[0]), x1=Math.floor(b[0]), y0=Math.floor(a[1]), y1=Math.floor(b[1]), W=(b[0]-a[0])*256, H=(b[1]-a[1])*256, k=Math.min(1,cap/Math.max(W,H));
+  const cv=document.createElement("canvas"); cv.width=Math.max(8,Math.round(W*k)); cv.height=Math.max(8,Math.round(H*k)); const g=cv.getContext("2d"); g.fillStyle="#3b3a35"; g.fillRect(0,0,cv.width,cv.height);
+  const jobs=[]; for(let ty=y0;ty<=y1;ty++) for(let tx=x0;tx<=x1;tx++) jobs.push(new Promise(res=>{ const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>{ g.drawImage(im,(tx-a[0])*256*k,(ty-a[1])*256*k,256*k+1,256*k+1); res(); }; im.onerror=()=>res(); im.src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/"+z+"/"+ty+"/"+tx; }));
+  await Promise.all(jobs); return {cv,L,U};
 }
 const hash=str=>{ let h=2166136261; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0)/4294967295; };
 function mergeInto(acc,geo,col){ if(geo.index) geo=geo.toNonIndexed(); const p=geo.attributes.position.array, n=geo.attributes.normal.array; for(let i=0;i<p.length;i++){ acc.p.push(p[i]); acc.n.push(n[i]); } for(let i=0;i<p.length/3;i++) acc.c.push(col.r,col.g,col.b); geo.dispose(); }
 EXP.ar=async function(park){
-  if(!H.ready()) return; if(park==="all"){ H.toast("Pick a project in the list first",true); return; }
-  // motion permission must be asked inside the tap, before anything is awaited
-  let permP=Promise.resolve("granted");
+  if(!H.ready()) return; if(!park||park==="all"){ H.toast("Pick a project first",true); return; }
+  let permP=Promise.resolve("granted");   // motion permission must be asked inside the tap
   try{ if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function") permP=DeviceOrientationEvent.requestPermission().catch(()=>"denied"); }catch(e){}
-  const tok=H.newTok(); let renderer=null, scene=null, raf=0, stream=null, vid=null, ov=null, onOri=null, gone=false; const saved=H.camNow();
-  const onRes=()=>{ if(!renderer) return; renderer.setSize(innerWidth,innerHeight,false); cam.aspect=innerWidth/innerHeight; cam.updateProjectionMatrix(); };
+  const tok=H.newTok(); let renderer=null, scene=null, raf=0, stream=null, vid=null, ov=null, onOri=null, gone=false, cam=null;
+  const onRes=()=>{ if(!renderer||!cam) return; renderer.setSize(innerWidth,innerHeight,false); cam.aspect=innerWidth/innerHeight; cam.updateProjectionMatrix(); };
   function cleanup(){ if(gone) return; gone=true; cancelAnimationFrame(raf); if(onOri) window.removeEventListener("deviceorientation",onOri); try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){}
-    try{ scene&&scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material&&o.material.map) o.material.map.dispose(); }); renderer&&renderer.dispose(); }catch(e){} if(ov) ov.remove(); window.removeEventListener("resize",onRes);
-    try{ map.jumpTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing}); }catch(e){} }
+    try{ scene&&scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material&&o.material.map) o.material.map.dispose(); }); renderer&&renderer.dispose(); }catch(e){} if(ov) ov.remove(); window.removeEventListener("resize",onRes); }
   H.wowStart("ar",()=>{ tok.dead=true; cleanup(); });
   try{ await H.loadThree(); }catch(e){ H.toast("The 3D library could not load — check the connection",true); H.wowStop(); return; }
-  const T=window.THREE;
-  const feats=S.geo.features.filter(f=>f.properties.park===park); if(!feats.length){ H.toast("This project has no plots on the map",true); H.wowStop(); return; }
-  let lo=[1e9,1e9], hi=[-1e9,-1e9]; const rings=[]; const stOf=new Map(); feats.forEach(f=>{ stOf.set(f.properties.k,f.properties.st); const g=f.geometry, R=g.type==="Polygon"?[g.coordinates[0]]:g.coordinates.map(p=>p[0]); R.forEach(r=>{ rings.push({r,st:f.properties.st}); r.forEach(c=>{ lo[0]=Math.min(lo[0],c[0]); lo[1]=Math.min(lo[1],c[1]); hi[0]=Math.max(hi[0],c[0]); hi[1]=Math.max(hi[1],c[1]); }); }); });
-  const c0=[(lo[0]+hi[0])/2,(lo[1]+hi[1])/2], kx=111320*Math.cos(c0[1]*Math.PI/180), ky=110574;
-  const W_=(hi[0]-lo[0])*kx, H_=(hi[1]-lo[1])*ky, ext=Math.max(W_,H_), sc=.5/ext, VE=3;   // longest side = 50 cm; heights x3 so the buildings read
-  const lx=c=>(c[0]-c0[0])*kx*sc, ly=c=>(c[1]-c0[1])*ky*sc;
-  // overlay first, so there is something to look at while the park is prepared
+  const T=window.THREE, feats=S.geo.features.filter(f=>f.properties.park===park); if(!feats.length){ H.toast("This project has no plots on the map",true); H.wowStop(); return; }
+  let lo=[1e9,1e9], hi=[-1e9,-1e9]; const rings=[], stOf=new Map();
+  feats.forEach(f=>{ stOf.set(f.properties.k,f.properties.st); const g=f.geometry, R=g.type==="Polygon"?[g.coordinates[0]]:g.coordinates.map(p=>p[0]); R.forEach(r=>{ rings.push({r,st:f.properties.st}); r.forEach(c=>{ lo[0]=Math.min(lo[0],c[0]); lo[1]=Math.min(lo[1],c[1]); hi[0]=Math.max(hi[0],c[0]); hi[1]=Math.max(hi[1],c[1]); }); }); });
+  const c0=[(lo[0]+hi[0])/2,(lo[1]+hi[1])/2], kx=111320*Math.cos(c0[1]*Math.PI/180), ky=110574, Wm=(hi[0]-lo[0])*kx, Hm=(hi[1]-lo[1])*ky, ext=Math.max(Wm,Hm), sc=.5/ext, VE=3;
+  const mx=c=>(c[0]-c0[0])*kx, mz=c=>-(c[1]-c0[1])*ky;     // metres: x east, z = -north, y up
   ov=document.createElement("div"); ov.id="arOv";
-  ov.innerHTML=`<video playsinline muted autoplay></video><canvas></canvas><div class="ar-top"><b>${esc(H.parkName(park))}</b><span id="arS">Preparing the park…</span></div>
-    <div class="ar-bot"><button class="ex-b on" id="arPlace" type="button">Place here</button><button class="ex-b" id="arMin" type="button" aria-label="Smaller">−</button><button class="ex-b" id="arPlus" type="button" aria-label="Bigger">+</button><button class="ex-b" id="arX" type="button">Close</button></div>
-    <div class="ar-key"><i style="background:#EEF0F2"></i>Sold: factory <i style="background:#F2C265"></i>Reserved: under construction <i style="background:${STATUS.ats.color}"></i>Available <i style="background:${STATUS.hold.color}"></i>On hold <i style="background:${STATUS.nfs.color}"></i>Not for sale</div>
-    <div class="ar-sim">Simulation: buildings and trucks are illustrative, they show sold and reserved plots, not real construction.</div>`;
-  document.body.appendChild(ov); vid=ov.querySelector("video"); const cv=ov.querySelector("canvas"); const say=t=>{ const s2=q("#arS"); if(s2) s2.textContent=t; };
+  ov.innerHTML=`<video playsinline muted autoplay></video><canvas></canvas><div class="ar-top"><b>${esc(H.parkName(park))}</b><span id="arS">Loading the satellite picture…</span></div>
+    <div class="ar-bot"><button class="ex-b on" id="arDrive" type="button">Drive through</button><button class="ex-b" id="arPlace" type="button">Place here</button><button class="ex-b" id="arMin" type="button" aria-label="Smaller">−</button><button class="ex-b" id="arPlus" type="button" aria-label="Bigger">+</button><button class="ex-b" id="arX" type="button">Close</button></div>
+    <div class="ar-key"><i style="background:#EEF0F2"></i>Sold: factory <i style="background:#F2C265"></i>Reserved: being built <i style="background:${STATUS.ats.color}"></i>Available <i style="background:${STATUS.hold.color}"></i>On hold <i style="background:${STATUS.nfs.color}"></i>Not for sale</div>
+    <div class="ar-sim">Simulation: factories and trucks are illustrative, they show sold and reserved plots, not real construction. Ground: satellite picture.</div>`;
+  document.body.appendChild(ov); vid=ov.querySelector("video"); const cv=ov.querySelector("canvas"), say=t=>{ const e=q("#arS"); if(e) e.textContent=t; };
   q("#arX").onclick=()=>H.wowStop();
-  // the park's real roads
-  say("Looking for the park's roads…"); let roads=null; try{ roads=await roadsFor(lo,hi); }catch(e){} if(tok.dead) return;
-  const realRoads=!!(roads&&roads.length>=3); let gapMode=false;
-  if(!realRoads){ roads=gapRoads(rings,c0,kx,ky); gapMode=roads.length>=3; }
-  if(!realRoads&&!gapMode){ const x0=lo[0]-(hi[0]-lo[0])*.04, x1=hi[0]+(hi[0]-lo[0])*.04, y0=lo[1]-(hi[1]-lo[1])*.04, y1=hi[1]+(hi[1]-lo[1])*.04, xm=(lo[0]+hi[0])/2, ym=(lo[1]+hi[1])/2; const len=a=>{ let L=0; for(let i=1;i<a.length;i++) L+=Math.hypot((a[i][0]-a[i-1][0])*kx,(a[i][1]-a[i-1][1])*ky); return L; };
-    const loop=[[x0,y0],[x1,y0],[x1,y1],[x0,y1],[x0,y0]], we=[[x0,ym],[x1,ym]], sn=[[xm,y0],[xm,y1]]; roads=[loop,we,sn].map((p,i)=>({pts:p,len:len(p),major:i===0})); }
+  let sat=null, satErr=""; try{ sat=await satTexture(lo,hi); }catch(e){ satErr=String(e); console.warn("ar satellite",e); } if(tok.dead) return; window.__arDbg={satErr,has:!!sat,w:sat&&sat.cv.width,h:sat&&sat.cv.height};
   say("Building the park…");
-  scene=new T.Scene(); const cam=new T.PerspectiveCamera(62,innerWidth/innerHeight,.01,30);
-  scene.add(new T.AmbientLight(0xffffff,.72)); const sun=new T.DirectionalLight(0xffffff,.9); sun.position.set(.5,1,.7); scene.add(sun);
+  scene=new T.Scene(); cam=new T.PerspectiveCamera(62,innerWidth/innerHeight,.01,30);
+  scene.add(new T.AmbientLight(0xffffff,.78)); const sun=new T.DirectionalLight(0xffffff,.8); sun.position.set(.5,1,.7); scene.add(sun);
   const model=new T.Group(); scene.add(model); const body=new T.Group(); model.add(body);
   const vmat=new T.MeshLambertMaterial({vertexColors:true});
-  const mk=acc=>{ const g=new T.BufferGeometry(); g.setAttribute("position",new T.Float32BufferAttribute(acc.p,3)); g.setAttribute("normal",new T.Float32BufferAttribute(acc.n,3)); g.setAttribute("color",new T.Float32BufferAttribute(acc.c,3)); return new T.Mesh(g,vmat); };
-  const ground={p:[],n:[],c:[]}, lines=[], thick={sold:.0012,reserved:.0012,ats:.0008,eoi:.0010,hold:.0007,nfs:.0005,unknown:.0005,nodata:.0005}, TOP={};
-  rings.forEach(({r,st})=>{ try{ const sh=new T.Shape(); r.forEach((c,i)=>{ if(i===0) sh.moveTo(lx(c),ly(c)); else sh.lineTo(lx(c),ly(c)); });
-      const dep=thick[st]||.0006, geo=new T.ExtrudeGeometry(sh,{depth:dep,bevelEnabled:false}); geo.rotateX(-Math.PI/2); geo.translate(0,.003,0); mergeInto(ground,geo,new T.Color(STATUS[st]?STATUS[st].color:"#999999"));
-      for(let i=0;i<r.length-1;i++) lines.push(lx(r[i]),.003+dep+.00005,-ly(r[i]),lx(r[i+1]),.003+dep+.00005,-ly(r[i+1])); }catch(e){} });
-  body.add(mk(ground)); { const lg=new T.BufferGeometry(); lg.setAttribute("position",new T.Float32BufferAttribute(lines,3)); body.add(new T.LineSegments(lg,new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.45}))); }
-  const plate=new T.Mesh(new T.BoxGeometry(W_*sc*1.12,.003,H_*sc*1.12),new T.MeshLambertMaterial({color:0x14171c})); plate.position.y=.0015; body.add(plate);
-  // roads: ribbons on the plate
-  { const acc={p:[],n:[],c:[]}, yy=.00312, add=(a,b,w,col)=>{ const dx=b[0]-a[0], dz=b[1]-a[1], L=Math.hypot(dx,dz)||1e-9, nx=-dz/L*w/2, nz=dx/L*w/2; const v=[[a[0]+nx,a[1]+nz],[a[0]-nx,a[1]-nz],[b[0]-nx,b[1]-nz],[b[0]+nx,b[1]+nz]]; [0,1,2,0,2,3].forEach(i=>{ acc.p.push(v[i][0],yy,v[i][1]); acc.n.push(0,1,0); acc.c.push(col.r,col.g,col.b); }); };
-    roads.forEach(R=>{ const w=(R.major?10:6)*sc*2.2, col=new T.Color(R.major?0x9aa2ae:0x7b838f); for(let i=1;i<R.pts.length;i++) add([lx(R.pts[i-1]),-ly(R.pts[i-1])],[lx(R.pts[i]),-ly(R.pts[i])],w,col); });
-    if(acc.p.length) body.add(mk(acc)); }
-  // factories on the sold plots (the same illustrative massing the 3D map uses), a lower building on reserved plots
-  const fac={p:[],n:[],c:[]}, chim=[]; let nF=0; const fSold=new Set(), fRes=new Set();
+  const mk=(acc,mat)=>{ const g=new T.BufferGeometry(); g.setAttribute("position",new T.Float32BufferAttribute(acc.p,3)); g.setAttribute("normal",new T.Float32BufferAttribute(acc.n,3)); g.setAttribute("color",new T.Float32BufferAttribute(acc.c,3)); return new T.Mesh(g,mat||vmat); };
+  // ground: satellite picture + a dark slab under it, and a wide sand plane for the drive view
+  const L=sat?sat.L:[lo[0]-(hi[0]-lo[0])*.06,lo[1]-(hi[1]-lo[1])*.06], U=sat?sat.U:[hi[0]+(hi[0]-lo[0])*.06,hi[1]+(hi[1]-lo[1])*.06];
+  const pw=(U[0]-L[0])*kx, ph=(U[1]-L[1])*ky, pcx=((L[0]+U[0])/2-c0[0])*kx, pcz=-(((L[1]+U[1])/2)-c0[1])*ky;
+  let tex=null; if(sat){ tex=new T.CanvasTexture(sat.cv); tex.anisotropy=4; }
+  const plate=new T.Mesh(new T.PlaneGeometry(pw,ph).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:tex,color:tex?0xffffff:0x2a2f38})); plate.position.set(pcx,0,pcz); body.add(plate);
+  const slab=new T.Mesh(new T.BoxGeometry(pw,14,ph),new T.MeshLambertMaterial({color:0x14171c})); slab.position.set(pcx,-9,pcz); body.add(slab);
+  const sand=new T.Mesh(new T.PlaneGeometry(90000,90000).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:0xcbb892})); sand.position.set(pcx,-1.2,pcz); sand.visible=false; body.add(sand);
+  // plot colours (thin, see-through so the picture shows) and outlines
+  const gr={p:[],n:[],c:[]}, ln=[];
+  rings.forEach(({r,st})=>{ try{ const sh=new T.Shape(); r.forEach((c,i)=>{ if(i===0) sh.moveTo(mx(c),-mz(c)); else sh.lineTo(mx(c),-mz(c)); }); const geo=new T.ShapeGeometry(sh); geo.rotateX(-Math.PI/2); geo.translate(0,.15,0); mergeInto(gr,geo,new T.Color(STATUS[st]?STATUS[st].color:"#999999"));
+      for(let i=0;i<r.length-1;i++) ln.push(mx(r[i]),.4,mz(r[i]),mx(r[i+1]),.4,mz(r[i+1])); }catch(e){} });
+  const groundMat=new T.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.5,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}); body.add(mk(gr,groundMat));
+  const lg=new T.BufferGeometry(); lg.setAttribute("position",new T.Float32BufferAttribute(ln,3)); const lineMat=new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.5}); body.add(new T.LineSegments(lg,lineMat));
+  // streets between the plot rows, as a road graph
+  let segs=gapRoads(rings,c0,kx,ky); if(segs.length<3){ const x0=(lo[0]-c0[0])*kx-60, x1=(hi[0]-c0[0])*kx+60, z0=-(hi[1]-c0[1])*ky-60, z1=-(lo[1]-c0[1])*ky+60; segs=[{a:[x0,z0],b:[x1,z0],w:30,major:true},{a:[x1,z0],b:[x1,z1],w:30,major:true},{a:[x1,z1],b:[x0,z1],w:30,major:true},{a:[x0,z1],b:[x0,z0],w:30,major:true},{a:[(x0+x1)/2,z0],b:[(x0+x1)/2,z1],w:30,major:false},{a:[x0,(z0+z1)/2],b:[x1,(z0+z1)/2],w:30,major:false}]; }
+  const G=buildGraph(segs); const fcs=[]; stOf.forEach((st,k)=>{ if(st==='sold'){ const f=S.geo.features.find(x=>x.properties.k===k); if(f) fcs.push([mx(f.properties.c),mz(f.properties.c)]); } }); G.nodes.forEach(n=>{ n.heat=0; for(const c of fcs){ if(Math.abs(c[0]-n.x)<90&&Math.abs(c[1]-n.z)<90) n.heat++; } }); window.__arDbg2=()=>({nodes:G.nodes.length,rib:G.ribbons.length,segs:segs.length,plate:[pw,ph,pcx,pcz],car:car&&car.pos(),camPos:cam.position.toArray(),mscale:model.scale.x,bscale:body.scale.toArray(),mpos:model.position.toArray()});
+  { const acc={p:[],n:[],c:[]}, yy=.3, add=(a,b,w,col)=>{ const dx=b[0]-a[0], dz=b[1]-a[1], Ln=Math.hypot(dx,dz)||1e-9, nx=-dz/Ln*w/2, nz=dx/Ln*w/2, v=[[a[0]+nx,a[1]+nz],[a[0]-nx,a[1]-nz],[b[0]-nx,b[1]-nz],[b[0]+nx,b[1]+nz]]; [0,1,2,0,2,3].forEach(i=>{ acc.p.push(v[i][0],yy,v[i][1]); acc.n.push(0,1,0); acc.c.push(col.r,col.g,col.b); }); };
+    G.ribbons.forEach(R=>{ const w=Math.max(8,Math.min(15,R.w*.5)); add(R.a,R.b,w,new T.Color(R.major?0x34383e:0x2d3136)); add(R.a,R.b,.6,new T.Color(0xf2ecd0)); });
+    if(acc.p.length) body.add(mk(acc,new T.MeshBasicMaterial({vertexColors:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}))); }
+  // factories on the sold plots (the same illustrative massing as the 3D map), a lower building on reserved plots
+  const fac={p:[],n:[],c:[]}, chim=[], fSold=new Set(), fRes=new Set();
   try{ const FC=(typeof FACTORY_FC!=="undefined"&&FACTORY_FC)||(typeof buildFactories==="function"?buildFactories():null);
-    (FC?FC.features:[]).forEach(f=>{ const k=f.properties.k, st=stOf.get(k); if(st!=="sold"&&st!=="reserved") return; const ring=f.geometry.coordinates[0]; const sold=st==="sold";
-      const h=f.properties.h*(sold?1:.4)*sc*VE, sh=new T.Shape(); ring.forEach((c,i)=>{ if(i===0) sh.moveTo(lx(c),ly(c)); else sh.lineTo(lx(c),ly(c)); });
-      const geo=new T.ExtrudeGeometry(sh,{depth:h,bevelEnabled:false}); geo.rotateX(-Math.PI/2); geo.translate(0,.003+(thick[st]||.0012),0);
-      const col=new T.Color(sold?f.properties.c:"#F2C265"); mergeInto(fac,geo,col); nF++; (sold?fSold:fRes).add(k);
-      if(sold&&f.properties.c==="#868B95"&&hash(k)<.5){ let cx=0,cy=0; for(let i=0;i<ring.length-1;i++){ cx+=lx(ring[i]); cy+=ly(ring[i]); } chim.push([cx/(ring.length-1),.003+(thick.sold)+h,-cy/(ring.length-1)]); } });
+    (FC?FC.features:[]).forEach(f=>{ const k=f.properties.k, st=stOf.get(k); if(st!=="sold"&&st!=="reserved") return; const ring=f.geometry.coordinates[0], sold=st==="sold", h=f.properties.h*(sold?1:.4), sh=new T.Shape(); ring.forEach((c,i)=>{ if(i===0) sh.moveTo(mx(c),-mz(c)); else sh.lineTo(mx(c),-mz(c)); });
+      const geo=new T.ExtrudeGeometry(sh,{depth:h,bevelEnabled:false}); geo.rotateX(-Math.PI/2); geo.translate(0,.2,0); mergeInto(fac,geo,new T.Color(sold?f.properties.c:"#F2C265")); (sold?fSold:fRes).add(k);
+      if(sold&&f.properties.c==="#868B95"&&hash(k)<.5){ let cx=0,cz=0; for(let i=0;i<ring.length-1;i++){ cx+=mx(ring[i]); cz+=mz(ring[i]); } chim.push([cx/(ring.length-1),h+.2,cz/(ring.length-1)]); } });
   }catch(e){ console.warn("ar factories",e); }
   if(fac.p.length) body.add(mk(fac));
-  // smoke from the working chimneys
+  // smoke
   const PER=10, NP=chim.length*PER; let smoke=null, sA=null, sP=null, sS=null, sPh=null;
-  if(NP){ const cvS=document.createElement("canvas"); cvS.width=cvS.height=64; const cx2=cvS.getContext("2d"), gr=cx2.createRadialGradient(32,32,2,32,32,30); gr.addColorStop(0,"rgba(255,255,255,1)"); gr.addColorStop(.5,"rgba(255,255,255,.55)"); gr.addColorStop(1,"rgba(255,255,255,0)"); cx2.fillStyle=gr; cx2.fillRect(0,0,64,64);
-    const tex=new T.CanvasTexture(cvS); sP=new Float32Array(NP*3); sA=new Float32Array(NP); sS=new Float32Array(NP); sPh=new Float32Array(NP); for(let i=0;i<NP;i++) sPh[i]=Math.random();
+  if(NP){ const c2=document.createElement("canvas"); c2.width=c2.height=64; const x2=c2.getContext("2d"), gd=x2.createRadialGradient(32,32,2,32,32,30); gd.addColorStop(0,"rgba(255,255,255,1)"); gd.addColorStop(.5,"rgba(255,255,255,.55)"); gd.addColorStop(1,"rgba(255,255,255,0)"); x2.fillStyle=gd; x2.fillRect(0,0,64,64);
+    sP=new Float32Array(NP*3); sA=new Float32Array(NP); sS=new Float32Array(NP); sPh=new Float32Array(NP); for(let i=0;i<NP;i++) sPh[i]=Math.random();
     const g=new T.BufferGeometry(); g.setAttribute("position",new T.BufferAttribute(sP,3)); g.setAttribute("aAlpha",new T.BufferAttribute(sA,1)); g.setAttribute("aSize",new T.BufferAttribute(sS,1));
-    const mat=new T.ShaderMaterial({uniforms:{map:{value:tex},uK:{value:innerHeight/(2*Math.tan(31*Math.PI/180))}},transparent:true,depthWrite:false,
-      vertexShader:"attribute float aAlpha; attribute float aSize; uniform float uK; varying float vA; void main(){ vA=aAlpha; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize=aSize*uK/max(-mv.z,.05); gl_Position=projectionMatrix*mv; }",
-      fragmentShader:"uniform sampler2D map; varying float vA; void main(){ vec4 t=texture2D(map,gl_PointCoord); gl_FragColor=vec4(vec3(.82,.84,.88),t.a*vA); }"});
-    smoke=new T.Points(g,mat); smoke.frustumCulled=false; body.add(smoke); }
-  // trucks on the roads
-  const trucks=[]; { const rl=roads.filter(R=>R.len>=50).sort((a,b)=>b.len-a.len), nT=Math.min(16,Math.max(6,Math.round(rl.length*1.2)));
-    const tl=14*sc*4.2, tw=3.2*sc*4.2, th=3.4*sc*4.2, trailer=new T.BoxGeometry(tl*.64,th,tw), cab=new T.BoxGeometry(tl*.3,th*.82,tw*.96);
-    const mt=new T.MeshLambertMaterial({color:0xf2f4f7}), mc=[0xb3263d,0x1f6fe0,0xe8a317,0x2a9d57].map(c=>new T.MeshLambertMaterial({color:c}));
-    for(let i=0;i<nT&&rl.length;i++){ const R=rl[i%rl.length], g=new T.Group(); const a=new T.Mesh(trailer,mt); a.position.set(-tl*.17,th/2,0); const b2=new T.Mesh(cab,mc[i%mc.length]); b2.position.set(tl*.36,th*.41,0); g.add(a,b2); body.add(g);
-      const P=R.pts.map(c=>[lx(c),-ly(c)]), cum=[0]; for(let j=1;j<P.length;j++) cum.push(cum[j-1]+Math.hypot(P[j][0]-P[j-1][0],P[j][1]-P[j-1][1]));
-      trucks.push({g,P,cum,L:cum[cum.length-1],ph:Math.random()*2,v:(.5+Math.random()*.5)*.5*.04}); } }
-  const posOn=(t,d)=>{ let lo2=0,hi2=t.cum.length-1; while(hi2-lo2>1){ const m=(lo2+hi2)>>1; if(t.cum[m]<=d) lo2=m; else hi2=m; } const seg=(t.cum[hi2]-t.cum[lo2])||1e-9, u=(d-t.cum[lo2])/seg, A=t.P[lo2], B=t.P[hi2]; return {x:A[0]+(B[0]-A[0])*u,z:A[1]+(B[1]-A[1])*u,dx:B[0]-A[0],dz:B[1]-A[1]}; };
-  model.position.set(0,-.34,-1.05); let yaw=0, scale=1, pitchTilt=0; const lookFwd=new T.Vector3();
+    smoke=new T.Points(g,new T.ShaderMaterial({uniforms:{map:{value:new T.CanvasTexture(c2)},uK:{value:800},uS:{value:sc}},transparent:true,depthWrite:false,
+      vertexShader:"attribute float aAlpha; attribute float aSize; uniform float uK; uniform float uS; varying float vA; void main(){ vA=aAlpha; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize=aSize*uS*uK/max(-mv.z,.01); gl_Position=projectionMatrix*mv; }",
+      fragmentShader:"uniform sampler2D map; varying float vA; void main(){ vec4 t=texture2D(map,gl_PointCoord); gl_FragColor=vec4(vec3(.84,.85,.88),t.a*vA); }"})); smoke.frustumCulled=false; body.add(smoke); }
+  // trucks (the same road graph)
+  const trucks=[], tlen=14, twid=3.2, thei=3.4, trailer=new T.BoxGeometry(tlen*.64,thei,twid), cab=new T.BoxGeometry(tlen*.3,thei*.82,twid*.96), mt=new T.MeshLambertMaterial({color:0xf2f4f7}), mcs=[0xb3263d,0x1f6fe0,0xe8a317,0x2a9d57].map(c=>new T.MeshLambertMaterial({color:c}));
+  const edges=[]; G.nodes.forEach((n,i)=>n.out.forEach(o=>{ if(o.len>=12&&(n.heat>=3||G.nodes[o.to].heat>=3)) edges.push([i,o.to]); })); if(edges.length<3) G.nodes.forEach((n,i)=>n.out.forEach(o=>{ if(o.len>=12) edges.push([i,o.to]); }));
+  const totalLen=G.ribbons.reduce((a,R)=>a+Math.hypot(R.b[0]-R.a[0],R.b[1]-R.a[1]),0), nT=edges.length?Math.min(18,Math.max(8,Math.round(totalLen/260))):0;
+  for(let i=0;i<nT;i++){ const g=new T.Group(); const a1=new T.Mesh(trailer,mt); a1.position.set(-tlen*.17,thei/2+.2,0); const b1=new T.Mesh(cab,mcs[i%4]); b1.position.set(tlen*.36,thei*.41+.2,0); g.add(a1,b1); body.add(g); trucks.push({g,w:mkWalker(G,edges[(Math.random()*edges.length)|0]),v:9+Math.random()*4,h:0,init:false}); }
+  const car=edges.length?mkWalker(G,edges[(Math.random()*edges.length)|0]):null; let carH=0, carInit=false;
+  // renderer, camera picture, motion
   renderer=new T.WebGLRenderer({canvas:cv,antialias:true,alpha:true}); renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1)); renderer.setClearColor(0x000000,0); renderer.setSize(innerWidth,innerHeight,false); window.addEventListener("resize",onRes);
-  q("#arMin").onclick=()=>{ scale=Math.max(.35,scale/1.2); }; q("#arPlus").onclick=()=>{ scale=Math.min(4,scale*1.2); };
-  // camera picture
-  let camOk=false; try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false}); vid.srcObject=stream; await vid.play().catch(()=>{}); camOk=true; }catch(e){}
+  let mode="table", yaw=0, scale=1, pitchTilt=0, lookY=0, lookP=0, hasOri=false, a0=null, camOk=false; const lookFwd=new T.Vector3();
+  const fog=new T.Fog(0xdbe9f7,500,4500);
+  function setMode(m){ mode=m; const d=m==="drive";
+    ov.classList.toggle("drive",d); sand.visible=d; scene.fog=d?fog:null; groundMat.opacity=d?.06:.5; lineMat.opacity=d?.18:.5;
+    cam.fov=d?72:62; cam.near=d?.8:.01; cam.far=d?9000:30; cam.updateProjectionMatrix(); lookY=0; lookP=0;
+    q("#arDrive").textContent=d?"Back to table":"Drive through"; q("#arPlace").style.display=d?"none":"";
+    if(!d&&!hasOri){ cam.rotation.set(0,0,0); cam.position.set(0,.34,-.3); cam.lookAt(0,-.34,-1.05); }
+    if(!d&&hasOri) cam.position.set(0,0,0);
+    say(d?"Driving between the factories — drag to look around":info()); }
+  const info=()=>`${fSold.size} factories · ${fRes.size} being built · ${trucks.length} trucks`+(hasOri?" · move your phone around the table":camOk?" · no motion sensor":" · no camera here")+" · drag to turn";
+  q("#arDrive").onclick=()=>{ if(!car){ H.toast("This park has no streets to drive on",true); return; } setMode(mode==="drive"?"table":"drive"); };
+  q("#arMin").onclick=()=>{ scale=Math.max(.3,scale/1.5); }; q("#arPlus").onclick=()=>{ scale=Math.min(90,scale*1.5); };
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false}); vid.srcObject=stream; await vid.play().catch(()=>{}); camOk=true; }catch(e){}
   if(tok.dead) return; if(!camOk) ov.classList.add("nocam");
-  // motion
-  const perm=await permP; let hasOri=false, a0=null; const eul=new T.Euler(), q1=new T.Quaternion(-Math.SQRT1_2,0,0,Math.SQRT1_2), q0=new T.Quaternion(), zee=new T.Vector3(0,0,1);
-  if(perm==="granted"&&"DeviceOrientationEvent" in window){ onOri=e=>{ if(e.alpha==null) return; hasOri=true; if(a0==null) a0=e.alpha; const orient=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*Math.PI/180;
+  const perm=await permP; const eul=new T.Euler(), q1=new T.Quaternion(-Math.SQRT1_2,0,0,Math.SQRT1_2), q0=new T.Quaternion(), zee=new T.Vector3(0,0,1);
+  if(perm==="granted"&&"DeviceOrientationEvent" in window){ onOri=e=>{ if(e.alpha==null||mode!=="table") return; hasOri=true; if(a0==null) a0=e.alpha; const orient=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*Math.PI/180;
       eul.set(e.beta*Math.PI/180,(e.alpha-a0)*Math.PI/180,-e.gamma*Math.PI/180,"YXZ"); cam.quaternion.setFromEuler(eul); cam.quaternion.multiply(q1); cam.quaternion.multiply(q0.setFromAxisAngle(zee,-orient)); }; window.addEventListener("deviceorientation",onOri); }
-  const info=`${fSold.size} factories · ${fRes.size} being built · ${trucks.length} trucks · ${realRoads?"real roads":gapMode?"roads between the plots":"illustrative roads"}`;
-  setTimeout(()=>{ if(tok.dead) return; if(hasOri){ say(info+" · move your phone around the table"); } else { ov.classList.add("noori"); scale=1.9; cam.position.set(0,.34,-.3); cam.lookAt(0,-.34,-1.05); say(info+(camOk?" · no motion sensor":" · no camera here")+" · drag to turn"); } },1400);
+  model.position.set(0,-.34,-1.05);
+  setTimeout(()=>{ if(tok.dead||mode!=="table") return; if(!hasOri){ ov.classList.add("noori"); scale=1.9; cam.position.set(0,.34,-.3); cam.lookAt(0,-.34,-1.05); } say(info()); },1400);
   q("#arPlace").onclick=()=>{ if(!hasOri){ yaw=0; pitchTilt=0; return; } cam.getWorldDirection(lookFwd); model.position.set(lookFwd.x,lookFwd.y-.12,lookFwd.z); yaw=0; };
-  let pts=new Map(), lastD=0; cv.style.touchAction="none";
+  const pts=new Map(); let lastD=0; cv.style.touchAction="none";
   cv.addEventListener("pointerdown",e=>{ cv.setPointerCapture(e.pointerId); pts.set(e.pointerId,[e.clientX,e.clientY]); });
   cv.addEventListener("pointermove",e=>{ const p=pts.get(e.pointerId); if(!p) return; const dx=e.clientX-p[0], dy=e.clientY-p[1]; pts.set(e.pointerId,[e.clientX,e.clientY]);
-    if(pts.size===2){ const [a,b]=[...pts.values()], d=Math.hypot(a[0]-b[0],a[1]-b[1]); if(lastD) scale=Math.max(.35,Math.min(4,scale*d/lastD)); lastD=d; } else { yaw+=dx*.008; if(!hasOri) pitchTilt=Math.max(-.6,Math.min(.9,pitchTilt+dy*.006)); } });
+    if(mode==="drive"){ lookY=Math.max(-2.6,Math.min(2.6,lookY+dx*.006)); lookP=Math.max(-.6,Math.min(.6,lookP+dy*.004)); return; }
+    if(pts.size===2){ const [a,b]=[...pts.values()], d=Math.hypot(a[0]-b[0],a[1]-b[1]); if(lastD) scale=Math.max(.3,Math.min(90,scale*d/lastD)); lastD=d; } else { yaw+=dx*.008; if(!hasOri) pitchTilt=Math.max(-.6,Math.min(.9,pitchTilt+dy*.006)); } });
   const up=e=>{ pts.delete(e.pointerId); if(pts.size<2) lastD=0; }; cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
-  cv.addEventListener("wheel",e=>{ e.preventDefault(); scale=Math.max(.35,Math.min(4,scale*(e.deltaY<0?1.08:.93))); },{passive:false});
-  const t0=performance.now(); const wind=[.016,.006];
-  const frame=now=>{ if(tok.dead||gone) return; const sec=(now-t0)/1000;
-    trucks.forEach(t=>{ const L2=t.L*2, d0=(t.ph*t.L+sec*t.v*ext*sc*8)%L2, back=d0>t.L, d=back?L2-d0:d0, p=posOn(t,d); t.g.position.set(p.x,.00312,p.z); const dx=back?-p.dx:p.dx, dz=back?-p.dz:p.dz; t.g.rotation.y=-Math.atan2(dz,dx); });
-    if(smoke){ for(let e=0;e<chim.length;e++) for(let k=0;k<PER;k++){ const i=e*PER+k, u=(sec*.33+sPh[i])%1, a=u<.08?u/.08:1-(u-.08)/.92; sP[i*3]=chim[e][0]+wind[0]*u+Math.sin(sec*1.7+i)*.0008*u; sP[i*3+1]=chim[e][1]+u*.05; sP[i*3+2]=chim[e][2]+wind[1]*u+Math.cos(sec*1.3+i)*.0008*u; sA[i]=Math.max(0,a)*.85; sS[i]=.006+u*.02; }
-      const g=smoke.geometry; g.attributes.position.needsUpdate=true; g.attributes.aAlpha.needsUpdate=true; g.attributes.aSize.needsUpdate=true; smoke.material.uniforms.uK.value=renderer.domElement.height/(2*Math.tan(31*Math.PI/180)); }
-    body.rotation.y=yaw; model.rotation.x=hasOri?0:pitchTilt; model.scale.setScalar(scale); renderer.render(scene,cam); raf=requestAnimationFrame(frame); };
-  raf=requestAnimationFrame(frame);
+  cv.addEventListener("wheel",e=>{ e.preventDefault(); if(mode==="table") scale=Math.max(.3,Math.min(90,scale*(e.deltaY<0?1.12:.9))); },{passive:false});
+  const wind=[26,9]; let tPrev=performance.now(); const t0=tPrev;
+  const frame=now=>{ if(tok.dead||gone) return; const dt=Math.min(.05,(now-tPrev)/1000); tPrev=now; const sec=(now-t0)/1000, drive=mode==="drive", TS=drive?1.4:5, tscale=drive?[1,1,1]:[6,1.7,6];
+    trucks.forEach(t=>{ t.w.step(t.v*TS*dt); const p=t.w.pos(), l=t.w.look(10), th=Math.atan2(l[1]-p[1],l[0]-p[0]); if(!t.init){ t.h=th; t.init=true; } let d=th-t.h; d=Math.atan2(Math.sin(d),Math.cos(d)); t.h+=d*Math.min(1,dt*3.5); t.g.position.set(p[0],0,p[1]); t.g.rotation.y=-t.h; t.g.scale.set(tscale[0],tscale[1],tscale[2]); });
+    if(smoke){ const ms=drive?1:sc*scale; for(let e=0;e<chim.length;e++) for(let k=0;k<PER;k++){ const i=e*PER+k, u=(sec*.33+sPh[i])%1, a=u<.08?u/.08:1-(u-.08)/.92; sP[i*3]=chim[e][0]+wind[0]*u*(drive?1:1.6)+Math.sin(sec*1.7+i)*3*u; sP[i*3+1]=chim[e][1]+u*80; sP[i*3+2]=chim[e][2]+wind[1]*u*(drive?1:1.6)+Math.cos(sec*1.3+i)*3*u; sA[i]=Math.max(0,a)*.8; sS[i]=14+u*60; }
+      const g=smoke.geometry; g.attributes.position.needsUpdate=true; g.attributes.aAlpha.needsUpdate=true; g.attributes.aSize.needsUpdate=true; smoke.material.uniforms.uK.value=renderer.domElement.height/(2*Math.tan(cam.fov*Math.PI/360)); smoke.material.uniforms.uS.value=drive?1:sc*scale; }
+    if(drive&&car){ car.step(14*dt); const p=car.pos(), l=car.look(22), th=Math.atan2(-(l[0]-p[0]),-(l[1]-p[1])); if(!carInit){ carH=th; carInit=true; } let d=th-carH; d=Math.atan2(Math.sin(d),Math.cos(d)); carH+=Math.max(-1.1*dt,Math.min(1.1*dt,d)); model.position.set(0,0,0); model.scale.setScalar(1); body.scale.set(1,1,1); body.rotation.y=0; model.rotation.x=0;
+      cam.position.set(p[0],2.5+Math.sin(sec*9)*.04,p[1]); cam.rotation.set(-.04+lookP,carH+lookY,0,"YXZ"); }
+    else { body.scale.set(1,VE,1); body.rotation.y=yaw; model.rotation.x=hasOri?0:pitchTilt; model.scale.setScalar(sc*scale); }
+    renderer.render(scene,cam); raf=requestAnimationFrame(frame); };
+  say(info()); raf=requestAnimationFrame(frame);
 };
 
 /* ---------- look ---------- */
@@ -16112,6 +16048,7 @@ EXP.ar=async function(park){
 @media (max-width:560px){ #exShare .sh-r{grid-template-columns:1fr} #exShare .sh-qr svg{margin:0 auto} }
 #arOv{position:fixed;inset:0;z-index:9100;background:#0b0d11;overflow:hidden;font-family:Inter,system-ui,sans-serif;color:#fff}
 #arOv video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#arOv.drive video{display:none} #arOv.drive,#arOv.drive.nocam{background:linear-gradient(180deg,#6fa8e6 0%,#bcd8f2 55%,#dbe9f7 100%)}
 #arOv.nocam video{display:none} #arOv.nocam{background:radial-gradient(circle at 50% 40%,#2a3140,#0b0d11 70%)}
 #arOv canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 #arOv .ar-top{position:absolute;top:max(14px,env(safe-area-inset-top));left:14px;right:14px;display:flex;flex-direction:column;gap:3px;text-shadow:0 2px 10px rgba(0,0,0,.7)}

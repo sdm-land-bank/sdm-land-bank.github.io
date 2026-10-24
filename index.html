@@ -15863,39 +15863,55 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&q("#exShare")){ cl
 /* ============================================================
    8. AR TABLE VIEW — the park as a 3D model in the camera picture (phone: move it around; others: drag to turn)
    ============================================================ */
-/* the park's streets are the gaps between the plot rows, found from the plot outlines (same method for every park) */
-function gapRoads(rings,c0,kx,ky){
-  const E=[]; rings.forEach(({r},pi)=>{ for(let i=0;i<r.length-1;i++){ const ax=(r[i][0]-c0[0])*kx, ay=(r[i][1]-c0[1])*ky, bx=(r[i+1][0]-c0[0])*kx, by=(r[i+1][1]-c0[1])*ky, L=Math.hypot(bx-ax,by-ay); if(L<25) continue; let th=Math.atan2(by-ay,bx-ax); if(th<0) th+=Math.PI; if(th>=Math.PI) th-=Math.PI; E.push({ax,ay,bx,by,L,th,pi,mx:(ax+bx)/2,my:(ay+by)/2}); } });
-  const CELL=90, grid=new Map(), key=(x,y)=>Math.floor(x/CELL)+","+Math.floor(y/CELL); E.forEach((e,i)=>{ const k=key(e.mx,e.my); (grid.get(k)||grid.set(k,[]).get(k)).push(i); });
-  const segs=[];
-  E.forEach((e1,i)=>{ const ux=(e1.bx-e1.ax)/e1.L, uy=(e1.by-e1.ay)/e1.L, nx=-uy, ny=ux, cx=Math.floor(e1.mx/CELL), cy=Math.floor(e1.my/CELL);
-    for(let gx=cx-1;gx<=cx+1;gx++) for(let gy=cy-1;gy<=cy+1;gy++){ (grid.get(gx+","+gy)||[]).forEach(j=>{ if(j<=i) return; const e2=E[j]; if(e2.pi===e1.pi) return; let dth=Math.abs(e1.th-e2.th); dth=Math.min(dth,Math.PI-dth); if(dth>.14) return;
-        const d=(e2.mx-e1.mx)*nx+(e2.my-e1.my)*ny, ad=Math.abs(d); if(ad<10||ad>62) return;
-        const u2a=(e2.ax-e1.ax)*ux+(e2.ay-e1.ay)*uy, u2b=(e2.bx-e1.ax)*ux+(e2.by-e1.ay)*uy, lo2=Math.max(0,Math.min(u2a,u2b)), hi2=Math.min(e1.L,Math.max(u2a,u2b)); if(hi2-lo2<22) return;
-        const s2=Math.sign(d)*ad/2; segs.push({x0:e1.ax+ux*lo2+nx*s2,y0:e1.ay+uy*lo2+ny*s2,x1:e1.ax+ux*hi2+nx*s2,y1:e1.ay+uy*hi2+ny*s2,len:hi2-lo2,th:e1.th,w:ad}); }); } });
-  // keep the long ones, drop near-duplicates
-  segs.sort((a,b)=>b.len-a.len); const kept=[];
-  for(const g of segs){ const mx=(g.x0+g.x1)/2, my=(g.y0+g.y1)/2; if(kept.some(k=>{ let dt=Math.abs(k.th-g.th); dt=Math.min(dt,Math.PI-dt); return dt<.1&&Math.hypot((k.x0+k.x1)/2-mx,(k.y0+k.y1)/2-my)<Math.max(8,Math.min(k.len,g.len)*.35); })) continue; kept.push(g); if(kept.length>=140) break; }
-  return kept.filter(g=>g.len>=40).map(g=>({a:[g.x0,-g.y0],b:[g.x1,-g.y1],w:g.w,major:g.w>=34}));
-}
-
-function buildGraph(segs){
-  const EXT=16, n=segs.length, cuts=segs.map(()=>[]), dir=segs.map(g=>{ const dx=g.b[0]-g.a[0], dz=g.b[1]-g.a[1], L=Math.hypot(dx,dz)||1e-9; return {dx:dx/L,dz:dz/L,L}; });
-  for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){ const A=segs[i],B=segs[j],da=dir[i],db=dir[j], den=da.dx*db.dz-da.dz*db.dx; if(Math.abs(den)<.2) continue;
-    const rx=B.a[0]-A.a[0], rz=B.a[1]-A.a[1], t=(rx*db.dz-rz*db.dx)/den, u=(rx*da.dz-rz*da.dx)/den;
-    if(t>=-EXT&&t<=da.L+EXT&&u>=-EXT&&u<=db.L+EXT){ cuts[i].push(t); cuts[j].push(u); } }
-  const nodes=[], key=new Map(), nid=(x,z)=>{ const k=Math.round(x/3)+","+Math.round(z/3); if(key.has(k)) return key.get(k); nodes.push({x,z,out:[]}); key.set(k,nodes.length-1); return nodes.length-1; };
-  const ribbons=[];
-  segs.forEach((g,i)=>{ const d=dir[i], L=d.L, ts=[0,L,...cuts[i]].map(t=>Math.max(-EXT,Math.min(L+EXT,t))).sort((x,y)=>x-y), pts=[];
-    ts.forEach(t=>{ if(!pts.length||t-pts[pts.length-1]>6) pts.push(t); else pts[pts.length-1]=(pts[pts.length-1]+t)/2; });
-    if(pts.length>1) ribbons.push({a:[g.a[0]+d.dx*pts[0],g.a[1]+d.dz*pts[0]],b:[g.a[0]+d.dx*pts[pts.length-1],g.a[1]+d.dz*pts[pts.length-1]],w:g.w,major:g.major});
-    for(let k=1;k<pts.length;k++){ const a=nid(g.a[0]+d.dx*pts[k-1],g.a[1]+d.dz*pts[k-1]), b=nid(g.a[0]+d.dx*pts[k],g.a[1]+d.dz*pts[k]); if(a===b) continue; const len=pts[k]-pts[k-1]; nodes[a].out.push({to:b,len}); nodes[b].out.push({to:a,len}); } });
-  return {nodes,ribbons};
+/* streets = the centre line of the free space between the plots. The plots are painted on a grid, anything closer than 2.4 m to a plot is
+   out, what is left near the plots is thinned to a line and turned into a road graph. Same method for every park, never touches a plot. */
+function roadGraph(rings,mx,mz){
+  const P=rings.map(({r})=>r.map(c=>[mx(c),mz(c)])); let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9; P.forEach(p=>p.forEach(v=>{ x0=Math.min(x0,v[0]); x1=Math.max(x1,v[0]); z0=Math.min(z0,v[1]); z1=Math.max(z1,v[1]); }));
+  const M=24, res=Math.max(2,(Math.max(x1-x0,z1-z0)+2*M)/2000), W=Math.ceil((x1-x0+2*M)/res)+2, H=Math.ceil((z1-z0+2*M)/res)+2, N=W*H, gx=x=>(x-x0+M)/res, gz=z=>(z-z0+M)/res, occ=new Uint8Array(N);
+  P.forEach(p=>{ let a=1e9,b=-1e9; p.forEach(v=>{ const y=gz(v[1]); a=Math.min(a,y); b=Math.max(b,y); });
+    for(let y=Math.max(0,Math.ceil(a-.5));y<=Math.min(H-1,Math.floor(b-.5));y++){ const yc=y+.5, xs=[]; for(let i=0;i<p.length-1;i++){ const ay=gz(p[i][1]), by=gz(p[i+1][1]); if((ay<=yc&&by>yc)||(by<=yc&&ay>yc)){ const t=(yc-ay)/(by-ay); xs.push(gx(p[i][0])+t*(gx(p[i+1][0])-gx(p[i][0]))); } }
+      xs.sort((u,v)=>u-v); for(let k=0;k+1<xs.length;k+=2){ const xa=Math.max(0,Math.ceil(xs[k]-.5)), xb=Math.min(W-1,Math.floor(xs[k+1]-.5)); for(let x=xa;x<=xb;x++) occ[y*W+x]=1; } } });
+  const dil=(src,rad)=>{ const t=new Uint8Array(N), o=new Uint8Array(N), pre=new Int32Array(Math.max(W,H)+1);
+    for(let y=0;y<H;y++){ pre[0]=0; for(let x=0;x<W;x++) pre[x+1]=pre[x]+src[y*W+x]; for(let x=0;x<W;x++) t[y*W+x]=pre[Math.min(W-1,x+rad)+1]-pre[Math.max(0,x-rad)]>0?1:0; }
+    for(let x=0;x<W;x++){ pre[0]=0; for(let y=0;y<H;y++) pre[y+1]=pre[y]+t[y*W+x]; for(let y=0;y<H;y++) o[y*W+x]=pre[Math.min(H-1,y+rad)+1]-pre[Math.max(0,y-rad)]>0?1:0; } return o; };
+  const blk=dil(occ,Math.ceil(2.4/res)), tight=dil(occ,Math.ceil(1.3/res)), band=dil(occ,Math.ceil(18/res)), img=new Uint8Array(N);
+  for(let i=0;i<N;i++) img[i]=band[i]&&!blk[i]?1:0;
+  for(let i=0;i<W;i++){ img[i]=0; img[(H-1)*W+i]=0; } for(let i=0;i<H;i++){ img[i*W]=0; img[i*W+W-1]=0; }
+  // thin to a one-pixel line (Zhang-Suen)
+  { const del=[]; let ch=true, guard=0; while(ch&&guard++<60){ ch=false; for(let pass=0;pass<2;pass++){ del.length=0;
+      for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){ const i=y*W+x; if(!img[i]) continue; const p2=img[i-W],p3=img[i-W+1],p4=img[i+1],p5=img[i+W+1],p6=img[i+W],p7=img[i+W-1],p8=img[i-1],p9=img[i-W-1], B=p2+p3+p4+p5+p6+p7+p8+p9; if(B<2||B>6) continue;
+        const A=(!p2&&p3)+(!p3&&p4)+(!p4&&p5)+(!p5&&p6)+(!p6&&p7)+(!p7&&p8)+(!p8&&p9)+(!p9&&p2); if(A!==1) continue;
+        if(pass===0){ if(p2*p4*p6||p4*p6*p8) continue; } else { if(p2*p4*p8||p2*p6*p8) continue; } del.push(i); }
+      if(del.length){ ch=true; for(const i of del) img[i]=0; } } } }
+  const nb8=[-W-1,-W,-W+1,-1,1,W-1,W,W+1], cnt=i=>{ let c=0; for(let k=0;k<8;k++) c+=img[i+nb8[k]]; return c; };
+  let sk=[]; for(let i=0;i<N;i++) if(img[i]) sk.push(i);
+  for(let pass=0;pass<Math.ceil(25/res)&&sk.length;pass++){ const kill=sk.filter(i=>cnt(i)<=1); if(!kill.length) break; kill.forEach(i=>{ img[i]=0; }); sk=sk.filter(i=>img[i]); }
+  // road nodes about every 5 m along the line, each pixel belongs to its nearest node along the line
+  const sp=Math.max(2,5/res), hc=new Map(), nodes=[], pix=[], hk=(a,b)=>a+","+b;
+  sk.forEach(i=>{ const px=i%W, py=(i/W)|0, cx=Math.floor(px/sp), cy=Math.floor(py/sp); for(let a=cx-1;a<=cx+1;a++) for(let b=cy-1;b<=cy+1;b++){ const l=hc.get(hk(a,b)); if(l) for(const j of l){ if(Math.hypot(pix[j]%W-px,((pix[j]/W)|0)-py)<sp) return; } }
+    pix.push(i); const id=pix.length-1; (hc.get(hk(cx,cy))||hc.set(hk(cx,cy),[]).get(hk(cx,cy))).push(id); });
+  const lab=new Int32Array(N).fill(-1); let q=[]; pix.forEach((i,id)=>{ lab[i]=id; q.push(i); });
+  for(let h=0;h<q.length;h++){ const i=q[h]; for(let k=0;k<8;k++){ const j=i+nb8[k]; if(img[j]&&lab[j]<0){ lab[j]=lab[i]; q.push(j); } } }
+  const NN=pix.length, adj=pix.map(()=>new Map());
+  sk.forEach(i=>{ [1,W-1,W,W+1].forEach(d=>{ const j=i+d; if(!img[j]||lab[i]===lab[j]||lab[i]<0||lab[j]<0) return; const a=lab[i], b=lab[j]; if(adj[a].has(b)) return;
+      const ax=pix[a]%W, ay=(pix[a]/W)|0, bx=pix[b]%W, by=(pix[b]/W)|0, L=Math.hypot(ax-bx,ay-by)*res; if(L>14) return;
+      for(let t=0;t<=Math.ceil(L/1.5);t++){ const f=t/Math.max(1,Math.ceil(L/1.5)), cx=Math.round(ax+(bx-ax)*f), cy=Math.round(ay+(by-ay)*f); if(tight[cy*W+cx]) return; }
+      adj[a].set(b,L); adj[b].set(a,L); }); });
+  let dead=new Uint8Array(NN); for(let pass=0;pass<600;pass++){ const kill=[]; for(let a=0;a<NN;a++){ if(dead[a]) continue; let c=0; adj[a].forEach((L,b)=>{ if(!dead[b]) c++; }); if(c<=1) kill.push(a); } if(!kill.length) break; kill.forEach(a=>{ dead[a]=1; }); }
+  const comp=new Int32Array(NN).fill(-1); let best=-1, bestN=0, cn=0;
+  for(let a=0;a<NN;a++){ if(dead[a]||comp[a]>=0) continue; const st=[a]; comp[a]=cn; let c=0; while(st.length){ const u=st.pop(); c++; adj[u].forEach((L,v)=>{ if(!dead[v]&&comp[v]<0){ comp[v]=cn; st.push(v); } }); } if(c>bestN){ bestN=c; best=cn; } cn++; }
+  const nid=new Int32Array(NN).fill(-1); for(let a=0;a<NN;a++) if(!dead[a]&&comp[a]===best){ nid[a]=nodes.length; nodes.push({x:x0-M+(pix[a]%W+.5)*res,z:z0-M+(((pix[a]/W)|0)+.5)*res,out:[]}); }
+  for(let a=0;a<NN;a++){ if(nid[a]<0) continue; adj[a].forEach((L,b)=>{ if(nid[b]>=0) nodes[nid[a]].out.push({to:nid[b],len:L,w:7,major:false}); }); }
+  for(let it=0;it<8;it++){ const nx=nodes.map(n=>n.out.length===2?[.5*n.x+.25*(nodes[n.out[0].to].x+nodes[n.out[1].to].x),.5*n.z+.25*(nodes[n.out[0].to].z+nodes[n.out[1].to].z)]:[n.x,n.z]); nodes.forEach((n,i)=>{ n.x=nx[i][0]; n.z=nx[i][1]; }); }
+  const ribbons=[]; let length=0; nodes.forEach((A,i)=>A.out.forEach(o=>{ const B=nodes[o.to], L=Math.hypot(B.x-A.x,B.z-A.z)||1e-9; o.len=L; if(o.to>i){ const dx=(B.x-A.x)/L, dz=(B.z-A.z)/L; ribbons.push({a:[A.x-dx*.8,A.z-dz*.8],b:[B.x+dx*.8,B.z+dz*.8],w:14,major:false}); length+=L; } }));
+  window.__carveDbg={res,W,H,sk:sk.length,nodes:nodes.length,comps:cn,length};
+  const inPlot=(x,z)=>{ const px=Math.floor(gx(x)), py=Math.floor(gz(z)); return px>=0&&py>=0&&px<W&&py<H&&occ[py*W+px]===1; };
+  return {nodes,ribbons,inPlot,length};
 }
 /* a vehicle that drives the graph: keeps going, turns at junctions, only turns round at a dead end */
 function mkWalker(G,startEdge){ const nodes=G.nodes, heat=n=>1+Math.min(6,(n.heat||0)); let from=startEdge[0], to=startEdge[1]; const e0=nodes[from].out.find(o=>o.to===to); let len=e0?e0.len:10, t=Math.random()*len, nxt=null;
   const A=()=>nodes[from], B=()=>nodes[to];
-  const pick=()=>{ const o=nodes[to].out, back=o.filter(x=>x.to!==from), c=back.length?back:o; if(c.length===1) return c[0]; const dx=B().x-A().x, dz=B().z-A().z, L=Math.hypot(dx,dz)||1; const w=c.map(x=>{ const ex=nodes[x.to].x-B().x, ez=nodes[x.to].z-B().z, EL=Math.hypot(ex,ez)||1, cs=(dx*ex+dz*ez)/(L*EL); return (.35+Math.max(0,cs)*2.2)*heat(nodes[x.to]); }); let r=Math.random()*w.reduce((a,b)=>a+b,0); for(let i=0;i<c.length;i++){ r-=w[i]; if(r<=0) return c[i]; } return c[c.length-1]; };
+  const pick=()=>{ const o=nodes[to].out, back=o.filter(x=>x.to!==from), c=back.length?back:o; if(c.length===1) return c[0]; const dx=B().x-A().x, dz=B().z-A().z, L=Math.hypot(dx,dz)||1; const w=c.map(x=>{ const ex=nodes[x.to].x-B().x, ez=nodes[x.to].z-B().z, EL=Math.hypot(ex,ez)||1, cs=(dx*ex+dz*ez)/(L*EL); const h=heat(nodes[x.to]); if(cs<-.3) return 1e-6; return (.35+Math.max(0,cs)*2.2)*h*h; }); let r=Math.random()*w.reduce((a,b)=>a+b,0); for(let i=0;i<c.length;i++){ r-=w[i]; if(r<=0) return c[i]; } return c[c.length-1]; };
   nxt=pick();
   const at=(tt)=>{ const k=Math.max(0,Math.min(1,tt/len)); return [A().x+(B().x-A().x)*k, A().z+(B().z-A().z)*k]; };
   return {
@@ -15959,11 +15975,11 @@ EXP.ar=async function(park){
   const groundMat=new T.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.5,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}); body.add(mk(gr,groundMat));
   const lg=new T.BufferGeometry(); lg.setAttribute("position",new T.Float32BufferAttribute(ln,3)); const lineMat=new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.5}); body.add(new T.LineSegments(lg,lineMat));
   // streets between the plot rows, as a road graph
-  let segs=gapRoads(rings,c0,kx,ky); if(segs.length<3){ const x0=(lo[0]-c0[0])*kx-60, x1=(hi[0]-c0[0])*kx+60, z0=-(hi[1]-c0[1])*ky-60, z1=-(lo[1]-c0[1])*ky+60; segs=[{a:[x0,z0],b:[x1,z0],w:30,major:true},{a:[x1,z0],b:[x1,z1],w:30,major:true},{a:[x1,z1],b:[x0,z1],w:30,major:true},{a:[x0,z1],b:[x0,z0],w:30,major:true},{a:[(x0+x1)/2,z0],b:[(x0+x1)/2,z1],w:30,major:false},{a:[x0,(z0+z1)/2],b:[x1,(z0+z1)/2],w:30,major:false}]; }
-  const G=buildGraph(segs); const fcs=[]; stOf.forEach((st,k)=>{ if(st==='sold'){ const f=S.geo.features.find(x=>x.properties.k===k); if(f) fcs.push([mx(f.properties.c),mz(f.properties.c)]); } }); G.nodes.forEach(n=>{ n.heat=0; for(const c of fcs){ if(Math.abs(c[0]-n.x)<90&&Math.abs(c[1]-n.z)<90) n.heat++; } }); window.__arDbg2=()=>({nodes:G.nodes.length,rib:G.ribbons.length,segs:segs.length,plate:[pw,ph,pcx,pcz],car:car&&car.pos(),camPos:cam.position.toArray(),mscale:model.scale.x,bscale:body.scale.toArray(),mpos:model.position.toArray()});
+  let roadMat=null; let G=roadGraph(rings,mx,mz); const fcs=[]; stOf.forEach((st,k)=>{ if(st==='sold'){ const f=S.geo.features.find(x=>x.properties.k===k); if(f) fcs.push([mx(f.properties.c),mz(f.properties.c)]); } }); G.nodes.forEach(n=>{ n.heat=0; for(const c of fcs){ if(Math.abs(c[0]-n.x)<90&&Math.abs(c[1]-n.z)<90) n.heat++; } }); window.__arTest=()=>{ let bad=0,steps=0,maxTurn=0; for(let r=0;r<6;r++){ const n0=G.nodes.length?G.nodes[(Math.random()*G.nodes.length)|0]:null; if(!n0||!n0.out.length) continue; const w=mkWalker(G,[G.nodes.indexOf(n0),n0.out[0].to]); let ph=null; for(let i=0;i<4000;i++){ w.step(2.5); const p=w.pos(); steps++; if(G.inPlot(p[0],p[1])) bad++; const l=w.look(10); const h=Math.atan2(l[1]-p[1],l[0]-p[0]); if(ph!==null){ let d=Math.abs(Math.atan2(Math.sin(h-ph),Math.cos(h-ph))); if(d>maxTurn) maxTurn=d; } ph=h; } } return {bad,steps,maxTurn,len:G.length,nodes:G.nodes.length}; };
+  window.__arScene=()=>scene; window.__arDbg2=()=>({nodes:G.nodes.length,rib:G.ribbons.length,plate:[pw,ph,pcx,pcz],car:car&&car.pos(),camPos:cam.position.toArray(),mscale:model.scale.x,bscale:body.scale.toArray(),mpos:model.position.toArray()});
   { const acc={p:[],n:[],c:[]}, yy=.3, add=(a,b,w,col)=>{ const dx=b[0]-a[0], dz=b[1]-a[1], Ln=Math.hypot(dx,dz)||1e-9, nx=-dz/Ln*w/2, nz=dx/Ln*w/2, v=[[a[0]+nx,a[1]+nz],[a[0]-nx,a[1]-nz],[b[0]-nx,b[1]-nz],[b[0]+nx,b[1]+nz]]; [0,1,2,0,2,3].forEach(i=>{ acc.p.push(v[i][0],yy,v[i][1]); acc.n.push(0,1,0); acc.c.push(col.r,col.g,col.b); }); };
-    G.ribbons.forEach(R=>{ const w=Math.max(8,Math.min(15,R.w*.5)); add(R.a,R.b,w,new T.Color(R.major?0x34383e:0x2d3136)); add(R.a,R.b,.6,new T.Color(0xf2ecd0)); });
-    if(acc.p.length) body.add(mk(acc,new T.MeshBasicMaterial({vertexColors:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}))); }
+    G.ribbons.forEach(R=>{ add(R.a,R.b,11,new T.Color(0x34383e)); add(R.a,R.b,.35,new T.Color(0xf2ecd0)); });
+    if(acc.p.length){ roadMat=new T.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.75,side:T.DoubleSide,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}); body.add(mk(acc,roadMat)); } }
   // factories on the sold plots (the same illustrative massing as the 3D map), a lower building on reserved plots
   const fac={p:[],n:[],c:[]}, chim=[], fSold=new Set(), fRes=new Set();
   try{ const FC=(typeof FACTORY_FC!=="undefined"&&FACTORY_FC)||(typeof buildFactories==="function"?buildFactories():null);
@@ -15981,29 +15997,29 @@ EXP.ar=async function(park){
       vertexShader:"attribute float aAlpha; attribute float aSize; uniform float uK; uniform float uS; varying float vA; void main(){ vA=aAlpha; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize=aSize*uS*uK/max(-mv.z,.01); gl_Position=projectionMatrix*mv; }",
       fragmentShader:"uniform sampler2D map; varying float vA; void main(){ vec4 t=texture2D(map,gl_PointCoord); gl_FragColor=vec4(vec3(.84,.85,.88),t.a*vA); }"})); smoke.frustumCulled=false; body.add(smoke); }
   // trucks (the same road graph)
-  const trucks=[], tlen=14, twid=3.2, thei=3.4, trailer=new T.BoxGeometry(tlen*.64,thei,twid), cab=new T.BoxGeometry(tlen*.3,thei*.82,twid*.96), mt=new T.MeshLambertMaterial({color:0xf2f4f7}), mcs=[0xb3263d,0x1f6fe0,0xe8a317,0x2a9d57].map(c=>new T.MeshLambertMaterial({color:c}));
-  const edges=[]; G.nodes.forEach((n,i)=>n.out.forEach(o=>{ if(o.len>=12&&(n.heat>=3||G.nodes[o.to].heat>=3)) edges.push([i,o.to]); })); if(edges.length<3) G.nodes.forEach((n,i)=>n.out.forEach(o=>{ if(o.len>=12) edges.push([i,o.to]); }));
+  const trucks=[], tlen=12, twid=2.9, thei=3.2, trailer=new T.BoxGeometry(tlen*.64,thei,twid), cab=new T.BoxGeometry(tlen*.3,thei*.82,twid*.96), mt=new T.MeshLambertMaterial({color:0xf2f4f7}), mcs=[0xb3263d,0x1f6fe0,0xe8a317,0x2a9d57].map(c=>new T.MeshLambertMaterial({color:c}));
+  const edges=[]; G.nodes.forEach((n,i)=>n.out.forEach(o=>{ if(n.heat>=3||G.nodes[o.to].heat>=3) edges.push([i,o.to]); })); if(edges.length<3) G.nodes.forEach((n,i)=>n.out.forEach(o=>{ edges.push([i,o.to]); }));
   const totalLen=G.ribbons.reduce((a,R)=>a+Math.hypot(R.b[0]-R.a[0],R.b[1]-R.a[1]),0), nT=edges.length?Math.min(18,Math.max(8,Math.round(totalLen/260))):0;
   for(let i=0;i<nT;i++){ const g=new T.Group(); const a1=new T.Mesh(trailer,mt); a1.position.set(-tlen*.17,thei/2+.2,0); const b1=new T.Mesh(cab,mcs[i%4]); b1.position.set(tlen*.36,thei*.41+.2,0); g.add(a1,b1); body.add(g); trucks.push({g,w:mkWalker(G,edges[(Math.random()*edges.length)|0]),v:9+Math.random()*4,h:0,init:false}); }
   const car=edges.length?mkWalker(G,edges[(Math.random()*edges.length)|0]):null; let carH=0, carInit=false;
   // renderer, camera picture, motion
   renderer=new T.WebGLRenderer({canvas:cv,antialias:true,alpha:true}); renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1)); renderer.setClearColor(0x000000,0); renderer.setSize(innerWidth,innerHeight,false); window.addEventListener("resize",onRes);
-  let mode="table", yaw=0, scale=1, pitchTilt=0, lookY=0, lookP=0, hasOri=false, a0=null, camOk=false; const lookFwd=new T.Vector3();
+  let ad=null, gY=0, gP=0, mode="table", yaw=0, scale=1, pitchTilt=0, lookY=0, lookP=0, hasOri=false, a0=null, camOk=false; const lookFwd=new T.Vector3();
   const fog=new T.Fog(0xdbe9f7,500,4500);
   function setMode(m){ mode=m; const d=m==="drive";
-    ov.classList.toggle("drive",d); sand.visible=d; scene.fog=d?fog:null; groundMat.opacity=d?.06:.5; lineMat.opacity=d?.18:.5;
-    cam.fov=d?72:62; cam.near=d?.8:.01; cam.far=d?9000:30; cam.updateProjectionMatrix(); lookY=0; lookP=0;
+    ov.classList.toggle("drive",d); sand.visible=d; scene.fog=d?fog:null; groundMat.opacity=d?.06:.5; if(roadMat) roadMat.opacity=d?1:.75; lineMat.opacity=d?.18:.5;
+    cam.fov=d?72:62; cam.near=d?.8:.01; cam.far=d?9000:30; cam.updateProjectionMatrix(); lookY=0; lookP=0; ad=null; gY=0; gP=0;
     q("#arDrive").textContent=d?"Back to table":"Drive through"; q("#arPlace").style.display=d?"none":"";
     if(!d&&!hasOri){ cam.rotation.set(0,0,0); cam.position.set(0,.34,-.3); cam.lookAt(0,-.34,-1.05); }
     if(!d&&hasOri) cam.position.set(0,0,0);
-    say(d?"Driving between the factories — drag to look around":info()); }
+    say(d?(hasOri?"Driving between the factories — turn your phone to look around":"Driving between the factories — drag to look around"):info()); }
   const info=()=>`${fSold.size} factories · ${fRes.size} being built · ${trucks.length} trucks`+(hasOri?" · move your phone around the table":camOk?" · no motion sensor":" · no camera here")+" · drag to turn";
   q("#arDrive").onclick=()=>{ if(!car){ H.toast("This park has no streets to drive on",true); return; } setMode(mode==="drive"?"table":"drive"); };
   q("#arMin").onclick=()=>{ scale=Math.max(.3,scale/1.5); }; q("#arPlus").onclick=()=>{ scale=Math.min(90,scale*1.5); };
   try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false}); vid.srcObject=stream; await vid.play().catch(()=>{}); camOk=true; }catch(e){}
   if(tok.dead) return; if(!camOk) ov.classList.add("nocam");
   const perm=await permP; const eul=new T.Euler(), q1=new T.Quaternion(-Math.SQRT1_2,0,0,Math.SQRT1_2), q0=new T.Quaternion(), zee=new T.Vector3(0,0,1);
-  if(perm==="granted"&&"DeviceOrientationEvent" in window){ onOri=e=>{ if(e.alpha==null||mode!=="table") return; hasOri=true; if(a0==null) a0=e.alpha; const orient=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*Math.PI/180;
+  if(perm==="granted"&&"DeviceOrientationEvent" in window){ onOri=e=>{ if(e.alpha==null) return; hasOri=true; if(mode==="drive"){ if(ad==null) ad=e.alpha; gY=(((e.alpha-ad+540)%360)-180)*Math.PI/180; gP=Math.max(-.7,Math.min(.7,((e.beta||90)-90)*Math.PI/180)); return; } if(a0==null) a0=e.alpha; const orient=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*Math.PI/180;
       eul.set(e.beta*Math.PI/180,(e.alpha-a0)*Math.PI/180,-e.gamma*Math.PI/180,"YXZ"); cam.quaternion.setFromEuler(eul); cam.quaternion.multiply(q1); cam.quaternion.multiply(q0.setFromAxisAngle(zee,-orient)); }; window.addEventListener("deviceorientation",onOri); }
   model.position.set(0,-.34,-1.05);
   setTimeout(()=>{ if(tok.dead||mode!=="table") return; if(!hasOri){ ov.classList.add("noori"); scale=1.9; cam.position.set(0,.34,-.3); cam.lookAt(0,-.34,-1.05); } say(info()); },1400);
@@ -16016,12 +16032,12 @@ EXP.ar=async function(park){
   const up=e=>{ pts.delete(e.pointerId); if(pts.size<2) lastD=0; }; cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
   cv.addEventListener("wheel",e=>{ e.preventDefault(); if(mode==="table") scale=Math.max(.3,Math.min(90,scale*(e.deltaY<0?1.12:.9))); },{passive:false});
   const wind=[26,9]; let tPrev=performance.now(); const t0=tPrev;
-  const frame=now=>{ if(tok.dead||gone) return; const dt=Math.min(.05,(now-tPrev)/1000); tPrev=now; const sec=(now-t0)/1000, drive=mode==="drive", TS=drive?1.4:5, tscale=drive?[1,1,1]:[6,1.7,6];
-    trucks.forEach(t=>{ t.w.step(t.v*TS*dt); const p=t.w.pos(), l=t.w.look(10), th=Math.atan2(l[1]-p[1],l[0]-p[0]); if(!t.init){ t.h=th; t.init=true; } let d=th-t.h; d=Math.atan2(Math.sin(d),Math.cos(d)); t.h+=d*Math.min(1,dt*3.5); t.g.position.set(p[0],0,p[1]); t.g.rotation.y=-t.h; t.g.scale.set(tscale[0],tscale[1],tscale[2]); });
+  const frame=now=>{ if(tok.dead||gone) return; const dt=Math.min(.05,(now-tPrev)/1000); tPrev=now; const sec=(now-t0)/1000, drive=mode==="drive", TS=drive?1:1.8, tscale=drive?[1,1,1]:(innerWidth<820?[2.6,2.6,2.6]:[1.7,1.7,1.7]);
+    trucks.forEach(t=>{ t.w.step(t.v*TS*dt); const p=t.w.pos(), l=t.w.look(10), th=Math.atan2(l[1]-p[1],l[0]-p[0]); if(!t.init){ t.h=th; t.init=true; } let d=th-t.h; d=Math.atan2(Math.sin(d),Math.cos(d)); t.h+=d*Math.min(1,dt*3.5); const off=1.2; t.g.position.set(p[0]-Math.sin(t.h)*off,0,p[1]+Math.cos(t.h)*off); t.g.rotation.y=-t.h; t.g.scale.set(tscale[0],tscale[1],tscale[2]); });
     if(smoke){ const ms=drive?1:sc*scale; for(let e=0;e<chim.length;e++) for(let k=0;k<PER;k++){ const i=e*PER+k, u=(sec*.33+sPh[i])%1, a=u<.08?u/.08:1-(u-.08)/.92; sP[i*3]=chim[e][0]+wind[0]*u*(drive?1:1.6)+Math.sin(sec*1.7+i)*3*u; sP[i*3+1]=chim[e][1]+u*80; sP[i*3+2]=chim[e][2]+wind[1]*u*(drive?1:1.6)+Math.cos(sec*1.3+i)*3*u; sA[i]=Math.max(0,a)*.8; sS[i]=14+u*60; }
       const g=smoke.geometry; g.attributes.position.needsUpdate=true; g.attributes.aAlpha.needsUpdate=true; g.attributes.aSize.needsUpdate=true; smoke.material.uniforms.uK.value=renderer.domElement.height/(2*Math.tan(cam.fov*Math.PI/360)); smoke.material.uniforms.uS.value=drive?1:sc*scale; }
     if(drive&&car){ car.step(14*dt); const p=car.pos(), l=car.look(22), th=Math.atan2(-(l[0]-p[0]),-(l[1]-p[1])); if(!carInit){ carH=th; carInit=true; } let d=th-carH; d=Math.atan2(Math.sin(d),Math.cos(d)); carH+=Math.max(-1.1*dt,Math.min(1.1*dt,d)); model.position.set(0,0,0); model.scale.setScalar(1); body.scale.set(1,1,1); body.rotation.y=0; model.rotation.x=0;
-      cam.position.set(p[0],2.5+Math.sin(sec*9)*.04,p[1]); cam.rotation.set(-.04+lookP,carH+lookY,0,"YXZ"); }
+      cam.position.set(p[0],2.5+Math.sin(sec*9)*.04,p[1]); cam.rotation.set(-.04+lookP+gP,carH+lookY+gY,0,"YXZ"); }
     else { body.scale.set(1,VE,1); body.rotation.y=yaw; model.rotation.x=hasOri?0:pitchTilt; model.scale.setScalar(sc*scale); }
     renderer.render(scene,cam); raf=requestAnimationFrame(frame); };
   say(info()); raf=requestAnimationFrame(frame);
