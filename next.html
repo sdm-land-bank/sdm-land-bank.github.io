@@ -16039,9 +16039,11 @@ EXP.ar=async function(park){
   scene.add(new T.AmbientLight(0xffffff,.78)); const sun=new T.DirectionalLight(0xffffff,.85); sun.position.set(.4,1,.6); scene.add(sun);
   const model=new T.Group(); scene.add(model); const body=new T.Group(); model.add(body);
   const mats={}, col=k=>{ if(!mats[k]) mats[k]=new T.MeshLambertMaterial({color:new T.Color(STATUS[k]?STATUS[k].color:"#999999")}); return mats[k]; };
-  const hgt={sold:.0085,reserved:.0085,ats:.0045,eoi:.0055,hold:.0035,nfs:.0025,unknown:.0025,nodata:.0025};
+  const hgt={sold:.0024,reserved:.0024,ats:.0013,eoi:.0017,hold:.0010,nfs:.0006,unknown:.0006,nodata:.0006}, LP=[];
   rings.forEach(({r,st})=>{ try{ const sh=new T.Shape(); r.forEach((c,i)=>{ const x=(c[0]-c0[0])*kx*sc, y=(c[1]-c0[1])*ky*sc; if(i===0) sh.moveTo(x,y); else sh.lineTo(x,y); });
-      const geo=new T.ExtrudeGeometry(sh,{depth:hgt[st]||.003,bevelEnabled:false}); geo.rotateX(-Math.PI/2); const m=new T.Mesh(geo,col(st)); m.position.y=.003; body.add(m); }catch(e){} });
+      const dep=hgt[st]||.0008; const geo=new T.ExtrudeGeometry(sh,{depth:dep,bevelEnabled:false}); geo.rotateX(-Math.PI/2); const m=new T.Mesh(geo,col(st)); m.position.y=.003; body.add(m);
+      for(let i=0;i<r.length-1;i++){ const a=r[i], b=r[i+1]; LP.push((a[0]-c0[0])*kx*sc,.003+dep+.00005,-(a[1]-c0[1])*ky*sc,(b[0]-c0[0])*kx*sc,.003+dep+.00005,-(b[1]-c0[1])*ky*sc); } }catch(e){} });
+  { const lg=new T.BufferGeometry(); lg.setAttribute("position",new T.Float32BufferAttribute(LP,3)); body.add(new T.LineSegments(lg,new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.55}))); }
   const plate=new T.Mesh(new T.BoxGeometry(W_*sc*1.12,.003,H_*sc*1.12),new T.MeshLambertMaterial({color:0x14171c})); plate.position.y=.0015; body.add(plate);
   model.position.set(0,-.34,-1.05); let yaw=0, scale=1, pitchTilt=0; const lookFwd=new T.Vector3();
   ov=document.createElement("div"); ov.id="arOv";
@@ -16059,7 +16061,7 @@ EXP.ar=async function(park){
   const perm=await permP; let hasOri=false, a0=null; const eul=new T.Euler(), q1=new T.Quaternion(-Math.SQRT1_2,0,0,Math.SQRT1_2), q0=new T.Quaternion(), zee=new T.Vector3(0,0,1);
   if(perm==="granted"&&"DeviceOrientationEvent" in window){ onOri=e=>{ if(e.alpha==null) return; hasOri=true; if(a0==null) a0=e.alpha; const orient=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*Math.PI/180;
       eul.set(e.beta*Math.PI/180,(e.alpha-a0)*Math.PI/180,-e.gamma*Math.PI/180,"YXZ"); cam.quaternion.setFromEuler(eul); cam.quaternion.multiply(q1); cam.quaternion.multiply(q0.setFromAxisAngle(zee,-orient)); }; window.addEventListener("deviceorientation",onOri); }
-  setTimeout(()=>{ if(tok.dead) return; if(hasOri){ say("Move your phone around the table · drag to turn · pinch to resize"); } else { ov.classList.add("noori"); cam.position.set(0,.55,.55); cam.lookAt(0,-.25,-1.05); say(camOk?"Motion sensor not available — drag to turn the model":"Camera not available here — drag to turn, use + and − to resize"); } },1400);
+  setTimeout(()=>{ if(tok.dead) return; if(hasOri){ say("Move your phone around the table · drag to turn · pinch to resize"); } else { ov.classList.add("noori"); scale=1.9; cam.position.set(0,.34,-.3); cam.lookAt(0,-.34,-1.05); say(camOk?"Motion sensor not available — drag to turn the model":"Camera not available here — drag to turn, use + and − to resize"); } },1400);
   q("#arPlace").onclick=()=>{ if(!hasOri){ yaw=0; pitchTilt=0; return; } cam.getWorldDirection(lookFwd); const d=1.0; model.position.set(lookFwd.x*d,lookFwd.y*d-.12,lookFwd.z*d); yaw=Math.atan2(-lookFwd.x,-lookFwd.z)*0+0; body.rotation.y=0; };
   // touch / mouse: drag turns, pinch resizes
   let pts=new Map(), lastD=0; cv.style.touchAction="none";
