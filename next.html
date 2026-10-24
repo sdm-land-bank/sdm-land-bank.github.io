@@ -15893,9 +15893,9 @@ function buildGraph(segs){
   return {nodes,ribbons};
 }
 /* a vehicle that drives the graph: keeps going, turns at junctions, only turns round at a dead end */
-function mkWalker(G,startEdge){ const nodes=G.nodes; let from=startEdge[0], to=startEdge[1]; const e0=nodes[from].out.find(o=>o.to===to); let len=e0?e0.len:10, t=Math.random()*len, nxt=null;
+function mkWalker(G,startEdge){ const nodes=G.nodes, heat=n=>1+Math.min(6,(n.heat||0)); let from=startEdge[0], to=startEdge[1]; const e0=nodes[from].out.find(o=>o.to===to); let len=e0?e0.len:10, t=Math.random()*len, nxt=null;
   const A=()=>nodes[from], B=()=>nodes[to];
-  const pick=()=>{ const o=nodes[to].out, back=o.filter(x=>x.to!==from), c=back.length?back:o; if(c.length===1) return c[0]; const dx=B().x-A().x, dz=B().z-A().z, L=Math.hypot(dx,dz)||1; const w=c.map(x=>{ const ex=nodes[x.to].x-B().x, ez=nodes[x.to].z-B().z, EL=Math.hypot(ex,ez)||1, cs=(dx*ex+dz*ez)/(L*EL); return .35+Math.max(0,cs)*2.2; }); let r=Math.random()*w.reduce((a,b)=>a+b,0); for(let i=0;i<c.length;i++){ r-=w[i]; if(r<=0) return c[i]; } return c[c.length-1]; };
+  const pick=()=>{ const o=nodes[to].out, back=o.filter(x=>x.to!==from), c=back.length?back:o; if(c.length===1) return c[0]; const dx=B().x-A().x, dz=B().z-A().z, L=Math.hypot(dx,dz)||1; const w=c.map(x=>{ const ex=nodes[x.to].x-B().x, ez=nodes[x.to].z-B().z, EL=Math.hypot(ex,ez)||1, cs=(dx*ex+dz*ez)/(L*EL); return (.35+Math.max(0,cs)*2.2)*heat(nodes[x.to]); }); let r=Math.random()*w.reduce((a,b)=>a+b,0); for(let i=0;i<c.length;i++){ r-=w[i]; if(r<=0) return c[i]; } return c[c.length-1]; };
   nxt=pick();
   const at=(tt)=>{ const k=Math.max(0,Math.min(1,tt/len)); return [A().x+(B().x-A().x)*k, A().z+(B().z-A().z)*k]; };
   return {
@@ -15908,8 +15908,8 @@ async function satTexture(lo,hi){
   const mx=(hi[0]-lo[0])*.06, my=(hi[1]-lo[1])*.06, L=[lo[0]-mx,lo[1]-my], U=[hi[0]+mx,hi[1]+my];
   const tl=(lng,lat,z)=>{ const n=Math.pow(2,z), r=lat*Math.PI/180; return [(lng+180)/360*n,(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n]; };
   const cnt=z=>{ const a=tl(L[0],U[1],z), b=tl(U[0],L[1],z); return (Math.floor(b[0])-Math.floor(a[0])+1)*(Math.floor(b[1])-Math.floor(a[1])+1); };
-  let z=17; while(z>14&&cnt(z)>42) z--;
-  const a=tl(L[0],U[1],z), b=tl(U[0],L[1],z), x0=Math.floor(a[0]), x1=Math.floor(b[0]), y0=Math.floor(a[1]), y1=Math.floor(b[1]), W=(b[0]-a[0])*256, H=(b[1]-a[1])*256, k=Math.min(1,2048/Math.max(W,H));
+  const lim=innerWidth>820?110:42, cap=innerWidth>820?4096:2048; let z=17; while(z>14&&cnt(z)>lim) z--;
+  const a=tl(L[0],U[1],z), b=tl(U[0],L[1],z), x0=Math.floor(a[0]), x1=Math.floor(b[0]), y0=Math.floor(a[1]), y1=Math.floor(b[1]), W=(b[0]-a[0])*256, H=(b[1]-a[1])*256, k=Math.min(1,cap/Math.max(W,H));
   const cv=document.createElement("canvas"); cv.width=Math.max(8,Math.round(W*k)); cv.height=Math.max(8,Math.round(H*k)); const g=cv.getContext("2d"); g.fillStyle="#3b3a35"; g.fillRect(0,0,cv.width,cv.height);
   const jobs=[]; for(let ty=y0;ty<=y1;ty++) for(let tx=x0;tx<=x1;tx++) jobs.push(new Promise(res=>{ const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>{ g.drawImage(im,(tx-a[0])*256*k,(ty-a[1])*256*k,256*k+1,256*k+1); res(); }; im.onerror=()=>res(); im.src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/"+z+"/"+ty+"/"+tx; }));
   await Promise.all(jobs); return {cv,L,U};
@@ -15960,7 +15960,7 @@ EXP.ar=async function(park){
   const lg=new T.BufferGeometry(); lg.setAttribute("position",new T.Float32BufferAttribute(ln,3)); const lineMat=new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.5}); body.add(new T.LineSegments(lg,lineMat));
   // streets between the plot rows, as a road graph
   let segs=gapRoads(rings,c0,kx,ky); if(segs.length<3){ const x0=(lo[0]-c0[0])*kx-60, x1=(hi[0]-c0[0])*kx+60, z0=-(hi[1]-c0[1])*ky-60, z1=-(lo[1]-c0[1])*ky+60; segs=[{a:[x0,z0],b:[x1,z0],w:30,major:true},{a:[x1,z0],b:[x1,z1],w:30,major:true},{a:[x1,z1],b:[x0,z1],w:30,major:true},{a:[x0,z1],b:[x0,z0],w:30,major:true},{a:[(x0+x1)/2,z0],b:[(x0+x1)/2,z1],w:30,major:false},{a:[x0,(z0+z1)/2],b:[x1,(z0+z1)/2],w:30,major:false}]; }
-  const G=buildGraph(segs); window.__arDbg2=()=>({nodes:G.nodes.length,rib:G.ribbons.length,segs:segs.length,plate:[pw,ph,pcx,pcz],car:car&&car.pos(),camPos:cam.position.toArray(),mscale:model.scale.x,bscale:body.scale.toArray(),mpos:model.position.toArray()});
+  const G=buildGraph(segs); const fcs=[]; stOf.forEach((st,k)=>{ if(st==='sold'){ const f=S.geo.features.find(x=>x.properties.k===k); if(f) fcs.push([mx(f.properties.c),mz(f.properties.c)]); } }); G.nodes.forEach(n=>{ n.heat=0; for(const c of fcs){ if(Math.abs(c[0]-n.x)<90&&Math.abs(c[1]-n.z)<90) n.heat++; } }); window.__arDbg2=()=>({nodes:G.nodes.length,rib:G.ribbons.length,segs:segs.length,plate:[pw,ph,pcx,pcz],car:car&&car.pos(),camPos:cam.position.toArray(),mscale:model.scale.x,bscale:body.scale.toArray(),mpos:model.position.toArray()});
   { const acc={p:[],n:[],c:[]}, yy=.3, add=(a,b,w,col)=>{ const dx=b[0]-a[0], dz=b[1]-a[1], Ln=Math.hypot(dx,dz)||1e-9, nx=-dz/Ln*w/2, nz=dx/Ln*w/2, v=[[a[0]+nx,a[1]+nz],[a[0]-nx,a[1]-nz],[b[0]-nx,b[1]-nz],[b[0]+nx,b[1]+nz]]; [0,1,2,0,2,3].forEach(i=>{ acc.p.push(v[i][0],yy,v[i][1]); acc.n.push(0,1,0); acc.c.push(col.r,col.g,col.b); }); };
     G.ribbons.forEach(R=>{ const w=Math.max(8,Math.min(15,R.w*.5)); add(R.a,R.b,w,new T.Color(R.major?0x34383e:0x2d3136)); add(R.a,R.b,.6,new T.Color(0xf2ecd0)); });
     if(acc.p.length) body.add(mk(acc,new T.MeshBasicMaterial({vertexColors:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}))); }
@@ -15982,7 +15982,7 @@ EXP.ar=async function(park){
       fragmentShader:"uniform sampler2D map; varying float vA; void main(){ vec4 t=texture2D(map,gl_PointCoord); gl_FragColor=vec4(vec3(.84,.85,.88),t.a*vA); }"})); smoke.frustumCulled=false; body.add(smoke); }
   // trucks (the same road graph)
   const trucks=[], tlen=14, twid=3.2, thei=3.4, trailer=new T.BoxGeometry(tlen*.64,thei,twid), cab=new T.BoxGeometry(tlen*.3,thei*.82,twid*.96), mt=new T.MeshLambertMaterial({color:0xf2f4f7}), mcs=[0xb3263d,0x1f6fe0,0xe8a317,0x2a9d57].map(c=>new T.MeshLambertMaterial({color:c}));
-  const edges=[]; G.nodes.forEach((n,i)=>n.out.forEach(o=>{ if(o.len>=12) edges.push([i,o.to]); }));
+  const edges=[]; G.nodes.forEach((n,i)=>n.out.forEach(o=>{ if(o.len>=12&&(n.heat>=3||G.nodes[o.to].heat>=3)) edges.push([i,o.to]); })); if(edges.length<3) G.nodes.forEach((n,i)=>n.out.forEach(o=>{ if(o.len>=12) edges.push([i,o.to]); }));
   const totalLen=G.ribbons.reduce((a,R)=>a+Math.hypot(R.b[0]-R.a[0],R.b[1]-R.a[1]),0), nT=edges.length?Math.min(18,Math.max(8,Math.round(totalLen/260))):0;
   for(let i=0;i<nT;i++){ const g=new T.Group(); const a1=new T.Mesh(trailer,mt); a1.position.set(-tlen*.17,thei/2+.2,0); const b1=new T.Mesh(cab,mcs[i%4]); b1.position.set(tlen*.36,thei*.41+.2,0); g.add(a1,b1); body.add(g); trucks.push({g,w:mkWalker(G,edges[(Math.random()*edges.length)|0]),v:9+Math.random()*4,h:0,init:false}); }
   const car=edges.length?mkWalker(G,edges[(Math.random()*edges.length)|0]):null; let carH=0, carInit=false;
