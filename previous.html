@@ -15484,5 +15484,634 @@ setInterval(()=>{ try{ sideNums(); }catch(e){} },700);
   `; document.head.appendChild(st); }
 })();
 </script>
+
+<script>
+/* V80 — Explore */
+(function(){
+"use strict";
+const q=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pub=()=>typeof window.sidPublic==="function"&&window.sidPublic();
+const reduced=()=>{ try{ return (typeof RM!=="undefined"&&RM)||matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; } };
+const ready=()=>typeof map!=="undefined"&&map&&map.getStyle&&typeof S!=="undefined"&&S.geo&&S.rows&&S.rows.length;
+const newTok=()=>({dead:false,skip:false});
+const sleep=(ms,tok)=>new Promise((ok,no)=>setTimeout(()=>(tok&&tok.dead)?no("stopped"):ok(),ms));
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2, easeOut=t=>1-Math.pow(1-t,3);
+const fi=n=>typeof fInt==="function"?fInt(n):Math.round(n).toLocaleString("en-US");
+const fs_=n=>typeof fSq==="function"?fSq(n):fi(n);
+const parkRec=id=>PORTFOLIO.find(p=>p.park===id);
+const parkName=id=>{ const r=parkRec(id); return r?r.name:id; };
+const surveyArea=id=>{ try{ const D=window.SID_PIPE&&window.SID_PIPE.data; const x=D&&D.parks&&D.parks.find(p=>p.park===id); return x?x.area:null; }catch(e){ return null; } };
+const say_num=n=>n>=1e9?(n/1e9).toFixed(1)+" billion":n>=1e6?(n/1e6).toFixed(2)+" million":n>=1e3?Math.round(n/1e3)+" thousand":String(Math.round(n));
+
+/* ---------- one experience at a time ---------- */
+const WOW={cur:null,stop:null,voice:true,saved:null};
+try{ WOW.voice=localStorage.getItem("sid.exVoice")!=="0"; }catch(e){}
+function wowStop(){ const f=WOW.stop; WOW.stop=null; WOW.cur=null; try{ f&&f(); }catch(e){} try{ speechSynthesis.cancel(); }catch(e){}
+  document.body.classList.remove("wow-on"); const b=q("#exBar"); if(b) b.remove(); const c=q("#exCap"); if(c) c.remove(); }
+function wowStart(name,stop){ wowStop(); WOW.cur=name; WOW.stop=stop; document.body.classList.add("wow-on"); closeMenu(); }
+function camNow(){ return {center:map.getCenter().toArray(),zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()}; }
+function bar(html,onClose){ let b=q("#exBar"); if(!b){ b=document.createElement("div"); b.id="exBar"; document.body.appendChild(b); }
+  b.innerHTML=html; const x=b.querySelector(".ex-x"); if(x) x.onclick=()=>{ (onClose||wowStop)(); }; return b; }
+function cap(html){ let c=q("#exCap"); if(!c){ c=document.createElement("div"); c.id="exCap"; document.body.appendChild(c); } c.innerHTML=html; c.classList.remove("in"); void c.offsetWidth; c.classList.add("in"); }
+document.addEventListener("keydown",e=>{ if(e.key!=="Escape") return; if(q("#exMenu")){ closeMenu(); return; } if(WOW.cur) wowStop(); });
+
+/* ---------- three.js, only when needed ---------- */
+let THREE_P=null;
+function loadThree(){ if(window.THREE) return Promise.resolve(); if(THREE_P) return THREE_P;
+  THREE_P=new Promise((ok,no)=>{ const s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"; s.onload=ok; s.onerror=()=>{ THREE_P=null; no(new Error("three.js did not load")); }; document.head.appendChild(s); });
+  return THREE_P; }
+
+/* ============================================================
+   1. ORBIT FROM SPACE — night-side Earth, city lights, the parks lighting up over Egypt, then down into the map
+   ============================================================ */
+const TEX="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/";
+function loadTex(url){ return new Promise((ok,no)=>{ new THREE.TextureLoader().setCrossOrigin("anonymous").load(url,t=>{ t.anisotropy=4; ok(t); },undefined,()=>no(new Error("texture "+url))); }); }
+const ll2v=(lat,lng,R)=>{ const φ=lat*Math.PI/180, λ=lng*Math.PI/180; return new THREE.Vector3(R*Math.cos(φ)*Math.cos(λ),R*Math.sin(φ),-R*Math.cos(φ)*Math.sin(λ)); };
+async function runOrbit(opts){
+  opts=opts||{}; const tok=newTok(); let ov=null, renderer=null, raf=0, disposed=false, scene=null, landed=false;
+  const finishCam=opts.after||null, home=camNow();
+  function cleanup(){ if(disposed) return; disposed=true; cancelAnimationFrame(raf); try{ if(scene) scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ (o.material.map)&&o.material.map.dispose(); o.material.dispose(); } }); renderer&&renderer.dispose(); }catch(e){} if(ov) ov.remove(); }
+  const flyBack=(ms)=>{ const c=finishCam||home; try{ map.flyTo({center:c.center,zoom:c.zoom,pitch:c.pitch||0,bearing:c.bearing||0,duration:ms,essential:true,curve:1.5}); }catch(e){} };
+  if(!opts.keepMode) wowStart("orbit",()=>{ tok.dead=true; cleanup(); if(!landed) flyBack(900); });
+  if(reduced()){ flyBack(0); if(!opts.keepMode) wowStop(); return true; }
+  try{ await loadThree(); }catch(e){ toast("The 3D library could not load — check the connection",true); if(!opts.keepMode) wowStop(); return false; }
+  let dayT,nightT; try{ [dayT,nightT]=await Promise.all([loadTex(TEX+"earth_atmos_2048.jpg"),loadTex(TEX+"earth_lights_2048.png")]); }
+  catch(e){ toast("The Earth images could not load — check the connection",true); if(!opts.keepMode) wowStop(); return false; }
+  if(tok.dead&&!opts.keepMode) return false;
+  const lat0=29.9, lng0=31.6;
+  map.jumpTo({center:[lng0,lat0],zoom:3.4,pitch:0,bearing:0});
+  ov=document.createElement("div"); ov.id="spaceOv"; ov.innerHTML=`<canvas></canvas><div class="sp-t">ELSEWEDY INDUSTRIAL DEVELOPMENT</div><div class="sp-b" id="spB"></div><button class="sp-skip" type="button">Skip ›</button>`;
+  document.body.appendChild(ov); const cv=ov.querySelector("canvas");
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:false}); renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+  const size=()=>{ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); };
+  scene=new THREE.Scene(); const cam=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.05,200); size(); const onR=()=>size(); window.addEventListener("resize",onR);
+  const sunDir=new THREE.Vector3(.95,.28,.45).normalize();
+  const earth=new THREE.Group(); scene.add(earth);
+  const mat=new THREE.ShaderMaterial({uniforms:{dayMap:{value:dayT},nightMap:{value:nightT},sunDir:{value:sunDir}},
+    vertexShader:"varying vec2 vUv; varying vec3 vW; varying vec3 vV; void main(){ vUv=uv; vW=normalize(mat3(modelMatrix)*normal); vV=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }",
+    fragmentShader:"uniform sampler2D dayMap; uniform sampler2D nightMap; uniform vec3 sunDir; varying vec2 vUv; varying vec3 vW; varying vec3 vV; void main(){ float d=dot(normalize(vW),normalize(sunDir)); float k=smoothstep(-.14,.2,d); vec3 day=texture2D(dayMap,vUv).rgb; vec3 night=texture2D(nightMap,vUv).rgb; vec3 dark=day*vec3(.05,.07,.12); vec3 nl=dark+night*vec3(1.9,1.45,.85); vec3 dl=day*(.5+.65*max(d,0.)); vec3 col=mix(nl,dl,k); float rim=pow(1.-max(vV.z,0.),3.); col+=vec3(.18,.42,1.)*rim*.6; gl_FragColor=vec4(col,1.); }"});
+  earth.add(new THREE.Mesh(new THREE.SphereGeometry(1,96,96),mat));
+  const atm=new THREE.Mesh(new THREE.SphereGeometry(1.09,64,64),new THREE.ShaderMaterial({transparent:true,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false,
+    vertexShader:"varying vec3 vN; void main(){ vN=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }",
+    fragmentShader:"varying vec3 vN; void main(){ float i=pow(.68-dot(vN,vec3(0.,0.,1.)),4.); gl_FragColor=vec4(.32,.62,1.,1.)*i*1.5; }"})); scene.add(atm);
+  const stars=new THREE.BufferGeometry(), N=1800, arr=new Float32Array(N*3);
+  for(let i=0;i<N;i++){ const r=40+Math.random()*60, u=Math.random()*2-1, a=Math.random()*Math.PI*2, s=Math.sqrt(1-u*u); arr[i*3]=r*s*Math.cos(a); arr[i*3+1]=r*u; arr[i*3+2]=r*s*Math.sin(a); }
+  stars.setAttribute("position",new THREE.BufferAttribute(arr,3)); scene.add(new THREE.Points(stars,new THREE.PointsMaterial({color:0xffffff,size:.16,sizeAttenuation:true,transparent:true,opacity:.85})));
+  // the parks: red for operating, white for the new lands (only places that exist in the data)
+  const pins=[], rings=[]; const addPin=(lat,lng,hex,sz)=>{ const p=ll2v(lat,lng,1.004); const m=new THREE.Mesh(new THREE.SphereGeometry(sz,12,12),new THREE.MeshBasicMaterial({color:hex})); m.position.copy(p); earth.add(m); pins.push(m);
+    const rg=new THREE.Mesh(new THREE.RingGeometry(.9*sz,1.25*sz,28),new THREE.MeshBasicMaterial({color:hex,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false})); rg.position.copy(p); rg.lookAt(p.clone().multiplyScalar(2)); rg.userData.ph=Math.random(); rg.userData.sz=sz; earth.add(rg); rings.push(rg); };
+  let nOps=0,nPipe=0; PORTFOLIO.filter(p=>p.stage==="operating"&&p.park&&p.lat!=null).forEach(p=>{ addPin(p.lat,p.lng,0xff3b4d,.0062); nOps++; });
+  try{ const D=window.SID_PIPE&&window.SID_PIPE.data; D&&D.projects.forEach(p=>{ if(p.at){ addPin(p.at[1],p.at[0],0xffffff,.0048); nPipe++; } }); }catch(e){}
+  const a0=-(Math.PI/2+lng0*Math.PI/180), b0=lat0*Math.PI/180;
+  const T=8800, t0=performance.now(); let fadeStarted=false;
+  ov.querySelector(".sp-skip").onclick=()=>{ tok.skip=true; };
+  const keyskip=e=>{ if(e.key==="Escape"||e.key===" "){ tok.skip=true; } }; document.addEventListener("keydown",keyskip);
+  const sb=ov.querySelector("#spB"); sb.textContent=`${nOps} industrial parks${nPipe?` · ${nPipe} new lands`:""} · Egypt`;
+  const end=()=>{ document.removeEventListener("keydown",keyskip); window.removeEventListener("resize",onR); setTimeout(()=>{ cleanup(); if(!opts.keepMode) wowStop(); },1400); };
+  return await new Promise(res=>{
+    const frame=now=>{
+      if(tok.dead){ document.removeEventListener("keydown",keyskip); window.removeEventListener("resize",onR); cleanup(); return res(false); }
+      let t=Math.min(1,(now-t0)/T); if(tok.skip&&t<.82){ tok.skip=false; /* jump to the landing */ opts._t0shift=(.82*T)-(now-t0); }
+      if(opts._t0shift){ t=Math.min(1,(now-t0+opts._t0shift)/T); }
+      const e=easeOut(Math.min(1,t/.8));
+      earth.rotation.y=a0+(1-e)*2.7; earth.rotation.x=b0*e+(1-e)*.25;
+      const dist=7.2-(7.2-1.55)*e; cam.position.set(0,0,dist);
+      rings.forEach(r=>{ const k=((now/1400)+r.userData.ph)%1; r.scale.setScalar(1+k*1.9); r.material.opacity=(1-k)*.8; });
+      pins.forEach((p,i)=>p.scale.setScalar(1+.25*Math.sin(now/260+i)));
+      renderer.render(scene,cam);
+      if(t>.14) ov.classList.add("t1"); if(t>.62) ov.classList.add("t2");
+      if(t>=.86&&!fadeStarted){ fadeStarted=true; landed=true; ov.classList.add("out"); flyBack(2800); end(); }
+      if(t<1) raf=requestAnimationFrame(frame); else res(true);
+    };
+    raf=requestAnimationFrame(frame);
+    if(!opts.keepMode) tok.finish=res;
+    // the caller waits for the fade to be under way, not for the cleanup
+  }).then(v=>{ return sleep(1000).then(()=>v); });
+}
+
+/* ============================================================
+   2. FILM OF A PROJECT — space → project → slow orbit with the real numbers → road to the nearest port
+   ============================================================ */
+function speakText(text,tok){
+  if(!WOW.voice||!("speechSynthesis" in window)) return Promise.resolve();
+  return new Promise(res=>{ let done=false; const fin=()=>{ if(!done){ done=true; res(); } };
+    try{ if(typeof laraSay==="function"){ laraSay(text); const t0=Date.now(); const iv=setInterval(()=>{ const sp=(typeof LARA!=="undefined"&&LARA.speaking); if(tok.dead||(Date.now()-t0>700&&!sp)||Date.now()-t0>22000){ clearInterval(iv); fin(); } },200); }
+      else{ const u=new SpeechSynthesisUtterance(text); u.onend=fin; u.onerror=fin; speechSynthesis.speak(u); setTimeout(fin,22000); } }catch(e){ fin(); } });
+}
+function parkBounds(id){ const b=[[180,90],[-180,-90]]; S.geo.features.forEach(f=>{ if(f.properties.park!==id) return; const g=f.geometry, ring=g.type==="Polygon"?g.coordinates[0]:g.coordinates.flatMap(p=>p[0]); ring.forEach(c=>{ if(c[0]<b[0][0])b[0][0]=c[0]; if(c[1]<b[0][1])b[0][1]=c[1]; if(c[0]>b[1][0])b[1][0]=c[0]; if(c[1]>b[1][1])b[1][1]=c[1]; }); }); return b[0][0]>b[1][0]?null:b; }
+async function runFilm(park,opts){
+  opts=opts||{}; if(!ready()){ toast("The map is still loading",true); return; }
+  const rec=parkRec(park), bb=parkBounds(park); if(!rec||!bb){ toast("Pick a project with plots on the map",true); return; }
+  if(typeof PR!=="undefined"&&PR.on){ toast("Close the presentation first",true); return; }
+  const tok=newTok(); const saved=camNow(); let routeOn=false;
+  wowStart("film",()=>{ tok.dead=true; try{ clearRoutes&&clearRoutes("film"); }catch(e){} map.stop&&map.stop(); const sp=q("#spaceOv"); if(sp) sp.remove(); try{ map.flyTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing,duration:1600,essential:true}); }catch(e){} });
+  bar(`<div class="ex-t"><b>Film</b><span>${esc(rec.name)}</span></div><button class="ex-b ${WOW.voice?"on":""}" id="exVoice" type="button" title="Narration on or off">Voice</button><button class="ex-b" id="exSkip" type="button">Skip ›</button><button class="ex-x" type="button" aria-label="Close">×</button>`);
+  const vb=q("#exVoice"); if(vb) vb.onclick=()=>{ WOW.voice=!WOW.voice; try{ localStorage.setItem("sid.exVoice",WOW.voice?"1":"0"); }catch(e){} vb.classList.toggle("on",WOW.voice); if(!WOW.voice) try{ speechSynthesis.cancel(); }catch(e){} };
+  let skipPhase=false; const sk=q("#exSkip"); if(sk) sk.onclick=()=>{ skipPhase=true; try{ speechSynthesis.cancel(); }catch(e){} const so=q("#spaceOv .sp-skip"); if(so) so.click(); };
+  const t=totals(S.rows.filter(r=>r.park===park)), sold=t.soldArea, sell=t.sellable, ats=t.byStatus.ats.area;
+  const pct=sell?Math.round(sold/sell*100):0, where=(S.reg.parks[park]&&S.reg.parks[park].where)||"", land=surveyArea(park)||rec.area;
+  const pin=pinAt(park)||[ (bb[0][0]+bb[1][0])/2,(bb[0][1]+bb[1][1])/2 ];
+  const cam0=map.cameraForBounds(bb,{padding:90,pitch:58,bearing:-20})||{center:pin,zoom:14};
+  const say=async(html,text,min)=>{ cap(html); await Promise.all([sleep(min||3500,tok),text?speakText(text,tok):Promise.resolve()]); };
+  try{
+    // (a) from space
+    if(opts.space!==false&&!reduced()){ cap(`<div class="c-k">Egypt</div><div class="c-v">From space</div>`); await runOrbit({keepMode:true,after:{center:[31.2,29.8],zoom:5.6,pitch:0,bearing:0}}); }
+    else { map.flyTo({center:[31.2,29.8],zoom:5.6,pitch:0,bearing:0,duration:reduced()?0:2200,essential:true}); await sleep(reduced()?200:2400,tok); }
+    if(tok.dead) return;
+    // (b) down to the project
+    cap(`<div class="c-k">${esc(where||"Egypt")}</div><div class="c-v">${esc(rec.name)}</div>`);
+    map.flyTo({center:cam0.center,zoom:Math.min(cam0.zoom,16.2),pitch:58,bearing:-20,duration:reduced()?0:5600,essential:true,curve:1.7});
+    const intro=`${rec.name}${where?", "+where:""}. ${say_num(land)} square metres of land${sell?`, ${say_num(sell)} of it sellable`:""}.`;
+    await Promise.all([sleep(reduced()?400:5600,tok),speakText(intro,tok)]); if(tok.dead) return;
+    // (c) slow orbit while the numbers come in
+    const ORB=reduced()?1000:15000; let b=-20, orbOn=true; const t1=performance.now();
+    const orb=new Promise(res=>{ const f=now=>{ if(tok.dead) return res(); const k=Math.min(1,(now-t1)/ORB); map.jumpTo({bearing:b+k*320}); if(k<1&&!skipPhase&&orbOn) requestAnimationFrame(f); else res(); }; requestAnimationFrame(f); });
+    await say(`<div class="c-k">Sold + reserved</div><div class="c-v">${pct}%</div><div class="c-s">${fs_(sold)} sqm · ${fi(t.soldN)} deals</div>`,
+      `${pct} percent is already sold or reserved: ${say_num(sold)} square metres across ${t.soldN} deals.`,4200);
+    ["fill-ats"].forEach(l=>{ try{ if(map.getLayer(l)){ let on=true; const iv=setInterval(()=>{ if(tok.dead){ clearInterval(iv); return; } try{ map.setPaintProperty(l,"fill-opacity",on?.98:.55); }catch(e){} on=!on; },480); setTimeout(()=>{ clearInterval(iv); try{ map.setPaintProperty(l,"fill-opacity",["interpolate",["linear"],["zoom"],8,.6,12,.78,16,.7]); }catch(e){} },4400); } }catch(e){} });
+    await say(`<div class="c-k">Still available</div><div class="c-v">${fs_(ats)} sqm</div><div class="c-s">${fi(t.byStatus.ats.p)} plots ready to sell</div>`,
+      `${say_num(ats)} square metres, ${t.byStatus.ats.p} plots, are still available.`,4200);
+    if(t.valueEGP) await say(`<div class="c-k">Sales value</div><div class="c-v">${fEGP(t.valueEGP)}</div><div class="c-s">${fi(t.soldN)} sold and reserved deals</div>`,
+      `Sales to date are worth ${say_num(t.valueEGP)} Egyptian pounds.`,3800);
+    await Promise.race([orb,sleep(4000,tok)]); orbOn=false; if(tok.dead) return;
+    // (d) the road to the nearest seaport
+    const port=nearestPOIs(pin,["port"])[0]; let rt=null; if(port){ try{ rt=await roadRoute(pin,port.at); }catch(e){} }
+    if(port){ try{ drawRoutes({at:pin,n:rec.name,t:"film"},[port],{owner:"film",label:x=>"to "+x.n}); routeOn=true; }catch(e){}
+      const bx=[[Math.min(pin[0],port.at[0]),Math.min(pin[1],port.at[1])],[Math.max(pin[0],port.at[0]),Math.max(pin[1],port.at[1])]];
+      const c2=map.cameraForBounds(bx,{padding:120}); map.flyTo({center:c2.center,zoom:Math.min(c2.zoom,11.5),pitch:35,bearing:0,duration:reduced()?0:4200,essential:true,curve:1.6});
+      const km=rt?rt.km:port.km, mins=rt?rt.min:null;
+      await say(`<div class="c-k">Nearest seaport</div><div class="c-v">${esc(port.n)}</div><div class="c-s">${fKm(km)} km${mins?" · about "+(typeof fDur==="function"?fDur(mins):Math.round(mins)+" min")+" by road":" in a straight line"}</div>`,
+        `The nearest seaport is ${port.n}, ${Math.round(km)} kilometres${mins?" by road":" in a straight line"}.`,5200); }
+    if(tok.dead) return;
+    // (e) end card
+    cap(`<div class="c-k">${esc(rec.name)}</div><div class="c-v">Thank you</div><div class="c-btns"><button class="ex-b" id="fEnd1" type="button">Replay</button><button class="ex-b on" id="fEnd2" type="button">Open this project</button></div>`);
+    bar(`<div class="ex-t"><b>Film</b><span>finished</span></div><button class="ex-x" type="button" aria-label="Close">×</button>`);
+    const r1=q("#fEnd1"), r2=q("#fEnd2"); if(r1) r1.onclick=()=>{ try{ clearRoutes("film"); }catch(e){} runFilm(park,{space:false}); };
+    if(r2) r2.onclick=()=>{ WOW.stop=null; wowStop(); try{ clearRoutes("film"); }catch(e){} const s=q("#parkSel"); if(s){ s.value=park; s.dispatchEvent(new Event("change",{bubbles:true})); } };
+  }catch(e){ if(e!=="stopped") console.warn("film",e); }
+}
+
+/* ============================================================
+   MENU
+   ============================================================ */
+function closeMenu(){ const m=q("#exMenu"); if(m) m.remove(); document.removeEventListener("pointerdown",menuOut,true); }
+function menuOut(e){ if(!e.target.closest("#exMenu,#exBtn")) closeMenu(); }
+const ICON={orbit:'<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.2"/><path d="M2.8 8h10.4M8 2.8c2 1.6 2 8.8 0 10.4M8 2.8c-2 1.6-2 8.8 0 10.4"/></svg>',
+  film:'<svg viewBox="0 0 16 16"><rect x="2" y="3.5" width="12" height="9" rx="1.6"/><path d="M6.8 6.2v3.6L10 8z"/></svg>',
+  time:'<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.4"/><path d="M8 4.8V8l2.4 1.6"/></svg>',
+  sun:'<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.8"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M3.5 12.5l1.1-1.1M11.4 4.6l1.1-1.1"/></svg>',
+  truck:'<svg viewBox="0 0 16 16"><path d="M1.8 4.4h7.2v6.2H1.8zM9 6.4h2.8l2 2.1v2.1H9z"/><circle cx="4.6" cy="11.4" r="1.2"/><circle cx="11.4" cy="11.4" r="1.2"/></svg>',
+  share:'<svg viewBox="0 0 16 16"><rect x="2.2" y="2.2" width="4.6" height="4.6" rx=".8"/><rect x="9.2" y="2.2" width="4.6" height="4.6" rx=".8"/><rect x="2.2" y="9.2" width="4.6" height="4.6" rx=".8"/><path d="M9.2 9.2h1.8v1.8H9.2zM12 12h1.8v1.8H12z"/></svg>',
+  ar:'<svg viewBox="0 0 16 16"><path d="M8 1.8 13.6 5v6L8 14.2 2.4 11V5z"/><path d="M2.4 5 8 8.2 13.6 5M8 8.2v6"/></svg>'};
+const ITEMS=[["orbit","Orbit from space","Earth at night, the parks light up, then down into the map"],
+  ["film","Film of a project","A guided flight with the real numbers and a voice"],
+  ["time","Time machine","Watch the plots sell, month by month"],
+  ["sun","Sun & daylight","Sunrise, sunset, shadows and the light on the plots"],
+  ["truck","Trucks to the port","Animated trucks on the real road"],
+  ["share","Share a plot with a customer","A link and QR with only that plot"],
+  ["ar","AR table view","The park as a 3D model on your table (phone)"]];
+const EXP={};   // filled by the later sections: EXP.time(park), EXP.sun(park) ...
+function parkOptions(sel){ const ops=PORTFOLIO.filter(p=>p.stage==="operating"&&p.park&&S.rows.some(r=>r.park===p.park)).sort((a,b)=>a.name.localeCompare(b.name));
+  return `<option value="all"${sel==="all"?" selected":""}>All parks</option>`+ops.map(p=>`<option value="${p.park}"${sel===p.park?" selected":""}>${esc(p.name)}</option>`).join(""); }
+function toggleMenu(btn){
+  if(q("#exMenu")){ closeMenu(); return; }
+  if(!ready()){ toast("The map is still loading",true); return; }
+  const m=document.createElement("div"); m.id="exMenu"; m.setAttribute("role","menu");
+  const cur=S.park&&S.park!=="all"?S.park:"all";
+  m.innerHTML=`<div class="ex-h">Explore</div><label class="ex-p"><span>Project</span><select id="exPark">${parkOptions(cur)}</select></label>`+
+    ITEMS.map(([k,t,d])=>`<button type="button" class="ex-i" data-k="${k}" role="menuitem"><i>${ICON[k]}</i><span><b>${t}</b><em>${d}</em></span></button>`).join("");
+  document.body.appendChild(m);
+  const r=btn.getBoundingClientRect(); m.style.top=Math.round(r.bottom+8)+"px";
+  if(innerWidth<=820){ m.style.left="10px"; m.style.right="10px"; m.style.width="auto"; m.style.maxHeight=Math.max(240,innerHeight-r.bottom-96)+"px"; m.style.overflow="auto"; }
+  else m.style.right=Math.max(10,Math.round(innerWidth-r.right))+"px";
+  const need=(k)=>{ const v=q("#exPark").value; if(v==="all"){ toast("Pick a project in the list first",true); return null; } return v; };
+  m.querySelectorAll(".ex-i").forEach(b=>b.onclick=()=>{ const k=b.dataset.k, park=q("#exPark").value;
+    if(k==="orbit"){ closeMenu(); runOrbit(); return; }
+    if(k==="film"){ const p=need(); if(p){ closeMenu(); runFilm(p); } return; }
+    if(EXP[k]){ closeMenu(); EXP[k](park); return; }
+    toast("Not available yet",true); });
+  setTimeout(()=>document.addEventListener("pointerdown",menuOut,true),0);
+}
+function addBtn(){ if(pub()||!ready()) return; const b0=q(".mapbtns"); if(!b0||q("#exBtn")) return;
+  const b=document.createElement("button"); b.type="button"; b.id="exBtn"; b.setAttribute("aria-label","Explore"); b.title="Explore — orbit, film, time machine, sun, trucks, customer link, AR";
+  b.innerHTML=`<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5l1.4 3.9 3.9 1.4-3.9 1.4L8 12.1 6.6 8.2 2.7 6.8l3.9-1.4z"/><path d="M12.6 11l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5z"/></svg><span>Explore</span>`;
+  b.onclick=e=>{ e.stopPropagation(); toggleMenu(b); };
+  const bd=q("#ppBdBtn"); if(bd) bd.after(b); else b0.appendChild(b); }
+setInterval(()=>{ try{ addBtn(); }catch(e){} },1500);
+
+window.SID_WOW={orbit:runOrbit,film:runFilm,stop:wowStop,EXP,helpers:{q,esc,sleep,newTok,wowStart,wowStop,bar,cap,camNow,ready,reduced,fi,fs_,parkRec,parkName,parkBounds,loadThree,say_num,speakText,ease,easeOut,ll2v,toast:(m,b)=>toast(m,b),closeMenu}};
+
+/* ---------- look ---------- */
+{ const st=document.createElement("style"); st.textContent=`
+#exBtn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:none}
+#exBtn svg{flex:none}
+body.l2 #exBtn span{display:none}
+#exMenu{position:fixed;z-index:9300;width:330px;max-width:calc(100vw - 20px);padding:8px;border-radius:16px;background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);border:1px solid rgba(16,18,24,.1);box-shadow:0 22px 50px -14px rgba(16,18,24,.4);font-family:Inter,system-ui,sans-serif;color:#16181D}
+#exMenu .ex-h{padding:6px 8px 4px;font:800 10px/1 Inter,system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#6E737B}
+#exMenu .ex-p{display:flex;align-items:center;gap:8px;padding:4px 8px 8px}
+#exMenu .ex-p span{font:600 11px Inter,system-ui,sans-serif;color:#6E737B}
+#exMenu .ex-p select{flex:1;min-width:0;height:30px;border-radius:9px;border:1px solid rgba(16,18,24,.14);background:#fff;padding:0 8px;font:600 12.5px Inter,system-ui,sans-serif;color:#16181D}
+#exMenu .ex-i{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:8px;border:0;border-radius:11px;background:transparent;cursor:pointer;color:inherit}
+#exMenu .ex-i:hover{background:rgba(16,18,24,.06)}
+#exMenu .ex-i i{flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:#16181D;color:#fff}
+#exMenu .ex-i svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+#exMenu .ex-i b{display:block;font:700 13px/1.2 Inter,system-ui,sans-serif}
+#exMenu .ex-i em{display:block;font:500 11px/1.3 Inter,system-ui,sans-serif;font-style:normal;color:#6E737B;margin-top:1px}
+#exBar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9200;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 16px;border-radius:999px;background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(20px) saturate(170%);backdrop-filter:blur(20px) saturate(170%);border:1px solid rgba(16,18,24,.1);box-shadow:0 16px 40px -14px rgba(16,18,24,.45);font-family:Inter,system-ui,sans-serif;color:#16181D;max-width:calc(100vw - 20px)}
+#exBar .ex-t{display:flex;flex-direction:column;line-height:1.15;margin-right:6px}
+#exBar .ex-t b{font:800 10px Inter,system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#6E737B}
+#exBar .ex-t span{font:700 13px Inter,system-ui,sans-serif;white-space:nowrap}
+.ex-b{height:30px;padding:0 13px;border-radius:999px;border:1px solid rgba(16,18,24,.14);background:#fff;font:700 12px Inter,system-ui,sans-serif;color:#16181D;cursor:pointer;white-space:nowrap}
+.ex-b.on{background:#16181D;color:#fff;border-color:#16181D}
+.ex-x{width:30px;height:30px;border-radius:50%;border:0;background:rgba(16,18,24,.07);font:400 20px/1 Inter,system-ui,sans-serif;color:#16181D;cursor:pointer;display:grid;place-items:center}
+.ex-x:hover{background:rgba(179,38,61,.14);color:#B3263D}
+#exCap{position:fixed;left:28px;bottom:92px;z-index:9150;max-width:min(420px,calc(100vw - 40px));padding:16px 20px;border-radius:18px;background:rgba(14,16,20,.62);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);color:#fff;font-family:Inter,system-ui,sans-serif;opacity:0;transform:translateY(8px);transition:opacity .6s ease,transform .6s ease;pointer-events:auto}
+#exCap.in{opacity:1;transform:none}
+#exCap .c-k{font:700 10.5px Inter,system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+#exCap .c-v{font:800 30px/1.1 Inter,system-ui,sans-serif;letter-spacing:-.02em;margin-top:4px}
+#exCap .c-s{font:500 13px/1.35 Inter,system-ui,sans-serif;color:rgba(255,255,255,.82);margin-top:5px}
+#exCap .c-btns{display:flex;gap:8px;margin-top:12px}
+#spaceOv{position:fixed;inset:0;z-index:9100;background:#02030a;opacity:1;transition:opacity 1.3s ease}
+#spaceOv.out{opacity:0;pointer-events:none}
+#spaceOv canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#spaceOv .sp-t{position:absolute;top:7vh;left:0;right:0;text-align:center;font:700 clamp(11px,1.6vw,15px) Inter,system-ui,sans-serif;letter-spacing:.42em;color:rgba(255,255,255,.88);opacity:0;transition:opacity 1.6s ease;text-shadow:0 2px 18px rgba(0,0,0,.8)}
+#spaceOv .sp-b{position:absolute;bottom:9vh;left:0;right:0;text-align:center;font:600 clamp(13px,1.8vw,18px) Inter,system-ui,sans-serif;letter-spacing:.06em;color:#fff;opacity:0;transition:opacity 1.4s ease;text-shadow:0 2px 18px rgba(0,0,0,.9)}
+#spaceOv.t1 .sp-t{opacity:1} #spaceOv.t2 .sp-b{opacity:1}
+#spaceOv .sp-skip{position:absolute;right:22px;bottom:22px;height:32px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);color:#fff;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+@media (max-width:820px){ #exCap{left:12px;bottom:150px;padding:12px 15px} #exCap .c-v{font-size:24px} #exBar{bottom:76px} }
+`; document.head.appendChild(st); }
+})();
+</script>
+
+<script>
+/* V80 — time machine, sun, trucks */
+(function(){
+"use strict";
+const W=window.SID_WOW; if(!W) return; const H=W.helpers, EXP=W.EXP, q=H.q, esc=H.esc;
+const M=(i)=>{ const names=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return names[((i%12)+12)%12]+" "+Math.floor(i/12); };
+const midx=d=>{ const y=+String(d).slice(0,4), m=+String(d).slice(5,7); return (y&&m)?y*12+m-1:null; };
+const hasClass=c=>document.body.classList.contains(c);
+
+/* ============================================================
+   3. TIME MACHINE — every committed (sold or reserved) plot turns red on its reservation date, from the MDS
+   ============================================================ */
+EXP.time=function(park){
+  if(!H.ready()) return; if(hasClass("pp-only")){ H.toast("Switch to All or Active first",true); return; }
+  const scope=park==="all"?null:park, tok=H.newTok(); let raf=0, playing=false, T=0, last=0, rate=10;
+  const all=S.rows.filter(r=>!r.dup&&isSale(r)&&r.reserveDate).map(r=>({r,i:midx(r.reserveDate)})).filter(x=>x.i!=null);
+  const undated=S.rows.filter(r=>!r.dup&&isSale(r)&&(!r.reserveDate||midx(r.reserveDate)==null)).length;
+  const rows=all.filter(x=>!scope||x.r.park===scope).sort((a,b)=>a.i-b.i);
+  if(!rows.length){ H.toast("No sold or reserved plots with a date for this selection",true); return; }
+  const first=rows[0].i, lastI=rows[rows.length-1].i; T=lastI;
+  const sellable=totals(S.rows.filter(r=>!scope||r.park===scope)).sellable;
+  // map side: every committed plot of every park carries its month
+  const km=new Map(); all.forEach(({r,i})=>(r._plots||[]).forEach(k=>{ if(S.plots.has(k)&&(!km.has(k)||i<km.get(k))) km.set(k,i); }));
+  const feats=S.geo.features.filter(f=>km.has(f.properties.k)).map(f=>({type:"Feature",properties:{k:f.properties.k,tm:km.get(f.properties.k)},geometry:f.geometry}));
+  const op=["interpolate",["linear"],["zoom"],8,.6,12,.78,16,.7];
+  function build(){ try{
+    if(!map.getSource("tm-src")) map.addSource("tm-src",{type:"geojson",data:{type:"FeatureCollection",features:feats}});
+    if(!map.getLayer("tm-later")) map.addLayer({id:"tm-later",type:"fill",source:"tm-src",filter:[">",["get","tm"],T],paint:{"fill-color":STATUS.ats.color,"fill-opacity":op}},"fill");
+    if(!map.getLayer("tm-sold")) map.addLayer({id:"tm-sold",type:"fill",source:"tm-src",filter:["<=",["get","tm"],T],paint:{"fill-color":STATUS.sold.color,"fill-opacity":op}},"fill");
+    ["fill-sold","fill-reserved"].forEach(id=>{ if(map.getLayer(id)&&map.getLayoutProperty(id,"visibility")!=="none") map.setLayoutProperty(id,"visibility","none"); });
+    if(!scope){ if(!map.getSource("tm-pins")) map.addSource("tm-pins",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+      if(!map.getLayer("tm-pin")) map.addLayer({id:"tm-pin",type:"circle",source:"tm-pins",paint:{"circle-radius":["*",["sqrt",["get","a"]],.024],"circle-color":STATUS.sold.color,"circle-opacity":.62,"circle-stroke-color":"#fff","circle-stroke-width":2}});
+      if(!map.getLayer("tm-pin-n")) map.addLayer({id:"tm-pin-n",type:"symbol",source:"tm-pins",layout:{"text-field":["get","n"],"text-font":["Open Sans Bold"],"text-size":11,"text-allow-overlap":true},paint:{"text-color":"#fff","text-halo-color":"rgba(0,0,0,.55)","text-halo-width":1.2}}); }
+  }catch(e){} }
+  function unbuild(){ try{ ["tm-pin-n","tm-pin","tm-sold","tm-later"].forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); }); ["tm-src","tm-pins"].forEach(id=>{ if(map.getSource(id)) map.removeSource(id); });
+    ["fill-sold","fill-reserved"].forEach(id=>{ if(map.getLayer(id)) map.setLayoutProperty(id,"visibility","visible"); }); }catch(e){} }
+  const saved=H.camNow();
+  H.wowStart("time",()=>{ tok.dead=true; cancelAnimationFrame(raf); unbuild(); map.off("styledata",build); try{ map.flyTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing,duration:1400,essential:true}); }catch(e){} });
+  build(); map.on("styledata",build);
+  const b=H.bar(`<div class="tm-top"><div class="ex-t"><b>Time machine</b><span>${esc(scope?H.parkName(scope):"All parks")}</span></div><button class="ex-x" type="button" aria-label="Close">×</button></div>
+    <div class="tm-date" id="tmDate"></div>
+    <input type="range" id="tmRange" min="${first-1}" max="${lastI}" value="${T}" step="1" aria-label="Month">
+    <div class="tm-ctl"><button class="ex-b on" id="tmPlay" type="button">Play</button>
+      <select id="tmSpd" class="ex-sel" aria-label="Speed"><option value="5">Slow</option><option value="10" selected>Normal</option><option value="22">Fast</option></select>
+      <button class="ex-b" id="tmEnd" type="button">Today</button></div>
+    <div class="tm-k"><div><em>Sold + reserved</em><b id="tmA"></b></div><div><em>Of sellable area</em><b id="tmP"></b></div><div><em>Deals</em><b id="tmN"></b></div><div><em>Sales value</em><b id="tmV"></b></div></div>
+    <div class="tm-n">Date = reservation date in the MDS. ${undated?undated+" deals have no date and are left out.":""} Plots not yet committed show as available.</div>`);
+  b.classList.add("ex-wide");
+  const el=id=>q("#"+id);
+  function draw(){ const t=Math.round(T);
+    el("tmDate").textContent=t<first?"Before "+M(first):M(t);
+    let a=0,n=0,v=0; for(const x of rows){ if(x.i>t) break; a+=(x.r.soldArea||x.r.area||0); n++; v+=(typeof egp==="function"?(egp(x.r)||0):(x.r.cash||0)); }
+    el("tmA").textContent=H.fs_(a)+" sqm"; el("tmP").textContent=sellable?Math.round(a/sellable*100)+"%":"—"; el("tmN").textContent=H.fi(n); el("tmV").textContent=v?fEGP(v):"—";
+    try{ if(map.getLayer("tm-sold")){ map.setFilter("tm-sold",["<=",["get","tm"],t]); map.setFilter("tm-later",[">",["get","tm"],t]); } }catch(e){}
+    if(!scope){ try{ const acc={}; for(const x of rows){ if(x.i>t) break; acc[x.r.park]=(acc[x.r.park]||0)+(x.r.soldArea||x.r.area||0); }
+      const F=Object.keys(acc).map(pk=>{ const c=pinAt(pk); return c?{type:"Feature",properties:{a:acc[pk],n:H.fs_(acc[pk])},geometry:{type:"Point",coordinates:c}}:null; }).filter(Boolean);
+      const src=map.getSource("tm-pins"); src&&src.setData({type:"FeatureCollection",features:F}); }catch(e){} }
+    el("tmRange").value=t; }
+  draw();
+  el("tmRange").oninput=e=>{ T=+e.target.value; draw(); };
+  el("tmSpd").onchange=e=>{ rate=+e.target.value; };
+  const setPlay=on=>{ playing=on; const p=el("tmPlay"); if(p) p.textContent=on?"Pause":"Play"; if(on){ if(T>=lastI) T=first-1; last=performance.now(); raf=requestAnimationFrame(tick); } else cancelAnimationFrame(raf); };
+  function tick(now){ if(tok.dead||!playing) return; const dt=now-last; last=now; const prev=Math.round(T); T=Math.min(lastI,T+dt/1000*rate); if(Math.round(T)!==prev) draw(); if(T>=lastI){ draw(); setPlay(false); return; } raf=requestAnimationFrame(tick); }
+  el("tmPlay").onclick=()=>setPlay(!playing); el("tmEnd").onclick=()=>{ setPlay(false); T=lastI; draw(); };
+  // frame the project (or the whole estate)
+  try{ const bb=scope?H.parkBounds(scope):null;
+    if(bb){ const c=map.cameraForBounds(bb,{padding:{top:90,bottom:230,left:60,right:60}}); map.flyTo({center:c.center,zoom:Math.min(c.zoom,16),pitch:0,bearing:0,duration:H.reduced()?0:1800,essential:true}); }
+    else{ const bx=[[180,90],[-180,-90]]; feats.forEach(f=>{ const g=f.geometry, ring=g.type==="Polygon"?g.coordinates[0]:g.coordinates[0][0]; const c=ring[0]; if(c[0]<bx[0][0])bx[0][0]=c[0]; if(c[1]<bx[0][1])bx[0][1]=c[1]; if(c[0]>bx[1][0])bx[1][0]=c[0]; if(c[1]>bx[1][1])bx[1][1]=c[1]; });
+      map.fitBounds(bx,{padding:{top:90,bottom:240,left:60,right:60},duration:H.reduced()?0:1800,maxZoom:9}); } }catch(e){}
+  setTimeout(()=>{ if(!tok.dead){ T=first-1; draw(); setPlay(true); } },H.reduced()?100:2000);
+};
+
+/* ============================================================
+   4. SUN & DAYLIGHT — computed on the device (no outside service); the light on the 3D blocks and a daylight tint follow the sun
+   ============================================================ */
+const rad=Math.PI/180, dayMs=864e5, J1970=2440588, J2000=2451545, eps=rad*23.4397;
+const toDays=d=>d.valueOf()/dayMs-.5+J1970-J2000;
+function sunPos(date,lat,lng){ const lw=rad*-lng, phi=rad*lat, d=toDays(date);
+  const Mn=rad*(357.5291+.98560028*d), C=rad*(1.9148*Math.sin(Mn)+.02*Math.sin(2*Mn)+.0003*Math.sin(3*Mn)), L=Mn+C+rad*102.9372+Math.PI;
+  const dec=Math.asin(Math.sin(L)*Math.sin(eps)), ra=Math.atan2(Math.sin(L)*Math.cos(eps),Math.cos(L)), Hh=rad*(280.16+360.9856235*d)-lw-ra;
+  const alt=Math.asin(Math.sin(phi)*Math.sin(dec)+Math.cos(phi)*Math.cos(dec)*Math.cos(Hh)), azS=Math.atan2(Math.sin(Hh),Math.cos(Hh)*Math.sin(phi)-Math.tan(dec)*Math.cos(phi));
+  return {alt:alt/rad, az:((azS/rad)+180+360)%360}; }
+const TZ="Africa/Cairo";
+function tzOff(utcMs){ const f=new Intl.DateTimeFormat("en-US",{timeZone:TZ,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).formatToParts(new Date(utcMs)); const g=k=>+f.find(x=>x.type===k).value; return (Date.UTC(g("year"),g("month")-1,g("day"),g("hour"),g("minute"),g("second"))-utcMs)/60000; }
+function cairoUTC(ds,min){ const [y,m,d]=ds.split("-").map(Number); const g=Date.UTC(y,m-1,d,0,0)+min*60000; return g-tzOff(g-2*3600000)*60000; }
+function cairoToday(){ const f=new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()); return f; }
+function cairoNowMin(){ const f=new Intl.DateTimeFormat("en-GB",{timeZone:TZ,hourCycle:"h23",hour:"2-digit",minute:"2-digit"}).formatToParts(new Date()); return (+f.find(x=>x.type==="hour").value)*60+(+f.find(x=>x.type==="minute").value); }
+const hhmm=m=>{ m=Math.round(m); return String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); };
+const dest=(c,az,d)=>{ const a=az*rad; return [c[0]+Math.sin(a)*d/(111320*Math.cos(c[1]*rad)), c[1]+Math.cos(a)*d/111320]; };
+const compass=az=>["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(az/22.5)%16];
+function dayInfo(ds,lat,lng){ let rise=null,set=null,maxA=-90,maxM=0; for(let m=0;m<1440;m+=2){ const p=sunPos(new Date(cairoUTC(ds,m)),lat,lng); if(p.alt>maxA){ maxA=p.alt; maxM=m; } if(p.alt>-.833){ if(rise==null) rise=m; set=m; } } return {rise,set,maxA,maxM}; }
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function tint(alt){ // multiply colour: white by day, gold at sunrise/sunset, blue-violet at dusk, deep blue at night
+  const stops=[[-16,[34,44,104]],[-8,[88,86,140]],[-2,[190,140,140]],[3,[255,205,160]],[12,[255,244,232]],[22,[255,255,255]]]; if(alt<=stops[0][0]) return stops[0][1]; if(alt>=stops[stops.length-1][0]) return stops[stops.length-1][1];
+  for(let i=0;i<stops.length-1;i++){ const [a0,c0]=stops[i],[a1,c1]=stops[i+1]; if(alt>=a0&&alt<=a1){ const t=(alt-a0)/(a1-a0); return c0.map((v,k)=>Math.round(lerp(v,c1[k],t))); } } return [255,255,255]; }
+EXP.sun=function(park){
+  if(!H.ready()) return; const tok=H.newTok(); let raf=0, playing=false;
+  const site=()=>{ const p=park!=="all"?pinAt(park):null; return p||map.getCenter().toArray(); };
+  let c=site(), ds=cairoToday(), min=cairoNowMin();
+  const wrap=q("#map")&&q("#map").parentElement||document.body; const tn=document.createElement("div"); tn.id="sunTint"; wrap.appendChild(tn);
+  function geo(){ if(!map.getSource("sun-src")) map.addSource("sun-src",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    if(!map.getLayer("sun-halo")) map.addLayer({id:"sun-halo",type:"line",source:"sun-src",filter:["in",["get","t"],["literal",["arc","ray"]]],paint:{"line-color":"#fff","line-width":7,"line-opacity":.85,"line-blur":1}});
+    if(!map.getLayer("sun-arc")) map.addLayer({id:"sun-arc",type:"line",source:"sun-src",filter:["==",["get","t"],"arc"],paint:{"line-color":"#E07800","line-width":3.2,"line-opacity":1}});
+    if(!map.getLayer("sun-ray")) map.addLayer({id:"sun-ray",type:"line",source:"sun-src",filter:["==",["get","t"],"ray"],paint:{"line-color":"#E07800","line-width":2.4,"line-opacity":1,"line-dasharray":[2,1.6]}});
+    if(!map.getLayer("sun-shadow")) map.addLayer({id:"sun-shadow",type:"line",source:"sun-src",filter:["==",["get","t"],"shadow"],layout:{"line-cap":"round"},paint:{"line-color":"#16181D","line-width":5,"line-opacity":.7}});
+    if(!map.getLayer("sun-pt")) map.addLayer({id:"sun-pt",type:"circle",source:"sun-src",filter:["==",["get","t"],"sun"],paint:{"circle-radius":11,"circle-color":"#FFC21A","circle-stroke-color":"#fff","circle-stroke-width":3,"circle-blur":.1}});
+    if(!map.getLayer("sun-pt-g")) map.addLayer({id:"sun-pt-g",type:"circle",source:"sun-src",filter:["==",["get","t"],"sun"],paint:{"circle-radius":24,"circle-color":"#FFC21A","circle-opacity":.28,"circle-blur":1}},"sun-pt"); }
+  function clean(){ try{ ["sun-pt","sun-pt-g","sun-shadow","sun-ray","sun-arc","sun-halo"].forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); }); if(map.getSource("sun-src")) map.removeSource("sun-src"); map.setLight({anchor:"viewport",color:"#ffffff",intensity:.5,position:[1.15,210,30]}); }catch(e){} tn.remove(); }
+  const saved=H.camNow();
+  H.wowStart("sun",()=>{ tok.dead=true; cancelAnimationFrame(raf); map.off("styledata",geo); clean(); try{ map.flyTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing,duration:1400,essential:true}); }catch(e){} });
+  geo(); map.on("styledata",geo);
+  const b=H.bar(`<div class="tm-top"><div class="ex-t"><b>Sun &amp; daylight</b><span>${esc(park!=="all"?H.parkName(park):"Map centre")} · Cairo time</span></div><button class="ex-x" type="button" aria-label="Close">×</button></div>
+    <div class="tm-date" id="suT"></div>
+    <input type="range" id="suR" min="0" max="1439" step="1" aria-label="Time of day">
+    <div class="tm-ctl"><button class="ex-b on" id="suPlay" type="button">Play day</button><input type="date" id="suD" class="ex-sel" aria-label="Date"><button class="ex-b" id="suNow" type="button">Now</button></div>
+    <div class="tm-k su"><div><em>Sunrise</em><b id="suRi"></b></div><div><em>Sunset</em><b id="suSe"></b></div><div><em>Daylight</em><b id="suDl"></b></div><div><em>Sun now</em><b id="suN"></b></div><div><em>Highest</em><b id="suMx"></b></div><div><em>Shadow, 20 m building</em><b id="suSh"></b></div></div>
+    <div class="tm-n">Worked out on this device from the date and place. The light on the 3D blocks follows the sun (tilt the map with 3D view); the tint shows daylight; no cast shadows.</div>`);
+  b.classList.add("ex-wide"); const el=id=>q("#"+id); el("suD").value=ds;
+  function arcPts(){ const pts=[]; for(let m=0;m<=1440;m+=15){ const p=sunPos(new Date(cairoUTC(ds,m)),c[1],c[0]); if(p.alt>-1) pts.push(dest(c,p.az,Math.max(120,1700*(1-clamp(p.alt,0,90)/90)+120))); } return pts; }
+  function draw(){ const info=dayInfo(ds,c[1],c[0]), p=sunPos(new Date(cairoUTC(ds,min)),c[1],c[0]);
+    el("suT").textContent=hhmm(min)+(p.alt>0?"":p.alt>-6?(min<720?" · dawn":" · dusk"):" · night"); el("suR").value=min;
+    el("suRi").textContent=info.rise!=null?hhmm(info.rise):"—"; el("suSe").textContent=info.set!=null?hhmm(info.set):"—"; el("suDl").textContent=info.rise!=null?((info.set-info.rise)/60).toFixed(1)+" h":"—";
+    el("suN").textContent=p.alt>0?Math.round(p.alt)+"° · "+compass(p.az):"below horizon"; el("suMx").textContent=Math.round(info.maxA)+"° at "+hhmm(info.maxM);
+    const sh=p.alt>1?20/Math.tan(p.alt*rad):null; el("suSh").textContent=sh?(sh<400?Math.round(sh)+" m":"very long"):"—";
+    // map light + tint + drawings
+    try{ const alt=p.alt, inten=alt>0?clamp(.28+.7*Math.pow(Math.sin(alt*rad),.55),.28,1):.12, warm=clamp(1-alt/16,0,1), col="rgb("+[255,Math.round(lerp(255,176,warm)),Math.round(lerp(255,112,warm))].join(",")+")";
+      map.setLight({anchor:"map",color:col,intensity:inten,position:[1.5,p.az,clamp(90-alt,0,170)]}); }catch(e){}
+    const t=tint(p.alt); tn.style.background="rgb("+t.join(",")+")";
+    const F=[]; const arc=arcPts(); if(arc.length>1) F.push({type:"Feature",properties:{t:"arc"},geometry:{type:"LineString",coordinates:arc}});
+    if(info.rise!=null){ [info.rise,info.set].forEach(m=>{ const pp=sunPos(new Date(cairoUTC(ds,m)),c[1],c[0]); F.push({type:"Feature",properties:{t:"ray"},geometry:{type:"LineString",coordinates:[c,dest(c,pp.az,1900)]}}); }); }
+    if(p.alt>0){ F.push({type:"Feature",properties:{t:"sun"},geometry:{type:"Point",coordinates:dest(c,p.az,Math.max(120,1700*(1-clamp(p.alt,0,90)/90)+120))}});
+      if(sh&&sh<400) F.push({type:"Feature",properties:{t:"shadow"},geometry:{type:"LineString",coordinates:[c,dest(c,(p.az+180)%360,sh)]}}); }
+    try{ const s=map.getSource("sun-src"); s&&s.setData({type:"FeatureCollection",features:F}); }catch(e){} }
+  draw();
+  el("suR").oninput=e=>{ min=+e.target.value; draw(); }; el("suD").onchange=e=>{ if(e.target.value){ ds=e.target.value; draw(); } };
+  el("suNow").onclick=()=>{ ds=cairoToday(); min=cairoNowMin(); el("suD").value=ds; draw(); };
+  const setPlay=on=>{ playing=on; el("suPlay").textContent=on?"Pause":"Play day"; if(on){ let t0=performance.now(), m0=min>=1430?0:min; const f=now=>{ if(tok.dead||!playing) return; min=Math.min(1439,m0+(now-t0)/1000*110); draw(); if(min>=1439){ setPlay(false); return; } raf=requestAnimationFrame(f); }; raf=requestAnimationFrame(f); } else cancelAnimationFrame(raf); };
+  el("suPlay").onclick=()=>setPlay(!playing);
+  try{ const bb=park!=="all"?H.parkBounds(park):null; if(bb){ const cc=map.cameraForBounds(bb,{padding:{top:90,bottom:260,left:60,right:60}}); map.flyTo({center:cc.center,zoom:Math.min(Math.max(cc.zoom-.6,12.2),15.2),pitch:55,bearing:-20,duration:H.reduced()?0:2000,essential:true}); } else map.flyTo({center:c,zoom:Math.max(map.getZoom(),11.5),pitch:45,duration:1500,essential:true}); }catch(e){}
+};
+
+/* ============================================================
+   5. TRUCKS TO THE PORT — three trucks drive the real road (OSRM) from the project or a chosen plot
+   ============================================================ */
+const TRUCK='<svg viewBox="0 0 20 40" width="20" height="40" aria-hidden="true"><rect x="3" y="14" width="14" height="25" rx="2" fill="#fff" stroke="#16181D" stroke-width="1.5"/><rect x="4" y="2" width="12" height="11" rx="2.5" fill="#B3263D" stroke="#16181D" stroke-width="1.5"/><rect x="6" y="4" width="8" height="4" rx="1" fill="#CFE6FF"/></svg>';
+function cumul(pts){ const c=[0]; for(let i=1;i<pts.length;i++) c.push(c[i-1]+hav(pts[i-1],pts[i])); return c; }
+function at(pts,cum,d){ const L=cum[cum.length-1]; d=clamp(d,0,L); let lo=0,hi=cum.length-1; while(hi-lo>1){ const m=(lo+hi)>>1; if(cum[m]<=d) lo=m; else hi=m; } const seg=cum[hi]-cum[lo]||1e-9, t=(d-cum[lo])/seg, a=pts[lo], b=pts[hi];
+  const p=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]; const br=(Math.atan2((b[0]-a[0])*Math.cos(a[1]*rad),(b[1]-a[1]))/rad+360)%360; return {p,br}; }
+EXP.truck=function(park){
+  if(!H.ready()) return; if(park==="all"){ H.toast("Pick a project in the list first",true); return; }
+  const tok=H.newTok(); let raf=0, follow=true, trip=null, marks=[], route=null, runId=0;
+  let from=pinAt(park), fromName=H.parkName(park);
+  try{ if(S.sel&&S.sel.size===1){ const it=selRows()[0]; if(it&&it.info&&it.info.park===park&&it.f.properties.c){ from=it.f.properties.c; fromName="Plot "+(it.f.properties.unit||"")+" · "+fromName; } } }catch(e){}
+  if(!from){ H.toast("This project has no position on the map",true); return; }
+  const ports=POIS.filter(p=>p.t==="port").map(p=>({...p,air:hav(from,p.at)})).sort((a,b)=>a.air-b.air).slice(0,3);
+  const air=POIS.filter(p=>p.t==="air").map(p=>({...p,air:hav(from,p.at)})).sort((a,b)=>a.air-b.air)[0];
+  const dests=[...ports.map(p=>({...p,k:"Port"})),...(air?[{...air,k:"Airport"}]:[]),{n:"Cairo centre",at:CAIRO,k:"City",air:hav(from,CAIRO)}];
+  const saved=H.camNow();
+  function geo(){ if(!map.getSource("tk-src")) map.addSource("tk-src",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    if(!map.getLayer("tk-glow")) map.addLayer({id:"tk-glow",type:"line",source:"tk-src",filter:["==",["get","t"],"all"],paint:{"line-color":"#0A84FF","line-width":9,"line-blur":5,"line-opacity":.35}});
+    if(!map.getLayer("tk-road")) map.addLayer({id:"tk-road",type:"line",source:"tk-src",filter:["==",["get","t"],"all"],paint:{"line-color":"#fff","line-width":3.2,"line-opacity":.95}});
+    if(!map.getLayer("tk-trail")) map.addLayer({id:"tk-trail",type:"line",source:"tk-src",filter:["==",["get","t"],"trail"],paint:{"line-color":"#B3263D","line-width":4.2,"line-opacity":1}}); }
+  function clean(){ marks.forEach(m=>m.remove()); marks=[]; try{ ["tk-trail","tk-road","tk-glow"].forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); }); if(map.getSource("tk-src")) map.removeSource("tk-src"); }catch(e){} }
+  H.wowStart("truck",()=>{ tok.dead=true; runId++; cancelAnimationFrame(raf); map.off("styledata",geo); clean(); try{ map.flyTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing,duration:1400,essential:true}); }catch(e){} });
+  geo(); map.on("styledata",geo);
+  const b=H.bar(`<div class="tm-top"><div class="ex-t"><b>Trucks</b><span>${esc(fromName)}</span></div><button class="ex-x" type="button" aria-label="Close">×</button></div>
+    <div class="tk-ch" id="tkCh">${dests.map((d,i)=>`<button type="button" class="ex-b${i===0?" on":""}" data-i="${i}">${esc(d.n.replace(/ Port$/,""))}</button>`).join("")}</div>
+    <div class="tk-h" id="tkH">Finding the road…</div>
+    <div class="tm-ctl"><button class="ex-b on" id="tkFol" type="button">Follow the truck</button><button class="ex-b" id="tkRe" type="button">Replay</button></div>
+    <div class="tm-n">Road and time from OpenStreetMap routing (a car profile — a loaded truck is slower). Distances are by road.</div>`);
+  b.classList.add("ex-wide"); const el=id=>q("#"+id);
+  const trucks=[0,1,2];
+  async function go(i){
+    const my=++runId; cancelAnimationFrame(raf); marks.forEach(m=>m.remove()); marks=[]; const d=dests[i]; el("tkH").textContent="Finding the road to "+d.n+"…";
+    let rt=null; try{ rt=await roadRoute(from,d.at); }catch(e){}
+    if(tok.dead||my!==runId) return;
+    const pts=rt?rt.pts:[from,d.at], straight=!rt, cum=cumul(pts), L=cum[cum.length-1];
+    el("tkH").innerHTML=`<b>${esc(fromName)}</b> → <b>${esc(d.n)}</b><br>${fKm(rt?rt.km:L)} km ${straight?"in a straight line (road not available right now)":"by road · about "+(typeof fDur==="function"?fDur(rt.min):Math.round(rt.min)+" min")}`;
+    try{ map.getSource("tk-src").setData({type:"FeatureCollection",features:[{type:"Feature",properties:{t:"all"},geometry:{type:"LineString",coordinates:pts}}]}); }catch(e){}
+    trucks.forEach(()=>{ const e=document.createElement("div"); e.className="tk-m"; e.innerHTML=TRUCK; const m=new maplibregl.Marker({element:e,rotationAlignment:"map",pitchAlignment:"map"}).setLngLat(from).addTo(map); marks.push(m); });
+    const DUR=clamp(L/7,12,30)*1000, GAP=1300, t0=performance.now(); let camB=map.getBearing(); let overview=false;
+    const bb=[[Math.min(...pts.map(p=>p[0])),Math.min(...pts.map(p=>p[1]))],[Math.max(...pts.map(p=>p[0])),Math.max(...pts.map(p=>p[1]))]];
+    const over=()=>{ overview=true; const c=map.cameraForBounds(bb,{padding:{top:90,bottom:250,left:80,right:80}}); map.flyTo({center:c.center,zoom:Math.min(c.zoom,13),pitch:30,bearing:0,duration:2200,essential:true}); };
+    if(!follow||H.reduced()) over(); else map.jumpTo({center:from,zoom:12.6,pitch:55});
+    const frame=now=>{ if(tok.dead||my!==runId) return; let done=0;
+      marks.forEach((m,k)=>{ const prog=clamp((now-t0-k*GAP)/DUR,0,1), s=at(pts,cum,L*ease_(prog)); m.setLngLat(s.p); m.setRotation(s.br); if(k===0){ lead=s; leadP=prog; } if(prog>=1) done++; });
+      try{ const tr=[]; const dd=L*ease_(leadP); for(let j=0;j<pts.length&&cum[j]<dd;j++) tr.push(pts[j]); tr.push(lead.p); const s=map.getSource("tk-src"); if(s){ const f=[{type:"Feature",properties:{t:"all"},geometry:{type:"LineString",coordinates:pts}}]; if(tr.length>1) f.push({type:"Feature",properties:{t:"trail"},geometry:{type:"LineString",coordinates:tr}}); s.setData({type:"FeatureCollection",features:f}); } }catch(e){}
+      if(follow&&!overview&&leadP<1){ let d=((lead.br-camB+540)%360)-180; camB+=d*.06; map.jumpTo({center:lead.p,bearing:camB,pitch:55,zoom:12.6}); }
+      if(leadP>=1&&!overview) over();
+      if(done<marks.length) raf=requestAnimationFrame(frame); };
+    let lead={p:from,br:0}, leadP=0; raf=requestAnimationFrame(frame);
+  }
+  const ease_=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+  el("tkCh").querySelectorAll("button").forEach(bn=>bn.onclick=()=>{ el("tkCh").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===bn)); go(+bn.dataset.i); });
+  el("tkFol").onclick=()=>{ follow=!follow; el("tkFol").classList.toggle("on",follow); };
+  el("tkRe").onclick=()=>{ const on=el("tkCh").querySelector("button.on"); go(on?+on.dataset.i:0); };
+  go(0);
+};
+
+/* ---------- look ---------- */
+{ const st=document.createElement("style"); st.textContent=`
+#exBar.ex-wide{flex-direction:column;align-items:stretch;gap:9px;border-radius:20px;padding:12px 16px 14px;width:min(600px,calc(100vw - 20px));bottom:18px}
+#exBar .tm-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#exBar .tm-date{font:800 26px/1 Inter,system-ui,sans-serif;letter-spacing:-.02em;text-align:center}
+#exBar input[type=range]{width:100%;accent-color:#B3263D;margin:0}
+#exBar .tm-ctl{display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap}
+#exBar .ex-sel{height:30px;border-radius:999px;border:1px solid rgba(16,18,24,.14);background:#fff;padding:0 10px;font:600 12px Inter,system-ui,sans-serif;color:#16181D}
+#exBar .tm-k{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+#exBar .tm-k.su{grid-template-columns:repeat(3,1fr)}
+#exBar .tm-k div{padding:8px 10px;border-radius:12px;background:rgba(16,18,24,.05);min-width:0}
+#exBar .tm-k em{display:block;font:700 9.5px/1.2 Inter,system-ui,sans-serif;letter-spacing:.07em;text-transform:uppercase;font-style:normal;color:#6E737B}
+#exBar .tm-k b{display:block;font:800 14.5px/1.25 Inter,system-ui,sans-serif;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#exBar .tm-n{font:500 10.5px/1.35 Inter,system-ui,sans-serif;color:#6E737B;text-align:center}
+#exBar .tk-ch{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#exBar .tk-h{font:600 13px/1.4 Inter,system-ui,sans-serif;text-align:center}
+.tk-m svg{display:block;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45))}
+#sunTint{position:absolute;inset:0;z-index:3;pointer-events:none;mix-blend-mode:multiply;transition:background .25s linear}
+@media (max-width:820px){ #exBar.ex-wide{bottom:74px;max-height:calc(100vh - 150px);overflow:auto} #exBar .tm-k{grid-template-columns:repeat(2,1fr)} #exBar .tm-k.su{grid-template-columns:repeat(2,1fr)} #exBar .tm-date{font-size:21px} }
+`; document.head.appendChild(st); }
+})();
+</script>
+
+<script>
+/* V80 — share with a customer, AR */
+(function(){
+"use strict";
+const W=window.SID_WOW; if(!W) return; const H=W.helpers, EXP=W.EXP, q=H.q, esc=H.esc;
+const PAGE={"industria-sokhna": "/opportunities/industria-sokhna/", "sokhna360": "/opportunities/sokhna-360/", "industria-east": "/industria-east/", "industria-west": "/industria-west/", "industria-sadat": "/opportunities/industria-sadat/", "industria-october": "/opportunities/industria-october/", "industria-new-sadat": "/opportunities/industria-new-sadat/", "industria-borg-el-arab": "/opportunities/industria-borg-el-arab/", "industria-asher-p10": "/opportunities/industria-asher/", "industria-asher-p11": "/opportunities/industria-asher/", "al-oula": "/opportunities/al-oula/"}, SITE="https://elsewedydevelopment.com";
+const b64u=s=>btoa(unescape(encodeURIComponent(s))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+const r5=n=>Math.round(n*1e5)/1e5;
+
+/* ============================================================
+   7. SHARE A PLOT WITH A CUSTOMER — only what is ticked, as a snapshot in the link itself (nothing stored, no login, no price, no client)
+   ============================================================ */
+EXP.share=function(){
+  if(!H.ready()) return;
+  let items=[]; try{ items=selRows(); }catch(e){}
+  if(items.length!==1){ H.toast("Click one available plot on the map first, then choose Share",true); return; }
+  const it=items[0], row=it.info&&it.info.row, p=it.f.properties;
+  if(!row||row.status!=="ats"){ H.toast("Only plots that are available (not sold, reserved or on hold) can be shared",true); return; }
+  closeDlg();
+  const d=document.createElement("div"); d.id="exShare"; d.setAttribute("role","dialog"); d.setAttribute("aria-label","Share a plot with a customer");
+  const where=(S.reg.parks[it.info.park]&&S.reg.parks[it.info.park].where)||"";
+  d.innerHTML=`<div class="sh-c"><button class="ex-x sh-x" type="button" aria-label="Close">×</button>
+    <h3>Share this plot</h3><div class="sh-p"><b>${esc(p.unit||"Plot")}</b> · ${esc(H.parkName(it.info.park))} · ${H.fi(row.area)} sqm</div>
+    <div class="sh-o">
+      <label><input type="checkbox" id="shArea" checked> Plot size</label>
+      <label><input type="checkbox" id="shSec" checked> Sector</label>
+      <label><input type="checkbox" id="shLg" checked> Distance to port, airport and Cairo</label>
+      <label><input type="checkbox" id="shUt" checked> Electricity, water and sewage</label>
+      <label class="sh-v">Link works for <select id="shDays"><option value="7">7 days</option><option value="14">14 days</option><option value="30" selected>30 days</option><option value="90">90 days</option></select></label>
+    </div>
+    <div class="sh-n">The link shows this plot on the satellite map with a fly-in, plus what is ticked. It never shows the price, the client, other plots or other customers. It is a snapshot of today: anyone who has the link can see it until it expires.</div>
+    <div class="sh-a"><button class="ex-b on" id="shMake" type="button">Create link and QR</button></div>
+    <div class="sh-r" id="shRes" hidden></div></div>`;
+  document.body.appendChild(d);
+  const el=id=>q("#"+id);
+  d.querySelector(".sh-x").onclick=closeDlg; d.addEventListener("pointerdown",e=>{ if(e.target===d) closeDlg(); });
+  el("shMake").onclick=()=>{
+    const g=it.f.geometry, rings=(g.type==="Polygon"?[g.coordinates[0]]:g.coordinates.map(pg=>pg[0])).map(r=>r.map(c=>[r5(c[0]),r5(c[1])]));
+    const o={v:1,t:Date.now(),x:Date.now()+(+el("shDays").value)*864e5,u:p.unit||"",pk:H.parkName(it.info.park),w:where,rings,c:[r5(p.c[0]),r5(p.c[1])],pg:PAGE[it.info.park]?SITE+PAGE[it.info.park]:SITE};
+    if(el("shArea").checked) o.a=Math.round(row.area);
+    if(el("shSec").checked&&row.sector) o.s=row.sector;
+    if(el("shLg").checked){ try{ const lg=logisticsAt(p.c); o.lg={p:[lg.port.name,Math.round(lg.port.km)],a:[lg.air.name,Math.round(lg.air.km)],c:Math.round(lg.cairo)}; }catch(e){} }
+    if(el("shUt").checked){ const u={}; if(row.mva!=null) u.e=Math.round(row.mva*10)/10; if(row.water!=null) u.w=Math.round(row.water); if(row.sewage!=null) u.s=Math.round(row.sewage); if(Object.keys(u).length) o.ut=u; }
+    const url=location.origin+"/c.html#"+b64u(JSON.stringify(o));
+    let qr=""; try{ const Q=qrcode(0,"M"); Q.addData(url); Q.make(); qr=Q.createSvgTag({cellSize:4,margin:2,scalable:true}); }catch(e){}
+    const r=el("shRes"); r.hidden=false;
+    r.innerHTML=`<div class="sh-qr">${qr||"<em>QR could not be made — copy the link instead.</em>"}</div>
+      <div class="sh-l"><input id="shUrl" readonly value="${esc(url)}" aria-label="Link"><div class="sh-b2"><button class="ex-b on" id="shCopy" type="button">Copy link</button><a class="ex-b" id="shOpen" href="${esc(url)}" target="_blank" rel="noopener">Preview</a></div>
+      <div class="sh-n">Valid until ${new Date(o.x).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}. The page loads maps only; it has no sign-in and holds no data about other plots.</div></div>`;
+    el("shMake").textContent="Create a new link";
+    el("shCopy").onclick=async()=>{ try{ await navigator.clipboard.writeText(url); el("shCopy").textContent="Copied"; }catch(e){ el("shUrl").select(); document.execCommand&&document.execCommand("copy"); el("shCopy").textContent="Copied"; } };
+    try{ if(typeof laraLog==="function") laraLog("share plot",{park:it.info.park,unit:p.unit,days:+el("shDays").value}); }catch(e){}
+  };
+};
+function closeDlg(){ const d=q("#exShare"); if(d) d.remove(); }
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&q("#exShare")){ closeDlg(); } });
+
+/* ============================================================
+   8. AR TABLE VIEW — the park as a 3D model in the camera picture (phone: move it around; others: drag to turn)
+   ============================================================ */
+EXP.ar=async function(park){
+  if(!H.ready()) return; if(park==="all"){ H.toast("Pick a project in the list first",true); return; }
+  // motion permission must be asked inside the tap, before anything is awaited
+  let permP=Promise.resolve("granted");
+  try{ if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function") permP=DeviceOrientationEvent.requestPermission().catch(()=>"denied"); }catch(e){}
+  const tok=H.newTok(); let renderer=null, scene=null, raf=0, stream=null, vid=null, ov=null, onOri=null, gone=false;
+  function cleanup(){ if(gone) return; gone=true; cancelAnimationFrame(raf); if(onOri) window.removeEventListener("deviceorientation",onOri); try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+    try{ scene&&scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); renderer&&renderer.dispose(); }catch(e){} if(ov) ov.remove(); window.removeEventListener("resize",onRes); }
+  const onRes=()=>{ if(!renderer) return; renderer.setSize(innerWidth,innerHeight,false); cam.aspect=innerWidth/innerHeight; cam.updateProjectionMatrix(); };
+  H.wowStart("ar",()=>{ tok.dead=true; cleanup(); });
+  try{ await H.loadThree(); }catch(e){ H.toast("The 3D library could not load — check the connection",true); H.wowStop(); return; }
+  const feats=S.geo.features.filter(f=>f.properties.park===park); if(!feats.length){ H.toast("This project has no plots on the map",true); H.wowStop(); return; }
+  // local metres around the centre
+  let lo=[1e9,1e9], hi=[-1e9,-1e9]; const rings=[]; feats.forEach(f=>{ const g=f.geometry, R=g.type==="Polygon"?[g.coordinates[0]]:g.coordinates.map(p=>p[0]); R.forEach(r=>{ rings.push({r,st:f.properties.st}); r.forEach(c=>{ lo[0]=Math.min(lo[0],c[0]); lo[1]=Math.min(lo[1],c[1]); hi[0]=Math.max(hi[0],c[0]); hi[1]=Math.max(hi[1],c[1]); }); }); });
+  const c0=[(lo[0]+hi[0])/2,(lo[1]+hi[1])/2], kx=111320*Math.cos(c0[1]*Math.PI/180), ky=110574;
+  const W_=(hi[0]-lo[0])*kx, H_=(hi[1]-lo[1])*ky, ext=Math.max(W_,H_), sc=.5/ext;       // longest side = 50 cm
+  const T=window.THREE;
+  scene=new T.Scene(); const cam=new T.PerspectiveCamera(62,innerWidth/innerHeight,.01,30);
+  scene.add(new T.AmbientLight(0xffffff,.78)); const sun=new T.DirectionalLight(0xffffff,.85); sun.position.set(.4,1,.6); scene.add(sun);
+  const model=new T.Group(); scene.add(model); const body=new T.Group(); model.add(body);
+  const mats={}, col=k=>{ if(!mats[k]) mats[k]=new T.MeshLambertMaterial({color:new T.Color(STATUS[k]?STATUS[k].color:"#999999")}); return mats[k]; };
+  const hgt={sold:.0024,reserved:.0024,ats:.0013,eoi:.0017,hold:.0010,nfs:.0006,unknown:.0006,nodata:.0006}, LP=[];
+  rings.forEach(({r,st})=>{ try{ const sh=new T.Shape(); r.forEach((c,i)=>{ const x=(c[0]-c0[0])*kx*sc, y=(c[1]-c0[1])*ky*sc; if(i===0) sh.moveTo(x,y); else sh.lineTo(x,y); });
+      const dep=hgt[st]||.0008; const geo=new T.ExtrudeGeometry(sh,{depth:dep,bevelEnabled:false}); geo.rotateX(-Math.PI/2); const m=new T.Mesh(geo,col(st)); m.position.y=.003; body.add(m);
+      for(let i=0;i<r.length-1;i++){ const a=r[i], b=r[i+1]; LP.push((a[0]-c0[0])*kx*sc,.003+dep+.00005,-(a[1]-c0[1])*ky*sc,(b[0]-c0[0])*kx*sc,.003+dep+.00005,-(b[1]-c0[1])*ky*sc); } }catch(e){} });
+  { const lg=new T.BufferGeometry(); lg.setAttribute("position",new T.Float32BufferAttribute(LP,3)); body.add(new T.LineSegments(lg,new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.55}))); }
+  const plate=new T.Mesh(new T.BoxGeometry(W_*sc*1.12,.003,H_*sc*1.12),new T.MeshLambertMaterial({color:0x14171c})); plate.position.y=.0015; body.add(plate);
+  model.position.set(0,-.34,-1.05); let yaw=0, scale=1, pitchTilt=0; const lookFwd=new T.Vector3();
+  ov=document.createElement("div"); ov.id="arOv";
+  ov.innerHTML=`<video playsinline muted autoplay></video><canvas></canvas><div class="ar-top"><b>${esc(H.parkName(park))}</b><span id="arS">Starting the camera…</span></div>
+    <div class="ar-bot"><button class="ex-b on" id="arPlace" type="button">Place here</button><button class="ex-b" id="arMin" type="button" aria-label="Smaller">−</button><button class="ex-b" id="arPlus" type="button" aria-label="Bigger">+</button><button class="ex-b" id="arX" type="button">Close</button></div>
+    <div class="ar-key"><i style="background:${STATUS.sold.color}"></i>Sold + reserved <i style="background:${STATUS.ats.color}"></i>Available <i style="background:${STATUS.hold.color}"></i>On hold <i style="background:${STATUS.nfs.color}"></i>Not for sale</div>`;
+  document.body.appendChild(ov); vid=ov.querySelector("video"); const cv=ov.querySelector("canvas");
+  renderer=new T.WebGLRenderer({canvas:cv,antialias:true,alpha:true}); renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1)); renderer.setClearColor(0x000000,0); renderer.setSize(innerWidth,innerHeight,false); window.addEventListener("resize",onRes);
+  const say=t=>{ const s=q("#arS"); if(s) s.textContent=t; };
+  q("#arX").onclick=()=>H.wowStop(); q("#arMin").onclick=()=>{ scale=Math.max(.35,scale/1.2); }; q("#arPlus").onclick=()=>{ scale=Math.min(4,scale*1.2); };
+  // camera picture
+  let camOk=false; try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false}); vid.srcObject=stream; await vid.play().catch(()=>{}); camOk=true; }catch(e){}
+  if(tok.dead) return; if(!camOk) ov.classList.add("nocam");
+  // motion
+  const perm=await permP; let hasOri=false, a0=null; const eul=new T.Euler(), q1=new T.Quaternion(-Math.SQRT1_2,0,0,Math.SQRT1_2), q0=new T.Quaternion(), zee=new T.Vector3(0,0,1);
+  if(perm==="granted"&&"DeviceOrientationEvent" in window){ onOri=e=>{ if(e.alpha==null) return; hasOri=true; if(a0==null) a0=e.alpha; const orient=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*Math.PI/180;
+      eul.set(e.beta*Math.PI/180,(e.alpha-a0)*Math.PI/180,-e.gamma*Math.PI/180,"YXZ"); cam.quaternion.setFromEuler(eul); cam.quaternion.multiply(q1); cam.quaternion.multiply(q0.setFromAxisAngle(zee,-orient)); }; window.addEventListener("deviceorientation",onOri); }
+  setTimeout(()=>{ if(tok.dead) return; if(hasOri){ say("Move your phone around the table · drag to turn · pinch to resize"); } else { ov.classList.add("noori"); scale=1.9; cam.position.set(0,.34,-.3); cam.lookAt(0,-.34,-1.05); say(camOk?"Motion sensor not available — drag to turn the model":"Camera not available here — drag to turn, use + and − to resize"); } },1400);
+  q("#arPlace").onclick=()=>{ if(!hasOri){ yaw=0; pitchTilt=0; return; } cam.getWorldDirection(lookFwd); const d=1.0; model.position.set(lookFwd.x*d,lookFwd.y*d-.12,lookFwd.z*d); yaw=Math.atan2(-lookFwd.x,-lookFwd.z)*0+0; body.rotation.y=0; };
+  // touch / mouse: drag turns, pinch resizes
+  let pts=new Map(), lastD=0; cv.style.touchAction="none";
+  cv.addEventListener("pointerdown",e=>{ cv.setPointerCapture(e.pointerId); pts.set(e.pointerId,[e.clientX,e.clientY]); });
+  cv.addEventListener("pointermove",e=>{ const p=pts.get(e.pointerId); if(!p) return; const dx=e.clientX-p[0], dy=e.clientY-p[1]; pts.set(e.pointerId,[e.clientX,e.clientY]);
+    if(pts.size===2){ const [a,b]=[...pts.values()], d=Math.hypot(a[0]-b[0],a[1]-b[1]); if(lastD) scale=Math.max(.35,Math.min(4,scale*d/lastD)); lastD=d; } else { yaw+=dx*.008; if(!hasOri) pitchTilt=Math.max(-.6,Math.min(.9,pitchTilt+dy*.006)); } });
+  const up=e=>{ pts.delete(e.pointerId); if(pts.size<2) lastD=0; }; cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
+  cv.addEventListener("wheel",e=>{ e.preventDefault(); scale=Math.max(.35,Math.min(4,scale*(e.deltaY<0?1.08:.93))); },{passive:false});
+  const frame=()=>{ if(tok.dead||gone) return; body.rotation.y=yaw; model.rotation.x=hasOri?0:pitchTilt; model.scale.setScalar(scale); renderer.render(scene,cam); raf=requestAnimationFrame(frame); };
+  raf=requestAnimationFrame(frame);
+};
+
+/* ---------- look ---------- */
+{ const st=document.createElement("style"); st.textContent=`
+#exShare{position:fixed;inset:0;z-index:9400;display:grid;place-items:center;background:rgba(10,12,16,.45);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);padding:14px;font-family:Inter,system-ui,sans-serif}
+#exShare .sh-c{position:relative;width:min(520px,100%);max-height:calc(100vh - 28px);overflow:auto;background:#fff;color:#16181D;border-radius:20px;padding:20px 22px 18px;box-shadow:0 30px 70px -20px rgba(0,0,0,.55)}
+#exShare .sh-x{position:absolute;top:12px;right:12px}
+#exShare h3{margin:0 0 4px;font:800 19px Inter,system-ui,sans-serif;letter-spacing:-.02em}
+#exShare .sh-p{font:500 13px/1.4 Inter,system-ui,sans-serif;color:#4A4F57;margin-bottom:12px}
+#exShare .sh-o{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:14px;background:rgba(16,18,24,.04)}
+#exShare .sh-o label{display:flex;align-items:center;gap:9px;font:600 13px Inter,system-ui,sans-serif}
+#exShare .sh-o input[type=checkbox]{width:16px;height:16px;accent-color:#B3263D}
+#exShare .sh-v select{height:28px;border-radius:8px;border:1px solid rgba(16,18,24,.16);padding:0 8px;font:600 12.5px Inter,system-ui,sans-serif}
+#exShare .sh-n{font:500 11.5px/1.45 Inter,system-ui,sans-serif;color:#6E737B;margin:10px 0}
+#exShare .sh-a{display:flex;justify-content:flex-end}
+#exShare .sh-r{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:start;margin-top:14px;padding-top:14px;border-top:1px solid rgba(16,18,24,.1)}
+#exShare .sh-qr svg{width:150px;height:150px;display:block;border-radius:10px;border:1px solid rgba(16,18,24,.12);padding:6px;background:#fff}
+#exShare .sh-l input{width:100%;box-sizing:border-box;height:34px;border-radius:9px;border:1px solid rgba(16,18,24,.16);padding:0 10px;font:500 11.5px ui-monospace,Menlo,monospace;color:#16181D}
+#exShare .sh-b2{display:flex;gap:8px;margin-top:8px}
+#exShare a.ex-b{display:inline-grid;place-items:center;text-decoration:none}
+@media (max-width:560px){ #exShare .sh-r{grid-template-columns:1fr} #exShare .sh-qr svg{margin:0 auto} }
+#arOv{position:fixed;inset:0;z-index:9100;background:#0b0d11;overflow:hidden;font-family:Inter,system-ui,sans-serif;color:#fff}
+#arOv video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#arOv.nocam video{display:none} #arOv.nocam{background:radial-gradient(circle at 50% 40%,#2a3140,#0b0d11 70%)}
+#arOv canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#arOv .ar-top{position:absolute;top:max(14px,env(safe-area-inset-top));left:14px;right:14px;display:flex;flex-direction:column;gap:3px;text-shadow:0 2px 10px rgba(0,0,0,.7)}
+#arOv .ar-top b{font:800 17px Inter,system-ui,sans-serif} #arOv .ar-top span{font:600 12.5px Inter,system-ui,sans-serif;color:rgba(255,255,255,.88)}
+#arOv .ar-bot{position:absolute;left:0;right:0;bottom:max(18px,env(safe-area-inset-bottom));display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#arOv .ar-key{position:absolute;left:14px;right:14px;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 44px);display:flex;gap:8px;justify-content:center;flex-wrap:wrap;font:600 10.5px Inter,system-ui,sans-serif;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.8)}
+#arOv .ar-key i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:3px;vertical-align:-1px}
+`; document.head.appendChild(st); }
+})();
+</script>
 </body>
 </html>
