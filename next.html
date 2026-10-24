@@ -15561,8 +15561,8 @@ async function runOrbit(opts){
   // the parks: red for operating, white for the new lands (only places that exist in the data)
   const pins=[], rings=[]; const addPin=(lat,lng,hex,sz)=>{ const p=ll2v(lat,lng,1.004); const m=new THREE.Mesh(new THREE.SphereGeometry(sz,12,12),new THREE.MeshBasicMaterial({color:hex})); m.position.copy(p); earth.add(m); pins.push(m);
     const rg=new THREE.Mesh(new THREE.RingGeometry(.9*sz,1.25*sz,28),new THREE.MeshBasicMaterial({color:hex,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false})); rg.position.copy(p); rg.lookAt(p.clone().multiplyScalar(2)); rg.userData.ph=Math.random(); rg.userData.sz=sz; earth.add(rg); rings.push(rg); };
-  let nOps=0,nPipe=0; PORTFOLIO.filter(p=>p.stage==="operating"&&p.park&&p.lat!=null).forEach(p=>{ addPin(p.lat,p.lng,0xff3b4d,.0085); nOps++; });
-  try{ const D=window.SID_PIPE&&window.SID_PIPE.data; D&&D.projects.forEach(p=>{ if(p.at){ addPin(p.at[1],p.at[0],0xffffff,.0065); nPipe++; } }); }catch(e){}
+  let nOps=0,nPipe=0; PORTFOLIO.filter(p=>p.stage==="operating"&&p.park&&p.lat!=null).forEach(p=>{ addPin(p.lat,p.lng,0xff3b4d,.0062); nOps++; });
+  try{ const D=window.SID_PIPE&&window.SID_PIPE.data; D&&D.projects.forEach(p=>{ if(p.at){ addPin(p.at[1],p.at[0],0xffffff,.0048); nPipe++; } }); }catch(e){}
   const a0=-(Math.PI/2+lng0*Math.PI/180), b0=lat0*Math.PI/180;
   const T=8800, t0=performance.now(); let fadeStarted=false;
   ov.querySelector(".sp-skip").onclick=()=>{ tok.skip=true; };
@@ -15577,7 +15577,7 @@ async function runOrbit(opts){
       const e=easeOut(Math.min(1,t/.8));
       earth.rotation.y=a0+(1-e)*2.7; earth.rotation.x=b0*e+(1-e)*.25;
       const dist=7.2-(7.2-1.55)*e; cam.position.set(0,0,dist);
-      rings.forEach(r=>{ const k=((now/1400)+r.userData.ph)%1; r.scale.setScalar(1+k*2.6); r.material.opacity=(1-k)*.8; });
+      rings.forEach(r=>{ const k=((now/1400)+r.userData.ph)%1; r.scale.setScalar(1+k*1.9); r.material.opacity=(1-k)*.8; });
       pins.forEach((p,i)=>p.scale.setScalar(1+.25*Math.sin(now/260+i)));
       renderer.render(scene,cam);
       if(t>.14) ov.classList.add("t1"); if(t>.62) ov.classList.add("t2");
