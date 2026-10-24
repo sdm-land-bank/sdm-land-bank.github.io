@@ -15902,7 +15902,7 @@ function carveGraph(G,rings,mx,mz,lat){
   const inPoly=(P,x,z)=>{ if(x<P.b[0]||x>P.b[2]||z<P.b[1]||z>P.b[3]) return false; let ins=false; const p=P.p; for(let i=0,j=p.length-1;i<p.length;j=i++){ if(((p[i][1]>z)!==(p[j][1]>z))&&(x<(p[j][0]-p[i][0])*(z-p[i][1])/(p[j][1]-p[i][1])+p[i][0])) ins=!ins; } return ins; };
   const inPlot=(x,z)=>{ const c=grid.get(key(x,z,CELL)); if(!c) return false; for(const i of c) if(inPoly(polys[i],x,z)) return true; return false; };
   const near=(x,z)=>{ const gx=Math.floor(x/40), gz=Math.floor(z/40); for(let a=gx-1;a<=gx+1;a++) for(let b=gz-1;b<=gz+1;b++){ const l=pg.get(a+","+b); if(l) for(let i=0;i<l.length;i+=2) if(Math.hypot(l[i]-x,l[i+1]-z)<38) return true; } return false; };
-  const ok=(x,z,nx,nz)=>!inPlot(x,z)&&!inPlot(x+nx*lat,z+nz*lat)&&!inPlot(x-nx*lat,z-nz*lat)&&near(x,z);
+  const why={c:0,l:0,n:0,t:0}; const ok=(x,z,nx,nz)=>{ why.t++; if(inPlot(x,z)){ why.c++; return false; } if(inPlot(x+nx*lat,z+nz*lat)||inPlot(x-nx*lat,z-nz*lat)){ why.l++; return false; } if(!near(x,z)){ why.n++; return false; } return true; };
   const N=[], om=new Map(), idOf=i=>{ if(!om.has(i)){ N.push({x:G.nodes[i].x,z:G.nodes[i].z,out:[]}); om.set(i,N.length-1); } return om.get(i); };
   G.nodes.forEach((n,i)=>n.out.forEach(o=>{ if(o.to<i) return; const m=G.nodes[o.to], L=Math.hypot(m.x-n.x,m.z-n.z)||1e-9, dx=(m.x-n.x)/L, dz=(m.z-n.z)/L, nx=-dz, nz=dx, k=Math.max(1,Math.round(L/8)), P=[];
     for(let t=0;t<=k;t++) P.push([n.x+(m.x-n.x)*t/k,n.z+(m.z-n.z)*t/k]);
@@ -15917,6 +15917,7 @@ function carveGraph(G,rings,mx,mz,lat){
   N.forEach((n,i)=>{ if(!alive(i)||comp[i]>=0) return; const st=[i]; comp[i]=cn; let c=0; while(st.length){ const u=st.pop(); c++; N[u].out.forEach(o=>{ if(alive(o.to)&&comp[o.to]<0){ comp[o.to]=cn; st.push(o.to); } }); } if(c>bestN){ bestN=c; best=cn; } cn++; });
   const nid=new Map(), nodes=[]; N.forEach((n,i)=>{ if(alive(i)&&comp[i]===best){ nid.set(i,nodes.length); nodes.push({x:n.x,z:n.z,out:[]}); } });
   const ribbons=[]; N.forEach((n,i)=>{ if(!nid.has(i)) return; n.out.forEach(o=>{ if(!nid.has(o.to)) return; nodes[nid.get(i)].out.push({to:nid.get(o.to),len:o.len,w:o.w,major:o.major}); if(o.to>i){ const m=N[o.to], L=o.len, dx=(m.x-n.x)/L, dz=(m.z-n.z)/L; ribbons.push({a:[n.x-dx*.8,n.z-dz*.8],b:[m.x+dx*.8,m.z+dz*.8],w:o.w,major:o.major}); } }); });
+  window.__carveDbg={why,pre:G.nodes.length,comps:cn,bestN,kept:nodes.length,lat};
   return {nodes,ribbons,inPlot,length:ribbons.reduce((a,R)=>a+Math.hypot(R.b[0]-R.a[0],R.b[1]-R.a[1]),0)};
 }
 /* a vehicle that drives the graph: keeps going, turns at junctions, only turns round at a dead end */
