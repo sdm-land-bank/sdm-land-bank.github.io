@@ -15901,7 +15901,9 @@ function roadGraph(rings,mx,mz){
   const comp=new Int32Array(NN).fill(-1); let best=-1, bestN=0, cn=0;
   for(let a=0;a<NN;a++){ if(dead[a]||comp[a]>=0) continue; const st=[a]; comp[a]=cn; let c=0; while(st.length){ const u=st.pop(); c++; adj[u].forEach((L,v)=>{ if(!dead[v]&&comp[v]<0){ comp[v]=cn; st.push(v); } }); } if(c>bestN){ bestN=c; best=cn; } cn++; }
   const nid=new Int32Array(NN).fill(-1); for(let a=0;a<NN;a++) if(!dead[a]&&comp[a]===best){ nid[a]=nodes.length; nodes.push({x:x0-M+(pix[a]%W+.5)*res,z:z0-M+(((pix[a]/W)|0)+.5)*res,out:[]}); }
-  const ribbons=[]; let length=0; for(let a=0;a<NN;a++){ if(nid[a]<0) continue; adj[a].forEach((L,b)=>{ if(nid[b]<0) return; nodes[nid[a]].out.push({to:nid[b],len:L,w:7,major:false}); if(b>a){ const A=nodes[nid[a]], B=nodes[nid[b]], dx=(B.x-A.x)/L, dz=(B.z-A.z)/L; ribbons.push({a:[A.x-dx*.8,A.z-dz*.8],b:[B.x+dx*.8,B.z+dz*.8],w:14,major:false}); length+=L; } }); }
+  for(let a=0;a<NN;a++){ if(nid[a]<0) continue; adj[a].forEach((L,b)=>{ if(nid[b]>=0) nodes[nid[a]].out.push({to:nid[b],len:L,w:7,major:false}); }); }
+  for(let it=0;it<8;it++){ const nx=nodes.map(n=>n.out.length===2?[.5*n.x+.25*(nodes[n.out[0].to].x+nodes[n.out[1].to].x),.5*n.z+.25*(nodes[n.out[0].to].z+nodes[n.out[1].to].z)]:[n.x,n.z]); nodes.forEach((n,i)=>{ n.x=nx[i][0]; n.z=nx[i][1]; }); }
+  const ribbons=[]; let length=0; nodes.forEach((A,i)=>A.out.forEach(o=>{ const B=nodes[o.to], L=Math.hypot(B.x-A.x,B.z-A.z)||1e-9; o.len=L; if(o.to>i){ const dx=(B.x-A.x)/L, dz=(B.z-A.z)/L; ribbons.push({a:[A.x-dx*.8,A.z-dz*.8],b:[B.x+dx*.8,B.z+dz*.8],w:14,major:false}); length+=L; } }));
   window.__carveDbg={res,W,H,sk:sk.length,nodes:nodes.length,comps:cn,length};
   const inPlot=(x,z)=>{ const px=Math.floor(gx(x)), py=Math.floor(gz(z)); return px>=0&&py>=0&&px<W&&py<H&&occ[py*W+px]===1; };
   return {nodes,ribbons,inPlot,length};
