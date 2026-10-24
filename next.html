@@ -15889,8 +15889,35 @@ function buildGraph(segs){
   segs.forEach((g,i)=>{ const d=dir[i], L=d.L, ts=[0,L,...cuts[i]].map(t=>Math.max(-EXT,Math.min(L+EXT,t))).sort((x,y)=>x-y), pts=[];
     ts.forEach(t=>{ if(!pts.length||t-pts[pts.length-1]>6) pts.push(t); else pts[pts.length-1]=(pts[pts.length-1]+t)/2; });
     if(pts.length>1) ribbons.push({a:[g.a[0]+d.dx*pts[0],g.a[1]+d.dz*pts[0]],b:[g.a[0]+d.dx*pts[pts.length-1],g.a[1]+d.dz*pts[pts.length-1]],w:g.w,major:g.major});
-    for(let k=1;k<pts.length;k++){ const a=nid(g.a[0]+d.dx*pts[k-1],g.a[1]+d.dz*pts[k-1]), b=nid(g.a[0]+d.dx*pts[k],g.a[1]+d.dz*pts[k]); if(a===b) continue; const len=pts[k]-pts[k-1]; nodes[a].out.push({to:b,len}); nodes[b].out.push({to:a,len}); } });
+    for(let k=1;k<pts.length;k++){ const a=nid(g.a[0]+d.dx*pts[k-1],g.a[1]+d.dz*pts[k-1]), b=nid(g.a[0]+d.dx*pts[k],g.a[1]+d.dz*pts[k]); if(a===b) continue; const len=pts[k]-pts[k-1]; nodes[a].out.push({to:b,len,w:g.w,major:g.major}); nodes[b].out.push({to:a,len,w:g.w,major:g.major}); } });
   return {nodes,ribbons};
+}
+
+/* keep only the road pieces that really are in the gaps: never inside a plot, clear on both sides, inside the park; drop stubs and loose bits */
+function carveGraph(G,rings,mx,mz,lat){
+  const polys=rings.map(({r})=>{ const p=r.map(c=>[mx(c),mz(c)]); let a=1e9,b=1e9,c=-1e9,d=-1e9; p.forEach(v=>{ a=Math.min(a,v[0]); c=Math.max(c,v[0]); b=Math.min(b,v[1]); d=Math.max(d,v[1]); }); return {p,b:[a,b,c,d]}; });
+  const CELL=80, grid=new Map(), pg=new Map(), key=(x,z,c)=>Math.floor(x/c)+","+Math.floor(z/c);
+  polys.forEach((P,i)=>{ for(let gx=Math.floor(P.b[0]/CELL);gx<=Math.floor(P.b[2]/CELL);gx++) for(let gz=Math.floor(P.b[1]/CELL);gz<=Math.floor(P.b[3]/CELL);gz++){ const k=gx+","+gz; (grid.get(k)||grid.set(k,[]).get(k)).push(i); }
+    for(let j=0;j<P.p.length-1;j++){ const a=P.p[j], b=P.p[j+1], L=Math.hypot(b[0]-a[0],b[1]-a[1]), n=Math.max(1,Math.ceil(L/12)); for(let t=0;t<n;t++){ const x=a[0]+(b[0]-a[0])*t/n, z=a[1]+(b[1]-a[1])*t/n, k=key(x,z,40); (pg.get(k)||pg.set(k,[]).get(k)).push(x,z); } } });
+  const inPoly=(P,x,z)=>{ if(x<P.b[0]||x>P.b[2]||z<P.b[1]||z>P.b[3]) return false; let ins=false; const p=P.p; for(let i=0,j=p.length-1;i<p.length;j=i++){ if(((p[i][1]>z)!==(p[j][1]>z))&&(x<(p[j][0]-p[i][0])*(z-p[i][1])/(p[j][1]-p[i][1])+p[i][0])) ins=!ins; } return ins; };
+  const inPlot=(x,z)=>{ const c=grid.get(key(x,z,CELL)); if(!c) return false; for(const i of c) if(inPoly(polys[i],x,z)) return true; return false; };
+  const near=(x,z)=>{ const gx=Math.floor(x/40), gz=Math.floor(z/40); for(let a=gx-1;a<=gx+1;a++) for(let b=gz-1;b<=gz+1;b++){ const l=pg.get(a+","+b); if(l) for(let i=0;i<l.length;i+=2) if(Math.hypot(l[i]-x,l[i+1]-z)<38) return true; } return false; };
+  const ok=(x,z,nx,nz)=>!inPlot(x,z)&&!inPlot(x+nx*lat,z+nz*lat)&&!inPlot(x-nx*lat,z-nz*lat)&&near(x,z);
+  const N=[], om=new Map(), idOf=i=>{ if(!om.has(i)){ N.push({x:G.nodes[i].x,z:G.nodes[i].z,out:[]}); om.set(i,N.length-1); } return om.get(i); };
+  G.nodes.forEach((n,i)=>n.out.forEach(o=>{ if(o.to<i) return; const m=G.nodes[o.to], L=Math.hypot(m.x-n.x,m.z-n.z)||1e-9, dx=(m.x-n.x)/L, dz=(m.z-n.z)/L, nx=-dz, nz=dx, k=Math.max(1,Math.round(L/8)), P=[];
+    for(let t=0;t<=k;t++) P.push([n.x+(m.x-n.x)*t/k,n.z+(m.z-n.z)*t/k]);
+    const good=P.map(q=>ok(q[0],q[1],nx,nz)); let prev=null;
+    for(let t=0;t<k;t++){ const mid=[(P[t][0]+P[t+1][0])/2,(P[t][1]+P[t+1][1])/2]; if(!(good[t]&&good[t+1]&&ok(mid[0],mid[1],nx,nz))){ prev=null; continue; }
+      const a=(t===0?idOf(i):(prev!==null?prev:(N.push({x:P[t][0],z:P[t][1],out:[]}),N.length-1))), b=(t+1===k?idOf(o.to):(N.push({x:P[t+1][0],z:P[t+1][1],out:[]}),N.length-1)), len=L/k;
+      N[a].out.push({to:b,len,w:o.w,major:o.major}); N[b].out.push({to:a,len,w:o.w,major:o.major}); prev=b; } }));
+  // erode dead-end stubs, keep the biggest connected piece
+  let dead=new Set();
+  for(let pass=0;pass<5;pass++){ const kill=[]; N.forEach((n,i)=>{ if(!dead.has(i)&&n.out.filter(o=>!dead.has(o.to)).length<=1) kill.push(i); }); kill.forEach(i=>dead.add(i)); if(!kill.length) break; }
+  const alive=i=>!dead.has(i), comp=new Array(N.length).fill(-1); let best=-1, bestN=0, cn=0;
+  N.forEach((n,i)=>{ if(!alive(i)||comp[i]>=0) return; const st=[i]; comp[i]=cn; let c=0; while(st.length){ const u=st.pop(); c++; N[u].out.forEach(o=>{ if(alive(o.to)&&comp[o.to]<0){ comp[o.to]=cn; st.push(o.to); } }); } if(c>bestN){ bestN=c; best=cn; } cn++; });
+  const nid=new Map(), nodes=[]; N.forEach((n,i)=>{ if(alive(i)&&comp[i]===best){ nid.set(i,nodes.length); nodes.push({x:n.x,z:n.z,out:[]}); } });
+  const ribbons=[]; N.forEach((n,i)=>{ if(!nid.has(i)) return; n.out.forEach(o=>{ if(!nid.has(o.to)) return; nodes[nid.get(i)].out.push({to:nid.get(o.to),len:o.len,w:o.w,major:o.major}); if(o.to>i){ const m=N[o.to], L=o.len, dx=(m.x-n.x)/L, dz=(m.z-n.z)/L; ribbons.push({a:[n.x-dx*.8,n.z-dz*.8],b:[m.x+dx*.8,m.z+dz*.8],w:o.w,major:o.major}); } }); });
+  return {nodes,ribbons,inPlot,length:ribbons.reduce((a,R)=>a+Math.hypot(R.b[0]-R.a[0],R.b[1]-R.a[1]),0)};
 }
 /* a vehicle that drives the graph: keeps going, turns at junctions, only turns round at a dead end */
 function mkWalker(G,startEdge){ const nodes=G.nodes, heat=n=>1+Math.min(6,(n.heat||0)); let from=startEdge[0], to=startEdge[1]; const e0=nodes[from].out.find(o=>o.to===to); let len=e0?e0.len:10, t=Math.random()*len, nxt=null;
@@ -15960,7 +15987,8 @@ EXP.ar=async function(park){
   const lg=new T.BufferGeometry(); lg.setAttribute("position",new T.Float32BufferAttribute(ln,3)); const lineMat=new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.5}); body.add(new T.LineSegments(lg,lineMat));
   // streets between the plot rows, as a road graph
   let segs=gapRoads(rings,c0,kx,ky); if(segs.length<3){ const x0=(lo[0]-c0[0])*kx-60, x1=(hi[0]-c0[0])*kx+60, z0=-(hi[1]-c0[1])*ky-60, z1=-(lo[1]-c0[1])*ky+60; segs=[{a:[x0,z0],b:[x1,z0],w:30,major:true},{a:[x1,z0],b:[x1,z1],w:30,major:true},{a:[x1,z1],b:[x0,z1],w:30,major:true},{a:[x0,z1],b:[x0,z0],w:30,major:true},{a:[(x0+x1)/2,z0],b:[(x0+x1)/2,z1],w:30,major:false},{a:[x0,(z0+z1)/2],b:[x1,(z0+z1)/2],w:30,major:false}]; }
-  const G=buildGraph(segs); const fcs=[]; stOf.forEach((st,k)=>{ if(st==='sold'){ const f=S.geo.features.find(x=>x.properties.k===k); if(f) fcs.push([mx(f.properties.c),mz(f.properties.c)]); } }); G.nodes.forEach(n=>{ n.heat=0; for(const c of fcs){ if(Math.abs(c[0]-n.x)<90&&Math.abs(c[1]-n.z)<90) n.heat++; } }); window.__arDbg2=()=>({nodes:G.nodes.length,rib:G.ribbons.length,segs:segs.length,plate:[pw,ph,pcx,pcz],car:car&&car.pos(),camPos:cam.position.toArray(),mscale:model.scale.x,bscale:body.scale.toArray(),mpos:model.position.toArray()});
+  let G=carveGraph(buildGraph(segs),rings,mx,mz,3.5); if(G.length<500) G=carveGraph(buildGraph(segs),rings,mx,mz,2.2); const fcs=[]; stOf.forEach((st,k)=>{ if(st==='sold'){ const f=S.geo.features.find(x=>x.properties.k===k); if(f) fcs.push([mx(f.properties.c),mz(f.properties.c)]); } }); G.nodes.forEach(n=>{ n.heat=0; for(const c of fcs){ if(Math.abs(c[0]-n.x)<90&&Math.abs(c[1]-n.z)<90) n.heat++; } }); window.__arTest=()=>{ let bad=0,steps=0,maxTurn=0; for(let r=0;r<6;r++){ const n0=G.nodes.length?G.nodes[(Math.random()*G.nodes.length)|0]:null; if(!n0||!n0.out.length) continue; const w=mkWalker(G,[G.nodes.indexOf(n0),n0.out[0].to]); let ph=null; for(let i=0;i<4000;i++){ w.step(2.5); const p=w.pos(); steps++; if(G.inPlot(p[0],p[1])) bad++; const l=w.look(10); const h=Math.atan2(l[1]-p[1],l[0]-p[0]); if(ph!==null){ let d=Math.abs(Math.atan2(Math.sin(h-ph),Math.cos(h-ph))); if(d>maxTurn) maxTurn=d; } ph=h; } } return {bad,steps,maxTurn,len:G.length,nodes:G.nodes.length}; };
+  window.__arDbg2=()=>({nodes:G.nodes.length,rib:G.ribbons.length,segs:segs.length,plate:[pw,ph,pcx,pcz],car:car&&car.pos(),camPos:cam.position.toArray(),mscale:model.scale.x,bscale:body.scale.toArray(),mpos:model.position.toArray()});
   { const acc={p:[],n:[],c:[]}, yy=.3, add=(a,b,w,col)=>{ const dx=b[0]-a[0], dz=b[1]-a[1], Ln=Math.hypot(dx,dz)||1e-9, nx=-dz/Ln*w/2, nz=dx/Ln*w/2, v=[[a[0]+nx,a[1]+nz],[a[0]-nx,a[1]-nz],[b[0]-nx,b[1]-nz],[b[0]+nx,b[1]+nz]]; [0,1,2,0,2,3].forEach(i=>{ acc.p.push(v[i][0],yy,v[i][1]); acc.n.push(0,1,0); acc.c.push(col.r,col.g,col.b); }); };
     G.ribbons.forEach(R=>{ const w=Math.max(8,Math.min(15,R.w*.5)); add(R.a,R.b,w,new T.Color(R.major?0x34383e:0x2d3136)); add(R.a,R.b,.6,new T.Color(0xf2ecd0)); });
     if(acc.p.length) body.add(mk(acc,new T.MeshBasicMaterial({vertexColors:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}))); }
@@ -15981,8 +16009,8 @@ EXP.ar=async function(park){
       vertexShader:"attribute float aAlpha; attribute float aSize; uniform float uK; uniform float uS; varying float vA; void main(){ vA=aAlpha; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize=aSize*uS*uK/max(-mv.z,.01); gl_Position=projectionMatrix*mv; }",
       fragmentShader:"uniform sampler2D map; varying float vA; void main(){ vec4 t=texture2D(map,gl_PointCoord); gl_FragColor=vec4(vec3(.84,.85,.88),t.a*vA); }"})); smoke.frustumCulled=false; body.add(smoke); }
   // trucks (the same road graph)
-  const trucks=[], tlen=14, twid=3.2, thei=3.4, trailer=new T.BoxGeometry(tlen*.64,thei,twid), cab=new T.BoxGeometry(tlen*.3,thei*.82,twid*.96), mt=new T.MeshLambertMaterial({color:0xf2f4f7}), mcs=[0xb3263d,0x1f6fe0,0xe8a317,0x2a9d57].map(c=>new T.MeshLambertMaterial({color:c}));
-  const edges=[]; G.nodes.forEach((n,i)=>n.out.forEach(o=>{ if(o.len>=12&&(n.heat>=3||G.nodes[o.to].heat>=3)) edges.push([i,o.to]); })); if(edges.length<3) G.nodes.forEach((n,i)=>n.out.forEach(o=>{ if(o.len>=12) edges.push([i,o.to]); }));
+  const trucks=[], tlen=12, twid=2.9, thei=3.2, trailer=new T.BoxGeometry(tlen*.64,thei,twid), cab=new T.BoxGeometry(tlen*.3,thei*.82,twid*.96), mt=new T.MeshLambertMaterial({color:0xf2f4f7}), mcs=[0xb3263d,0x1f6fe0,0xe8a317,0x2a9d57].map(c=>new T.MeshLambertMaterial({color:c}));
+  const edges=[]; G.nodes.forEach((n,i)=>n.out.forEach(o=>{ if(n.heat>=3||G.nodes[o.to].heat>=3) edges.push([i,o.to]); })); if(edges.length<3) G.nodes.forEach((n,i)=>n.out.forEach(o=>{ edges.push([i,o.to]); }));
   const totalLen=G.ribbons.reduce((a,R)=>a+Math.hypot(R.b[0]-R.a[0],R.b[1]-R.a[1]),0), nT=edges.length?Math.min(18,Math.max(8,Math.round(totalLen/260))):0;
   for(let i=0;i<nT;i++){ const g=new T.Group(); const a1=new T.Mesh(trailer,mt); a1.position.set(-tlen*.17,thei/2+.2,0); const b1=new T.Mesh(cab,mcs[i%4]); b1.position.set(tlen*.36,thei*.41+.2,0); g.add(a1,b1); body.add(g); trucks.push({g,w:mkWalker(G,edges[(Math.random()*edges.length)|0]),v:9+Math.random()*4,h:0,init:false}); }
   const car=edges.length?mkWalker(G,edges[(Math.random()*edges.length)|0]):null; let carH=0, carInit=false;
@@ -16016,8 +16044,8 @@ EXP.ar=async function(park){
   const up=e=>{ pts.delete(e.pointerId); if(pts.size<2) lastD=0; }; cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
   cv.addEventListener("wheel",e=>{ e.preventDefault(); if(mode==="table") scale=Math.max(.3,Math.min(90,scale*(e.deltaY<0?1.12:.9))); },{passive:false});
   const wind=[26,9]; let tPrev=performance.now(); const t0=tPrev;
-  const frame=now=>{ if(tok.dead||gone) return; const dt=Math.min(.05,(now-tPrev)/1000); tPrev=now; const sec=(now-t0)/1000, drive=mode==="drive", TS=drive?1.4:5, tscale=drive?[1,1,1]:[6,1.7,6];
-    trucks.forEach(t=>{ t.w.step(t.v*TS*dt); const p=t.w.pos(), l=t.w.look(10), th=Math.atan2(l[1]-p[1],l[0]-p[0]); if(!t.init){ t.h=th; t.init=true; } let d=th-t.h; d=Math.atan2(Math.sin(d),Math.cos(d)); t.h+=d*Math.min(1,dt*3.5); t.g.position.set(p[0],0,p[1]); t.g.rotation.y=-t.h; t.g.scale.set(tscale[0],tscale[1],tscale[2]); });
+  const frame=now=>{ if(tok.dead||gone) return; const dt=Math.min(.05,(now-tPrev)/1000); tPrev=now; const sec=(now-t0)/1000, drive=mode==="drive", TS=drive?1:1.8, tscale=drive?[1,1,1]:[1.7,1.7,1.7];
+    trucks.forEach(t=>{ t.w.step(t.v*TS*dt); const p=t.w.pos(), l=t.w.look(10), th=Math.atan2(l[1]-p[1],l[0]-p[0]); if(!t.init){ t.h=th; t.init=true; } let d=th-t.h; d=Math.atan2(Math.sin(d),Math.cos(d)); t.h+=d*Math.min(1,dt*3.5); const off=2.6; t.g.position.set(p[0]-Math.sin(t.h)*off,0,p[1]+Math.cos(t.h)*off); t.g.rotation.y=-t.h; t.g.scale.set(tscale[0],tscale[1],tscale[2]); });
     if(smoke){ const ms=drive?1:sc*scale; for(let e=0;e<chim.length;e++) for(let k=0;k<PER;k++){ const i=e*PER+k, u=(sec*.33+sPh[i])%1, a=u<.08?u/.08:1-(u-.08)/.92; sP[i*3]=chim[e][0]+wind[0]*u*(drive?1:1.6)+Math.sin(sec*1.7+i)*3*u; sP[i*3+1]=chim[e][1]+u*80; sP[i*3+2]=chim[e][2]+wind[1]*u*(drive?1:1.6)+Math.cos(sec*1.3+i)*3*u; sA[i]=Math.max(0,a)*.8; sS[i]=14+u*60; }
       const g=smoke.geometry; g.attributes.position.needsUpdate=true; g.attributes.aAlpha.needsUpdate=true; g.attributes.aSize.needsUpdate=true; smoke.material.uniforms.uK.value=renderer.domElement.height/(2*Math.tan(cam.fov*Math.PI/360)); smoke.material.uniforms.uS.value=drive?1:sc*scale; }
     if(drive&&car){ car.step(14*dt); const p=car.pos(), l=car.look(22), th=Math.atan2(-(l[0]-p[0]),-(l[1]-p[1])); if(!carInit){ carH=th; carInit=true; } let d=th-carH; d=Math.atan2(Math.sin(d),Math.cos(d)); carH+=Math.max(-1.1*dt,Math.min(1.1*dt,d)); model.position.set(0,0,0); model.scale.setScalar(1); body.scale.set(1,1,1); body.rotation.y=0; model.rotation.x=0;
