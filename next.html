@@ -16131,7 +16131,7 @@ async function untilText(f,ms){ const t0=Date.now(); while(Date.now()-t0<ms){ co
 async function exploreRun(a){
   const act=String(a.action||"").toLowerCase();
   if(typeof sidPublic==="function"&&sidPublic()) return {error:"Explore is not part of this screen."};
-  if(act==="stop"){ W.stop(); return {stopped:true}; }
+  if(act==="stop"){ W.stop(); return {stopped:true,note:"Stopped. Say one short word (Done) and nothing else. Ignore every earlier [SHOW NARRATION] line: they are cancelled."}; }
   // steering something that already runs
   const cur=(W.helpers&&0)||null;
   if(act==="pause"||act==="play"){ const b=q("#tmPlay"); if(!b) return {error:"The time machine is not running."}; const isPause=/pause/i.test(b.textContent); if((act==="pause")===isPause) b.click(); return {ok:act}; }
