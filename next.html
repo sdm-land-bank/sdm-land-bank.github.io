@@ -15911,7 +15911,7 @@ function roadGraph(rings,mx,mz){
 /* a vehicle that drives the graph: keeps going, turns at junctions, only turns round at a dead end */
 function mkWalker(G,startEdge){ const nodes=G.nodes, heat=n=>1+Math.min(6,(n.heat||0)); let from=startEdge[0], to=startEdge[1]; const e0=nodes[from].out.find(o=>o.to===to); let len=e0?e0.len:10, t=Math.random()*len, nxt=null;
   const A=()=>nodes[from], B=()=>nodes[to];
-  const pick=()=>{ const o=nodes[to].out, back=o.filter(x=>x.to!==from), c=back.length?back:o; if(c.length===1) return c[0]; const dx=B().x-A().x, dz=B().z-A().z, L=Math.hypot(dx,dz)||1; const w=c.map(x=>{ const ex=nodes[x.to].x-B().x, ez=nodes[x.to].z-B().z, EL=Math.hypot(ex,ez)||1, cs=(dx*ex+dz*ez)/(L*EL); const h=heat(nodes[x.to]); return (.35+Math.max(0,cs)*2.2)*h*h; }); let r=Math.random()*w.reduce((a,b)=>a+b,0); for(let i=0;i<c.length;i++){ r-=w[i]; if(r<=0) return c[i]; } return c[c.length-1]; };
+  const pick=()=>{ const o=nodes[to].out, back=o.filter(x=>x.to!==from), c=back.length?back:o; if(c.length===1) return c[0]; const dx=B().x-A().x, dz=B().z-A().z, L=Math.hypot(dx,dz)||1; const w=c.map(x=>{ const ex=nodes[x.to].x-B().x, ez=nodes[x.to].z-B().z, EL=Math.hypot(ex,ez)||1, cs=(dx*ex+dz*ez)/(L*EL); const h=heat(nodes[x.to]); if(cs<-.3) return 1e-6; return (.35+Math.max(0,cs)*2.2)*h*h; }); let r=Math.random()*w.reduce((a,b)=>a+b,0); for(let i=0;i<c.length;i++){ r-=w[i]; if(r<=0) return c[i]; } return c[c.length-1]; };
   nxt=pick();
   const at=(tt)=>{ const k=Math.max(0,Math.min(1,tt/len)); return [A().x+(B().x-A().x)*k, A().z+(B().z-A().z)*k]; };
   return {
