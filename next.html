@@ -15960,7 +15960,7 @@ EXP.ar=async function(park){
   const lg=new T.BufferGeometry(); lg.setAttribute("position",new T.Float32BufferAttribute(ln,3)); const lineMat=new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.5}); body.add(new T.LineSegments(lg,lineMat));
   // streets between the plot rows, as a road graph
   let segs=gapRoads(rings,c0,kx,ky); if(segs.length<3){ const x0=(lo[0]-c0[0])*kx-60, x1=(hi[0]-c0[0])*kx+60, z0=-(hi[1]-c0[1])*ky-60, z1=-(lo[1]-c0[1])*ky+60; segs=[{a:[x0,z0],b:[x1,z0],w:30,major:true},{a:[x1,z0],b:[x1,z1],w:30,major:true},{a:[x1,z1],b:[x0,z1],w:30,major:true},{a:[x0,z1],b:[x0,z0],w:30,major:true},{a:[(x0+x1)/2,z0],b:[(x0+x1)/2,z1],w:30,major:false},{a:[x0,(z0+z1)/2],b:[x1,(z0+z1)/2],w:30,major:false}]; }
-  const G=buildGraph(segs);
+  const G=buildGraph(segs); window.__arDbg2=()=>({nodes:G.nodes.length,rib:G.ribbons.length,segs:segs.length,plate:[pw,ph,pcx,pcz],car:car&&car.pos(),camPos:cam.position.toArray(),mscale:model.scale.x,bscale:body.scale.toArray(),mpos:model.position.toArray()});
   { const acc={p:[],n:[],c:[]}, yy=.3, add=(a,b,w,col)=>{ const dx=b[0]-a[0], dz=b[1]-a[1], Ln=Math.hypot(dx,dz)||1e-9, nx=-dz/Ln*w/2, nz=dx/Ln*w/2, v=[[a[0]+nx,a[1]+nz],[a[0]-nx,a[1]-nz],[b[0]-nx,b[1]-nz],[b[0]+nx,b[1]+nz]]; [0,1,2,0,2,3].forEach(i=>{ acc.p.push(v[i][0],yy,v[i][1]); acc.n.push(0,1,0); acc.c.push(col.r,col.g,col.b); }); };
     G.ribbons.forEach(R=>{ const w=Math.max(8,Math.min(15,R.w*.5)); add(R.a,R.b,w,new T.Color(R.major?0x5d646f:0x50565f)); add(R.a,R.b,.5,new T.Color(0xe8e2c8)); });
     if(acc.p.length) body.add(mk(acc,new T.MeshBasicMaterial({vertexColors:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}))); }
@@ -16048,7 +16048,7 @@ EXP.ar=async function(park){
 @media (max-width:560px){ #exShare .sh-r{grid-template-columns:1fr} #exShare .sh-qr svg{margin:0 auto} }
 #arOv{position:fixed;inset:0;z-index:9100;background:#0b0d11;overflow:hidden;font-family:Inter,system-ui,sans-serif;color:#fff}
 #arOv video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-#arOv.drive video{display:none} #arOv.drive{background:linear-gradient(180deg,#6fa8e6 0%,#bcd8f2 55%,#dbe9f7 100%)}
+#arOv.drive video{display:none} #arOv.drive,#arOv.drive.nocam{background:linear-gradient(180deg,#6fa8e6 0%,#bcd8f2 55%,#dbe9f7 100%)}
 #arOv.nocam video{display:none} #arOv.nocam{background:radial-gradient(circle at 50% 40%,#2a3140,#0b0d11 70%)}
 #arOv canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 #arOv .ar-top{position:absolute;top:max(14px,env(safe-area-inset-top));left:14px;right:14px;display:flex;flex-direction:column;gap:3px;text-shadow:0 2px 10px rgba(0,0,0,.7)}
