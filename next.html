@@ -15834,15 +15834,16 @@ function tint(alt){ // multiply colour: white by day, gold at sunrise/sunset, bl
 EXP.sun=function(park){
   if(!H.ready()) return; const tok=H.newTok(); let raf=0, playing=false;
   const site=()=>{ const p=park!=="all"?pinAt(park):null; return p||map.getCenter().toArray(); };
-  let c=site(), ds=cairoToday(), min=cairoNowMin(); const light0=(map.getLight&&map.getLight())||null;
+  let c=site(), ds=cairoToday(), min=cairoNowMin();
   const wrap=q("#map")&&q("#map").parentElement||document.body; const tn=document.createElement("div"); tn.id="sunTint"; wrap.appendChild(tn);
   function geo(){ if(!map.getSource("sun-src")) map.addSource("sun-src",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    if(!map.getLayer("sun-arc")) map.addLayer({id:"sun-arc",type:"line",source:"sun-src",filter:["==",["get","t"],"arc"],paint:{"line-color":"#FF9F0A","line-width":2.2,"line-opacity":.9,"line-dasharray":[1.4,1.4]}});
-    if(!map.getLayer("sun-ray")) map.addLayer({id:"sun-ray",type:"line",source:"sun-src",filter:["==",["get","t"],"ray"],paint:{"line-color":"#FFB020","line-width":1.4,"line-opacity":.8}});
-    if(!map.getLayer("sun-shadow")) map.addLayer({id:"sun-shadow",type:"line",source:"sun-src",filter:["==",["get","t"],"shadow"],paint:{"line-color":"#16181D","line-width":4,"line-opacity":.55,"line-cap":"round"}});
+    if(!map.getLayer("sun-halo")) map.addLayer({id:"sun-halo",type:"line",source:"sun-src",filter:["in",["get","t"],["literal",["arc","ray"]]],paint:{"line-color":"#fff","line-width":7,"line-opacity":.85,"line-blur":1}});
+    if(!map.getLayer("sun-arc")) map.addLayer({id:"sun-arc",type:"line",source:"sun-src",filter:["==",["get","t"],"arc"],paint:{"line-color":"#E07800","line-width":3.2,"line-opacity":1}});
+    if(!map.getLayer("sun-ray")) map.addLayer({id:"sun-ray",type:"line",source:"sun-src",filter:["==",["get","t"],"ray"],paint:{"line-color":"#E07800","line-width":2.4,"line-opacity":1,"line-dasharray":[2,1.6]}});
+    if(!map.getLayer("sun-shadow")) map.addLayer({id:"sun-shadow",type:"line",source:"sun-src",filter:["==",["get","t"],"shadow"],layout:{"line-cap":"round"},paint:{"line-color":"#16181D","line-width":5,"line-opacity":.7}});
     if(!map.getLayer("sun-pt")) map.addLayer({id:"sun-pt",type:"circle",source:"sun-src",filter:["==",["get","t"],"sun"],paint:{"circle-radius":11,"circle-color":"#FFC21A","circle-stroke-color":"#fff","circle-stroke-width":3,"circle-blur":.1}});
     if(!map.getLayer("sun-pt-g")) map.addLayer({id:"sun-pt-g",type:"circle",source:"sun-src",filter:["==",["get","t"],"sun"],paint:{"circle-radius":24,"circle-color":"#FFC21A","circle-opacity":.28,"circle-blur":1}},"sun-pt"); }
-  function clean(){ try{ ["sun-pt","sun-pt-g","sun-shadow","sun-ray","sun-arc"].forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); }); if(map.getSource("sun-src")) map.removeSource("sun-src"); if(light0) map.setLight(light0); }catch(e){} tn.remove(); }
+  function clean(){ try{ ["sun-pt","sun-pt-g","sun-shadow","sun-ray","sun-arc","sun-halo"].forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); }); if(map.getSource("sun-src")) map.removeSource("sun-src"); map.setLight({anchor:"viewport",color:"#ffffff",intensity:.5,position:[1.15,210,30]}); }catch(e){} tn.remove(); }
   const saved=H.camNow();
   H.wowStart("sun",()=>{ tok.dead=true; cancelAnimationFrame(raf); map.off("styledata",geo); clean(); try{ map.flyTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing,duration:1400,essential:true}); }catch(e){} });
   geo(); map.on("styledata",geo);
@@ -15855,7 +15856,7 @@ EXP.sun=function(park){
   b.classList.add("ex-wide"); const el=id=>q("#"+id); el("suD").value=ds;
   function arcPts(){ const pts=[]; for(let m=0;m<=1440;m+=15){ const p=sunPos(new Date(cairoUTC(ds,m)),c[1],c[0]); if(p.alt>-1) pts.push(dest(c,p.az,Math.max(120,1700*(1-clamp(p.alt,0,90)/90)+120))); } return pts; }
   function draw(){ const info=dayInfo(ds,c[1],c[0]), p=sunPos(new Date(cairoUTC(ds,min)),c[1],c[0]);
-    el("suT").textContent=hhmm(min)+(p.alt>0?"":" · night"); el("suR").value=min;
+    el("suT").textContent=hhmm(min)+(p.alt>0?"":p.alt>-6?(min<720?" · dawn":" · dusk"):" · night"); el("suR").value=min;
     el("suRi").textContent=info.rise!=null?hhmm(info.rise):"—"; el("suSe").textContent=info.set!=null?hhmm(info.set):"—"; el("suDl").textContent=info.rise!=null?((info.set-info.rise)/60).toFixed(1)+" h":"—";
     el("suN").textContent=p.alt>0?Math.round(p.alt)+"° · "+compass(p.az):"below horizon"; el("suMx").textContent=Math.round(info.maxA)+"° at "+hhmm(info.maxM);
     const sh=p.alt>1?20/Math.tan(p.alt*rad):null; el("suSh").textContent=sh?(sh<400?Math.round(sh)+" m":"very long"):"—";
@@ -15953,6 +15954,152 @@ EXP.truck=function(park){
 .tk-m svg{display:block;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45))}
 #sunTint{position:absolute;inset:0;z-index:3;pointer-events:none;mix-blend-mode:multiply;transition:background .25s linear}
 @media (max-width:820px){ #exBar .tm-k{grid-template-columns:repeat(2,1fr)} #exBar .tm-k.su{grid-template-columns:repeat(2,1fr)} #exBar .tm-date{font-size:21px} }
+`; document.head.appendChild(st); }
+})();
+</script>
+
+<script>
+/* V80 — share with a customer, AR */
+(function(){
+"use strict";
+const W=window.SID_WOW; if(!W) return; const H=W.helpers, EXP=W.EXP, q=H.q, esc=H.esc;
+const PAGE={"industria-sokhna": "/opportunities/industria-sokhna/", "sokhna360": "/opportunities/sokhna-360/", "industria-east": "/industria-east/", "industria-west": "/industria-west/", "industria-sadat": "/opportunities/industria-sadat/", "industria-october": "/opportunities/industria-october/", "industria-new-sadat": "/opportunities/industria-new-sadat/", "industria-borg-el-arab": "/opportunities/industria-borg-el-arab/", "industria-asher-p10": "/opportunities/industria-asher/", "industria-asher-p11": "/opportunities/industria-asher/", "al-oula": "/opportunities/al-oula/"}, SITE="https://elsewedydevelopment.com";
+const b64u=s=>btoa(unescape(encodeURIComponent(s))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+const r5=n=>Math.round(n*1e5)/1e5;
+
+/* ============================================================
+   7. SHARE A PLOT WITH A CUSTOMER — only what is ticked, as a snapshot in the link itself (nothing stored, no login, no price, no client)
+   ============================================================ */
+EXP.share=function(){
+  if(!H.ready()) return;
+  let items=[]; try{ items=selRows(); }catch(e){}
+  if(items.length!==1){ H.toast("Click one available plot on the map first, then choose Share",true); return; }
+  const it=items[0], row=it.info&&it.info.row, p=it.f.properties;
+  if(!row||row.status!=="ats"){ H.toast("Only plots that are available (not sold, reserved or on hold) can be shared",true); return; }
+  closeDlg();
+  const d=document.createElement("div"); d.id="exShare"; d.setAttribute("role","dialog"); d.setAttribute("aria-label","Share a plot with a customer");
+  const where=(S.reg.parks[it.info.park]&&S.reg.parks[it.info.park].where)||"";
+  d.innerHTML=`<div class="sh-c"><button class="ex-x sh-x" type="button" aria-label="Close">×</button>
+    <h3>Share this plot</h3><div class="sh-p"><b>${esc(p.unit||"Plot")}</b> · ${esc(H.parkName(it.info.park))} · ${H.fi(row.area)} sqm</div>
+    <div class="sh-o">
+      <label><input type="checkbox" id="shArea" checked> Plot size</label>
+      <label><input type="checkbox" id="shSec" checked> Sector</label>
+      <label><input type="checkbox" id="shLg" checked> Distance to port, airport and Cairo</label>
+      <label><input type="checkbox" id="shUt" checked> Electricity, water and sewage</label>
+      <label class="sh-v">Link works for <select id="shDays"><option value="7">7 days</option><option value="14">14 days</option><option value="30" selected>30 days</option><option value="90">90 days</option></select></label>
+    </div>
+    <div class="sh-n">The link shows this plot on the satellite map with a fly-in, plus what is ticked. It never shows the price, the client, other plots or other customers. It is a snapshot of today: anyone who has the link can see it until it expires.</div>
+    <div class="sh-a"><button class="ex-b on" id="shMake" type="button">Create link and QR</button></div>
+    <div class="sh-r" id="shRes" hidden></div></div>`;
+  document.body.appendChild(d);
+  const el=id=>q("#"+id);
+  d.querySelector(".sh-x").onclick=closeDlg; d.addEventListener("pointerdown",e=>{ if(e.target===d) closeDlg(); });
+  el("shMake").onclick=()=>{
+    const g=it.f.geometry, rings=(g.type==="Polygon"?[g.coordinates[0]]:g.coordinates.map(pg=>pg[0])).map(r=>r.map(c=>[r5(c[0]),r5(c[1])]));
+    const o={v:1,t:Date.now(),x:Date.now()+(+el("shDays").value)*864e5,u:p.unit||"",pk:H.parkName(it.info.park),w:where,rings,c:[r5(p.c[0]),r5(p.c[1])],pg:PAGE[it.info.park]?SITE+PAGE[it.info.park]:SITE};
+    if(el("shArea").checked) o.a=Math.round(row.area);
+    if(el("shSec").checked&&row.sector) o.s=row.sector;
+    if(el("shLg").checked){ try{ const lg=logisticsAt(p.c); o.lg={p:[lg.port.name,Math.round(lg.port.km)],a:[lg.air.name,Math.round(lg.air.km)],c:Math.round(lg.cairo)}; }catch(e){} }
+    if(el("shUt").checked){ const u={}; if(row.mva!=null) u.e=Math.round(row.mva*10)/10; if(row.water!=null) u.w=Math.round(row.water); if(row.sewage!=null) u.s=Math.round(row.sewage); if(Object.keys(u).length) o.ut=u; }
+    const url=location.origin+"/c.html#"+b64u(JSON.stringify(o));
+    let qr=""; try{ const Q=qrcode(0,"M"); Q.addData(url); Q.make(); qr=Q.createSvgTag({cellSize:4,margin:2,scalable:true}); }catch(e){}
+    const r=el("shRes"); r.hidden=false;
+    r.innerHTML=`<div class="sh-qr">${qr||"<em>QR could not be made — copy the link instead.</em>"}</div>
+      <div class="sh-l"><input id="shUrl" readonly value="${esc(url)}" aria-label="Link"><div class="sh-b2"><button class="ex-b on" id="shCopy" type="button">Copy link</button><a class="ex-b" id="shOpen" href="${esc(url)}" target="_blank" rel="noopener">Preview</a></div>
+      <div class="sh-n">Valid until ${new Date(o.x).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}. The page loads maps only; it has no sign-in and holds no data about other plots.</div></div>`;
+    el("shMake").textContent="Create a new link";
+    el("shCopy").onclick=async()=>{ try{ await navigator.clipboard.writeText(url); el("shCopy").textContent="Copied"; }catch(e){ el("shUrl").select(); document.execCommand&&document.execCommand("copy"); el("shCopy").textContent="Copied"; } };
+    try{ if(typeof laraLog==="function") laraLog("share plot",{park:it.info.park,unit:p.unit,days:+el("shDays").value}); }catch(e){}
+  };
+};
+function closeDlg(){ const d=q("#exShare"); if(d) d.remove(); }
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&q("#exShare")){ closeDlg(); } });
+
+/* ============================================================
+   8. AR TABLE VIEW — the park as a 3D model in the camera picture (phone: move it around; others: drag to turn)
+   ============================================================ */
+EXP.ar=async function(park){
+  if(!H.ready()) return; if(park==="all"){ H.toast("Pick a project in the list first",true); return; }
+  // motion permission must be asked inside the tap, before anything is awaited
+  let permP=Promise.resolve("granted");
+  try{ if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function") permP=DeviceOrientationEvent.requestPermission().catch(()=>"denied"); }catch(e){}
+  const tok=H.newTok(); let renderer=null, scene=null, raf=0, stream=null, vid=null, ov=null, onOri=null, gone=false;
+  function cleanup(){ if(gone) return; gone=true; cancelAnimationFrame(raf); if(onOri) window.removeEventListener("deviceorientation",onOri); try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+    try{ scene&&scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); renderer&&renderer.dispose(); }catch(e){} if(ov) ov.remove(); window.removeEventListener("resize",onRes); }
+  const onRes=()=>{ if(!renderer) return; renderer.setSize(innerWidth,innerHeight,false); cam.aspect=innerWidth/innerHeight; cam.updateProjectionMatrix(); };
+  H.wowStart("ar",()=>{ tok.dead=true; cleanup(); });
+  try{ await H.loadThree(); }catch(e){ H.toast("The 3D library could not load — check the connection",true); H.wowStop(); return; }
+  const feats=S.geo.features.filter(f=>f.properties.park===park); if(!feats.length){ H.toast("This project has no plots on the map",true); H.wowStop(); return; }
+  // local metres around the centre
+  let lo=[1e9,1e9], hi=[-1e9,-1e9]; const rings=[]; feats.forEach(f=>{ const g=f.geometry, R=g.type==="Polygon"?[g.coordinates[0]]:g.coordinates.map(p=>p[0]); R.forEach(r=>{ rings.push({r,st:f.properties.st}); r.forEach(c=>{ lo[0]=Math.min(lo[0],c[0]); lo[1]=Math.min(lo[1],c[1]); hi[0]=Math.max(hi[0],c[0]); hi[1]=Math.max(hi[1],c[1]); }); }); });
+  const c0=[(lo[0]+hi[0])/2,(lo[1]+hi[1])/2], kx=111320*Math.cos(c0[1]*Math.PI/180), ky=110574;
+  const W_=(hi[0]-lo[0])*kx, H_=(hi[1]-lo[1])*ky, ext=Math.max(W_,H_), sc=.5/ext;       // longest side = 50 cm
+  const T=window.THREE;
+  scene=new T.Scene(); const cam=new T.PerspectiveCamera(62,innerWidth/innerHeight,.01,30);
+  scene.add(new T.AmbientLight(0xffffff,.78)); const sun=new T.DirectionalLight(0xffffff,.85); sun.position.set(.4,1,.6); scene.add(sun);
+  const model=new T.Group(); scene.add(model); const body=new T.Group(); model.add(body);
+  const mats={}, col=k=>{ if(!mats[k]) mats[k]=new T.MeshLambertMaterial({color:new T.Color(STATUS[k]?STATUS[k].color:"#999999")}); return mats[k]; };
+  const hgt={sold:.0085,reserved:.0085,ats:.0045,eoi:.0055,hold:.0035,nfs:.0025,unknown:.0025,nodata:.0025};
+  rings.forEach(({r,st})=>{ try{ const sh=new T.Shape(); r.forEach((c,i)=>{ const x=(c[0]-c0[0])*kx*sc, y=(c[1]-c0[1])*ky*sc; if(i===0) sh.moveTo(x,y); else sh.lineTo(x,y); });
+      const geo=new T.ExtrudeGeometry(sh,{depth:hgt[st]||.003,bevelEnabled:false}); geo.rotateX(-Math.PI/2); const m=new T.Mesh(geo,col(st)); m.position.y=.003; body.add(m); }catch(e){} });
+  const plate=new T.Mesh(new T.BoxGeometry(W_*sc*1.12,.003,H_*sc*1.12),new T.MeshLambertMaterial({color:0x14171c})); plate.position.y=.0015; body.add(plate);
+  model.position.set(0,-.34,-1.05); let yaw=0, scale=1, pitchTilt=0; const lookFwd=new T.Vector3();
+  ov=document.createElement("div"); ov.id="arOv";
+  ov.innerHTML=`<video playsinline muted autoplay></video><canvas></canvas><div class="ar-top"><b>${esc(H.parkName(park))}</b><span id="arS">Starting the camera…</span></div>
+    <div class="ar-bot"><button class="ex-b on" id="arPlace" type="button">Place here</button><button class="ex-b" id="arMin" type="button" aria-label="Smaller">−</button><button class="ex-b" id="arPlus" type="button" aria-label="Bigger">+</button><button class="ex-b" id="arX" type="button">Close</button></div>
+    <div class="ar-key"><i style="background:${STATUS.sold.color}"></i>Sold + reserved <i style="background:${STATUS.ats.color}"></i>Available <i style="background:${STATUS.hold.color}"></i>On hold <i style="background:${STATUS.nfs.color}"></i>Not for sale</div>`;
+  document.body.appendChild(ov); vid=ov.querySelector("video"); const cv=ov.querySelector("canvas");
+  renderer=new T.WebGLRenderer({canvas:cv,antialias:true,alpha:true}); renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1)); renderer.setClearColor(0x000000,0); renderer.setSize(innerWidth,innerHeight,false); window.addEventListener("resize",onRes);
+  const say=t=>{ const s=q("#arS"); if(s) s.textContent=t; };
+  q("#arX").onclick=()=>H.wowStop(); q("#arMin").onclick=()=>{ scale=Math.max(.35,scale/1.2); }; q("#arPlus").onclick=()=>{ scale=Math.min(4,scale*1.2); };
+  // camera picture
+  let camOk=false; try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false}); vid.srcObject=stream; await vid.play().catch(()=>{}); camOk=true; }catch(e){}
+  if(tok.dead) return; if(!camOk) ov.classList.add("nocam");
+  // motion
+  const perm=await permP; let hasOri=false, a0=null; const eul=new T.Euler(), q1=new T.Quaternion(-Math.SQRT1_2,0,0,Math.SQRT1_2), q0=new T.Quaternion(), zee=new T.Vector3(0,0,1);
+  if(perm==="granted"&&"DeviceOrientationEvent" in window){ onOri=e=>{ if(e.alpha==null) return; hasOri=true; if(a0==null) a0=e.alpha; const orient=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*Math.PI/180;
+      eul.set(e.beta*Math.PI/180,(e.alpha-a0)*Math.PI/180,-e.gamma*Math.PI/180,"YXZ"); cam.quaternion.setFromEuler(eul); cam.quaternion.multiply(q1); cam.quaternion.multiply(q0.setFromAxisAngle(zee,-orient)); }; window.addEventListener("deviceorientation",onOri); }
+  setTimeout(()=>{ if(tok.dead) return; if(hasOri){ say("Move your phone around the table · drag to turn · pinch to resize"); } else { ov.classList.add("noori"); cam.position.set(0,.55,.55); cam.lookAt(0,-.25,-1.05); say(camOk?"Motion sensor not available — drag to turn the model":"Camera not available here — drag to turn, use + and − to resize"); } },1400);
+  q("#arPlace").onclick=()=>{ if(!hasOri){ yaw=0; pitchTilt=0; return; } cam.getWorldDirection(lookFwd); const d=1.0; model.position.set(lookFwd.x*d,lookFwd.y*d-.12,lookFwd.z*d); yaw=Math.atan2(-lookFwd.x,-lookFwd.z)*0+0; body.rotation.y=0; };
+  // touch / mouse: drag turns, pinch resizes
+  let pts=new Map(), lastD=0; cv.style.touchAction="none";
+  cv.addEventListener("pointerdown",e=>{ cv.setPointerCapture(e.pointerId); pts.set(e.pointerId,[e.clientX,e.clientY]); });
+  cv.addEventListener("pointermove",e=>{ const p=pts.get(e.pointerId); if(!p) return; const dx=e.clientX-p[0], dy=e.clientY-p[1]; pts.set(e.pointerId,[e.clientX,e.clientY]);
+    if(pts.size===2){ const [a,b]=[...pts.values()], d=Math.hypot(a[0]-b[0],a[1]-b[1]); if(lastD) scale=Math.max(.35,Math.min(4,scale*d/lastD)); lastD=d; } else { yaw+=dx*.008; if(!hasOri) pitchTilt=Math.max(-.6,Math.min(.9,pitchTilt+dy*.006)); } });
+  const up=e=>{ pts.delete(e.pointerId); if(pts.size<2) lastD=0; }; cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
+  cv.addEventListener("wheel",e=>{ e.preventDefault(); scale=Math.max(.35,Math.min(4,scale*(e.deltaY<0?1.08:.93))); },{passive:false});
+  const frame=()=>{ if(tok.dead||gone) return; body.rotation.y=yaw; model.rotation.x=hasOri?0:pitchTilt; model.scale.setScalar(scale); renderer.render(scene,cam); raf=requestAnimationFrame(frame); };
+  raf=requestAnimationFrame(frame);
+};
+
+/* ---------- look ---------- */
+{ const st=document.createElement("style"); st.textContent=`
+#exShare{position:fixed;inset:0;z-index:9400;display:grid;place-items:center;background:rgba(10,12,16,.45);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);padding:14px;font-family:Inter,system-ui,sans-serif}
+#exShare .sh-c{position:relative;width:min(520px,100%);max-height:calc(100vh - 28px);overflow:auto;background:#fff;color:#16181D;border-radius:20px;padding:20px 22px 18px;box-shadow:0 30px 70px -20px rgba(0,0,0,.55)}
+#exShare .sh-x{position:absolute;top:12px;right:12px}
+#exShare h3{margin:0 0 4px;font:800 19px Inter,system-ui,sans-serif;letter-spacing:-.02em}
+#exShare .sh-p{font:500 13px/1.4 Inter,system-ui,sans-serif;color:#4A4F57;margin-bottom:12px}
+#exShare .sh-o{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:14px;background:rgba(16,18,24,.04)}
+#exShare .sh-o label{display:flex;align-items:center;gap:9px;font:600 13px Inter,system-ui,sans-serif}
+#exShare .sh-o input[type=checkbox]{width:16px;height:16px;accent-color:#B3263D}
+#exShare .sh-v select{height:28px;border-radius:8px;border:1px solid rgba(16,18,24,.16);padding:0 8px;font:600 12.5px Inter,system-ui,sans-serif}
+#exShare .sh-n{font:500 11.5px/1.45 Inter,system-ui,sans-serif;color:#6E737B;margin:10px 0}
+#exShare .sh-a{display:flex;justify-content:flex-end}
+#exShare .sh-r{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:start;margin-top:14px;padding-top:14px;border-top:1px solid rgba(16,18,24,.1)}
+#exShare .sh-qr svg{width:150px;height:150px;display:block;border-radius:10px;border:1px solid rgba(16,18,24,.12);padding:6px;background:#fff}
+#exShare .sh-l input{width:100%;box-sizing:border-box;height:34px;border-radius:9px;border:1px solid rgba(16,18,24,.16);padding:0 10px;font:500 11.5px ui-monospace,Menlo,monospace;color:#16181D}
+#exShare .sh-b2{display:flex;gap:8px;margin-top:8px}
+#exShare a.ex-b{display:inline-grid;place-items:center;text-decoration:none}
+@media (max-width:560px){ #exShare .sh-r{grid-template-columns:1fr} #exShare .sh-qr svg{margin:0 auto} }
+#arOv{position:fixed;inset:0;z-index:9100;background:#0b0d11;overflow:hidden;font-family:Inter,system-ui,sans-serif;color:#fff}
+#arOv video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#arOv.nocam video{display:none} #arOv.nocam{background:radial-gradient(circle at 50% 40%,#2a3140,#0b0d11 70%)}
+#arOv canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#arOv .ar-top{position:absolute;top:max(14px,env(safe-area-inset-top));left:14px;right:14px;display:flex;flex-direction:column;gap:3px;text-shadow:0 2px 10px rgba(0,0,0,.7)}
+#arOv .ar-top b{font:800 17px Inter,system-ui,sans-serif} #arOv .ar-top span{font:600 12.5px Inter,system-ui,sans-serif;color:rgba(255,255,255,.88)}
+#arOv .ar-bot{position:absolute;left:0;right:0;bottom:max(18px,env(safe-area-inset-bottom));display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#arOv .ar-key{position:absolute;left:14px;right:14px;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 44px);display:flex;gap:8px;justify-content:center;flex-wrap:wrap;font:600 10.5px Inter,system-ui,sans-serif;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.8)}
+#arOv .ar-key i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:3px;vertical-align:-1px}
 `; document.head.appendChild(st); }
 })();
 </script>
