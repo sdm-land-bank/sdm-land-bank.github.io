@@ -15938,7 +15938,7 @@ EXP.ar=async function(park){
     <div class="ar-sim">Simulation: factories and trucks are illustrative, they show sold and reserved plots, not real construction. Ground: satellite picture.</div>`;
   document.body.appendChild(ov); vid=ov.querySelector("video"); const cv=ov.querySelector("canvas"), say=t=>{ const e=q("#arS"); if(e) e.textContent=t; };
   q("#arX").onclick=()=>H.wowStop();
-  let sat=null; try{ sat=await satTexture(lo,hi); }catch(e){} if(tok.dead) return;
+  let sat=null, satErr=""; try{ sat=await satTexture(lo,hi); }catch(e){ satErr=String(e); console.warn("ar satellite",e); } if(tok.dead) return; window.__arDbg={satErr,has:!!sat,w:sat&&sat.cv.width,h:sat&&sat.cv.height};
   say("Building the park…");
   scene=new T.Scene(); cam=new T.PerspectiveCamera(62,innerWidth/innerHeight,.01,30);
   scene.add(new T.AmbientLight(0xffffff,.78)); const sun=new T.DirectionalLight(0xffffff,.8); sun.position.set(.5,1,.7); scene.add(sun);
