@@ -15909,7 +15909,7 @@ function roadGraph(rings,mx,mz){
 /* a vehicle that drives the graph: keeps going, turns at junctions, only turns round at a dead end */
 function mkWalker(G,startEdge){ const nodes=G.nodes, heat=n=>1+Math.min(6,(n.heat||0)); let from=startEdge[0], to=startEdge[1]; const e0=nodes[from].out.find(o=>o.to===to); let len=e0?e0.len:10, t=Math.random()*len, nxt=null;
   const A=()=>nodes[from], B=()=>nodes[to];
-  const pick=()=>{ const o=nodes[to].out, back=o.filter(x=>x.to!==from), c=back.length?back:o; if(c.length===1) return c[0]; const dx=B().x-A().x, dz=B().z-A().z, L=Math.hypot(dx,dz)||1; const w=c.map(x=>{ const ex=nodes[x.to].x-B().x, ez=nodes[x.to].z-B().z, EL=Math.hypot(ex,ez)||1, cs=(dx*ex+dz*ez)/(L*EL); return (.35+Math.max(0,cs)*2.2)*heat(nodes[x.to]); }); let r=Math.random()*w.reduce((a,b)=>a+b,0); for(let i=0;i<c.length;i++){ r-=w[i]; if(r<=0) return c[i]; } return c[c.length-1]; };
+  const pick=()=>{ const o=nodes[to].out, back=o.filter(x=>x.to!==from), c=back.length?back:o; if(c.length===1) return c[0]; const dx=B().x-A().x, dz=B().z-A().z, L=Math.hypot(dx,dz)||1; const w=c.map(x=>{ const ex=nodes[x.to].x-B().x, ez=nodes[x.to].z-B().z, EL=Math.hypot(ex,ez)||1, cs=(dx*ex+dz*ez)/(L*EL); const h=heat(nodes[x.to]); return (.35+Math.max(0,cs)*2.2)*h*h; }); let r=Math.random()*w.reduce((a,b)=>a+b,0); for(let i=0;i<c.length;i++){ r-=w[i]; if(r<=0) return c[i]; } return c[c.length-1]; };
   nxt=pick();
   const at=(tt)=>{ const k=Math.max(0,Math.min(1,tt/len)); return [A().x+(B().x-A().x)*k, A().z+(B().z-A().z)*k]; };
   return {
@@ -15973,11 +15973,11 @@ EXP.ar=async function(park){
   const groundMat=new T.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.5,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}); body.add(mk(gr,groundMat));
   const lg=new T.BufferGeometry(); lg.setAttribute("position",new T.Float32BufferAttribute(ln,3)); const lineMat=new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.5}); body.add(new T.LineSegments(lg,lineMat));
   // streets between the plot rows, as a road graph
-  let G=roadGraph(rings,mx,mz); const fcs=[]; stOf.forEach((st,k)=>{ if(st==='sold'){ const f=S.geo.features.find(x=>x.properties.k===k); if(f) fcs.push([mx(f.properties.c),mz(f.properties.c)]); } }); G.nodes.forEach(n=>{ n.heat=0; for(const c of fcs){ if(Math.abs(c[0]-n.x)<90&&Math.abs(c[1]-n.z)<90) n.heat++; } }); window.__arTest=()=>{ let bad=0,steps=0,maxTurn=0; for(let r=0;r<6;r++){ const n0=G.nodes.length?G.nodes[(Math.random()*G.nodes.length)|0]:null; if(!n0||!n0.out.length) continue; const w=mkWalker(G,[G.nodes.indexOf(n0),n0.out[0].to]); let ph=null; for(let i=0;i<4000;i++){ w.step(2.5); const p=w.pos(); steps++; if(G.inPlot(p[0],p[1])) bad++; const l=w.look(10); const h=Math.atan2(l[1]-p[1],l[0]-p[0]); if(ph!==null){ let d=Math.abs(Math.atan2(Math.sin(h-ph),Math.cos(h-ph))); if(d>maxTurn) maxTurn=d; } ph=h; } } return {bad,steps,maxTurn,len:G.length,nodes:G.nodes.length}; };
+  let roadMat=null; let G=roadGraph(rings,mx,mz); const fcs=[]; stOf.forEach((st,k)=>{ if(st==='sold'){ const f=S.geo.features.find(x=>x.properties.k===k); if(f) fcs.push([mx(f.properties.c),mz(f.properties.c)]); } }); G.nodes.forEach(n=>{ n.heat=0; for(const c of fcs){ if(Math.abs(c[0]-n.x)<90&&Math.abs(c[1]-n.z)<90) n.heat++; } }); window.__arTest=()=>{ let bad=0,steps=0,maxTurn=0; for(let r=0;r<6;r++){ const n0=G.nodes.length?G.nodes[(Math.random()*G.nodes.length)|0]:null; if(!n0||!n0.out.length) continue; const w=mkWalker(G,[G.nodes.indexOf(n0),n0.out[0].to]); let ph=null; for(let i=0;i<4000;i++){ w.step(2.5); const p=w.pos(); steps++; if(G.inPlot(p[0],p[1])) bad++; const l=w.look(10); const h=Math.atan2(l[1]-p[1],l[0]-p[0]); if(ph!==null){ let d=Math.abs(Math.atan2(Math.sin(h-ph),Math.cos(h-ph))); if(d>maxTurn) maxTurn=d; } ph=h; } } return {bad,steps,maxTurn,len:G.length,nodes:G.nodes.length}; };
   window.__arScene=()=>scene; window.__arDbg2=()=>({nodes:G.nodes.length,rib:G.ribbons.length,plate:[pw,ph,pcx,pcz],car:car&&car.pos(),camPos:cam.position.toArray(),mscale:model.scale.x,bscale:body.scale.toArray(),mpos:model.position.toArray()});
   { const acc={p:[],n:[],c:[]}, yy=.3, add=(a,b,w,col)=>{ const dx=b[0]-a[0], dz=b[1]-a[1], Ln=Math.hypot(dx,dz)||1e-9, nx=-dz/Ln*w/2, nz=dx/Ln*w/2, v=[[a[0]+nx,a[1]+nz],[a[0]-nx,a[1]-nz],[b[0]-nx,b[1]-nz],[b[0]+nx,b[1]+nz]]; [0,1,2,0,2,3].forEach(i=>{ acc.p.push(v[i][0],yy,v[i][1]); acc.n.push(0,1,0); acc.c.push(col.r,col.g,col.b); }); };
-    G.ribbons.forEach(R=>{ add(R.a,R.b,11,new T.Color(0x2b2e33)); add(R.a,R.b,.6,new T.Color(0xf2ecd0)); });
-    if(acc.p.length) body.add(mk(acc,new T.MeshBasicMaterial({vertexColors:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}))); }
+    G.ribbons.forEach(R=>{ add(R.a,R.b,11,new T.Color(0x34383e)); add(R.a,R.b,.6,new T.Color(0xf2ecd0)); });
+    if(acc.p.length){ roadMat=new T.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.75,side:T.DoubleSide,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}); body.add(mk(acc,roadMat)); } }
   // factories on the sold plots (the same illustrative massing as the 3D map), a lower building on reserved plots
   const fac={p:[],n:[],c:[]}, chim=[], fSold=new Set(), fRes=new Set();
   try{ const FC=(typeof FACTORY_FC!=="undefined"&&FACTORY_FC)||(typeof buildFactories==="function"?buildFactories():null);
@@ -16005,7 +16005,7 @@ EXP.ar=async function(park){
   let mode="table", yaw=0, scale=1, pitchTilt=0, lookY=0, lookP=0, hasOri=false, a0=null, camOk=false; const lookFwd=new T.Vector3();
   const fog=new T.Fog(0xdbe9f7,500,4500);
   function setMode(m){ mode=m; const d=m==="drive";
-    ov.classList.toggle("drive",d); sand.visible=d; scene.fog=d?fog:null; groundMat.opacity=d?.06:.5; lineMat.opacity=d?.18:.5;
+    ov.classList.toggle("drive",d); sand.visible=d; scene.fog=d?fog:null; groundMat.opacity=d?.06:.5; if(roadMat) roadMat.opacity=d?1:.75; lineMat.opacity=d?.18:.5;
     cam.fov=d?72:62; cam.near=d?.8:.01; cam.far=d?9000:30; cam.updateProjectionMatrix(); lookY=0; lookP=0;
     q("#arDrive").textContent=d?"Back to table":"Drive through"; q("#arPlace").style.display=d?"none":"";
     if(!d&&!hasOri){ cam.rotation.set(0,0,0); cam.position.set(0,.34,-.3); cam.lookAt(0,-.34,-1.05); }
