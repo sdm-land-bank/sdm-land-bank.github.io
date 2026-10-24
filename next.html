@@ -15772,8 +15772,11 @@ EXP.time=function(park){
     if(!map.getLayer("tm-later")) map.addLayer({id:"tm-later",type:"fill",source:"tm-src",filter:[">",["get","tm"],T],paint:{"fill-color":STATUS.ats.color,"fill-opacity":op}},"fill");
     if(!map.getLayer("tm-sold")) map.addLayer({id:"tm-sold",type:"fill",source:"tm-src",filter:["<=",["get","tm"],T],paint:{"fill-color":STATUS.sold.color,"fill-opacity":op}},"fill");
     ["fill-sold","fill-reserved"].forEach(id=>{ if(map.getLayer(id)&&map.getLayoutProperty(id,"visibility")!=="none") map.setLayoutProperty(id,"visibility","none"); });
+    if(!scope){ if(!map.getSource("tm-pins")) map.addSource("tm-pins",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+      if(!map.getLayer("tm-pin")) map.addLayer({id:"tm-pin",type:"circle",source:"tm-pins",paint:{"circle-radius":["*",["sqrt",["get","a"]],.024],"circle-color":STATUS.sold.color,"circle-opacity":.62,"circle-stroke-color":"#fff","circle-stroke-width":2}});
+      if(!map.getLayer("tm-pin-n")) map.addLayer({id:"tm-pin-n",type:"symbol",source:"tm-pins",layout:{"text-field":["get","n"],"text-font":["Open Sans Bold"],"text-size":11,"text-allow-overlap":true},paint:{"text-color":"#fff","text-halo-color":"rgba(0,0,0,.55)","text-halo-width":1.2}}); }
   }catch(e){} }
-  function unbuild(){ try{ ["tm-sold","tm-later"].forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); }); if(map.getSource("tm-src")) map.removeSource("tm-src");
+  function unbuild(){ try{ ["tm-pin-n","tm-pin","tm-sold","tm-later"].forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); }); ["tm-src","tm-pins"].forEach(id=>{ if(map.getSource(id)) map.removeSource(id); });
     ["fill-sold","fill-reserved"].forEach(id=>{ if(map.getLayer(id)) map.setLayoutProperty(id,"visibility","visible"); }); }catch(e){} }
   const saved=H.camNow();
   H.wowStart("time",()=>{ tok.dead=true; cancelAnimationFrame(raf); unbuild(); map.off("styledata",build); try{ map.flyTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing,duration:1400,essential:true}); }catch(e){} });
@@ -15793,6 +15796,9 @@ EXP.time=function(park){
     let a=0,n=0,v=0; for(const x of rows){ if(x.i>t) break; a+=(x.r.soldArea||x.r.area||0); n++; v+=(typeof egp==="function"?(egp(x.r)||0):(x.r.cash||0)); }
     el("tmA").textContent=H.fs_(a)+" sqm"; el("tmP").textContent=sellable?Math.round(a/sellable*100)+"%":"—"; el("tmN").textContent=H.fi(n); el("tmV").textContent=v?fEGP(v):"—";
     try{ if(map.getLayer("tm-sold")){ map.setFilter("tm-sold",["<=",["get","tm"],t]); map.setFilter("tm-later",[">",["get","tm"],t]); } }catch(e){}
+    if(!scope){ try{ const acc={}; for(const x of rows){ if(x.i>t) break; acc[x.r.park]=(acc[x.r.park]||0)+(x.r.soldArea||x.r.area||0); }
+      const F=Object.keys(acc).map(pk=>{ const c=pinAt(pk); return c?{type:"Feature",properties:{a:acc[pk],n:H.fs_(acc[pk])},geometry:{type:"Point",coordinates:c}}:null; }).filter(Boolean);
+      const src=map.getSource("tm-pins"); src&&src.setData({type:"FeatureCollection",features:F}); }catch(e){} }
     el("tmRange").value=t; }
   draw();
   el("tmRange").oninput=e=>{ T=+e.target.value; draw(); };
