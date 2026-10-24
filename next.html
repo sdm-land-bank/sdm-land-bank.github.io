@@ -16099,5 +16099,87 @@ EXP.ar=async function(park){
 `; document.head.appendChild(st); }
 })();
 </script>
+
+<script>
+/* V82 — Lara and Explore */
+(function(){
+"use strict";
+try{
+if(typeof LARA_TOOLS==="undefined"||!Array.isArray(LARA_TOOLS)||typeof laraRun!=="function"||!window.SID_WOW) return;
+const W=window.SID_WOW, q=s=>document.querySelector(s), wait=ms=>new Promise(r=>setTimeout(r,ms));
+const ACTS=["film","time_machine","trucks_to_port","park_tour","drive_through","share_plot","stop","pause","play","faster","slower","zoom_in","zoom_out","table_view","drive_view","to_airport","to_cairo","to_port"];
+if(!LARA_TOOLS.some(t=>t.name==="explore"))
+  LARA_TOOLS.push({name:"explore",description:"Start, steer or stop the Explore features of a project, on screen while you talk: film (a guided flight with its own voice), time_machine (the plots sell month by month), trucks_to_port (animated trucks on the real road to the port, airport or Cairo), park_tour (the park as a 3D tabletop model with factories, warehouses, smoke and trucks, from the satellite picture), drive_through (a car drives between the factories), share_plot (a link and QR of one AVAILABLE plot for a customer). Steering while one runs: pause, play, faster, slower (time machine), zoom_in, zoom_out, table_view, drive_view (park tour), to_airport, to_cairo, to_port (trucks). stop ends whatever runs. Without a park it uses the project that is open.",
+    parameters:{type:"OBJECT",properties:{action:{type:"STRING",description:"What to do",enum:ACTS},park:{type:"STRING",description:"Project name, e.g. Industria East. Omit for the open one."},unit:{type:"STRING",description:"Plot code for share_plot, e.g. Y-16"},create_link:{type:"BOOLEAN",description:"share_plot: also create the link and QR"}},required:["action"]}});
+if(typeof LARA_CHIP==="object") LARA_CHIP.explore=a=>({film:"Playing the film",time_machine:"Time machine",trucks_to_port:"Trucks to the port",park_tour:"Park tour (AR)",drive_through:"Driving through the park",share_plot:"Sharing the plot",stop:"Stopping"}[a&&a.action]||"Explore · "+String((a&&a.action)||"").replace(/_/g," "));
+// the filter bar already has a Land type filter; Lara could not set it until now
+try{ const sf=LARA_TOOLS.find(t=>t.name==="set_filters"); if(sf&&!sf.parameters.properties.land_type) sf.parameters.properties.land_type={type:"ARRAY",items:{type:"STRING",enum:["Industrial","Logistics","Services"]},description:"Land type from the MDS: Industrial = factories; Logistics or Services = warehouses"}; }catch(e){}
+try{ const mc=LARA_TOOLS.find(t=>t.name==="map_control"); if(mc){ const en=mc.parameters.properties.action.enum; ["borders_on","borders_off","show_active","show_pipeline","show_all_projects"].forEach(x=>{ if(!en.includes(x)) en.push(x); }); mc.description+=" Also: borders_on/borders_off (white borders of the surveyed project polygons), show_active / show_pipeline / show_all_projects (the All / Active / Pipeline switch above the map)."; } }catch(e){}
+
+const parkOf=a=>{ if(a&&a.park){ const ps=laraParks(a.park); return ps.length?ps[0]:null; } return S.park&&S.park!=="all"?S.park:null; };
+const barText=()=>{ const b=q("#exBar"); return b?b.innerText.replace(/\s+/g," ").trim().slice(0,260):""; };
+const arText=()=>{ const e=q("#arS"); return e?e.textContent.trim():""; };
+async function untilText(f,ms){ const t0=Date.now(); while(Date.now()-t0<ms){ const x=f(); if(x&&!/Loading|Building|Finding the road|^$/.test(x)) return x; await wait(400); } return f(); }
+
+async function exploreRun(a){
+  const act=String(a.action||"").toLowerCase();
+  if(typeof sidPublic==="function"&&sidPublic()) return {error:"Explore is not part of this screen."};
+  if(act==="stop"){ W.stop(); return {stopped:true}; }
+  // steering something that already runs
+  const cur=(W.helpers&&0)||null;
+  if(act==="pause"||act==="play"){ const b=q("#tmPlay"); if(!b) return {error:"The time machine is not running."}; const isPause=/pause/i.test(b.textContent); if((act==="pause")===isPause) b.click(); return {ok:act}; }
+  if(act==="faster"||act==="slower"){ const s=q("#tmSpd"); if(!s) return {error:"The time machine is not running."}; const o=["5","10","22"], i=Math.max(0,o.indexOf(s.value)); s.value=o[Math.min(2,Math.max(0,i+(act==="faster"?1:-1)))]; s.dispatchEvent(new Event("change",{bubbles:true})); return {speed:s.options[s.selectedIndex].text}; }
+  if(act==="zoom_in"||act==="zoom_out"){ const b=q(act==="zoom_in"?"#arPlus":"#arMin"); if(!b) return {error:"The park tour is not open."}; for(let i=0;i<2;i++) b.click(); return {ok:act}; }
+  if(act==="table_view"||act==="drive_view"){ const b=q("#arDrive"); if(!b) return {error:"The park tour is not open."}; const inDrive=/back to table/i.test(b.textContent); if((act==="drive_view")!==inDrive) b.click(); await wait(600); return {ok:act,on_screen:arText()}; }
+  if(act==="to_airport"||act==="to_cairo"||act==="to_port"){ const ch=q("#tkCh"); if(!ch) return {error:"The trucks are not running."}; const bs=[...ch.querySelectorAll("button")]; const want=act==="to_cairo"?bs.find(b=>/cairo/i.test(b.textContent)):act==="to_airport"?bs.find(b=>/airport|international/i.test(b.textContent)):bs[0]; if(!want) return {error:"That destination is not listed."}; want.click(); await wait(2500); return {ok:act,on_screen:(q("#tkH")||{}).textContent||""}; }
+
+  // starting
+  if(act==="share_plot"){
+    if(a.unit){ const r=laraShowPlot({unit:a.unit,park:a.park}); if(r&&(r.error||r.ambiguous)) return r; await wait(1300); }
+    const n=S.sel.size; if(n!==1) return {error:"Select one available plot first, or tell me its code.",selected:n};
+    W.EXP.share(); await wait(500);
+    if(!q("#exShare")) return {error:"Only a plot that is available (not sold, reserved or on hold) can be shared."};
+    if(a.create_link){ const m=q("#shMake"); if(m){ m.click(); await wait(500); } const u=q("#shUrl"); return {dialog_open:true,link_created:!!u,note:"The link and QR are on screen. Say it is valid for 30 days and shows the plot on the satellite map with no price and no client."}; }
+    return {dialog_open:true,note:"The share window is open. Say you can create the link and QR now; it never shows the price or the client."};
+  }
+  const park=parkOf(a); if(!park) return {error:a.park?`No park matches "${a.park}"`:"Which project? Say its name, or open one first."};
+  if(S.view!=="inventory"&&S.view!=="portfolio"){ if(!laraCan("inventory")) return {error:"This role cannot open the map."}; go("inventory"); await laraWait(500); }
+  if(S.park!==park){ laraOpenPark({park:laraParkName(park)}); await laraWait(1200); }
+  const stats=(()=>{ try{ const s=laraStats({park:laraParkName(park)}); return {project:s.scope||laraParkName(park),plots:s.plots,total_area_sqm:s.area_sqm,sold_plus_reserved_area_sqm:s.sold_area_sqm,deals:s.sales_deals,available_area_sqm:s.available_area_sqm,sales_value_egp:s.sales_value_egp}; }catch(e){ return {project:laraParkName(park)}; } })();
+  if(act==="film"){ W.film(park); return {started:"film",project:stats.project,note:"The film speaks by itself with its own captions. Say ONE short sentence, then stay quiet until it ends. If the user speaks, answer in one sentence."}; }
+  if(act==="time_machine"){ W.EXP.time(park); const t=await untilText(()=>barText(),6000); return {started:"time machine",project:stats.project,on_screen:t,facts:stats,note:"While it plays, narrate in two or three short sentences: the plots turn from available to sold month by month, the counters show sold plus reserved, the share of the sellable area, the deals and the sales value. Use the facts. Do not read the screen text."}; }
+  if(act==="trucks_to_port"){ W.EXP.truck(park); const t=await untilText(()=>(q("#tkH")||{}).textContent||"",9000); return {started:"trucks",project:stats.project,on_screen:t,note:"Say the port, the distance and the drive time from on_screen in one or two sentences. The user can ask for the airport or Cairo (to_airport, to_cairo)."}; }
+  if(act==="park_tour"||act==="drive_through"){ W.EXP.ar(park); const t=await untilText(()=>arText(),14000); if(act==="drive_through"){ const b=q("#arDrive"); if(b&&!/back to table/i.test(b.textContent)) b.click(); await wait(800); }
+    return {started:act==="drive_through"?"drive through":"park tour",project:stats.project,on_screen:t,facts:stats,note:"Factories are industrial plots (white, some with chimneys); warehouses are logistics and services plots (light blue with loading doors); amber means reserved and being built. All buildings are illustrative, the ground is the satellite picture. Say one or two sentences using the counts in on_screen."+(act==="drive_through"?" The car is driving between the factories; the user can drag to look around.":" The user can zoom (zoom_in) or ask for the drive (drive_view).")}; }
+  return {error:"Unknown action "+act};
+}
+
+const runV82=laraRun;
+laraRun=async function(name,a){ a=a||{};
+  if(name==="explore") return await exploreRun(a);
+  if(name==="map_control"&&/^(borders_on|borders_off|show_active|show_pipeline|show_all_projects)$/.test(a.action||"")){
+    if(S.view!=="inventory"&&S.view!=="portfolio"){ if(!laraCan("inventory")) return {error:"This role cannot open the map."}; go("inventory"); await laraWait(400); }
+    if(a.action==="borders_on"||a.action==="borders_off"){ const b=document.getElementById("ppBdBtn"); if(!b) return {error:"The Borders button is not on screen."}; let on=true; try{ on=localStorage.getItem("sid.bdShow")!=="0"; }catch(e){} if(on!==(a.action==="borders_on")) b.click(); return {done:a.action}; }
+    const m=a.action==="show_active"?"act":a.action==="show_pipeline"?"pipe":""; const b=document.querySelector(`.pp-mode[data-m="${m}"]`); if(!b) return {error:"That switch is not on screen."}; b.click(); await wait(500); return {done:a.action,note:"Active = the 11 operating projects with plots; Pipeline = the 14 new projects with land only."}; }
+  if(name==="set_filters"&&a.land_type&&a.land_type.length){ const r=await runV82.apply(this,arguments); try{ const ok=["industrial","logistics","services"]; a.land_type.forEach(x=>{ const k=String(x).trim().toLowerCase(); if(ok.includes(k)) S.f.landType.add(nk(k)); }); render(); buildFilterBar(); }catch(e){} return r; }
+  return runV82.apply(this,arguments); };
+
+const sysV82=laraSystem;
+laraSystem=function(){ let t=sysV82.apply(this,arguments); try{ t+=`
+
+EXPLORE (new): every operating project has an "Explore this project" button in its card, and the plot card has Share and Explore too. You can do all of it by voice with the explore tool, while you talk:
+- film: a guided flight over the project with its own narration and captions. After starting it say one short sentence and stay quiet until it ends.
+- time_machine: the plots turn from available to sold, month by month (by reservation date). Pause, play, faster, slower.
+- trucks_to_port: animated trucks on the real road to the nearest port; to_airport and to_cairo change the destination.
+- park_tour: the park as a 3D tabletop model on the satellite picture. White buildings with chimneys = factories (industrial plots). Light-blue low buildings with loading doors = warehouses (logistics and services plots). Amber = reserved, being built. Trucks drive the park streets. zoom_in / zoom_out, drive_view / table_view.
+- drive_through: a car driving the streets between the factories; the user can drag to look around.
+- share_plot: only for an AVAILABLE plot: a link and QR for a customer. It shows the plot on the satellite map with distances and utilities, never the price, the client or other plots, and expires (30 days by default).
+- stop ends whatever runs. If the user says stop, enough, close, or asks something unrelated, call explore stop first when a show is running.
+When you start one, SAY something useful at the same time (2 or 3 short sentences), using the facts the tool returns; never read the on-screen text aloud.
+LAND TYPE: every plot has a land type from the MDS: Industrial (factories), Logistics or Services (warehouses). It is on the hover card and the plot card under Sector. To filter by it use set_filters with land_type.
+MAP: Borders = the white borders of the surveyed project polygons (map_control borders_on / borders_off). The switch above the map has All, Active (11 operating projects) and Pipeline (14 new projects, land only); use map_control show_active, show_pipeline, show_all_projects. Sold always means sold plus reserved.`; }catch(e){} return t; };
+}catch(e){ console.warn("Lara explore",e); }
+})();
+</script>
 </body>
 </html>
