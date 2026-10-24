@@ -15511,6 +15511,7 @@ const WOW={cur:null,stop:null,voice:true,saved:null};
 try{ WOW.voice=localStorage.getItem("sid.exVoice")!=="0"; }catch(e){}
 function wowStop(keep){ const f=WOW.stop; WOW.stop=null; WOW.cur=null; try{ f&&f(); }catch(e){} try{ speechSynthesis.cancel(); }catch(e){}
   if(!keep&&WOW.reopen){ const rc=WOW.reopen; WOW.reopen=null; try{ if(rc.isConnected&&rc.firstElementChild) rc.hidden=false; }catch(e){} }
+  try{ window.SID_LARA_NARRATE_END&&window.SID_LARA_NARRATE_END(); }catch(e){}
   document.body.classList.remove("wow-on"); const b=q("#exBar"); if(b) b.remove(); const c=q("#exCap"); if(c) c.remove(); }
 function wowStart(name,stop){ wowStop(true); WOW.cur=name; WOW.stop=stop; document.body.classList.add("wow-on"); closeMenu(); }
 function camNow(){ return {center:map.getCenter().toArray(),zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()}; }
@@ -15529,8 +15530,11 @@ function loadThree(){ if(window.THREE) return Promise.resolve(); if(THREE_P) ret
    2. FILM OF A PROJECT — space → project → slow orbit with the real numbers → road to the nearest port
    ============================================================ */
 function speakText(text,tok){
-  // when Lara is on the line, her own voice reads the narration (in the user's language) instead of the robotic browser voice
-  if(window.SID_LARA_NARRATE&&typeof LARA!=="undefined"&&LARA.ws&&LARA.ws.readyState===1&&WOW.voice) return window.SID_LARA_NARRATE(text,tok);
+  // Lara's own voice reads the narration (in the user's language); the line is opened for her if needed. The robotic browser voice is only the fallback.
+  if(window.SID_LARA_NARRATE&&WOW.voice&&typeof LARA!=="undefined"&&!LARA.lite&&typeof laraOnline==="function"&&laraOnline())
+    return window.SID_LARA_NARRATE(text,tok).then(ok=>ok?undefined:plainSpeak(text,tok));
+  return plainSpeak(text,tok); }
+function plainSpeak(text,tok){
   if(!WOW.voice||!("speechSynthesis" in window)) return Promise.resolve();
   return new Promise(res=>{ let done=false; const fin=()=>{ if(!done){ done=true; res(); } };
     try{ if(typeof laraSay==="function"){ laraSay(text); const t0=Date.now(); const iv=setInterval(()=>{ const sp=(typeof LARA!=="undefined"&&LARA.speaking); if(tok.dead||(Date.now()-t0>700&&!sp)||Date.now()-t0>22000){ clearInterval(iv); fin(); } },200); }
@@ -15662,7 +15666,7 @@ window.SID_WOW={film:runFilm,stop:wowStop,EXP,helpers:{q,esc,sleep,newTok,wowSta
 .ex-b.on{background:#16181D;color:#fff;border-color:#16181D}
 .ex-x{width:30px;height:30px;border-radius:50%;border:0;background:rgba(16,18,24,.07);font:400 20px/1 Inter,system-ui,sans-serif;color:#16181D;cursor:pointer;display:grid;place-items:center}
 .ex-x:hover{background:rgba(179,38,61,.14);color:#B3263D}
-#exCap{position:fixed;left:28px;bottom:92px;z-index:9150;max-width:min(420px,calc(100vw - 40px));padding:16px 20px;border-radius:18px;background:rgba(14,16,20,.62);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);color:#fff;font-family:Inter,system-ui,sans-serif;opacity:0;transform:translateY(8px);transition:opacity .6s ease,transform .6s ease;pointer-events:auto}
+#exCap{position:fixed;left:84px;bottom:150px;z-index:9150;max-width:min(420px,calc(100vw - 40px));padding:16px 20px;border-radius:18px;background:rgba(14,16,20,.62);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);color:#fff;font-family:Inter,system-ui,sans-serif;opacity:0;transform:translateY(8px);transition:opacity .6s ease,transform .6s ease;pointer-events:auto}
 #exCap.in{opacity:1;transform:none}
 #exCap .c-k{font:700 10.5px Inter,system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.7)}
 #exCap .c-v{font:800 30px/1.1 Inter,system-ui,sans-serif;letter-spacing:-.02em;margin-top:4px}
@@ -16123,9 +16127,21 @@ const barText=()=>{ const b=q("#exBar"); return b?b.innerText.replace(/\s+/g," "
 const arText=()=>{ const e=q("#arS"); return e?e.textContent.trim():""; };
 const running=()=>q("#arOv")?"park tour":q("#tmPlay")?"time machine":q("#tkCh")?"trucks":(q("#exBar")||q("#exCap"))?"film":"";
 const tkParse=t=>{ const m=/^(.*?)\s*→\s*(.*?)(\d+(?:\.\d+)?)\s*km by road\s*·\s*about\s*(.*)$/.exec(String(t||"").replace(/\s+/g," ").trim()); return m?{from:m[1],destination_exact:m[2].trim(),distance_km:+m[3],drive_time:m[4]}:{raw:t}; };
-window.SID_LARA_NARRATE=(text,tok)=>new Promise(res=>{ let done=false; const fin=()=>{ if(!done){ done=true; res(); } };
-  try{ laraSend("[SHOW NARRATION] Say this to the user now, in the language they speak, with exactly these figures, as one short natural sentence, and nothing else: "+text); }catch(e){ return fin(); }
-  const t0=Date.now(); let spoke=false; const iv=setInterval(()=>{ if(LARA.st==="speaking") spoke=true; if(tok.dead||(spoke&&LARA.st!=="speaking"&&Date.now()-t0>1500)||Date.now()-t0>20000){ clearInterval(iv); fin(); } },200); });
+// narration prompts are instructions for Lara, never shown as a "user" bubble
+try{ if(typeof laraCap==="function"){ const lc=laraCap; laraCap=function(w,t){ if(w==="u"&&/^\[SHOW NARRATION\]/.test(String(t||""))) return; return lc.apply(this,arguments); }; } }catch(e){}
+let autoTimer=0;
+window.SID_LARA_NARRATE_END=()=>{ if(!LARA.autoShow) return; clearTimeout(autoTimer); autoTimer=setTimeout(()=>{ try{ if(LARA.autoShow&&!LARA.speaking&&LARA.st==="listening"&&!running()){ LARA.autoShow=false; laraSleep(true); } }catch(e){} },9000); };
+window.SID_LARA_NARRATE=async(text,tok)=>{
+  const prompt="[SHOW NARRATION] Say this to the user now, in the language they speak, with exactly these figures, as one short natural sentence, and nothing else: "+text;
+  const open=()=>LARA.ws&&LARA.ws.readyState===1;
+  if(!open()){
+    if(LARA.st==="connecting"){ for(let i=0;i<40&&!open();i++) await wait(250); }
+    else { try{ LARA.autoShow=true; await laraStart({text:prompt}); }catch(e){} for(let i=0;i<40&&!open();i++) await wait(250); if(open()) return waitSpoken(tok); }
+    if(!open()) return false;
+  }
+  try{ laraSend(prompt); }catch(e){ return false; }
+  return waitSpoken(tok); };
+const waitSpoken=tok=>new Promise(res=>{ const t0=Date.now(); let spoke=false; const iv=setInterval(()=>{ if(LARA.st==="speaking") spoke=true; if(tok.dead||(spoke&&LARA.st!=="speaking"&&Date.now()-t0>1500)||Date.now()-t0>20000){ clearInterval(iv); res(true); } },200); });
 async function untilText(f,ms){ const t0=Date.now(); while(Date.now()-t0<ms){ const x=f(); if(x&&!/Loading|Building|Finding the road|^$/.test(x)) return x; await wait(400); } return f(); }
 
 async function exploreRun(a){
