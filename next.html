@@ -15660,18 +15660,16 @@ function menuOut(e){ if(!e.target.closest("#exMenu,#exBtn")) closeMenu(); }
 const ICON={orbit:'<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.2"/><path d="M2.8 8h10.4M8 2.8c2 1.6 2 8.8 0 10.4M8 2.8c-2 1.6-2 8.8 0 10.4"/></svg>',
   film:'<svg viewBox="0 0 16 16"><rect x="2" y="3.5" width="12" height="9" rx="1.6"/><path d="M6.8 6.2v3.6L10 8z"/></svg>',
   time:'<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.4"/><path d="M8 4.8V8l2.4 1.6"/></svg>',
-  sun:'<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.8"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M3.5 12.5l1.1-1.1M11.4 4.6l1.1-1.1"/></svg>',
   truck:'<svg viewBox="0 0 16 16"><path d="M1.8 4.4h7.2v6.2H1.8zM9 6.4h2.8l2 2.1v2.1H9z"/><circle cx="4.6" cy="11.4" r="1.2"/><circle cx="11.4" cy="11.4" r="1.2"/></svg>',
   share:'<svg viewBox="0 0 16 16"><rect x="2.2" y="2.2" width="4.6" height="4.6" rx=".8"/><rect x="9.2" y="2.2" width="4.6" height="4.6" rx=".8"/><rect x="2.2" y="9.2" width="4.6" height="4.6" rx=".8"/><path d="M9.2 9.2h1.8v1.8H9.2zM12 12h1.8v1.8H12z"/></svg>',
   ar:'<svg viewBox="0 0 16 16"><path d="M8 1.8 13.6 5v6L8 14.2 2.4 11V5z"/><path d="M2.4 5 8 8.2 13.6 5M8 8.2v6"/></svg>'};
 const ITEMS=[["orbit","Orbit from space","Earth at night, the parks light up, then down into the map"],
   ["film","Film of a project","A guided flight with the real numbers and a voice"],
   ["time","Time machine","Watch the plots sell, month by month"],
-  ["sun","Sun & daylight","Sunrise, sunset, shadows and the light on the plots"],
   ["truck","Trucks to the port","Animated trucks on the real road"],
   ["share","Share a plot with a customer","A link and QR with only that plot"],
   ["ar","AR table view","The park as a 3D model on your table (phone)"]];
-const EXP={};   // filled by the later sections: EXP.time(park), EXP.sun(park) ...
+const EXP={};   // filled by the later sections: EXP.time(park), EXP.truck(park) ...
 function parkOptions(sel){ const ops=PORTFOLIO.filter(p=>p.stage==="operating"&&p.park&&S.rows.some(r=>r.park===p.park)).sort((a,b)=>a.name.localeCompare(b.name));
   return `<option value="all"${sel==="all"?" selected":""}>All parks</option>`+ops.map(p=>`<option value="${p.park}"${sel===p.park?" selected":""}>${esc(p.name)}</option>`).join(""); }
 function toggleMenu(btn){
@@ -15694,7 +15692,7 @@ function toggleMenu(btn){
   setTimeout(()=>document.addEventListener("pointerdown",menuOut,true),0);
 }
 function addBtn(){ if(pub()||!ready()) return; const b0=q(".mapbtns"); if(!b0||q("#exBtn")) return;
-  const b=document.createElement("button"); b.type="button"; b.id="exBtn"; b.setAttribute("aria-label","Explore"); b.title="Explore — orbit, film, time machine, sun, trucks, customer link, AR";
+  const b=document.createElement("button"); b.type="button"; b.id="exBtn"; b.setAttribute("aria-label","Explore"); b.title="Explore — orbit, film, time machine, trucks, customer link, AR";
   b.innerHTML=`<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5l1.4 3.9 3.9 1.4-3.9 1.4L8 12.1 6.6 8.2 2.7 6.8l3.9-1.4z"/><path d="M12.6 11l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5z"/></svg><span>Explore</span>`;
   b.onclick=e=>{ e.stopPropagation(); toggleMenu(b); };
   const bd=q("#ppBdBtn"); if(bd) bd.after(b); else b0.appendChild(b); }
@@ -15745,13 +15743,14 @@ body.l2 #exBtn span{display:none}
 </script>
 
 <script>
-/* V80 — time machine, sun, trucks */
+/* V80 — time machine, trucks */
 (function(){
 "use strict";
 const W=window.SID_WOW; if(!W) return; const H=W.helpers, EXP=W.EXP, q=H.q, esc=H.esc;
 const M=(i)=>{ const names=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return names[((i%12)+12)%12]+" "+Math.floor(i/12); };
 const midx=d=>{ const y=+String(d).slice(0,4), m=+String(d).slice(5,7); return (y&&m)?y*12+m-1:null; };
 const hasClass=c=>document.body.classList.contains(c);
+const rad=Math.PI/180, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
 /* ============================================================
    3. TIME MACHINE — every committed (sold or reserved) plot turns red on its reservation date, from the MDS
@@ -15814,75 +15813,6 @@ EXP.time=function(park){
     else{ const bx=[[180,90],[-180,-90]]; feats.forEach(f=>{ const g=f.geometry, ring=g.type==="Polygon"?g.coordinates[0]:g.coordinates[0][0]; const c=ring[0]; if(c[0]<bx[0][0])bx[0][0]=c[0]; if(c[1]<bx[0][1])bx[0][1]=c[1]; if(c[0]>bx[1][0])bx[1][0]=c[0]; if(c[1]>bx[1][1])bx[1][1]=c[1]; });
       map.fitBounds(bx,{padding:{top:90,bottom:240,left:60,right:60},duration:H.reduced()?0:1800,maxZoom:9}); } }catch(e){}
   setTimeout(()=>{ if(!tok.dead){ T=first-1; draw(); setPlay(true); } },H.reduced()?100:2000);
-};
-
-/* ============================================================
-   4. SUN & DAYLIGHT — computed on the device (no outside service); the light on the 3D blocks and a daylight tint follow the sun
-   ============================================================ */
-const rad=Math.PI/180, dayMs=864e5, J1970=2440588, J2000=2451545, eps=rad*23.4397;
-const toDays=d=>d.valueOf()/dayMs-.5+J1970-J2000;
-function sunPos(date,lat,lng){ const lw=rad*-lng, phi=rad*lat, d=toDays(date);
-  const Mn=rad*(357.5291+.98560028*d), C=rad*(1.9148*Math.sin(Mn)+.02*Math.sin(2*Mn)+.0003*Math.sin(3*Mn)), L=Mn+C+rad*102.9372+Math.PI;
-  const dec=Math.asin(Math.sin(L)*Math.sin(eps)), ra=Math.atan2(Math.sin(L)*Math.cos(eps),Math.cos(L)), Hh=rad*(280.16+360.9856235*d)-lw-ra;
-  const alt=Math.asin(Math.sin(phi)*Math.sin(dec)+Math.cos(phi)*Math.cos(dec)*Math.cos(Hh)), azS=Math.atan2(Math.sin(Hh),Math.cos(Hh)*Math.sin(phi)-Math.tan(dec)*Math.cos(phi));
-  return {alt:alt/rad, az:((azS/rad)+180+360)%360}; }
-const TZ="Africa/Cairo";
-function tzOff(utcMs){ const f=new Intl.DateTimeFormat("en-US",{timeZone:TZ,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).formatToParts(new Date(utcMs)); const g=k=>+f.find(x=>x.type===k).value; return (Date.UTC(g("year"),g("month")-1,g("day"),g("hour"),g("minute"),g("second"))-utcMs)/60000; }
-function cairoUTC(ds,min){ const [y,m,d]=ds.split("-").map(Number); const g=Date.UTC(y,m-1,d,0,0)+min*60000; return g-tzOff(g-2*3600000)*60000; }
-function cairoToday(){ const f=new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()); return f; }
-function cairoNowMin(){ const f=new Intl.DateTimeFormat("en-GB",{timeZone:TZ,hourCycle:"h23",hour:"2-digit",minute:"2-digit"}).formatToParts(new Date()); return (+f.find(x=>x.type==="hour").value)*60+(+f.find(x=>x.type==="minute").value); }
-const hhmm=m=>{ m=Math.round(m); return String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); };
-const dest=(c,az,d)=>{ const a=az*rad; return [c[0]+Math.sin(a)*d/(111320*Math.cos(c[1]*rad)), c[1]+Math.cos(a)*d/111320]; };
-const compass=az=>["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(az/22.5)%16];
-function dayInfo(ds,lat,lng){ let rise=null,set=null,maxA=-90,maxM=0; for(let m=0;m<1440;m+=2){ const p=sunPos(new Date(cairoUTC(ds,m)),lat,lng); if(p.alt>maxA){ maxA=p.alt; maxM=m; } if(p.alt>-.833){ if(rise==null) rise=m; set=m; } } return {rise,set,maxA,maxM}; }
-const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-function tint(alt){ // multiply colour: white by day, gold at sunrise/sunset, blue-violet at dusk, deep blue at night
-  const stops=[[-16,[34,44,104]],[-8,[88,86,140]],[-2,[190,140,140]],[3,[255,205,160]],[12,[255,244,232]],[22,[255,255,255]]]; if(alt<=stops[0][0]) return stops[0][1]; if(alt>=stops[stops.length-1][0]) return stops[stops.length-1][1];
-  for(let i=0;i<stops.length-1;i++){ const [a0,c0]=stops[i],[a1,c1]=stops[i+1]; if(alt>=a0&&alt<=a1){ const t=(alt-a0)/(a1-a0); return c0.map((v,k)=>Math.round(lerp(v,c1[k],t))); } } return [255,255,255]; }
-EXP.sun=function(park){
-  if(!H.ready()) return; const tok=H.newTok(); let raf=0, playing=false;
-  const site=()=>{ const p=park!=="all"?pinAt(park):null; return p||map.getCenter().toArray(); };
-  let c=site(), ds=cairoToday(), min=cairoNowMin();
-  const wrap=q("#map")&&q("#map").parentElement||document.body; const tn=document.createElement("div"); tn.id="sunTint"; wrap.appendChild(tn);
-  function geo(){ if(!map.getSource("sun-src")) map.addSource("sun-src",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    if(!map.getLayer("sun-halo")) map.addLayer({id:"sun-halo",type:"line",source:"sun-src",filter:["in",["get","t"],["literal",["arc","ray"]]],paint:{"line-color":"#fff","line-width":7,"line-opacity":.85,"line-blur":1}});
-    if(!map.getLayer("sun-arc")) map.addLayer({id:"sun-arc",type:"line",source:"sun-src",filter:["==",["get","t"],"arc"],paint:{"line-color":"#E07800","line-width":3.2,"line-opacity":1}});
-    if(!map.getLayer("sun-ray")) map.addLayer({id:"sun-ray",type:"line",source:"sun-src",filter:["==",["get","t"],"ray"],paint:{"line-color":"#E07800","line-width":2.4,"line-opacity":1,"line-dasharray":[2,1.6]}});
-    if(!map.getLayer("sun-shadow")) map.addLayer({id:"sun-shadow",type:"line",source:"sun-src",filter:["==",["get","t"],"shadow"],layout:{"line-cap":"round"},paint:{"line-color":"#16181D","line-width":5,"line-opacity":.7}});
-    if(!map.getLayer("sun-pt")) map.addLayer({id:"sun-pt",type:"circle",source:"sun-src",filter:["==",["get","t"],"sun"],paint:{"circle-radius":11,"circle-color":"#FFC21A","circle-stroke-color":"#fff","circle-stroke-width":3,"circle-blur":.1}});
-    if(!map.getLayer("sun-pt-g")) map.addLayer({id:"sun-pt-g",type:"circle",source:"sun-src",filter:["==",["get","t"],"sun"],paint:{"circle-radius":24,"circle-color":"#FFC21A","circle-opacity":.28,"circle-blur":1}},"sun-pt"); }
-  function clean(){ try{ ["sun-pt","sun-pt-g","sun-shadow","sun-ray","sun-arc","sun-halo"].forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); }); if(map.getSource("sun-src")) map.removeSource("sun-src"); map.setLight({anchor:"viewport",color:"#ffffff",intensity:.5,position:[1.15,210,30]}); }catch(e){} tn.remove(); }
-  const saved=H.camNow();
-  H.wowStart("sun",()=>{ tok.dead=true; cancelAnimationFrame(raf); map.off("styledata",geo); clean(); try{ map.flyTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing,duration:1400,essential:true}); }catch(e){} });
-  geo(); map.on("styledata",geo);
-  const b=H.bar(`<div class="tm-top"><div class="ex-t"><b>Sun &amp; daylight</b><span>${esc(park!=="all"?H.parkName(park):"Map centre")} · Cairo time</span></div><button class="ex-x" type="button" aria-label="Close">×</button></div>
-    <div class="tm-date" id="suT"></div>
-    <input type="range" id="suR" min="0" max="1439" step="1" aria-label="Time of day">
-    <div class="tm-ctl"><button class="ex-b on" id="suPlay" type="button">Play day</button><input type="date" id="suD" class="ex-sel" aria-label="Date"><button class="ex-b" id="suNow" type="button">Now</button></div>
-    <div class="tm-k su"><div><em>Sunrise</em><b id="suRi"></b></div><div><em>Sunset</em><b id="suSe"></b></div><div><em>Daylight</em><b id="suDl"></b></div><div><em>Sun now</em><b id="suN"></b></div><div><em>Highest</em><b id="suMx"></b></div><div><em>Shadow, 20 m building</em><b id="suSh"></b></div></div>
-    <div class="tm-n">Worked out on this device from the date and place. The light on the 3D blocks follows the sun (tilt the map with 3D view); the tint shows daylight; no cast shadows.</div>`);
-  b.classList.add("ex-wide"); const el=id=>q("#"+id); el("suD").value=ds;
-  function arcPts(){ const pts=[]; for(let m=0;m<=1440;m+=15){ const p=sunPos(new Date(cairoUTC(ds,m)),c[1],c[0]); if(p.alt>-1) pts.push(dest(c,p.az,Math.max(120,1700*(1-clamp(p.alt,0,90)/90)+120))); } return pts; }
-  function draw(){ const info=dayInfo(ds,c[1],c[0]), p=sunPos(new Date(cairoUTC(ds,min)),c[1],c[0]);
-    el("suT").textContent=hhmm(min)+(p.alt>0?"":p.alt>-6?(min<720?" · dawn":" · dusk"):" · night"); el("suR").value=min;
-    el("suRi").textContent=info.rise!=null?hhmm(info.rise):"—"; el("suSe").textContent=info.set!=null?hhmm(info.set):"—"; el("suDl").textContent=info.rise!=null?((info.set-info.rise)/60).toFixed(1)+" h":"—";
-    el("suN").textContent=p.alt>0?Math.round(p.alt)+"° · "+compass(p.az):"below horizon"; el("suMx").textContent=Math.round(info.maxA)+"° at "+hhmm(info.maxM);
-    const sh=p.alt>1?20/Math.tan(p.alt*rad):null; el("suSh").textContent=sh?(sh<400?Math.round(sh)+" m":"very long"):"—";
-    // map light + tint + drawings
-    try{ const alt=p.alt, inten=alt>0?clamp(.28+.7*Math.pow(Math.sin(alt*rad),.55),.28,1):.12, warm=clamp(1-alt/16,0,1), col="rgb("+[255,Math.round(lerp(255,176,warm)),Math.round(lerp(255,112,warm))].join(",")+")";
-      map.setLight({anchor:"map",color:col,intensity:inten,position:[1.5,p.az,clamp(90-alt,0,170)]}); }catch(e){}
-    const t=tint(p.alt); tn.style.background="rgb("+t.join(",")+")";
-    const F=[]; const arc=arcPts(); if(arc.length>1) F.push({type:"Feature",properties:{t:"arc"},geometry:{type:"LineString",coordinates:arc}});
-    if(info.rise!=null){ [info.rise,info.set].forEach(m=>{ const pp=sunPos(new Date(cairoUTC(ds,m)),c[1],c[0]); F.push({type:"Feature",properties:{t:"ray"},geometry:{type:"LineString",coordinates:[c,dest(c,pp.az,1900)]}}); }); }
-    if(p.alt>0){ F.push({type:"Feature",properties:{t:"sun"},geometry:{type:"Point",coordinates:dest(c,p.az,Math.max(120,1700*(1-clamp(p.alt,0,90)/90)+120))}});
-      if(sh&&sh<400) F.push({type:"Feature",properties:{t:"shadow"},geometry:{type:"LineString",coordinates:[c,dest(c,(p.az+180)%360,sh)]}}); }
-    try{ const s=map.getSource("sun-src"); s&&s.setData({type:"FeatureCollection",features:F}); }catch(e){} }
-  draw();
-  el("suR").oninput=e=>{ min=+e.target.value; draw(); }; el("suD").onchange=e=>{ if(e.target.value){ ds=e.target.value; draw(); } };
-  el("suNow").onclick=()=>{ ds=cairoToday(); min=cairoNowMin(); el("suD").value=ds; draw(); };
-  const setPlay=on=>{ playing=on; el("suPlay").textContent=on?"Pause":"Play day"; if(on){ let t0=performance.now(), m0=min>=1430?0:min; const f=now=>{ if(tok.dead||!playing) return; min=Math.min(1439,m0+(now-t0)/1000*110); draw(); if(min>=1439){ setPlay(false); return; } raf=requestAnimationFrame(f); }; raf=requestAnimationFrame(f); } else cancelAnimationFrame(raf); };
-  el("suPlay").onclick=()=>setPlay(!playing);
-  try{ const bb=park!=="all"?H.parkBounds(park):null; if(bb){ const cc=map.cameraForBounds(bb,{padding:{top:90,bottom:260,left:60,right:60}}); map.flyTo({center:cc.center,zoom:Math.min(Math.max(cc.zoom-.6,12.2),15.2),pitch:55,bearing:-20,duration:H.reduced()?0:2000,essential:true}); } else map.flyTo({center:c,zoom:Math.max(map.getZoom(),11.5),pitch:45,duration:1500,essential:true}); }catch(e){}
 };
 
 /* ============================================================
@@ -15952,7 +15882,6 @@ EXP.truck=function(park){
 #exBar .tm-ctl{display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap}
 #exBar .ex-sel{height:30px;border-radius:999px;border:1px solid rgba(16,18,24,.14);background:#fff;padding:0 10px;font:600 12px Inter,system-ui,sans-serif;color:#16181D}
 #exBar .tm-k{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-#exBar .tm-k.su{grid-template-columns:repeat(3,1fr)}
 #exBar .tm-k div{padding:8px 10px;border-radius:12px;background:rgba(16,18,24,.05);min-width:0}
 #exBar .tm-k em{display:block;font:700 9.5px/1.2 Inter,system-ui,sans-serif;letter-spacing:.07em;text-transform:uppercase;font-style:normal;color:#6E737B}
 #exBar .tm-k b{display:block;font:800 14.5px/1.25 Inter,system-ui,sans-serif;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -15960,8 +15889,7 @@ EXP.truck=function(park){
 #exBar .tk-ch{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 #exBar .tk-h{font:600 13px/1.4 Inter,system-ui,sans-serif;text-align:center}
 .tk-m svg{display:block;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45))}
-#sunTint{position:absolute;inset:0;z-index:3;pointer-events:none;mix-blend-mode:multiply;transition:background .25s linear}
-@media (max-width:820px){ #exBar.ex-wide{bottom:74px;max-height:calc(100vh - 150px);overflow:auto} #exBar .tm-k{grid-template-columns:repeat(2,1fr)} #exBar .tm-k.su{grid-template-columns:repeat(2,1fr)} #exBar .tm-date{font-size:21px} }
+@media (max-width:820px){ #exBar.ex-wide{bottom:74px;max-height:calc(100vh - 150px);overflow:auto} #exBar .tm-k{grid-template-columns:repeat(2,1fr)} #exBar .tm-date{font-size:21px} }
 `; document.head.appendChild(st); }
 })();
 </script>
@@ -16026,42 +15954,102 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&q("#exShare")){ cl
 /* ============================================================
    8. AR TABLE VIEW — the park as a 3D model in the camera picture (phone: move it around; others: drag to turn)
    ============================================================ */
+/* the park's real mapped roads (OpenStreetMap, from the map's own tiles) — gathered by looking at the park from above for a moment */
+async function roadsFor(lo,hi){
+  if(!map.getSource("protomaps")) return null;
+  const save=H.camNow(); const lines=new Map(); const midLat=(lo[1]+hi[1])/2, kx=111320*Math.cos(midLat*Math.PI/180), ky=110574;
+  const pad=.003, B=[[lo[0]-pad,lo[1]-pad],[hi[0]+pad,hi[1]+pad]], Z=15.2;
+  const mpp=156543.03*Math.cos(midLat*Math.PI/180)/Math.pow(2,Z), cw=map.getContainer().clientWidth, ch=map.getContainer().clientHeight;
+  const sx=Math.max(400,cw*mpp*.7)/kx, sy=Math.max(400,ch*mpp*.7)/ky, cs=[];
+  for(let x=B[0][0]+sx/2;x<B[1][0]+sx/2;x+=sx) for(let y=B[0][1]+sy/2;y<B[1][1]+sy/2;y+=sy) cs.push([Math.min(x,B[1][0]),Math.min(y,B[1][1])]);
+  if(cs.length>12) return null;
+  const inB=p=>p[0]>=B[0][0]&&p[0]<=B[1][0]&&p[1]>=B[0][1]&&p[1]<=B[1][1];
+  try{ for(const c of cs){ map.jumpTo({center:c,zoom:Z,pitch:0,bearing:0}); await new Promise(r=>{ let d=false; const f=()=>{ if(!d){ d=true; r(); } }; map.once("idle",f); setTimeout(f,5500); });
+      map.querySourceFeatures("protomaps",{sourceLayer:"roads"}).forEach(f=>{ const k=f.properties.kind; if(k!=="major_road"&&k!=="minor_road"&&k!=="highway"&&k!=="medium_road") return; const g=f.geometry, L=g.type==="LineString"?[g.coordinates]:g.type==="MultiLineString"?g.coordinates:[];
+        L.forEach(line=>{ let run=[]; const flush=()=>{ if(run.length>1){ let len=0; for(let i=1;i<run.length;i++) len+=Math.hypot((run[i][0]-run[i-1][0])*kx,(run[i][1]-run[i-1][1])*ky); if(len>=50){ const key=run[0].map(v=>v.toFixed(5))+"|"+run[run.length-1].map(v=>v.toFixed(5))+"|"+run.length; if(!lines.has(key)) lines.set(key,{pts:run.slice(),len,major:k==="major_road"||k==="highway"}); } } run=[]; };
+          line.forEach(pt=>{ if(inB(pt)) run.push(pt); else flush(); }); flush(); }); }); } }
+  finally{ try{ map.jumpTo({center:save.center,zoom:save.zoom,pitch:save.pitch,bearing:save.bearing}); }catch(e){} }
+  return [...lines.values()];
+}
+const hash=str=>{ let h=2166136261; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0)/4294967295; };
+function mergeInto(acc,geo,col){ if(geo.index) geo=geo.toNonIndexed(); const p=geo.attributes.position.array, n=geo.attributes.normal.array; for(let i=0;i<p.length;i++){ acc.p.push(p[i]); acc.n.push(n[i]); } for(let i=0;i<p.length/3;i++) acc.c.push(col.r,col.g,col.b); geo.dispose(); }
 EXP.ar=async function(park){
   if(!H.ready()) return; if(park==="all"){ H.toast("Pick a project in the list first",true); return; }
   // motion permission must be asked inside the tap, before anything is awaited
   let permP=Promise.resolve("granted");
   try{ if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function") permP=DeviceOrientationEvent.requestPermission().catch(()=>"denied"); }catch(e){}
-  const tok=H.newTok(); let renderer=null, scene=null, raf=0, stream=null, vid=null, ov=null, onOri=null, gone=false;
-  function cleanup(){ if(gone) return; gone=true; cancelAnimationFrame(raf); if(onOri) window.removeEventListener("deviceorientation",onOri); try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){}
-    try{ scene&&scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); renderer&&renderer.dispose(); }catch(e){} if(ov) ov.remove(); window.removeEventListener("resize",onRes); }
+  const tok=H.newTok(); let renderer=null, scene=null, raf=0, stream=null, vid=null, ov=null, onOri=null, gone=false; const saved=H.camNow();
   const onRes=()=>{ if(!renderer) return; renderer.setSize(innerWidth,innerHeight,false); cam.aspect=innerWidth/innerHeight; cam.updateProjectionMatrix(); };
+  function cleanup(){ if(gone) return; gone=true; cancelAnimationFrame(raf); if(onOri) window.removeEventListener("deviceorientation",onOri); try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+    try{ scene&&scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material&&o.material.map) o.material.map.dispose(); }); renderer&&renderer.dispose(); }catch(e){} if(ov) ov.remove(); window.removeEventListener("resize",onRes);
+    try{ map.jumpTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing}); }catch(e){} }
   H.wowStart("ar",()=>{ tok.dead=true; cleanup(); });
   try{ await H.loadThree(); }catch(e){ H.toast("The 3D library could not load — check the connection",true); H.wowStop(); return; }
-  const feats=S.geo.features.filter(f=>f.properties.park===park); if(!feats.length){ H.toast("This project has no plots on the map",true); H.wowStop(); return; }
-  // local metres around the centre
-  let lo=[1e9,1e9], hi=[-1e9,-1e9]; const rings=[]; feats.forEach(f=>{ const g=f.geometry, R=g.type==="Polygon"?[g.coordinates[0]]:g.coordinates.map(p=>p[0]); R.forEach(r=>{ rings.push({r,st:f.properties.st}); r.forEach(c=>{ lo[0]=Math.min(lo[0],c[0]); lo[1]=Math.min(lo[1],c[1]); hi[0]=Math.max(hi[0],c[0]); hi[1]=Math.max(hi[1],c[1]); }); }); });
-  const c0=[(lo[0]+hi[0])/2,(lo[1]+hi[1])/2], kx=111320*Math.cos(c0[1]*Math.PI/180), ky=110574;
-  const W_=(hi[0]-lo[0])*kx, H_=(hi[1]-lo[1])*ky, ext=Math.max(W_,H_), sc=.5/ext;       // longest side = 50 cm
   const T=window.THREE;
-  scene=new T.Scene(); const cam=new T.PerspectiveCamera(62,innerWidth/innerHeight,.01,30);
-  scene.add(new T.AmbientLight(0xffffff,.78)); const sun=new T.DirectionalLight(0xffffff,.85); sun.position.set(.4,1,.6); scene.add(sun);
-  const model=new T.Group(); scene.add(model); const body=new T.Group(); model.add(body);
-  const mats={}, col=k=>{ if(!mats[k]) mats[k]=new T.MeshLambertMaterial({color:new T.Color(STATUS[k]?STATUS[k].color:"#999999")}); return mats[k]; };
-  const hgt={sold:.0024,reserved:.0024,ats:.0013,eoi:.0017,hold:.0010,nfs:.0006,unknown:.0006,nodata:.0006}, LP=[];
-  rings.forEach(({r,st})=>{ try{ const sh=new T.Shape(); r.forEach((c,i)=>{ const x=(c[0]-c0[0])*kx*sc, y=(c[1]-c0[1])*ky*sc; if(i===0) sh.moveTo(x,y); else sh.lineTo(x,y); });
-      const dep=hgt[st]||.0008; const geo=new T.ExtrudeGeometry(sh,{depth:dep,bevelEnabled:false}); geo.rotateX(-Math.PI/2); const m=new T.Mesh(geo,col(st)); m.position.y=.003; body.add(m);
-      for(let i=0;i<r.length-1;i++){ const a=r[i], b=r[i+1]; LP.push((a[0]-c0[0])*kx*sc,.003+dep+.00005,-(a[1]-c0[1])*ky*sc,(b[0]-c0[0])*kx*sc,.003+dep+.00005,-(b[1]-c0[1])*ky*sc); } }catch(e){} });
-  { const lg=new T.BufferGeometry(); lg.setAttribute("position",new T.Float32BufferAttribute(LP,3)); body.add(new T.LineSegments(lg,new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.55}))); }
-  const plate=new T.Mesh(new T.BoxGeometry(W_*sc*1.12,.003,H_*sc*1.12),new T.MeshLambertMaterial({color:0x14171c})); plate.position.y=.0015; body.add(plate);
-  model.position.set(0,-.34,-1.05); let yaw=0, scale=1, pitchTilt=0; const lookFwd=new T.Vector3();
+  const feats=S.geo.features.filter(f=>f.properties.park===park); if(!feats.length){ H.toast("This project has no plots on the map",true); H.wowStop(); return; }
+  let lo=[1e9,1e9], hi=[-1e9,-1e9]; const rings=[]; const stOf=new Map(); feats.forEach(f=>{ stOf.set(f.properties.k,f.properties.st); const g=f.geometry, R=g.type==="Polygon"?[g.coordinates[0]]:g.coordinates.map(p=>p[0]); R.forEach(r=>{ rings.push({r,st:f.properties.st}); r.forEach(c=>{ lo[0]=Math.min(lo[0],c[0]); lo[1]=Math.min(lo[1],c[1]); hi[0]=Math.max(hi[0],c[0]); hi[1]=Math.max(hi[1],c[1]); }); }); });
+  const c0=[(lo[0]+hi[0])/2,(lo[1]+hi[1])/2], kx=111320*Math.cos(c0[1]*Math.PI/180), ky=110574;
+  const W_=(hi[0]-lo[0])*kx, H_=(hi[1]-lo[1])*ky, ext=Math.max(W_,H_), sc=.5/ext, VE=3;   // longest side = 50 cm; heights x3 so the buildings read
+  const lx=c=>(c[0]-c0[0])*kx*sc, ly=c=>(c[1]-c0[1])*ky*sc;
+  // overlay first, so there is something to look at while the park is prepared
   ov=document.createElement("div"); ov.id="arOv";
-  ov.innerHTML=`<video playsinline muted autoplay></video><canvas></canvas><div class="ar-top"><b>${esc(H.parkName(park))}</b><span id="arS">Starting the camera…</span></div>
+  ov.innerHTML=`<video playsinline muted autoplay></video><canvas></canvas><div class="ar-top"><b>${esc(H.parkName(park))}</b><span id="arS">Preparing the park…</span></div>
     <div class="ar-bot"><button class="ex-b on" id="arPlace" type="button">Place here</button><button class="ex-b" id="arMin" type="button" aria-label="Smaller">−</button><button class="ex-b" id="arPlus" type="button" aria-label="Bigger">+</button><button class="ex-b" id="arX" type="button">Close</button></div>
-    <div class="ar-key"><i style="background:${STATUS.sold.color}"></i>Sold + reserved <i style="background:${STATUS.ats.color}"></i>Available <i style="background:${STATUS.hold.color}"></i>On hold <i style="background:${STATUS.nfs.color}"></i>Not for sale</div>`;
-  document.body.appendChild(ov); vid=ov.querySelector("video"); const cv=ov.querySelector("canvas");
+    <div class="ar-key"><i style="background:#EEF0F2"></i>Sold: factory <i style="background:#F2C265"></i>Reserved: building <i style="background:${STATUS.ats.color}"></i>Available <i style="background:${STATUS.hold.color}"></i>On hold <i style="background:${STATUS.nfs.color}"></i>Not for sale</div>
+    <div class="ar-sim">Simulation: buildings and trucks are illustrative, they show sold and reserved plots, not real construction.</div>`;
+  document.body.appendChild(ov); vid=ov.querySelector("video"); const cv=ov.querySelector("canvas"); const say=t=>{ const s2=q("#arS"); if(s2) s2.textContent=t; };
+  q("#arX").onclick=()=>H.wowStop();
+  // the park's real roads
+  say("Looking for the park's roads…"); let roads=null; try{ roads=await roadsFor(lo,hi); }catch(e){} if(tok.dead) return;
+  const realRoads=!!(roads&&roads.length>=3);
+  if(!realRoads){ const m=.006, x0=lo[0]-m, x1=hi[0]+m, y0=lo[1]-m, y1=hi[1]+m, xm=(lo[0]+hi[0])/2, ym=(lo[1]+hi[1])/2; const len=a=>{ let L=0; for(let i=1;i<a.length;i++) L+=Math.hypot((a[i][0]-a[i-1][0])*kx,(a[i][1]-a[i-1][1])*ky); return L; };
+    const loop=[[x0,y0],[x1,y0],[x1,y1],[x0,y1],[x0,y0]], we=[[x0,ym],[x1,ym]], sn=[[xm,y0],[xm,y1]]; roads=[loop,we,sn].map((p,i)=>({pts:p,len:len(p),major:i===0})); }
+  say("Building the park…");
+  scene=new T.Scene(); const cam=new T.PerspectiveCamera(62,innerWidth/innerHeight,.01,30);
+  scene.add(new T.AmbientLight(0xffffff,.72)); const sun=new T.DirectionalLight(0xffffff,.9); sun.position.set(.5,1,.7); scene.add(sun);
+  const model=new T.Group(); scene.add(model); const body=new T.Group(); model.add(body);
+  const vmat=new T.MeshLambertMaterial({vertexColors:true});
+  const mk=acc=>{ const g=new T.BufferGeometry(); g.setAttribute("position",new T.Float32BufferAttribute(acc.p,3)); g.setAttribute("normal",new T.Float32BufferAttribute(acc.n,3)); g.setAttribute("color",new T.Float32BufferAttribute(acc.c,3)); return new T.Mesh(g,vmat); };
+  const ground={p:[],n:[],c:[]}, lines=[], thick={sold:.0012,reserved:.0012,ats:.0008,eoi:.0010,hold:.0007,nfs:.0005,unknown:.0005,nodata:.0005}, TOP={};
+  rings.forEach(({r,st})=>{ try{ const sh=new T.Shape(); r.forEach((c,i)=>{ if(i===0) sh.moveTo(lx(c),ly(c)); else sh.lineTo(lx(c),ly(c)); });
+      const dep=thick[st]||.0006, geo=new T.ExtrudeGeometry(sh,{depth:dep,bevelEnabled:false}); geo.rotateX(-Math.PI/2); geo.translate(0,.003,0); mergeInto(ground,geo,new T.Color(STATUS[st]?STATUS[st].color:"#999999"));
+      for(let i=0;i<r.length-1;i++) lines.push(lx(r[i]),.003+dep+.00005,-ly(r[i]),lx(r[i+1]),.003+dep+.00005,-ly(r[i+1])); }catch(e){} });
+  body.add(mk(ground)); { const lg=new T.BufferGeometry(); lg.setAttribute("position",new T.Float32BufferAttribute(lines,3)); body.add(new T.LineSegments(lg,new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.45}))); }
+  const plate=new T.Mesh(new T.BoxGeometry(W_*sc*1.12,.003,H_*sc*1.12),new T.MeshLambertMaterial({color:0x14171c})); plate.position.y=.0015; body.add(plate);
+  // roads: ribbons on the plate
+  { const acc={p:[],n:[],c:[]}, yy=.00312, add=(a,b,w,col)=>{ const dx=b[0]-a[0], dz=b[1]-a[1], L=Math.hypot(dx,dz)||1e-9, nx=-dz/L*w/2, nz=dx/L*w/2; const v=[[a[0]+nx,a[1]+nz],[a[0]-nx,a[1]-nz],[b[0]-nx,b[1]-nz],[b[0]+nx,b[1]+nz]]; [0,1,2,0,2,3].forEach(i=>{ acc.p.push(v[i][0],yy,v[i][1]); acc.n.push(0,1,0); acc.c.push(col.r,col.g,col.b); }); };
+    roads.forEach(R=>{ const w=(R.major?10:6)*sc*2.2, col=new T.Color(R.major?0x59606b:0x4a5059); for(let i=1;i<R.pts.length;i++) add([lx(R.pts[i-1]),-ly(R.pts[i-1])],[lx(R.pts[i]),-ly(R.pts[i])],w,col); });
+    if(acc.p.length) body.add(mk(acc)); }
+  // factories on the sold plots (the same illustrative massing the 3D map uses), a lower building on reserved plots
+  const fac={p:[],n:[],c:[]}, chim=[]; let nF=0;
+  try{ const FC=(typeof FACTORY_FC!=="undefined"&&FACTORY_FC)||(typeof buildFactories==="function"?buildFactories():null);
+    (FC?FC.features:[]).forEach(f=>{ const k=f.properties.k, st=stOf.get(k); if(st!=="sold"&&st!=="reserved") return; const ring=f.geometry.coordinates[0]; const sold=st==="sold";
+      const h=f.properties.h*(sold?1:.4)*sc*VE, sh=new T.Shape(); ring.forEach((c,i)=>{ if(i===0) sh.moveTo(lx(c),ly(c)); else sh.lineTo(lx(c),ly(c)); });
+      const geo=new T.ExtrudeGeometry(sh,{depth:h,bevelEnabled:false}); geo.rotateX(-Math.PI/2); geo.translate(0,.003+(thick[st]||.0012),0);
+      const col=new T.Color(sold?f.properties.c:"#F2C265"); mergeInto(fac,geo,col); nF++;
+      if(sold&&f.properties.c==="#868B95"&&hash(k)<.5){ let cx=0,cy=0; for(let i=0;i<ring.length-1;i++){ cx+=lx(ring[i]); cy+=ly(ring[i]); } chim.push([cx/(ring.length-1),.003+(thick.sold)+h,-cy/(ring.length-1)]); } });
+  }catch(e){ console.warn("ar factories",e); }
+  if(fac.p.length) body.add(mk(fac));
+  // smoke from the working chimneys
+  const PER=7, NP=chim.length*PER; let smoke=null, sA=null, sP=null, sS=null, sPh=null;
+  if(NP){ const cvS=document.createElement("canvas"); cvS.width=cvS.height=64; const cx2=cvS.getContext("2d"), gr=cx2.createRadialGradient(32,32,2,32,32,30); gr.addColorStop(0,"rgba(255,255,255,1)"); gr.addColorStop(.5,"rgba(255,255,255,.55)"); gr.addColorStop(1,"rgba(255,255,255,0)"); cx2.fillStyle=gr; cx2.fillRect(0,0,64,64);
+    const tex=new T.CanvasTexture(cvS); sP=new Float32Array(NP*3); sA=new Float32Array(NP); sS=new Float32Array(NP); sPh=new Float32Array(NP); for(let i=0;i<NP;i++) sPh[i]=Math.random();
+    const g=new T.BufferGeometry(); g.setAttribute("position",new T.BufferAttribute(sP,3)); g.setAttribute("aAlpha",new T.BufferAttribute(sA,1)); g.setAttribute("aSize",new T.BufferAttribute(sS,1));
+    const mat=new T.ShaderMaterial({uniforms:{map:{value:tex},uK:{value:innerHeight/(2*Math.tan(31*Math.PI/180))}},transparent:true,depthWrite:false,
+      vertexShader:"attribute float aAlpha; attribute float aSize; uniform float uK; varying float vA; void main(){ vA=aAlpha; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize=aSize*uK/max(-mv.z,.05); gl_Position=projectionMatrix*mv; }",
+      fragmentShader:"uniform sampler2D map; varying float vA; void main(){ vec4 t=texture2D(map,gl_PointCoord); gl_FragColor=vec4(vec3(.82,.84,.88),t.a*vA); }"});
+    smoke=new T.Points(g,mat); smoke.frustumCulled=false; body.add(smoke); }
+  // trucks on the roads
+  const trucks=[]; { const rl=roads.filter(R=>R.len>=50).sort((a,b)=>b.len-a.len), nT=Math.min(16,Math.max(6,Math.round(rl.length*1.2)));
+    const tl=14*sc*2.4, tw=3.2*sc*2.4, th=3.4*sc*2.4, trailer=new T.BoxGeometry(tl*.64,th,tw), cab=new T.BoxGeometry(tl*.3,th*.82,tw*.96);
+    const mt=new T.MeshLambertMaterial({color:0xf2f4f7}), mc=[0xb3263d,0x1f6fe0,0xe8a317,0x2a9d57].map(c=>new T.MeshLambertMaterial({color:c}));
+    for(let i=0;i<nT&&rl.length;i++){ const R=rl[i%rl.length], g=new T.Group(); const a=new T.Mesh(trailer,mt); a.position.set(-tl*.17,th/2,0); const b2=new T.Mesh(cab,mc[i%mc.length]); b2.position.set(tl*.36,th*.41,0); g.add(a,b2); body.add(g);
+      const P=R.pts.map(c=>[lx(c),-ly(c)]), cum=[0]; for(let j=1;j<P.length;j++) cum.push(cum[j-1]+Math.hypot(P[j][0]-P[j-1][0],P[j][1]-P[j-1][1]));
+      trucks.push({g,P,cum,L:cum[cum.length-1],ph:Math.random()*2,v:(.5+Math.random()*.5)*.5*.04}); } }
+  const posOn=(t,d)=>{ let lo2=0,hi2=t.cum.length-1; while(hi2-lo2>1){ const m=(lo2+hi2)>>1; if(t.cum[m]<=d) lo2=m; else hi2=m; } const seg=(t.cum[hi2]-t.cum[lo2])||1e-9, u=(d-t.cum[lo2])/seg, A=t.P[lo2], B=t.P[hi2]; return {x:A[0]+(B[0]-A[0])*u,z:A[1]+(B[1]-A[1])*u,dx:B[0]-A[0],dz:B[1]-A[1]}; };
+  model.position.set(0,-.34,-1.05); let yaw=0, scale=1, pitchTilt=0; const lookFwd=new T.Vector3();
   renderer=new T.WebGLRenderer({canvas:cv,antialias:true,alpha:true}); renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1)); renderer.setClearColor(0x000000,0); renderer.setSize(innerWidth,innerHeight,false); window.addEventListener("resize",onRes);
-  const say=t=>{ const s=q("#arS"); if(s) s.textContent=t; };
-  q("#arX").onclick=()=>H.wowStop(); q("#arMin").onclick=()=>{ scale=Math.max(.35,scale/1.2); }; q("#arPlus").onclick=()=>{ scale=Math.min(4,scale*1.2); };
+  q("#arMin").onclick=()=>{ scale=Math.max(.35,scale/1.2); }; q("#arPlus").onclick=()=>{ scale=Math.min(4,scale*1.2); };
   // camera picture
   let camOk=false; try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false}); vid.srcObject=stream; await vid.play().catch(()=>{}); camOk=true; }catch(e){}
   if(tok.dead) return; if(!camOk) ov.classList.add("nocam");
@@ -16069,16 +16057,21 @@ EXP.ar=async function(park){
   const perm=await permP; let hasOri=false, a0=null; const eul=new T.Euler(), q1=new T.Quaternion(-Math.SQRT1_2,0,0,Math.SQRT1_2), q0=new T.Quaternion(), zee=new T.Vector3(0,0,1);
   if(perm==="granted"&&"DeviceOrientationEvent" in window){ onOri=e=>{ if(e.alpha==null) return; hasOri=true; if(a0==null) a0=e.alpha; const orient=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*Math.PI/180;
       eul.set(e.beta*Math.PI/180,(e.alpha-a0)*Math.PI/180,-e.gamma*Math.PI/180,"YXZ"); cam.quaternion.setFromEuler(eul); cam.quaternion.multiply(q1); cam.quaternion.multiply(q0.setFromAxisAngle(zee,-orient)); }; window.addEventListener("deviceorientation",onOri); }
-  setTimeout(()=>{ if(tok.dead) return; if(hasOri){ say("Move your phone around the table · drag to turn · pinch to resize"); } else { ov.classList.add("noori"); scale=1.9; cam.position.set(0,.34,-.3); cam.lookAt(0,-.34,-1.05); say(camOk?"Motion sensor not available — drag to turn the model":"Camera not available here — drag to turn, use + and − to resize"); } },1400);
-  q("#arPlace").onclick=()=>{ if(!hasOri){ yaw=0; pitchTilt=0; return; } cam.getWorldDirection(lookFwd); const d=1.0; model.position.set(lookFwd.x*d,lookFwd.y*d-.12,lookFwd.z*d); yaw=Math.atan2(-lookFwd.x,-lookFwd.z)*0+0; body.rotation.y=0; };
-  // touch / mouse: drag turns, pinch resizes
+  const info=`${nF} buildings · ${trucks.length} trucks · ${realRoads?"the park's real roads":"illustrative roads"}`;
+  setTimeout(()=>{ if(tok.dead) return; if(hasOri){ say(info+" — move your phone around the table, drag to turn, pinch to resize"); } else { ov.classList.add("noori"); scale=1.9; cam.position.set(0,.34,-.3); cam.lookAt(0,-.34,-1.05); say(info+(camOk?" — motion sensor not available, drag to turn":" — camera not available here, drag to turn, use + and −")); } },1400);
+  q("#arPlace").onclick=()=>{ if(!hasOri){ yaw=0; pitchTilt=0; return; } cam.getWorldDirection(lookFwd); model.position.set(lookFwd.x,lookFwd.y-.12,lookFwd.z); yaw=0; };
   let pts=new Map(), lastD=0; cv.style.touchAction="none";
   cv.addEventListener("pointerdown",e=>{ cv.setPointerCapture(e.pointerId); pts.set(e.pointerId,[e.clientX,e.clientY]); });
   cv.addEventListener("pointermove",e=>{ const p=pts.get(e.pointerId); if(!p) return; const dx=e.clientX-p[0], dy=e.clientY-p[1]; pts.set(e.pointerId,[e.clientX,e.clientY]);
     if(pts.size===2){ const [a,b]=[...pts.values()], d=Math.hypot(a[0]-b[0],a[1]-b[1]); if(lastD) scale=Math.max(.35,Math.min(4,scale*d/lastD)); lastD=d; } else { yaw+=dx*.008; if(!hasOri) pitchTilt=Math.max(-.6,Math.min(.9,pitchTilt+dy*.006)); } });
   const up=e=>{ pts.delete(e.pointerId); if(pts.size<2) lastD=0; }; cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
   cv.addEventListener("wheel",e=>{ e.preventDefault(); scale=Math.max(.35,Math.min(4,scale*(e.deltaY<0?1.08:.93))); },{passive:false});
-  const frame=()=>{ if(tok.dead||gone) return; body.rotation.y=yaw; model.rotation.x=hasOri?0:pitchTilt; model.scale.setScalar(scale); renderer.render(scene,cam); raf=requestAnimationFrame(frame); };
+  const t0=performance.now(); const wind=[.011,.004];
+  const frame=now=>{ if(tok.dead||gone) return; const sec=(now-t0)/1000;
+    trucks.forEach(t=>{ const L2=t.L*2, d0=(t.ph*t.L+sec*t.v*ext*sc*8)%L2, back=d0>t.L, d=back?L2-d0:d0, p=posOn(t,d); t.g.position.set(p.x,.00312,p.z); const dx=back?-p.dx:p.dx, dz=back?-p.dz:p.dz; t.g.rotation.y=-Math.atan2(dz,dx); });
+    if(smoke){ for(let e=0;e<chim.length;e++) for(let k=0;k<PER;k++){ const i=e*PER+k, u=(sec*.33+sPh[i])%1, a=u<.08?u/.08:1-(u-.08)/.92; sP[i*3]=chim[e][0]+wind[0]*u+Math.sin(sec*1.7+i)*.0008*u; sP[i*3+1]=chim[e][1]+u*.032; sP[i*3+2]=chim[e][2]+wind[1]*u+Math.cos(sec*1.3+i)*.0008*u; sA[i]=Math.max(0,a)*.5; sS[i]=.0035+u*.011; }
+      const g=smoke.geometry; g.attributes.position.needsUpdate=true; g.attributes.aAlpha.needsUpdate=true; g.attributes.aSize.needsUpdate=true; smoke.material.uniforms.uK.value=renderer.domElement.height/(2*Math.tan(31*Math.PI/180)); }
+    body.rotation.y=yaw; model.rotation.x=hasOri?0:pitchTilt; model.scale.setScalar(scale); renderer.render(scene,cam); raf=requestAnimationFrame(frame); };
   raf=requestAnimationFrame(frame);
 };
 
@@ -16109,6 +16102,7 @@ EXP.ar=async function(park){
 #arOv .ar-top b{font:800 17px Inter,system-ui,sans-serif} #arOv .ar-top span{font:600 12.5px Inter,system-ui,sans-serif;color:rgba(255,255,255,.88)}
 #arOv .ar-bot{position:absolute;left:0;right:0;bottom:max(18px,env(safe-area-inset-bottom));display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 #arOv .ar-key{position:absolute;left:14px;right:14px;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 44px);display:flex;gap:8px;justify-content:center;flex-wrap:wrap;font:600 10.5px Inter,system-ui,sans-serif;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.8)}
+#arOv .ar-sim{position:absolute;left:14px;right:14px;top:calc(max(14px,env(safe-area-inset-top)) + 52px);font:500 10.5px/1.35 Inter,system-ui,sans-serif;color:rgba(255,255,255,.78);text-shadow:0 1px 6px rgba(0,0,0,.8)}
 #arOv .ar-key i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:3px;vertical-align:-1px}
 `; document.head.appendChild(st); }
 })();
