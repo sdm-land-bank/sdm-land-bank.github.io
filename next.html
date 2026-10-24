@@ -15484,5 +15484,262 @@ setInterval(()=>{ try{ sideNums(); }catch(e){} },700);
   `; document.head.appendChild(st); }
 })();
 </script>
+
+<script>
+/* V80 — Explore */
+(function(){
+"use strict";
+const q=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pub=()=>typeof window.sidPublic==="function"&&window.sidPublic();
+const reduced=()=>{ try{ return (typeof RM!=="undefined"&&RM)||matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; } };
+const ready=()=>typeof map!=="undefined"&&map&&map.getStyle&&typeof S!=="undefined"&&S.geo&&S.rows&&S.rows.length;
+const newTok=()=>({dead:false,skip:false});
+const sleep=(ms,tok)=>new Promise((ok,no)=>setTimeout(()=>(tok&&tok.dead)?no("stopped"):ok(),ms));
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2, easeOut=t=>1-Math.pow(1-t,3);
+const fi=n=>typeof fInt==="function"?fInt(n):Math.round(n).toLocaleString("en-US");
+const fs_=n=>typeof fSq==="function"?fSq(n):fi(n);
+const parkRec=id=>PORTFOLIO.find(p=>p.park===id);
+const parkName=id=>{ const r=parkRec(id); return r?r.name:id; };
+const surveyArea=id=>{ try{ const D=window.SID_PIPE&&window.SID_PIPE.data; const x=D&&D.parks&&D.parks.find(p=>p.park===id); return x?x.area:null; }catch(e){ return null; } };
+const say_num=n=>n>=1e9?(n/1e9).toFixed(1)+" billion":n>=1e6?(n/1e6).toFixed(2)+" million":n>=1e3?Math.round(n/1e3)+" thousand":String(Math.round(n));
+
+/* ---------- one experience at a time ---------- */
+const WOW={cur:null,stop:null,voice:true,saved:null};
+try{ WOW.voice=localStorage.getItem("sid.exVoice")!=="0"; }catch(e){}
+function wowStop(){ const f=WOW.stop; WOW.stop=null; WOW.cur=null; try{ f&&f(); }catch(e){} try{ speechSynthesis.cancel(); }catch(e){}
+  document.body.classList.remove("wow-on"); const b=q("#exBar"); if(b) b.remove(); const c=q("#exCap"); if(c) c.remove(); }
+function wowStart(name,stop){ wowStop(); WOW.cur=name; WOW.stop=stop; document.body.classList.add("wow-on"); closeMenu(); }
+function camNow(){ return {center:map.getCenter().toArray(),zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()}; }
+function bar(html,onClose){ let b=q("#exBar"); if(!b){ b=document.createElement("div"); b.id="exBar"; document.body.appendChild(b); }
+  b.innerHTML=html; const x=b.querySelector(".ex-x"); if(x) x.onclick=()=>{ (onClose||wowStop)(); }; return b; }
+function cap(html){ let c=q("#exCap"); if(!c){ c=document.createElement("div"); c.id="exCap"; document.body.appendChild(c); } c.innerHTML=html; c.classList.remove("in"); void c.offsetWidth; c.classList.add("in"); }
+document.addEventListener("keydown",e=>{ if(e.key!=="Escape") return; if(q("#exMenu")){ closeMenu(); return; } if(WOW.cur) wowStop(); });
+
+/* ---------- three.js, only when needed ---------- */
+let THREE_P=null;
+function loadThree(){ if(window.THREE) return Promise.resolve(); if(THREE_P) return THREE_P;
+  THREE_P=new Promise((ok,no)=>{ const s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"; s.onload=ok; s.onerror=()=>{ THREE_P=null; no(new Error("three.js did not load")); }; document.head.appendChild(s); });
+  return THREE_P; }
+
+/* ============================================================
+   1. ORBIT FROM SPACE — night-side Earth, city lights, the parks lighting up over Egypt, then down into the map
+   ============================================================ */
+const TEX="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/";
+function loadTex(url){ return new Promise((ok,no)=>{ new THREE.TextureLoader().setCrossOrigin("anonymous").load(url,t=>{ t.anisotropy=4; ok(t); },undefined,()=>no(new Error("texture "+url))); }); }
+const ll2v=(lat,lng,R)=>{ const φ=lat*Math.PI/180, λ=lng*Math.PI/180; return new THREE.Vector3(R*Math.cos(φ)*Math.cos(λ),R*Math.sin(φ),-R*Math.cos(φ)*Math.sin(λ)); };
+async function runOrbit(opts){
+  opts=opts||{}; const tok=newTok(); let ov=null, renderer=null, raf=0, disposed=false, scene=null, landed=false;
+  const finishCam=opts.after||null, home=camNow();
+  function cleanup(){ if(disposed) return; disposed=true; cancelAnimationFrame(raf); try{ if(scene) scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ (o.material.map)&&o.material.map.dispose(); o.material.dispose(); } }); renderer&&renderer.dispose(); }catch(e){} if(ov) ov.remove(); }
+  const flyBack=(ms)=>{ const c=finishCam||home; try{ map.flyTo({center:c.center,zoom:c.zoom,pitch:c.pitch||0,bearing:c.bearing||0,duration:ms,essential:true,curve:1.5}); }catch(e){} };
+  if(!opts.keepMode) wowStart("orbit",()=>{ tok.dead=true; cleanup(); if(!landed) flyBack(900); });
+  if(reduced()){ flyBack(0); if(!opts.keepMode) wowStop(); return true; }
+  try{ await loadThree(); }catch(e){ toast("The 3D library could not load — check the connection",true); if(!opts.keepMode) wowStop(); return false; }
+  let dayT,nightT; try{ [dayT,nightT]=await Promise.all([loadTex(TEX+"earth_atmos_2048.jpg"),loadTex(TEX+"earth_lights_2048.png")]); }
+  catch(e){ toast("The Earth images could not load — check the connection",true); if(!opts.keepMode) wowStop(); return false; }
+  if(tok.dead&&!opts.keepMode) return false;
+  const lat0=29.9, lng0=31.6;
+  map.jumpTo({center:[lng0,lat0],zoom:3.4,pitch:0,bearing:0});
+  ov=document.createElement("div"); ov.id="spaceOv"; ov.innerHTML=`<canvas></canvas><div class="sp-t">ELSEWEDY INDUSTRIAL DEVELOPMENT</div><div class="sp-b" id="spB"></div><button class="sp-skip" type="button">Skip ›</button>`;
+  document.body.appendChild(ov); const cv=ov.querySelector("canvas");
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:false}); renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+  const size=()=>{ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); };
+  scene=new THREE.Scene(); const cam=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.05,200); size(); const onR=()=>size(); window.addEventListener("resize",onR);
+  const sunDir=new THREE.Vector3(.95,.28,.45).normalize();
+  const earth=new THREE.Group(); scene.add(earth);
+  const mat=new THREE.ShaderMaterial({uniforms:{dayMap:{value:dayT},nightMap:{value:nightT},sunDir:{value:sunDir}},
+    vertexShader:"varying vec2 vUv; varying vec3 vW; varying vec3 vV; void main(){ vUv=uv; vW=normalize(mat3(modelMatrix)*normal); vV=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }",
+    fragmentShader:"uniform sampler2D dayMap; uniform sampler2D nightMap; uniform vec3 sunDir; varying vec2 vUv; varying vec3 vW; varying vec3 vV; void main(){ float d=dot(normalize(vW),normalize(sunDir)); float k=smoothstep(-.14,.2,d); vec3 day=texture2D(dayMap,vUv).rgb; vec3 night=texture2D(nightMap,vUv).rgb; vec3 dark=day*vec3(.05,.07,.12); vec3 nl=dark+night*vec3(1.9,1.45,.85); vec3 dl=day*(.5+.65*max(d,0.)); vec3 col=mix(nl,dl,k); float rim=pow(1.-max(vV.z,0.),3.); col+=vec3(.18,.42,1.)*rim*.6; gl_FragColor=vec4(col,1.); }"});
+  earth.add(new THREE.Mesh(new THREE.SphereGeometry(1,96,96),mat));
+  const atm=new THREE.Mesh(new THREE.SphereGeometry(1.09,64,64),new THREE.ShaderMaterial({transparent:true,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false,
+    vertexShader:"varying vec3 vN; void main(){ vN=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }",
+    fragmentShader:"varying vec3 vN; void main(){ float i=pow(.68-dot(vN,vec3(0.,0.,1.)),4.); gl_FragColor=vec4(.32,.62,1.,1.)*i*1.5; }"})); scene.add(atm);
+  const stars=new THREE.BufferGeometry(), N=1800, arr=new Float32Array(N*3);
+  for(let i=0;i<N;i++){ const r=40+Math.random()*60, u=Math.random()*2-1, a=Math.random()*Math.PI*2, s=Math.sqrt(1-u*u); arr[i*3]=r*s*Math.cos(a); arr[i*3+1]=r*u; arr[i*3+2]=r*s*Math.sin(a); }
+  stars.setAttribute("position",new THREE.BufferAttribute(arr,3)); scene.add(new THREE.Points(stars,new THREE.PointsMaterial({color:0xffffff,size:.16,sizeAttenuation:true,transparent:true,opacity:.85})));
+  // the parks: red for operating, white for the new lands (only places that exist in the data)
+  const pins=[], rings=[]; const addPin=(lat,lng,hex,sz)=>{ const p=ll2v(lat,lng,1.004); const m=new THREE.Mesh(new THREE.SphereGeometry(sz,12,12),new THREE.MeshBasicMaterial({color:hex})); m.position.copy(p); earth.add(m); pins.push(m);
+    const rg=new THREE.Mesh(new THREE.RingGeometry(.9*sz,1.25*sz,28),new THREE.MeshBasicMaterial({color:hex,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false})); rg.position.copy(p); rg.lookAt(p.clone().multiplyScalar(2)); rg.userData.ph=Math.random(); rg.userData.sz=sz; earth.add(rg); rings.push(rg); };
+  let nOps=0,nPipe=0; PORTFOLIO.filter(p=>p.stage==="operating"&&p.park&&p.lat!=null).forEach(p=>{ addPin(p.lat,p.lng,0xff3b4d,.0085); nOps++; });
+  try{ const D=window.SID_PIPE&&window.SID_PIPE.data; D&&D.projects.forEach(p=>{ if(p.at){ addPin(p.at[1],p.at[0],0xffffff,.0065); nPipe++; } }); }catch(e){}
+  const a0=-(Math.PI/2+lng0*Math.PI/180), b0=lat0*Math.PI/180;
+  const T=8800, t0=performance.now(); let fadeStarted=false;
+  ov.querySelector(".sp-skip").onclick=()=>{ tok.skip=true; };
+  const keyskip=e=>{ if(e.key==="Escape"||e.key===" "){ tok.skip=true; } }; document.addEventListener("keydown",keyskip);
+  const sb=ov.querySelector("#spB"); sb.textContent=`${nOps} industrial parks${nPipe?` · ${nPipe} new lands`:""} · Egypt`;
+  const end=()=>{ document.removeEventListener("keydown",keyskip); window.removeEventListener("resize",onR); setTimeout(()=>{ cleanup(); if(!opts.keepMode) wowStop(); },1400); };
+  return await new Promise(res=>{
+    const frame=now=>{
+      if(tok.dead){ document.removeEventListener("keydown",keyskip); window.removeEventListener("resize",onR); cleanup(); return res(false); }
+      let t=Math.min(1,(now-t0)/T); if(tok.skip&&t<.82){ tok.skip=false; /* jump to the landing */ opts._t0shift=(.82*T)-(now-t0); }
+      if(opts._t0shift){ t=Math.min(1,(now-t0+opts._t0shift)/T); }
+      const e=easeOut(Math.min(1,t/.8));
+      earth.rotation.y=a0+(1-e)*2.7; earth.rotation.x=b0*e+(1-e)*.25;
+      const dist=7.2-(7.2-1.55)*e; cam.position.set(0,0,dist);
+      rings.forEach(r=>{ const k=((now/1400)+r.userData.ph)%1; r.scale.setScalar(1+k*2.6); r.material.opacity=(1-k)*.8; });
+      pins.forEach((p,i)=>p.scale.setScalar(1+.25*Math.sin(now/260+i)));
+      renderer.render(scene,cam);
+      if(t>.14) ov.classList.add("t1"); if(t>.62) ov.classList.add("t2");
+      if(t>=.86&&!fadeStarted){ fadeStarted=true; landed=true; ov.classList.add("out"); flyBack(2800); end(); }
+      if(t<1) raf=requestAnimationFrame(frame); else res(true);
+    };
+    raf=requestAnimationFrame(frame);
+    if(!opts.keepMode) tok.finish=res;
+    // the caller waits for the fade to be under way, not for the cleanup
+  }).then(v=>{ return sleep(1000).then(()=>v); });
+}
+
+/* ============================================================
+   2. FILM OF A PROJECT — space → project → slow orbit with the real numbers → road to the nearest port
+   ============================================================ */
+function speakText(text,tok){
+  if(!WOW.voice||!("speechSynthesis" in window)) return Promise.resolve();
+  return new Promise(res=>{ let done=false; const fin=()=>{ if(!done){ done=true; res(); } };
+    try{ if(typeof laraSay==="function"){ laraSay(text); const t0=Date.now(); const iv=setInterval(()=>{ const sp=(typeof LARA!=="undefined"&&LARA.speaking); if(tok.dead||(Date.now()-t0>700&&!sp)||Date.now()-t0>22000){ clearInterval(iv); fin(); } },200); }
+      else{ const u=new SpeechSynthesisUtterance(text); u.onend=fin; u.onerror=fin; speechSynthesis.speak(u); setTimeout(fin,22000); } }catch(e){ fin(); } });
+}
+function parkBounds(id){ const b=[[180,90],[-180,-90]]; S.geo.features.forEach(f=>{ if(f.properties.park!==id) return; const g=f.geometry, ring=g.type==="Polygon"?g.coordinates[0]:g.coordinates.flatMap(p=>p[0]); ring.forEach(c=>{ if(c[0]<b[0][0])b[0][0]=c[0]; if(c[1]<b[0][1])b[0][1]=c[1]; if(c[0]>b[1][0])b[1][0]=c[0]; if(c[1]>b[1][1])b[1][1]=c[1]; }); }); return b[0][0]>b[1][0]?null:b; }
+async function runFilm(park,opts){
+  opts=opts||{}; if(!ready()){ toast("The map is still loading",true); return; }
+  const rec=parkRec(park), bb=parkBounds(park); if(!rec||!bb){ toast("Pick a project with plots on the map",true); return; }
+  if(typeof PR!=="undefined"&&PR.on){ toast("Close the presentation first",true); return; }
+  const tok=newTok(); const saved=camNow(); let routeOn=false;
+  wowStart("film",()=>{ tok.dead=true; try{ clearRoutes&&clearRoutes("film"); }catch(e){} map.stop&&map.stop(); const sp=q("#spaceOv"); if(sp) sp.remove(); try{ map.flyTo({center:saved.center,zoom:saved.zoom,pitch:saved.pitch,bearing:saved.bearing,duration:1600,essential:true}); }catch(e){} });
+  bar(`<div class="ex-t"><b>Film</b><span>${esc(rec.name)}</span></div><button class="ex-b ${WOW.voice?"on":""}" id="exVoice" type="button" title="Narration on or off">Voice</button><button class="ex-b" id="exSkip" type="button">Skip ›</button><button class="ex-x" type="button" aria-label="Close">×</button>`);
+  const vb=q("#exVoice"); if(vb) vb.onclick=()=>{ WOW.voice=!WOW.voice; try{ localStorage.setItem("sid.exVoice",WOW.voice?"1":"0"); }catch(e){} vb.classList.toggle("on",WOW.voice); if(!WOW.voice) try{ speechSynthesis.cancel(); }catch(e){} };
+  let skipPhase=false; const sk=q("#exSkip"); if(sk) sk.onclick=()=>{ skipPhase=true; try{ speechSynthesis.cancel(); }catch(e){} const so=q("#spaceOv .sp-skip"); if(so) so.click(); };
+  const t=totals(S.rows.filter(r=>r.park===park)), sold=t.soldArea, sell=t.sellable, ats=t.byStatus.ats.area;
+  const pct=sell?Math.round(sold/sell*100):0, where=(S.reg.parks[park]&&S.reg.parks[park].where)||"", land=surveyArea(park)||rec.area;
+  const pin=pinAt(park)||[ (bb[0][0]+bb[1][0])/2,(bb[0][1]+bb[1][1])/2 ];
+  const cam0=map.cameraForBounds(bb,{padding:90,pitch:58,bearing:-20})||{center:pin,zoom:14};
+  const say=async(html,text,min)=>{ cap(html); await Promise.all([sleep(min||3500,tok),text?speakText(text,tok):Promise.resolve()]); };
+  try{
+    // (a) from space
+    if(opts.space!==false&&!reduced()){ cap(`<div class="c-k">Egypt</div><div class="c-v">From space</div>`); await runOrbit({keepMode:true,after:{center:[31.2,29.8],zoom:5.6,pitch:0,bearing:0}}); }
+    else { map.flyTo({center:[31.2,29.8],zoom:5.6,pitch:0,bearing:0,duration:reduced()?0:2200,essential:true}); await sleep(reduced()?200:2400,tok); }
+    if(tok.dead) return;
+    // (b) down to the project
+    cap(`<div class="c-k">${esc(where||"Egypt")}</div><div class="c-v">${esc(rec.name)}</div>`);
+    map.flyTo({center:cam0.center,zoom:Math.min(cam0.zoom,16.2),pitch:58,bearing:-20,duration:reduced()?0:5600,essential:true,curve:1.7});
+    const intro=`${rec.name}${where?", "+where:""}. ${say_num(land)} square metres of land${sell?`, ${say_num(sell)} of it sellable`:""}.`;
+    await Promise.all([sleep(reduced()?400:5600,tok),speakText(intro,tok)]); if(tok.dead) return;
+    // (c) slow orbit while the numbers come in
+    const ORB=reduced()?1000:15000; let b=-20, orbOn=true; const t1=performance.now();
+    const orb=new Promise(res=>{ const f=now=>{ if(tok.dead) return res(); const k=Math.min(1,(now-t1)/ORB); map.jumpTo({bearing:b+k*320}); if(k<1&&!skipPhase&&orbOn) requestAnimationFrame(f); else res(); }; requestAnimationFrame(f); });
+    await say(`<div class="c-k">Sold + reserved</div><div class="c-v">${pct}%</div><div class="c-s">${fs_(sold)} sqm · ${fi(t.soldN)} deals</div>`,
+      `${pct} percent is already sold or reserved: ${say_num(sold)} square metres across ${t.soldN} deals.`,4200);
+    ["fill-ats"].forEach(l=>{ try{ if(map.getLayer(l)){ let on=true; const iv=setInterval(()=>{ if(tok.dead){ clearInterval(iv); return; } try{ map.setPaintProperty(l,"fill-opacity",on?.98:.55); }catch(e){} on=!on; },480); setTimeout(()=>{ clearInterval(iv); try{ map.setPaintProperty(l,"fill-opacity",["interpolate",["linear"],["zoom"],8,.6,12,.78,16,.7]); }catch(e){} },4400); } }catch(e){} });
+    await say(`<div class="c-k">Still available</div><div class="c-v">${fs_(ats)} sqm</div><div class="c-s">${fi(t.byStatus.ats.p)} plots ready to sell</div>`,
+      `${say_num(ats)} square metres, ${t.byStatus.ats.p} plots, are still available.`,4200);
+    if(t.valueEGP) await say(`<div class="c-k">Sales value</div><div class="c-v">${fEGP(t.valueEGP)}</div><div class="c-s">${fi(t.soldN)} sold and reserved deals</div>`,
+      `Sales to date are worth ${say_num(t.valueEGP)} Egyptian pounds.`,3800);
+    await Promise.race([orb,sleep(4000,tok)]); orbOn=false; if(tok.dead) return;
+    // (d) the road to the nearest seaport
+    const port=nearestPOIs(pin,["port"])[0]; let rt=null; if(port){ try{ rt=await roadRoute(pin,port.at); }catch(e){} }
+    if(port){ try{ drawRoutes({at:pin,n:rec.name,t:"film"},[port],{owner:"film",label:x=>"to "+x.n}); routeOn=true; }catch(e){}
+      const bx=[[Math.min(pin[0],port.at[0]),Math.min(pin[1],port.at[1])],[Math.max(pin[0],port.at[0]),Math.max(pin[1],port.at[1])]];
+      const c2=map.cameraForBounds(bx,{padding:120}); map.flyTo({center:c2.center,zoom:Math.min(c2.zoom,11.5),pitch:35,bearing:0,duration:reduced()?0:4200,essential:true,curve:1.6});
+      const km=rt?rt.km:port.km, mins=rt?rt.min:null;
+      await say(`<div class="c-k">Nearest seaport</div><div class="c-v">${esc(port.n)}</div><div class="c-s">${fKm(km)} km${mins?" · about "+(typeof fDur==="function"?fDur(mins):Math.round(mins)+" min")+" by road":" in a straight line"}</div>`,
+        `The nearest seaport is ${port.n}, ${Math.round(km)} kilometres${mins?" by road":" in a straight line"}.`,5200); }
+    if(tok.dead) return;
+    // (e) end card
+    cap(`<div class="c-k">${esc(rec.name)}</div><div class="c-v">Thank you</div><div class="c-btns"><button class="ex-b" id="fEnd1" type="button">Replay</button><button class="ex-b on" id="fEnd2" type="button">Open this project</button></div>`);
+    bar(`<div class="ex-t"><b>Film</b><span>finished</span></div><button class="ex-x" type="button" aria-label="Close">×</button>`);
+    const r1=q("#fEnd1"), r2=q("#fEnd2"); if(r1) r1.onclick=()=>{ try{ clearRoutes("film"); }catch(e){} runFilm(park,{space:false}); };
+    if(r2) r2.onclick=()=>{ WOW.stop=null; wowStop(); try{ clearRoutes("film"); }catch(e){} const s=q("#parkSel"); if(s){ s.value=park; s.dispatchEvent(new Event("change",{bubbles:true})); } };
+  }catch(e){ if(e!=="stopped") console.warn("film",e); }
+}
+
+/* ============================================================
+   MENU
+   ============================================================ */
+function closeMenu(){ const m=q("#exMenu"); if(m) m.remove(); document.removeEventListener("pointerdown",menuOut,true); }
+function menuOut(e){ if(!e.target.closest("#exMenu,#exBtn")) closeMenu(); }
+const ICON={orbit:'<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.2"/><path d="M2.8 8h10.4M8 2.8c2 1.6 2 8.8 0 10.4M8 2.8c-2 1.6-2 8.8 0 10.4"/></svg>',
+  film:'<svg viewBox="0 0 16 16"><rect x="2" y="3.5" width="12" height="9" rx="1.6"/><path d="M6.8 6.2v3.6L10 8z"/></svg>',
+  time:'<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.4"/><path d="M8 4.8V8l2.4 1.6"/></svg>',
+  sun:'<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.8"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M3.5 12.5l1.1-1.1M11.4 4.6l1.1-1.1"/></svg>',
+  truck:'<svg viewBox="0 0 16 16"><path d="M1.8 4.4h7.2v6.2H1.8zM9 6.4h2.8l2 2.1v2.1H9z"/><circle cx="4.6" cy="11.4" r="1.2"/><circle cx="11.4" cy="11.4" r="1.2"/></svg>',
+  share:'<svg viewBox="0 0 16 16"><rect x="2.2" y="2.2" width="4.6" height="4.6" rx=".8"/><rect x="9.2" y="2.2" width="4.6" height="4.6" rx=".8"/><rect x="2.2" y="9.2" width="4.6" height="4.6" rx=".8"/><path d="M9.2 9.2h1.8v1.8H9.2zM12 12h1.8v1.8H12z"/></svg>',
+  ar:'<svg viewBox="0 0 16 16"><path d="M8 1.8 13.6 5v6L8 14.2 2.4 11V5z"/><path d="M2.4 5 8 8.2 13.6 5M8 8.2v6"/></svg>'};
+const ITEMS=[["orbit","Orbit from space","Earth at night, the parks light up, then down into the map"],
+  ["film","Film of a project","A guided flight with the real numbers and a voice"],
+  ["time","Time machine","Watch the plots sell, month by month"],
+  ["sun","Sun & daylight","Sunrise, sunset, shadows and the light on the plots"],
+  ["truck","Trucks to the port","Animated trucks on the real road"],
+  ["share","Share a plot with a customer","A link and QR with only that plot"],
+  ["ar","AR table view","The park as a 3D model on your table (phone)"]];
+const EXP={};   // filled by the later sections: EXP.time(park), EXP.sun(park) ...
+function parkOptions(sel){ const ops=PORTFOLIO.filter(p=>p.stage==="operating"&&p.park&&S.rows.some(r=>r.park===p.park)).sort((a,b)=>a.name.localeCompare(b.name));
+  return `<option value="all"${sel==="all"?" selected":""}>All parks</option>`+ops.map(p=>`<option value="${p.park}"${sel===p.park?" selected":""}>${esc(p.name)}</option>`).join(""); }
+function toggleMenu(btn){
+  if(q("#exMenu")){ closeMenu(); return; }
+  if(!ready()){ toast("The map is still loading",true); return; }
+  const m=document.createElement("div"); m.id="exMenu"; m.setAttribute("role","menu");
+  const cur=S.park&&S.park!=="all"?S.park:"all";
+  m.innerHTML=`<div class="ex-h">Explore</div><label class="ex-p"><span>Project</span><select id="exPark">${parkOptions(cur)}</select></label>`+
+    ITEMS.map(([k,t,d])=>`<button type="button" class="ex-i" data-k="${k}" role="menuitem"><i>${ICON[k]}</i><span><b>${t}</b><em>${d}</em></span></button>`).join("");
+  document.body.appendChild(m);
+  const r=btn.getBoundingClientRect(); m.style.top=Math.round(r.bottom+8)+"px"; m.style.right=Math.max(10,Math.round(innerWidth-r.right))+"px";
+  const need=(k)=>{ const v=q("#exPark").value; if(v==="all"){ toast("Pick a project in the list first",true); return null; } return v; };
+  m.querySelectorAll(".ex-i").forEach(b=>b.onclick=()=>{ const k=b.dataset.k, park=q("#exPark").value;
+    if(k==="orbit"){ closeMenu(); runOrbit(); return; }
+    if(k==="film"){ const p=need(); if(p){ closeMenu(); runFilm(p); } return; }
+    if(EXP[k]){ closeMenu(); EXP[k](park); return; }
+    toast("Not available yet",true); });
+  setTimeout(()=>document.addEventListener("pointerdown",menuOut,true),0);
+}
+function addBtn(){ if(pub()||!ready()) return; const b0=q(".mapbtns"); if(!b0||q("#exBtn")) return;
+  const b=document.createElement("button"); b.type="button"; b.id="exBtn"; b.setAttribute("aria-label","Explore"); b.title="Explore — orbit, film, time machine, sun, trucks, customer link, AR";
+  b.innerHTML=`<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5l1.4 3.9 3.9 1.4-3.9 1.4L8 12.1 6.6 8.2 2.7 6.8l3.9-1.4z"/><path d="M12.6 11l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5z"/></svg><span>Explore</span>`;
+  b.onclick=e=>{ e.stopPropagation(); toggleMenu(b); };
+  const bd=q("#ppBdBtn"); if(bd) bd.after(b); else b0.appendChild(b); }
+setInterval(()=>{ try{ addBtn(); }catch(e){} },1500);
+
+window.SID_WOW={orbit:runOrbit,film:runFilm,stop:wowStop,EXP,helpers:{q,esc,sleep,newTok,wowStart,wowStop,bar,cap,camNow,ready,reduced,fi,fs_,parkRec,parkName,parkBounds,loadThree,say_num,speakText,ease,easeOut,ll2v,toast:(m,b)=>toast(m,b),closeMenu}};
+
+/* ---------- look ---------- */
+{ const st=document.createElement("style"); st.textContent=`
+#exBtn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:none}
+#exBtn svg{flex:none}
+body.l2 #exBtn span{display:none}
+#exMenu{position:fixed;z-index:9300;width:330px;max-width:calc(100vw - 20px);padding:8px;border-radius:16px;background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);border:1px solid rgba(16,18,24,.1);box-shadow:0 22px 50px -14px rgba(16,18,24,.4);font-family:Inter,system-ui,sans-serif;color:#16181D}
+#exMenu .ex-h{padding:6px 8px 4px;font:800 10px/1 Inter,system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#6E737B}
+#exMenu .ex-p{display:flex;align-items:center;gap:8px;padding:4px 8px 8px}
+#exMenu .ex-p span{font:600 11px Inter,system-ui,sans-serif;color:#6E737B}
+#exMenu .ex-p select{flex:1;min-width:0;height:30px;border-radius:9px;border:1px solid rgba(16,18,24,.14);background:#fff;padding:0 8px;font:600 12.5px Inter,system-ui,sans-serif;color:#16181D}
+#exMenu .ex-i{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:8px;border:0;border-radius:11px;background:transparent;cursor:pointer;color:inherit}
+#exMenu .ex-i:hover{background:rgba(16,18,24,.06)}
+#exMenu .ex-i i{flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:#16181D;color:#fff}
+#exMenu .ex-i svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+#exMenu .ex-i b{display:block;font:700 13px/1.2 Inter,system-ui,sans-serif}
+#exMenu .ex-i em{display:block;font:500 11px/1.3 Inter,system-ui,sans-serif;font-style:normal;color:#6E737B;margin-top:1px}
+#exBar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9200;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 16px;border-radius:999px;background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(20px) saturate(170%);backdrop-filter:blur(20px) saturate(170%);border:1px solid rgba(16,18,24,.1);box-shadow:0 16px 40px -14px rgba(16,18,24,.45);font-family:Inter,system-ui,sans-serif;color:#16181D;max-width:calc(100vw - 20px)}
+#exBar .ex-t{display:flex;flex-direction:column;line-height:1.15;margin-right:6px}
+#exBar .ex-t b{font:800 10px Inter,system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#6E737B}
+#exBar .ex-t span{font:700 13px Inter,system-ui,sans-serif;white-space:nowrap}
+.ex-b{height:30px;padding:0 13px;border-radius:999px;border:1px solid rgba(16,18,24,.14);background:#fff;font:700 12px Inter,system-ui,sans-serif;color:#16181D;cursor:pointer;white-space:nowrap}
+.ex-b.on{background:#16181D;color:#fff;border-color:#16181D}
+.ex-x{width:30px;height:30px;border-radius:50%;border:0;background:rgba(16,18,24,.07);font:400 20px/1 Inter,system-ui,sans-serif;color:#16181D;cursor:pointer;display:grid;place-items:center}
+.ex-x:hover{background:rgba(179,38,61,.14);color:#B3263D}
+#exCap{position:fixed;left:28px;bottom:92px;z-index:9150;max-width:min(420px,calc(100vw - 40px));padding:16px 20px;border-radius:18px;background:rgba(14,16,20,.62);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);color:#fff;font-family:Inter,system-ui,sans-serif;opacity:0;transform:translateY(8px);transition:opacity .6s ease,transform .6s ease;pointer-events:auto}
+#exCap.in{opacity:1;transform:none}
+#exCap .c-k{font:700 10.5px Inter,system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+#exCap .c-v{font:800 30px/1.1 Inter,system-ui,sans-serif;letter-spacing:-.02em;margin-top:4px}
+#exCap .c-s{font:500 13px/1.35 Inter,system-ui,sans-serif;color:rgba(255,255,255,.82);margin-top:5px}
+#exCap .c-btns{display:flex;gap:8px;margin-top:12px}
+#spaceOv{position:fixed;inset:0;z-index:9100;background:#02030a;opacity:1;transition:opacity 1.3s ease}
+#spaceOv.out{opacity:0;pointer-events:none}
+#spaceOv canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#spaceOv .sp-t{position:absolute;top:7vh;left:0;right:0;text-align:center;font:700 clamp(11px,1.6vw,15px) Inter,system-ui,sans-serif;letter-spacing:.42em;color:rgba(255,255,255,.88);opacity:0;transition:opacity 1.6s ease;text-shadow:0 2px 18px rgba(0,0,0,.8)}
+#spaceOv .sp-b{position:absolute;bottom:9vh;left:0;right:0;text-align:center;font:600 clamp(13px,1.8vw,18px) Inter,system-ui,sans-serif;letter-spacing:.06em;color:#fff;opacity:0;transition:opacity 1.4s ease;text-shadow:0 2px 18px rgba(0,0,0,.9)}
+#spaceOv.t1 .sp-t{opacity:1} #spaceOv.t2 .sp-b{opacity:1}
+#spaceOv .sp-skip{position:absolute;right:22px;bottom:22px;height:32px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);color:#fff;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+@media (max-width:820px){ #exCap{left:12px;bottom:84px;padding:12px 15px} #exCap .c-v{font-size:24px} #exBar{bottom:14px} }
+`; document.head.appendChild(st); }
+})();
+</script>
 </body>
 </html>
