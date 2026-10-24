@@ -15682,7 +15682,9 @@ function toggleMenu(btn){
   m.innerHTML=`<div class="ex-h">Explore</div><label class="ex-p"><span>Project</span><select id="exPark">${parkOptions(cur)}</select></label>`+
     ITEMS.map(([k,t,d])=>`<button type="button" class="ex-i" data-k="${k}" role="menuitem"><i>${ICON[k]}</i><span><b>${t}</b><em>${d}</em></span></button>`).join("");
   document.body.appendChild(m);
-  const r=btn.getBoundingClientRect(); m.style.top=Math.round(r.bottom+8)+"px"; m.style.right=Math.max(10,Math.round(innerWidth-r.right))+"px";
+  const r=btn.getBoundingClientRect(); m.style.top=Math.round(r.bottom+8)+"px";
+  if(innerWidth<=820){ m.style.left="10px"; m.style.right="10px"; m.style.width="auto"; m.style.maxHeight=Math.max(240,innerHeight-r.bottom-96)+"px"; m.style.overflow="auto"; }
+  else m.style.right=Math.max(10,Math.round(innerWidth-r.right))+"px";
   const need=(k)=>{ const v=q("#exPark").value; if(v==="all"){ toast("Pick a project in the list first",true); return null; } return v; };
   m.querySelectorAll(".ex-i").forEach(b=>b.onclick=()=>{ const k=b.dataset.k, park=q("#exPark").value;
     if(k==="orbit"){ closeMenu(); runOrbit(); return; }
@@ -15737,7 +15739,7 @@ body.l2 #exBtn span{display:none}
 #spaceOv .sp-b{position:absolute;bottom:9vh;left:0;right:0;text-align:center;font:600 clamp(13px,1.8vw,18px) Inter,system-ui,sans-serif;letter-spacing:.06em;color:#fff;opacity:0;transition:opacity 1.4s ease;text-shadow:0 2px 18px rgba(0,0,0,.9)}
 #spaceOv.t1 .sp-t{opacity:1} #spaceOv.t2 .sp-b{opacity:1}
 #spaceOv .sp-skip{position:absolute;right:22px;bottom:22px;height:32px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);color:#fff;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-@media (max-width:820px){ #exCap{left:12px;bottom:84px;padding:12px 15px} #exCap .c-v{font-size:24px} #exBar{bottom:14px} }
+@media (max-width:820px){ #exCap{left:12px;bottom:150px;padding:12px 15px} #exCap .c-v{font-size:24px} #exBar{bottom:76px} }
 `; document.head.appendChild(st); }
 })();
 </script>
@@ -15959,7 +15961,7 @@ EXP.truck=function(park){
 #exBar .tk-h{font:600 13px/1.4 Inter,system-ui,sans-serif;text-align:center}
 .tk-m svg{display:block;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45))}
 #sunTint{position:absolute;inset:0;z-index:3;pointer-events:none;mix-blend-mode:multiply;transition:background .25s linear}
-@media (max-width:820px){ #exBar .tm-k{grid-template-columns:repeat(2,1fr)} #exBar .tm-k.su{grid-template-columns:repeat(2,1fr)} #exBar .tm-date{font-size:21px} }
+@media (max-width:820px){ #exBar.ex-wide{bottom:74px;max-height:calc(100vh - 150px);overflow:auto} #exBar .tm-k{grid-template-columns:repeat(2,1fr)} #exBar .tm-k.su{grid-template-columns:repeat(2,1fr)} #exBar .tm-date{font-size:21px} }
 `; document.head.appendChild(st); }
 })();
 </script>
