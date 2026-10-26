@@ -559,6 +559,9 @@ body.presenting .plogo,body.presenting .tpin,body.presenting .poi{pointer-events
 body.presenting #kpis.kpis{left:178px!important;width:auto!important}
 body.presenting .rq-corner{right:32px!important;bottom:112px!important}
 body.presenting .rq-corner svg{width:66px;height:66px}
+/* AR park tour: the Lara button sat on top of the legend; park it in the top right corner while the tour is open */
+body:has(#arOv) .lara-dock:not(.open){left:auto!important;right:10px!important;bottom:auto!important;top:84px!important;translate:none!important}
+@media (max-width:760px){body:has(#arOv) .lara-dock:not(.open){top:206px!important}}
 @media (max-width:760px){body.presenting #kpis.kpis{left:0!important;top:calc(env(safe-area-inset-top,0px) + 48px)!important}body.presenting .rq-corner{top:calc(env(safe-area-inset-top,0px) + 10px)!important;bottom:auto!important;right:10px!important}body.presenting .rq-corner svg{width:52px;height:52px}}
 @keyframes presIn{from{opacity:0;transform:translateY(22px)}}
 .pres-eye{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#F07C8C;font-weight:600}
@@ -16019,16 +16022,60 @@ EXP.ar=async function(park){
     G.ribbons.forEach(R=>{ add(R.a,R.b,11,new T.Color(0x34383e)); add(R.a,R.b,.35,new T.Color(0xf2ecd0)); });
     if(acc.p.length){ roadMat=new T.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.75,side:T.DoubleSide,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}); body.add(mk(acc,roadMat)); } }
   // factories on the sold plots (the same illustrative massing as the 3D map), a lower building on reserved plots
-  const fac={p:[],n:[],c:[]}, chim=[], fSold=new Set(), fRes=new Set(), wSold=new Set(), wRes=new Set();
+  const fac={p:[],n:[],c:[]}, det={p:[],n:[],c:[]}, chim=[], fSold=new Set(), fRes=new Set(), wSold=new Set(), wRes=new Set();
+
+  // detail pass: roofs with solar panels or a white barrel vault, window and colour bands, dock doors, a few trees. One merged mesh, so it stays one draw call;
+  // it stops adding detail when the vertex budget of the device is used up (phones get less than computers).
+  const DBUD=((()=>{ try{ return matchMedia("(pointer:coarse)").matches; }catch(e){ return false; } })()?330000:720000);
+  const Cc=h=>new T.Color(h), dQuad=(a,b,c,d,col,n)=>{ [[a,b,c],[a,c,d]].forEach(t=>t.forEach(v=>{ det.p.push(v[0],v[1],v[2]); det.n.push(n[0],n[1],n[2]); det.c.push(col.r,col.g,col.b); })); };
+  const dTri=(a,b,c,col)=>{ const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2], vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2]; let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1; nx/=l; ny/=l; nz/=l; [a,b,c].forEach(v=>{ det.p.push(v[0],v[1],v[2]); det.n.push(nx,ny,nz); det.c.push(col.r,col.g,col.b); }); };
+  const PAL=["#F2EBDD","#E9D9A8","#CBDAC4","#E3CDBB","#D3DEEC","#F0F1F3"], WPAL=["#AFC3DD","#B9C7D6","#C4D3C8"], ACC=["#B4553B","#D9A21B","#3F7F5A","#3C5A8A","#B83A3A","#8A5A2B"];
+  const TREE=["#3E8E4A","#4FA05A","#2F7A44","#5BAA5E"];
+  const tree=(x,z,sz,col,palm)=>{ const tc=Cc("#7A5A3C");
+    if(palm){ const ht=5.2*sz, w=.3*sz; for(let i=0;i<4;i++){ const a0=i*Math.PI/2, a1=(i+1)*Math.PI/2; dQuad([x+Math.cos(a0)*w,0,z+Math.sin(a0)*w],[x+Math.cos(a1)*w,0,z+Math.sin(a1)*w],[x+Math.cos(a1)*w*.6,ht,z+Math.sin(a1)*w*.6],[x+Math.cos(a0)*w*.6,ht,z+Math.sin(a0)*w*.6],tc,[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)]); }
+      const c=Cc(col), c2=c.clone().multiplyScalar(.8); for(let i=0;i<8;i++){ const an=i/8*Math.PI*2, sp=.34, r=3.3*sz; dTri([x,ht+.2,z],[x+Math.cos(an-sp)*r,ht-1.5*sz,z+Math.sin(an-sp)*r],[x+Math.cos(an+sp)*r,ht-1.5*sz,z+Math.sin(an+sp)*r],i%2?c:c2); } return; }
+    const r=1.7*sz, h0=1.8*sz, n=7; for(let i=0;i<4;i++){ const a0=i*Math.PI/2, a1=(i+1)*Math.PI/2, w=.25*sz; dQuad([x+Math.cos(a0)*w,0,z+Math.sin(a0)*w],[x+Math.cos(a1)*w,0,z+Math.sin(a1)*w],[x+Math.cos(a1)*w,h0,z+Math.sin(a1)*w],[x+Math.cos(a0)*w,h0,z+Math.sin(a0)*w],tc,[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)]); }
+    const c=Cc(col), c2=c.clone().multiplyScalar(.8), yc=h0+r*.95, yt=h0+r*2.1, yb=h0-.2*sz; for(let i=0;i<n;i++){ const a0=i/n*Math.PI*2, a1=(i+1)/n*Math.PI*2, p0=[x+Math.cos(a0)*r,yc,z+Math.sin(a0)*r], p1=[x+Math.cos(a1)*r,yc,z+Math.sin(a1)*r]; dTri(p0,[x,yt,z],p1,i%2?c:c2); dTri(p1,[x,yb,z],p0,c2); } };
+  function detail(ring,h,wh,sold,k,accent){
+    if(det.p.length>DBUD) return;
+    const P=ring.slice(0,-1).map(c=>[mx(c),mz(c)]); if(P.length<3) return;
+    let cx=0,cz=0; P.forEach(q=>{ cx+=q[0]; cz+=q[1]; }); cx/=P.length; cz/=P.length;
+    let bl=0,bi=0; for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length], l=Math.hypot(b[0]-a[0],b[1]-a[1]); if(l>bl){ bl=l; bi=i; } }
+    const a0=P[bi], b0=P[(bi+1)%P.length], ux=(b0[0]-a0[0])/bl, uz=(b0[1]-a0[1])/bl, vx=-uz, vz=ux;
+    let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9, A=0; P.forEach((q,i)=>{ const u=(q[0]-cx)*ux+(q[1]-cz)*uz, v=(q[0]-cx)*vx+(q[1]-cz)*vz; u0=Math.min(u0,u); u1=Math.max(u1,u); v0=Math.min(v0,v); v1=Math.max(v1,v); const n=P[(i+1)%P.length]; A+=q[0]*n[1]-n[0]*q[1]; }); A=Math.abs(A)/2;
+    const L=u1-u0, W=v1-v0, cu=(u0+u1)/2, cv=(v0+v1)/2; if(L<12||W<8||A/(L*W)<.75) return;
+    const pt=(u,v,y)=>[cx+(cu+u)*ux+(cv+v)*vx, y, cz+(cu+u)*uz+(cv+v)*vz];
+    if(!sold){   // reserved plot, being built: darker roof slab with a rim, and a tower crane on every third site
+      dQuad(pt(-L/2*.97,-W/2*.97,h+.1),pt(L/2*.97,-W/2*.97,h+.1),pt(L/2*.97,W/2*.97,h+.1),pt(-L/2*.97,W/2*.97,h+.1),Cc("#D9A441"),[0,1,0]);
+      if(hash(k+"cr")<.22&&det.p.length<DBUD*.9){ const m=pt(L*.3,W*.3,0), mh=h+4.6, jb=Cc("#E6B422"), w=.75; const px=m[0], pz=m[2];
+        for(let i=0;i<4;i++){ const a0=i*Math.PI/2+Math.PI/4, a1=(i+1)*Math.PI/2+Math.PI/4; dQuad([px+Math.cos(a0)*w,h,pz+Math.sin(a0)*w],[px+Math.cos(a1)*w,h,pz+Math.sin(a1)*w],[px+Math.cos(a1)*w,mh,pz+Math.sin(a1)*w],[px+Math.cos(a0)*w,mh,pz+Math.sin(a0)*w],jb,[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)]); }
+        const j0=pt(L*.3-L*.32,W*.3,mh), j1=pt(L*.3+L*.14,W*.3,mh); dQuad([j0[0]+vx*.45,mh,j0[2]+vz*.45],[j1[0]+vx*.45,mh,j1[2]+vz*.45],[j1[0]-vx*.45,mh,j1[2]-vz*.45],[j0[0]-vx*.45,mh,j0[2]-vz*.45],jb,[0,1,0]); }
+      return; }
+    const rf=Cc(wh?"#F1F3F6":"#D3D8DE"); dQuad(pt(-L/2*.97,-W/2*.97,h+.1),pt(L/2*.97,-W/2*.97,h+.1),pt(L/2*.97,W/2*.97,h+.1),pt(-L/2*.97,W/2*.97,h+.1),rf,[0,1,0]);   // roof
+    const mode=wh?(hash(k+"s")<.55?"solar":"skylight"):(hash(k+"p")<.7?"solar":"vault");
+    if(mode==="solar"&&L>20&&W>12){ const n=Math.max(1,Math.min(5,Math.floor((W-4)/4.6))), rw=3.2, gap=1.4, tot=n*rw+(n-1)*gap, Lp=L-6; for(let i=0;i<n;i++){ const v=-tot/2+i*(rw+gap); const c1=Cc(i%2?"#1F4E96":"#2A5FAE"), c2=Cc(i%2?"#2A5FAE":"#1F4E96"); dQuad(pt(-Lp/2,v,h+.5),pt(0,v,h+.5),pt(0,v+rw,h+.5),pt(-Lp/2,v+rw,h+.5),c1,[0,1,0]); dQuad(pt(0,v,h+.5),pt(Lp/2,v,h+.5),pt(Lp/2,v+rw,h+.5),pt(0,v+rw,h+.5),c2,[0,1,0]); } }
+    else if(mode==="skylight"){ const n=Math.min(4,Math.floor(L/22)); for(let i=0;i<n;i++){ const u=-L/2+(i+.5)*L/n; dQuad(pt(u-3,-W*.3,h+.45),pt(u+3,-W*.3,h+.45),pt(u+3,W*.3,h+.45),pt(u-3,W*.3,h+.45),Cc("#9FB6CF"),[0,1,0]); } }
+    else if(mode==="vault"&&W>12){ const Wv=W*.72, Lv=L*.8, rise=Math.min(3.8,Wv*.13), S=7; for(let i=0;i<S;i++){ const va=-Wv/2+Wv*i/S, vb=-Wv/2+Wv*(i+1)/S, ya=h+.1+rise*Math.sin(Math.PI*i/S), yb=h+.1+rise*Math.sin(Math.PI*(i+1)/S), dl=Math.hypot(vb-va,yb-ya)||1, nv=-(yb-ya)/dl, ny=(vb-va)/dl;
+        dQuad(pt(-Lv/2,va,ya),pt(Lv/2,va,ya),pt(Lv/2,vb,yb),pt(-Lv/2,vb,yb),Cc(i%2?"#F7F8FA":"#EEF0F3"),[nv*vx,ny,nv*vz]); } }
+    // long facades: window band, colour band; the dock doors of warehouses are added by the caller
+    const wy0=Math.min(3.4,h*.35), wy1=Math.min(wy0+3.2,h-2.2), band=Cc(wh?"#3F5F8E":accent), glass=Cc(wh?"#4A5D73":"#2F4358");
+    for(const sgn of [-1,1]){ const v=sgn*(W/2)+sgn*.14, nrm=[sgn*vx,0,sgn*vz];
+      if(wy1>wy0+.8) dQuad(pt(-L*.42,v,wy0),pt(L*.42,v,wy0),pt(L*.42,v,wy1),pt(-L*.42,v,wy1),glass,nrm);
+      dQuad(pt(-L/2,v,h-1.7),pt(L/2,v,h-1.7),pt(L/2,v,h-.15),pt(-L/2,v,h-.15),band,nrm); }
+    // a few trees in the yard in front of the building (only where the ground is a plot, never on a street)
+    if(det.p.length<DBUD*.8){ const side=hash(k+"t")<.5?-1:1, nT=Math.min(4,Math.floor(L/18)); for(let i=0;i<nT;i++){ const u=-L/2+(i+.5)*L/nT, v=side*(W/2+4.6), p=pt(u,v,0); try{ if(G.inPlot(p[0],p[2])) tree(p[0],p[2],.9+hash(k+i)*.45,TREE[(i+((hash(k)*4)|0))%4],hash(k+i+"p")<.5); }catch(e){} } }
+  }
   try{ const FC=(typeof FACTORY_FC!=="undefined"&&FACTORY_FC)||(typeof buildFactories==="function"?buildFactories():null);
     (FC?FC.features:[]).forEach(f=>{ const k=f.properties.k, st=stOf.get(k); if(st!=="sold"&&st!=="reserved") return; const pi=S.plots&&S.plots.get(k), lt=String((pi&&pi.row&&pi.row.landType)||"").toLowerCase(), wh=lt==="logistics"||lt==="services", ring=f.geometry.coordinates[0], sold=st==="sold", h=wh?(8+hash(k+"w")*4)*(sold?1:.4):f.properties.h*(sold?1:.4), sh=new T.Shape(); ring.forEach((c,i)=>{ if(i===0) sh.moveTo(mx(c),-mz(c)); else sh.lineTo(mx(c),-mz(c)); });
-      const geo=new T.ExtrudeGeometry(sh,{depth:h,bevelEnabled:false}); geo.rotateX(-Math.PI/2); geo.translate(0,.2,0); mergeInto(fac,geo,new T.Color(sold?(wh?"#9DB7D8":f.properties.c):"#F2C265")); (sold?fSold:fRes).add(k); if(wh){ (sold?wSold:wRes).add(k);
+      const geo=new T.ExtrudeGeometry(sh,{depth:h,bevelEnabled:false}); geo.rotateX(-Math.PI/2); geo.translate(0,.2,0); const pc=f.properties.c||"", accent=ACC[(hash(k+"col")*ACC.length)|0];
+      const wall=new T.Color(!sold?"#F2C265":wh?WPAL[(hash(k+"w")*WPAL.length)|0]:pc==="#868B95"?"#8B909A":pc==="#C9D6DF"?accent:PAL[(hash(k+"w2")*PAL.length)|0]); if(sold&&!wh&&pc==="#C9D6DF") wall.lerp(new T.Color("#FFFFFF"),.25); mergeInto(fac,geo,wall); detail(ring,h,wh,sold,k,accent); (sold?fSold:fRes).add(k); if(wh){ (sold?wSold:wRes).add(k);
         let cx=0,cz=0,bi=0,bl=0; for(let i=0;i<ring.length-1;i++){ cx+=mx(ring[i]); cz+=mz(ring[i]); const l=Math.hypot(mx(ring[i+1])-mx(ring[i]),mz(ring[i+1])-mz(ring[i])); if(l>bl){ bl=l; bi=i; } } cx/=ring.length-1; cz/=ring.length-1;
         if(sold&&bl>18){ const ax=mx(ring[bi]), az=mz(ring[bi]), dx=mx(ring[bi+1])-ax, dz=mz(ring[bi+1])-az, an=Math.atan2(dz,dx); let nx=-dz/bl, nz=dx/bl; if((ax-cx)*nx+(az-cz)*nz<0){ nx=-nx; nz=-nz; } const nd=Math.min(7,Math.floor(bl/13));
           for(let d=0;d<nd;d++){ const u=(d+.5)/nd*bl, g=new T.BoxGeometry(5,4.2,.8); g.rotateY(-an); g.translate(ax+dx/bl*u+nx*.3,2.3,az+dz/bl*u+nz*.3); mergeInto(fac,g,new T.Color("#3A4350")); } } }
       if(sold&&!wh&&f.properties.c==="#868B95"&&hash(k)<.2){ let cx=0,cz=0; for(let i=0;i<ring.length-1;i++){ cx+=mx(ring[i]); cz+=mz(ring[i]); } chim.push([cx/(ring.length-1),h+.2,cz/(ring.length-1)]); } });
   }catch(e){ console.warn("ar factories",e); }
   if(fac.p.length) body.add(mk(fac));
+  if(det.p.length) body.add(mk(det,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide})));
   // smoke
   const PER=4, NP=chim.length*PER; let smoke=null, sA=null, sP=null, sS=null, sPh=null;
   if(NP){ const c2=document.createElement("canvas"); c2.width=c2.height=64; const x2=c2.getContext("2d"), gd=x2.createRadialGradient(32,32,2,32,32,30); gd.addColorStop(0,"rgba(255,255,255,1)"); gd.addColorStop(.5,"rgba(255,255,255,.55)"); gd.addColorStop(1,"rgba(255,255,255,0)"); x2.fillStyle=gd; x2.fillRect(0,0,64,64);
@@ -16063,7 +16110,7 @@ EXP.ar=async function(park){
   if(perm==="granted"&&"DeviceOrientationEvent" in window){ onOri=e=>{ if(e.alpha==null) return; hasOri=true; if(mode==="drive"){ if(ad==null) ad=e.alpha; gY=(((e.alpha-ad+540)%360)-180)*Math.PI/180; gP=Math.max(-.7,Math.min(.7,((e.beta||90)-90)*Math.PI/180)); return; } if(a0==null) a0=e.alpha; const orient=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*Math.PI/180;
       eul.set(e.beta*Math.PI/180,(e.alpha-a0)*Math.PI/180,-e.gamma*Math.PI/180,"YXZ"); cam.quaternion.setFromEuler(eul); cam.quaternion.multiply(q1); cam.quaternion.multiply(q0.setFromAxisAngle(zee,-orient)); }; window.addEventListener("deviceorientation",onOri); }
   model.position.set(0,-.34,-1.05);
-  setTimeout(()=>{ if(tok.dead||mode!=="table") return; if(!hasOri){ ov.classList.add("noori"); scale=1.9; cam.position.set(0,.34,-.3); cam.lookAt(0,-.34,-1.05); } say(info()); },1400);
+  setTimeout(()=>{ if(tok.dead||mode!=="table") return; if(!hasOri){ ov.classList.add("noori"); scale=1.9*Math.min(1,(innerWidth/innerHeight)/1.07); cam.position.set(0,.34,-.3); cam.lookAt(0,-.34,-1.05); } say(info()); },1400);
   q("#arPlace").onclick=()=>{ if(!hasOri){ yaw=0; pitchTilt=0; return; } cam.getWorldDirection(lookFwd); model.position.set(lookFwd.x,lookFwd.y-.12,lookFwd.z); yaw=0; };
   const pts=new Map(); let lastD=0; cv.style.touchAction="none";
   cv.addEventListener("pointerdown",e=>{ cv.setPointerCapture(e.pointerId); pts.set(e.pointerId,[e.clientX,e.clientY]); });
