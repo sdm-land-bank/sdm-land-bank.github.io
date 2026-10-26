@@ -16027,8 +16027,11 @@ EXP.ar=async function(park){
   const Cc=h=>new T.Color(h), dQuad=(a,b,c,d,col,n)=>{ [[a,b,c],[a,c,d]].forEach(t=>t.forEach(v=>{ det.p.push(v[0],v[1],v[2]); det.n.push(n[0],n[1],n[2]); det.c.push(col.r,col.g,col.b); })); };
   const dTri=(a,b,c,col)=>{ const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2], vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2]; let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1; nx/=l; ny/=l; nz/=l; [a,b,c].forEach(v=>{ det.p.push(v[0],v[1],v[2]); det.n.push(nx,ny,nz); det.c.push(col.r,col.g,col.b); }); };
   const TREE=["#3E8E4A","#4FA05A","#2F7A44","#5BAA5E"];
-  const tree=(x,z,sz,col)=>{ const r=2.1*sz, h0=2.4*sz, h1=h0+4.4*sz, n=6, tc=Cc("#6B4B32"); for(let i=0;i<4;i++){ const a0=i*Math.PI/2, a1=(i+1)*Math.PI/2, w=.28*sz; dQuad([x+Math.cos(a0)*w,0,z+Math.sin(a0)*w],[x+Math.cos(a1)*w,0,z+Math.sin(a1)*w],[x+Math.cos(a1)*w,h0,z+Math.sin(a1)*w],[x+Math.cos(a0)*w,h0,z+Math.sin(a0)*w],tc,[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)]); }
-    const c=Cc(col), c2=c.clone().multiplyScalar(.82); for(let i=0;i<n;i++){ const a0=i/n*Math.PI*2, a1=(i+1)/n*Math.PI*2, p0=[x+Math.cos(a0)*r,h0,z+Math.sin(a0)*r], p1=[x+Math.cos(a1)*r,h0,z+Math.sin(a1)*r]; dTri(p0,[x,h1,z],p1,c); dTri(p1,[x,h0-.9*sz,z],p0,c2); } };
+  const tree=(x,z,sz,col,palm)=>{ const tc=Cc("#7A5A3C");
+    if(palm){ const ht=5.2*sz, w=.3*sz; for(let i=0;i<4;i++){ const a0=i*Math.PI/2, a1=(i+1)*Math.PI/2; dQuad([x+Math.cos(a0)*w,0,z+Math.sin(a0)*w],[x+Math.cos(a1)*w,0,z+Math.sin(a1)*w],[x+Math.cos(a1)*w*.6,ht,z+Math.sin(a1)*w*.6],[x+Math.cos(a0)*w*.6,ht,z+Math.sin(a0)*w*.6],tc,[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)]); }
+      const c=Cc(col), c2=c.clone().multiplyScalar(.8); for(let i=0;i<8;i++){ const an=i/8*Math.PI*2, sp=.34, r=3.3*sz; dTri([x,ht+.2,z],[x+Math.cos(an-sp)*r,ht-1.5*sz,z+Math.sin(an-sp)*r],[x+Math.cos(an+sp)*r,ht-1.5*sz,z+Math.sin(an+sp)*r],i%2?c:c2); } return; }
+    const r=1.7*sz, h0=1.8*sz, n=7; for(let i=0;i<4;i++){ const a0=i*Math.PI/2, a1=(i+1)*Math.PI/2, w=.25*sz; dQuad([x+Math.cos(a0)*w,0,z+Math.sin(a0)*w],[x+Math.cos(a1)*w,0,z+Math.sin(a1)*w],[x+Math.cos(a1)*w,h0,z+Math.sin(a1)*w],[x+Math.cos(a0)*w,h0,z+Math.sin(a0)*w],tc,[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)]); }
+    const c=Cc(col), c2=c.clone().multiplyScalar(.8), yc=h0+r*.95, yt=h0+r*2.1, yb=h0-.2*sz; for(let i=0;i<n;i++){ const a0=i/n*Math.PI*2, a1=(i+1)/n*Math.PI*2, p0=[x+Math.cos(a0)*r,yc,z+Math.sin(a0)*r], p1=[x+Math.cos(a1)*r,yc,z+Math.sin(a1)*r]; dTri(p0,[x,yt,z],p1,i%2?c:c2); dTri(p1,[x,yb,z],p0,c2); } };
   function detail(ring,h,wh,sold,k,accent){
     if(!sold||det.p.length>DBUD) return;
     const P=ring.slice(0,-1).map(c=>[mx(c),mz(c)]); if(P.length<3) return;
@@ -16050,7 +16053,7 @@ EXP.ar=async function(park){
       if(wy1>wy0+.8) dQuad(pt(-L*.42,v,wy0),pt(L*.42,v,wy0),pt(L*.42,v,wy1),pt(-L*.42,v,wy1),glass,nrm);
       dQuad(pt(-L/2,v,h-1.7),pt(L/2,v,h-1.7),pt(L/2,v,h-.15),pt(-L/2,v,h-.15),band,nrm); }
     // a few trees in the yard in front of the building (only where the ground is a plot, never on a street)
-    if(det.p.length<DBUD*.8){ const side=hash(k+"t")<.5?-1:1, nT=Math.min(4,Math.floor(L/18)); for(let i=0;i<nT;i++){ const u=-L/2+(i+.5)*L/nT, v=side*(W/2+4.6), p=pt(u,v,0); try{ if(G.inPlot(p[0],p[2])) tree(p[0],p[2],.85+hash(k+i)*.5,TREE[(i+((hash(k)*4)|0))%4]); }catch(e){} } }
+    if(det.p.length<DBUD*.8){ const side=hash(k+"t")<.5?-1:1, nT=Math.min(4,Math.floor(L/18)); for(let i=0;i<nT;i++){ const u=-L/2+(i+.5)*L/nT, v=side*(W/2+4.6), p=pt(u,v,0); try{ if(G.inPlot(p[0],p[2])) tree(p[0],p[2],.9+hash(k+i)*.45,TREE[(i+((hash(k)*4)|0))%4],hash(k+i+"p")<.5); }catch(e){} } }
   }
   try{ const FC=(typeof FACTORY_FC!=="undefined"&&FACTORY_FC)||(typeof buildFactories==="function"?buildFactories():null);
     (FC?FC.features:[]).forEach(f=>{ const k=f.properties.k, st=stOf.get(k); if(st!=="sold"&&st!=="reserved") return; const pi=S.plots&&S.plots.get(k), lt=String((pi&&pi.row&&pi.row.landType)||"").toLowerCase(), wh=lt==="logistics"||lt==="services", ring=f.geometry.coordinates[0], sold=st==="sold", h=wh?(8+hash(k+"w")*4)*(sold?1:.4):f.properties.h*(sold?1:.4), sh=new T.Shape(); ring.forEach((c,i)=>{ if(i===0) sh.moveTo(mx(c),-mz(c)); else sh.lineTo(mx(c),-mz(c)); });
