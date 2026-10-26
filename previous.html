@@ -551,6 +551,10 @@ body.presenting .plogo,body.presenting .tpin,body.presenting .poi{pointer-events
   background:rgba(14,14,14,.8);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:18px;
   padding:22px 26px;border:1px solid rgba(255,255,255,.1);box-shadow:0 30px 70px -20px rgba(0,0,0,.6)}
 .pres-card.in{animation:presIn .8s var(--ease)}
+.pres-card{max-height:calc(100dvh - 92px - 110px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+.pres-card::-webkit-scrollbar{display:none}
+@media (max-height:820px){.pres-card{bottom:80px;padding:16px 20px;max-height:calc(100dvh - 80px - 104px)}.pres-card h2{font-size:25px}.pres-card p{font-size:12px;line-height:1.5}.pres-stats b{font-size:20px}.pres-logo img{height:34px}.pres-logo{margin-bottom:8px}}
+@media (max-height:640px){.pres-card h2{font-size:21px}.pres-stats b{font-size:17px}.pres-card{padding:12px 16px}}
 @keyframes presIn{from{opacity:0;transform:translateY(22px)}}
 .pres-eye{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#F07C8C;font-weight:600}
 .pres-card h2{font-size:31px;font-weight:700;letter-spacing:-.03em;line-height:1.14;margin:6px 0 6px}
