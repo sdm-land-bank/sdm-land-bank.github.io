@@ -7263,7 +7263,7 @@ function viewInventory(rs,t){
       <div class="mapbtns">
         ${HIT?`<button id="hitBtn" class="hit" ${HIT.size?"":"disabled"}>${HIT.size?`Zoom to ${fInt(HIT.size)} matching plots`:"No plots match the filters"}</button>`:""}
         <button id="sitesBtn" class="${S.sites?"on":""}" title="Seaports, airports and cities, with distance rings">${S.sites?"Hide sites":"Ports & airports"}</button>
-        <button id="lblBtn" class="${LBL_ON?"on":""}" title="Street names, places and landmarks as text on the satellite map">${LBL_ON?"Labels on":"Labels off"}</button>
+        <button id="lblBtn" class="${LBL_ON?"on":""}" title="Street names, places and landmarks as text on the satellite map (click to hide / show)">Labels</button>
         <button id="p3Btn" class="${S.p3?"on3d":""}" title="Tilt the map to see the plots in 3D">${S.p3?"2D view":"3D view"}</button>
         <button id="pfBtn" class="${PF_OPEN?"on":""}" title="Every project — stage, landbank, available area">Projects</button>
         ${typeof slHeatBtn==="function"?slHeatBtn():""}
@@ -8731,7 +8731,7 @@ const styleFor=k=>{ if(typeof BASES[k]==="string") return BASES[k]; const st=JSO
   return st; };
 function lblLayers(){ try{ return (map&&map.getStyle()?map.getStyle().layers:[]).filter(l=>l.id.startsWith("lb-")); }catch(e){ return []; } }
 function lblTop(){ try{ lblLayers().forEach(l=>{ map.moveLayer(l.id); }); }catch(e){} }
-function lblApply(){ try{ lblLayers().forEach(l=>map.setLayoutProperty(l.id,"visibility",LBL_ON?"visible":"none")); const b=document.getElementById("lblBtn"); if(b){ b.classList.toggle("on",LBL_ON); b.textContent=LBL_ON?"Labels on":"Labels off"; } }catch(e){} }
+function lblApply(){ try{ lblLayers().forEach(l=>map.setLayoutProperty(l.id,"visibility",LBL_ON?"visible":"none")); const b=document.getElementById("lblBtn"); if(b){ b.classList.toggle("on",LBL_ON); b.textContent="Labels"; b.title=LBL_ON?"Street names, places and landmarks are shown on the satellite map (click to hide)":"Street names, places and landmarks are hidden (click to show)"; } }catch(e){} }
 function toggleLabels(){ LBL_ON=!LBL_ON; try{ localStorage.setItem(LBL_KEY,LBL_ON?"on":"off"); }catch(e){} lblApply(); if(S.base!=="sat"&&typeof toast==="function") toast(LBL_ON?"Labels on (shown on the satellite map)":"Labels off"); }
 /* Renderer failures are otherwise invisible — a bad expression or a blocked tile host just
    produces an empty map. Surface them where someone will see them. */
@@ -15373,7 +15373,7 @@ function twoRows(){
   // row 2: cards stop where the buttons start
   const mb=document.querySelector(".maptools .mapbtns"); if(mb) document.documentElement.style.setProperty("--l2bw",Math.round(mb.getBoundingClientRect().width+24)+"px");
   // narrower screens or zoomed-in browsers: the cards drop their small second line, the chips drop their counts' padding
-  const kp=document.getElementById("kpis"); if(kp&&mb){ const room=mb.getBoundingClientRect().left-kp.getBoundingClientRect().left; document.body.classList.toggle("l2-tight",room<720); }
+  const kp=document.getElementById("kpis"); if(kp&&mb){ const room=mb.getBoundingClientRect().left-kp.getBoundingClientRect().left; document.body.classList.toggle("l2-tight",document.body.classList.contains("l2-tight")?room<770:room<720); }
   const L2=document.querySelector("main > header.top > .legend"); if(L2) document.body.classList.toggle("l2-lgtight",L2.scrollWidth>L2.clientWidth+2&&!document.body.classList.contains("l2-lgtight")?true:document.body.classList.contains("l2-lgtight")&&innerWidth<1280);
 }
 setInterval(()=>{ try{ twoRows(); }catch(e){} },400); addEventListener("resize",()=>{ try{ twoRows(); }catch(e){} });
