@@ -15584,7 +15584,7 @@ async function runFilm(park,opts){
     ["fill-ats"].forEach(l=>{ try{ if(map.getLayer(l)){ let on=true; const iv=setInterval(()=>{ if(tok.dead){ clearInterval(iv); return; } try{ map.setPaintProperty(l,"fill-opacity",on?.98:.55); }catch(e){} on=!on; },480); setTimeout(()=>{ clearInterval(iv); try{ map.setPaintProperty(l,"fill-opacity",["interpolate",["linear"],["zoom"],8,.6,12,.78,16,.7]); }catch(e){} },4400); } }catch(e){} });
     await say(`<div class="c-k">Still available</div><div class="c-v">${fs_(ats)} sqm</div><div class="c-s">${fi(t.byStatus.ats.p)} plots ready to sell</div>`,
       `${say_num(ats)} square metres, ${t.byStatus.ats.p} plots, are still available.`,4200);
-    if(t.valueEGP) await say(`<div class="c-k">Sales value</div><div class="c-v">${fEGP(t.valueEGP)}</div><div class="c-s">${fi(t.soldN)} sold and reserved deals</div>`,
+    if(t.valueEGP&&!pub()) await say(`<div class="c-k">Sales value</div><div class="c-v">${fEGP(t.valueEGP)}</div><div class="c-s">${fi(t.soldN)} sold and reserved deals</div>`,
       `Sales to date are worth ${say_num(t.valueEGP)} Egyptian pounds.`,3800);
     await Promise.race([orb,sleep(4000,tok)]); orbOn=false; if(tok.dead) return;
     // (d) the road to the nearest seaport
@@ -15620,10 +15620,10 @@ const ITEMS=[["film","Film of this project","A guided flight with the real numbe
 const EXP={};   // filled by the later sections: EXP.time(park), EXP.truck(park), EXP.ar(park), EXP.share()
 function closeMenu(){}
 function injectExplore(park){
-  const card=q("#parkcard"); if(!card||card.hidden||!park||pub()||card.querySelector(".pc-ex")) return;
+  const card=q("#parkcard"); if(!card||card.hidden||!park||card.querySelector(".pc-ex")) return;
   const w=document.createElement("div"); w.className="pc-ex";
   w.innerHTML=`<button type="button" class="pc-ex-b" aria-expanded="false"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5l1.4 3.9 3.9 1.4-3.9 1.4L8 12.1 6.6 8.2 2.7 6.8l3.9-1.4z"/></svg><span>Explore this project</span><i></i></button>
-    <div class="pc-ex-l" hidden>${ITEMS.map(([k,t,d])=>`<button type="button" class="pc-ex-i" data-k="${k}"><b>${ICON[k]}</b><span><strong>${t}</strong><em>${d}</em></span></button>`).join("")}</div>`;
+    <div class="pc-ex-l" hidden>${ITEMS.filter(i=>!(pub()&&i[0]==="share")).map(([k,t,d])=>`<button type="button" class="pc-ex-i" data-k="${k}"><b>${ICON[k]}</b><span><strong>${t}</strong><em>${d}</em></span></button>`).join("")}</div>`;
   const go=card.querySelector(".pc-go,.pc-tour,.rq"); if(go) go.parentNode.insertBefore(w,go); else card.appendChild(w);
   const b=w.querySelector(".pc-ex-b"), l=w.querySelector(".pc-ex-l");
   b.onclick=e=>{ e.stopPropagation(); const open=l.hidden; l.hidden=!open; b.setAttribute("aria-expanded",open?"true":"false"); w.classList.toggle("open",open); };
@@ -15634,9 +15634,9 @@ function injectExplore(park){
 }
 /* the plot card: Share (one available plot) and the same Explore list for its project */
 function injectSelExplore(){
-  const el=q("#selpanel"); if(!el||el.hidden||pub()||el.querySelector(".pc-ex")) return; const act=el.querySelector(".sp-act"); if(!act) return;
+  const el=q("#selpanel"); if(!el||el.hidden||el.querySelector(".pc-ex")) return; const act=el.querySelector(".sp-act"); if(!act) return;
   let items=[]; try{ items=selRows(); }catch(e){} if(!items.length) return;
-  const parks=[...new Set(items.map(x=>x.info.park))], park=parks.length===1?parks[0]:null, one=items.length===1?items[0]:null, canShare=!!(one&&one.info.row&&one.info.row.status==="ats");
+  const parks=[...new Set(items.map(x=>x.info.park))], park=parks.length===1?parks[0]:null, one=items.length===1?items[0]:null, canShare=!pub()&&!!(one&&one.info.row&&one.info.row.status==="ats");
   const w=document.createElement("div"); w.className="pc-ex";
   w.innerHTML=(canShare?`<button type="button" class="pc-ex-b pc-sh"><b class="pc-shi">${ICON.share}</b><span>Share this plot with a customer</span></button>`:"")
     +(park?`<button type="button" class="pc-ex-b pc-eb"${canShare?' style="margin-top:6px"':""} aria-expanded="false"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5l1.4 3.9 3.9 1.4-3.9 1.4L8 12.1 6.6 8.2 2.7 6.8l3.9-1.4z"/></svg><span>Explore ${esc(parkName(park))}</span><i></i></button>
@@ -15735,7 +15735,7 @@ EXP.time=function(park){
     <div class="tm-ctl"><button class="ex-b on" id="tmPlay" type="button">Play</button>
       <select id="tmSpd" class="ex-sel" aria-label="Speed"><option value="5">Slow</option><option value="10" selected>Normal</option><option value="22">Fast</option></select>
       <button class="ex-b" id="tmEnd" type="button">Today</button></div>
-    <div class="tm-k"><div><em>Sold + reserved</em><b id="tmA"></b></div><div><em>Of sellable area</em><b id="tmP"></b></div><div><em>Deals</em><b id="tmN"></b></div><div><em>Sales value</em><b id="tmV"></b></div></div>
+    <div class="tm-k"><div><em>Sold + reserved</em><b id="tmA"></b></div><div><em>Of sellable area</em><b id="tmP"></b></div><div><em>Deals</em><b id="tmN"></b></div><div${(window.sidPublic&&window.sidPublic())?" hidden":""}><em>Sales value</em><b id="tmV"></b></div></div>
     <div class="tm-n">Date = reservation date in the MDS. ${undated?undated+" deals have no date and are left out.":""} Plots not yet committed show as available.</div>`);
   b.classList.add("ex-wide");
   const el=id=>q("#"+id);
@@ -16159,7 +16159,8 @@ async function untilText(f,ms){ const t0=Date.now(); while(Date.now()-t0<ms){ co
 
 async function exploreRun(a){
   const act=String(a.action||"").toLowerCase();
-  if(typeof sidPublic==="function"&&sidPublic()) return {error:"Explore is not part of this screen."};
+  const PUBX=typeof sidPublic==="function"&&sidPublic();
+  if(PUBX&&act==="share_plot") return {error:"Sharing a plot with a customer is not part of this screen. Say the sales team will do it."};
   if(act==="stop"){ W.stop(); return {stopped:true,note:"Stopped. Say one short word (Done) and nothing else. Ignore every earlier [SHOW NARRATION] line: they are cancelled."}; }
   // steering something that already runs
   const cur=(W.helpers&&0)||null;
@@ -16199,7 +16200,7 @@ const runV82raw=laraRun;
 const addCtx=r=>{ try{ if(r&&typeof r==="object"&&!Array.isArray(r)){ const x=running(); if(x) r.explore_running=x; } }catch(e){} return r; };
 const runV82=async function(){ return addCtx(await runV82raw.apply(this,arguments)); };
 laraRun=async function(name,a){ a=a||{};
-  if(name==="explore") return addCtx(await exploreRun(a));
+  if(name==="explore"){ const r=addCtx(await exploreRun(a)); if(typeof sidPublic==="function"&&sidPublic()){ const sc=o=>{ if(o&&typeof o==="object"){ for(const k of Object.keys(o)){ if(/egp|value|price|revenue|cash/i.test(k)) delete o[k]; else sc(o[k]); } } return o; }; return sc(r); } return r; }
   if(name==="map_control"&&(a.action==="zoom_in"||a.action==="zoom_out")&&q("#arOv")) return addCtx(await exploreRun({action:a.action}));
   if(name==="map_control"&&/^(borders_on|borders_off|show_active|show_pipeline|show_all_projects)$/.test(a.action||"")){
     if(S.view!=="inventory"&&S.view!=="portfolio"){ if(!laraCan("inventory")) return {error:"This role cannot open the map."}; go("inventory"); await laraWait(400); }
