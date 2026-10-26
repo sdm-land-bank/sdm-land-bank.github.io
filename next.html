@@ -16033,19 +16033,25 @@ EXP.ar=async function(park){
     const r=1.7*sz, h0=1.8*sz, n=7; for(let i=0;i<4;i++){ const a0=i*Math.PI/2, a1=(i+1)*Math.PI/2, w=.25*sz; dQuad([x+Math.cos(a0)*w,0,z+Math.sin(a0)*w],[x+Math.cos(a1)*w,0,z+Math.sin(a1)*w],[x+Math.cos(a1)*w,h0,z+Math.sin(a1)*w],[x+Math.cos(a0)*w,h0,z+Math.sin(a0)*w],tc,[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)]); }
     const c=Cc(col), c2=c.clone().multiplyScalar(.8), yc=h0+r*.95, yt=h0+r*2.1, yb=h0-.2*sz; for(let i=0;i<n;i++){ const a0=i/n*Math.PI*2, a1=(i+1)/n*Math.PI*2, p0=[x+Math.cos(a0)*r,yc,z+Math.sin(a0)*r], p1=[x+Math.cos(a1)*r,yc,z+Math.sin(a1)*r]; dTri(p0,[x,yt,z],p1,i%2?c:c2); dTri(p1,[x,yb,z],p0,c2); } };
   function detail(ring,h,wh,sold,k,accent){
-    if(!sold||det.p.length>DBUD) return;
+    if(det.p.length>DBUD) return;
     const P=ring.slice(0,-1).map(c=>[mx(c),mz(c)]); if(P.length<3) return;
     let cx=0,cz=0; P.forEach(q=>{ cx+=q[0]; cz+=q[1]; }); cx/=P.length; cz/=P.length;
     let bl=0,bi=0; for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length], l=Math.hypot(b[0]-a[0],b[1]-a[1]); if(l>bl){ bl=l; bi=i; } }
     const a0=P[bi], b0=P[(bi+1)%P.length], ux=(b0[0]-a0[0])/bl, uz=(b0[1]-a0[1])/bl, vx=-uz, vz=ux;
     let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9, A=0; P.forEach((q,i)=>{ const u=(q[0]-cx)*ux+(q[1]-cz)*uz, v=(q[0]-cx)*vx+(q[1]-cz)*vz; u0=Math.min(u0,u); u1=Math.max(u1,u); v0=Math.min(v0,v); v1=Math.max(v1,v); const n=P[(i+1)%P.length]; A+=q[0]*n[1]-n[0]*q[1]; }); A=Math.abs(A)/2;
-    const L=u1-u0, W=v1-v0, cu=(u0+u1)/2, cv=(v0+v1)/2; if(L<14||W<9||A/(L*W)<.82) return;
+    const L=u1-u0, W=v1-v0, cu=(u0+u1)/2, cv=(v0+v1)/2; if(L<12||W<8||A/(L*W)<.75) return;
     const pt=(u,v,y)=>[cx+(cu+u)*ux+(cv+v)*vx, y, cz+(cu+u)*uz+(cv+v)*vz];
+    if(!sold){   // reserved plot, being built: darker roof slab with a rim, and a tower crane on every third site
+      dQuad(pt(-L/2*.97,-W/2*.97,h+.1),pt(L/2*.97,-W/2*.97,h+.1),pt(L/2*.97,W/2*.97,h+.1),pt(-L/2*.97,W/2*.97,h+.1),Cc("#D9A441"),[0,1,0]);
+      if(hash(k+"cr")<.34&&det.p.length<DBUD*.9){ const m=pt(L*.3,W*.3,0), mh=h+9, jb=Cc("#E6B422"), w=.5; const px=m[0], pz=m[2];
+        for(let i=0;i<4;i++){ const a0=i*Math.PI/2+Math.PI/4, a1=(i+1)*Math.PI/2+Math.PI/4; dQuad([px+Math.cos(a0)*w,h,pz+Math.sin(a0)*w],[px+Math.cos(a1)*w,h,pz+Math.sin(a1)*w],[px+Math.cos(a1)*w,mh,pz+Math.sin(a1)*w],[px+Math.cos(a0)*w,mh,pz+Math.sin(a0)*w],jb,[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)]); }
+        const j0=pt(L*.3-L*.45,W*.3,mh), j1=pt(L*.3+L*.2,W*.3,mh); dQuad([j0[0]+vx*.45,mh,j0[2]+vz*.45],[j1[0]+vx*.45,mh,j1[2]+vz*.45],[j1[0]-vx*.45,mh,j1[2]-vz*.45],[j0[0]-vx*.45,mh,j0[2]-vz*.45],jb,[0,1,0]); }
+      return; }
     const rf=Cc(wh?"#F1F3F6":"#D3D8DE"); dQuad(pt(-L/2*.97,-W/2*.97,h+.1),pt(L/2*.97,-W/2*.97,h+.1),pt(L/2*.97,W/2*.97,h+.1),pt(-L/2*.97,W/2*.97,h+.1),rf,[0,1,0]);   // roof
-    const mode=wh?(hash(k+"s")<.5?"solar":"skylight"):(hash(k+"p")<.6?"solar":"vault");
-    if(mode==="solar"&&L>26&&W>16){ const n=Math.min(5,Math.floor((W-6)/5.4)), rw=3.7, gap=1.7, tot=n*rw+(n-1)*gap, Lp=L-9; for(let i=0;i<n;i++){ const v=-tot/2+i*(rw+gap); const c1=Cc(i%2?"#1F4E96":"#2A5FAE"), c2=Cc(i%2?"#2A5FAE":"#1F4E96"); dQuad(pt(-Lp/2,v,h+.5),pt(0,v,h+.5),pt(0,v+rw,h+.5),pt(-Lp/2,v+rw,h+.5),c1,[0,1,0]); dQuad(pt(0,v,h+.5),pt(Lp/2,v,h+.5),pt(Lp/2,v+rw,h+.5),pt(0,v+rw,h+.5),c2,[0,1,0]); } }
+    const mode=wh?(hash(k+"s")<.55?"solar":"skylight"):(hash(k+"p")<.7?"solar":"vault");
+    if(mode==="solar"&&L>20&&W>12){ const n=Math.max(1,Math.min(5,Math.floor((W-4)/4.6))), rw=3.2, gap=1.4, tot=n*rw+(n-1)*gap, Lp=L-6; for(let i=0;i<n;i++){ const v=-tot/2+i*(rw+gap); const c1=Cc(i%2?"#1F4E96":"#2A5FAE"), c2=Cc(i%2?"#2A5FAE":"#1F4E96"); dQuad(pt(-Lp/2,v,h+.5),pt(0,v,h+.5),pt(0,v+rw,h+.5),pt(-Lp/2,v+rw,h+.5),c1,[0,1,0]); dQuad(pt(0,v,h+.5),pt(Lp/2,v,h+.5),pt(Lp/2,v+rw,h+.5),pt(0,v+rw,h+.5),c2,[0,1,0]); } }
     else if(mode==="skylight"){ const n=Math.min(4,Math.floor(L/22)); for(let i=0;i<n;i++){ const u=-L/2+(i+.5)*L/n; dQuad(pt(u-3,-W*.3,h+.45),pt(u+3,-W*.3,h+.45),pt(u+3,W*.3,h+.45),pt(u-3,W*.3,h+.45),Cc("#9FB6CF"),[0,1,0]); } }
-    else if(mode==="vault"&&W>16){ const Wv=W*.72, Lv=L*.8, rise=Math.min(3.8,Wv*.13), S=7; for(let i=0;i<S;i++){ const va=-Wv/2+Wv*i/S, vb=-Wv/2+Wv*(i+1)/S, ya=h+.1+rise*Math.sin(Math.PI*i/S), yb=h+.1+rise*Math.sin(Math.PI*(i+1)/S), dl=Math.hypot(vb-va,yb-ya)||1, nv=-(yb-ya)/dl, ny=(vb-va)/dl;
+    else if(mode==="vault"&&W>12){ const Wv=W*.72, Lv=L*.8, rise=Math.min(3.8,Wv*.13), S=7; for(let i=0;i<S;i++){ const va=-Wv/2+Wv*i/S, vb=-Wv/2+Wv*(i+1)/S, ya=h+.1+rise*Math.sin(Math.PI*i/S), yb=h+.1+rise*Math.sin(Math.PI*(i+1)/S), dl=Math.hypot(vb-va,yb-ya)||1, nv=-(yb-ya)/dl, ny=(vb-va)/dl;
         dQuad(pt(-Lv/2,va,ya),pt(Lv/2,va,ya),pt(Lv/2,vb,yb),pt(-Lv/2,vb,yb),Cc(i%2?"#F7F8FA":"#EEF0F3"),[nv*vx,ny,nv*vz]); } }
     // long facades: window band, colour band; the dock doors of warehouses are added by the caller
     const wy0=Math.min(3.4,h*.35), wy1=Math.min(wy0+3.2,h-2.2), band=Cc(wh?"#3F5F8E":accent), glass=Cc(wh?"#4A5D73":"#2F4358");
@@ -16057,7 +16063,7 @@ EXP.ar=async function(park){
   }
   try{ const FC=(typeof FACTORY_FC!=="undefined"&&FACTORY_FC)||(typeof buildFactories==="function"?buildFactories():null);
     (FC?FC.features:[]).forEach(f=>{ const k=f.properties.k, st=stOf.get(k); if(st!=="sold"&&st!=="reserved") return; const pi=S.plots&&S.plots.get(k), lt=String((pi&&pi.row&&pi.row.landType)||"").toLowerCase(), wh=lt==="logistics"||lt==="services", ring=f.geometry.coordinates[0], sold=st==="sold", h=wh?(8+hash(k+"w")*4)*(sold?1:.4):f.properties.h*(sold?1:.4), sh=new T.Shape(); ring.forEach((c,i)=>{ if(i===0) sh.moveTo(mx(c),-mz(c)); else sh.lineTo(mx(c),-mz(c)); });
-      const geo=new T.ExtrudeGeometry(sh,{depth:h,bevelEnabled:false}); geo.rotateX(-Math.PI/2); geo.translate(0,.2,0); const accent=f.properties.c||"#868B95", wall=new T.Color(sold?(wh?"#B3C6DF":accent):"#F2C265"); if(sold&&!wh) wall.lerp(new T.Color("#F5F2EA"),.6+hash(k+"c")*.15); mergeInto(fac,geo,wall); detail(ring,h,wh,sold,k,accent); (sold?fSold:fRes).add(k); if(wh){ (sold?wSold:wRes).add(k);
+      const geo=new T.ExtrudeGeometry(sh,{depth:h,bevelEnabled:false}); geo.rotateX(-Math.PI/2); geo.translate(0,.2,0); const accent=f.properties.c||"#868B95", wall=new T.Color(sold?(wh?"#AFC3DD":accent):"#F6DFA0"); if(sold&&!wh) wall.lerp(new T.Color("#F5F2EA"),.42+hash(k+"c")*.16); mergeInto(fac,geo,wall); detail(ring,h,wh,sold,k,accent); (sold?fSold:fRes).add(k); if(wh){ (sold?wSold:wRes).add(k);
         let cx=0,cz=0,bi=0,bl=0; for(let i=0;i<ring.length-1;i++){ cx+=mx(ring[i]); cz+=mz(ring[i]); const l=Math.hypot(mx(ring[i+1])-mx(ring[i]),mz(ring[i+1])-mz(ring[i])); if(l>bl){ bl=l; bi=i; } } cx/=ring.length-1; cz/=ring.length-1;
         if(sold&&bl>18){ const ax=mx(ring[bi]), az=mz(ring[bi]), dx=mx(ring[bi+1])-ax, dz=mz(ring[bi+1])-az, an=Math.atan2(dz,dx); let nx=-dz/bl, nz=dx/bl; if((ax-cx)*nx+(az-cz)*nz<0){ nx=-nx; nz=-nz; } const nd=Math.min(7,Math.floor(bl/13));
           for(let d=0;d<nd;d++){ const u=(d+.5)/nd*bl, g=new T.BoxGeometry(5,4.2,.8); g.rotateY(-an); g.translate(ax+dx/bl*u+nx*.3,2.3,az+dz/bl*u+nz*.3); mergeInto(fac,g,new T.Color("#3A4350")); } } }
