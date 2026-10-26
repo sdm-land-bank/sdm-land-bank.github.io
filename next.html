@@ -16077,16 +16077,18 @@ EXP.ar=async function(park){
   const aoTex=cvTex(64,64,(g,w,h)=>{ for(let i=0;i<22;i++){ g.fillStyle="rgba(0,0,0,.032)"; g.beginPath(); const r=w/2-i-1; g.roundRect?g.roundRect(i,i,w-2*i,h-2*i,10):g.rect(i,i,w-2*i,h-2*i); g.fill(); } },1,1); aoTex.wrapS=aoTex.wrapT=T.ClampToEdgeWrapping;
   const wacc={p:[],n:[],c:[],u:[]}, racc={p:[],n:[],c:[],u:[]}, sacc={p:[],n:[],c:[],u:[]}, aacc={p:[],n:[],c:[]};
   const pushV=(acc,p,n,c,u)=>{ acc.p.push(p[0],p[1],p[2]); acc.n.push(n[0],n[1],n[2]); acc.c.push(c.r,c.g,c.b); if(acc.u) acc.u.push(u[0],u[1]); };
+  // push a triangle so that it faces the same way as its normal (the lights then treat the front and back correctly)
+  const pushT=(acc,a,b,c,n,col,ua,ub,uc)=>{ const ex=b[0]-a[0],ey=b[1]-a[1],ez=b[2]-a[2], fx=c[0]-a[0],fy=c[1]-a[1],fz=c[2]-a[2]; const d=(ey*fz-ez*fy)*n[0]+(ez*fx-ex*fz)*n[1]+(ex*fy-ey*fx)*n[2]; if(d<0){ pushV(acc,a,n,col,ua); pushV(acc,c,n,col,uc); pushV(acc,b,n,col,ub); } else { pushV(acc,a,n,col,ua); pushV(acc,b,n,col,ub); pushV(acc,c,n,col,uc); } };
   function addWalls(ring,y0,y1,col){ const P=ring.slice(0,-1).map(c=>[mx(c),mz(c)]); if(P.length<3) return; let cx=0,cz=0; P.forEach(q=>{ cx+=q[0]; cz+=q[1]; }); cx/=P.length; cz/=P.length; let cum=0;
     for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length], dx=b[0]-a[0], dz=b[1]-a[1], l=Math.hypot(dx,dz); if(l<.05) continue; let nx=dz/l, nz=-dx/l; if(((a[0]+b[0])/2-cx)*nx+((a[1]+b[1])/2-cz)*nz<0){ nx=-nx; nz=-nz; }
       const n=[nx,0,nz], A=[a[0],y0,a[1]], B=[b[0],y0,b[1]], C=[b[0],y1,b[1]], D=[a[0],y1,a[1]], u0=cum, u1=cum+l; cum+=l;
-      pushV(wacc,A,n,col,[u0,y0]); pushV(wacc,B,n,col,[u1,y0]); pushV(wacc,C,n,col,[u1,y1]); pushV(wacc,A,n,col,[u0,y0]); pushV(wacc,C,n,col,[u1,y1]); pushV(wacc,D,n,col,[u0,y1]); } }
-  function addRoof(ring,y,col){ const P=ring.slice(0,-1).map(c=>new T.Vector2(mx(c),mz(c))); if(P.length<3) return; let tri; try{ tri=T.ShapeUtils.triangulateShape(P,[]); }catch(e){ return; } const n=[0,1,0]; tri.forEach(f=>f.forEach(i=>pushV(racc,[P[i].x,y,P[i].y],n,col,[P[i].x,P[i].y]))); }
+      pushT(wacc,A,B,C,n,col,[u0,y0],[u1,y0],[u1,y1]); pushT(wacc,A,C,D,n,col,[u0,y0],[u1,y1],[u0,y1]); } }
+  function addRoof(ring,y,col){ const P=ring.slice(0,-1).map(c=>new T.Vector2(mx(c),mz(c))); if(P.length<3) return; let tri; try{ tri=T.ShapeUtils.triangulateShape(P,[]); }catch(e){ return; } const n=[0,1,0]; tri.forEach(f=>{ const q=f.map(i=>[P[i].x,y,P[i].y]), u=f.map(i=>[P[i].x,P[i].y]); pushT(racc,q[0],q[1],q[2],n,col,u[0],u[1],u[2]); }); }
   const mkUV=(acc,mat)=>{ const g=new T.BufferGeometry(); g.setAttribute("position",new T.Float32BufferAttribute(acc.p,3)); g.setAttribute("normal",new T.Float32BufferAttribute(acc.n,3)); g.setAttribute("color",new T.Float32BufferAttribute(acc.c,3)); if(acc.u) g.setAttribute("uv",new T.Float32BufferAttribute(acc.u,2)); return new T.Mesh(g,mat); };
   // detail pass: roofs with solar panels or a white barrel vault, window and colour bands, dock doors, a few trees. One merged mesh, so it stays one draw call;
   // it stops adding detail when the vertex budget of the device is used up (phones get less than computers).
   const DBUD=((()=>{ try{ return matchMedia("(pointer:coarse)").matches; }catch(e){ return false; } })()?330000:720000);
-  const Cc=h=>new T.Color(h), dQuad=(a,b,c,d,col,n)=>{ [[a,b,c],[a,c,d]].forEach(t=>t.forEach(v=>{ det.p.push(v[0],v[1],v[2]); det.n.push(n[0],n[1],n[2]); det.c.push(col.r,col.g,col.b); })); };
+  const Cc=h=>new T.Color(h), dQuad=(a,b,c,d,col,n)=>{ [[a,b,c],[a,c,d]].forEach(t=>{ const ex=t[1][0]-t[0][0],ey=t[1][1]-t[0][1],ez=t[1][2]-t[0][2], fx=t[2][0]-t[0][0],fy=t[2][1]-t[0][1],fz=t[2][2]-t[0][2]; const dd=(ey*fz-ez*fy)*n[0]+(ez*fx-ex*fz)*n[1]+(ex*fy-ey*fx)*n[2]; (dd<0?[t[0],t[2],t[1]]:t).forEach(v=>{ det.p.push(v[0],v[1],v[2]); det.n.push(n[0],n[1],n[2]); det.c.push(col.r,col.g,col.b); }); }); };
   const dTri=(a,b,c,col)=>{ const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2], vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2]; let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1; nx/=l; ny/=l; nz/=l; [a,b,c].forEach(v=>{ det.p.push(v[0],v[1],v[2]); det.n.push(nx,ny,nz); det.c.push(col.r,col.g,col.b); }); };
   const PAL=["#F2EBDD","#E9D9A8","#CBDAC4","#E3CDBB","#D3DEEC","#F0F1F3"], WPAL=["#AFC3DD","#B9C7D6","#C4D3C8"], ACC=["#B4553B","#D9A21B","#3F7F5A","#3C5A8A","#B83A3A","#8A5A2B"];
   const TREE=["#3E8E4A","#4FA05A","#2F7A44","#5BAA5E"];
@@ -16121,7 +16123,7 @@ EXP.ar=async function(park){
         dQuad(pt(x0,v0,y1),pt(x1,v0,y1),pt(x1,v1,y1),pt(x0,v1,y1),hv2,[0,1,0]); dQuad(pt(x0,v0,y0),pt(x1,v0,y0),pt(x1,v0,y1),pt(x0,v0,y1),hv,[ -vx,0,-vz]); dQuad(pt(x1,v1,y0),pt(x0,v1,y0),pt(x0,v1,y1),pt(x1,v1,y1),hv,[vx,0,vz]);
         dQuad(pt(x1,v0,y0),pt(x1,v1,y0),pt(x1,v1,y1),pt(x1,v0,y1),hv,[ux,0,uz]); dQuad(pt(x0,v1,y0),pt(x0,v0,y0),pt(x0,v0,y1),pt(x0,v1,y1),hv,[-ux,0,-uz]); }
       const yside=hash(k+"t")<.5?-1:1, ya=pt(-L*.46,yside*(W/2+.2),.21), yb=pt(L*.46,yside*(W/2+.2),.21), yc=pt(L*.46,yside*(W/2+5.4),.21), yd=pt(-L*.46,yside*(W/2+5.4),.21), mid=pt(0,yside*(W/2+5.4),0);
-      try{ if(G.inPlot(mid[0],mid[2])){ const ac=Cc("#4B5058"); [ya,yb,yc,ya,yc,yd].forEach(v=>{ aacc.p.push(v[0],v[1],v[2]); aacc.n.push(0,1,0); aacc.c.push(ac.r,ac.g,ac.b); }); } }catch(e){} }
+      try{ if(G.inPlot(mid[0],mid[2])){ const ac=Cc("#4B5058"); const up=[0,1,0], tri3=(a,b,c)=>pushT(aacc,a,b,c,up,ac); tri3(ya,yb,yc); tri3(ya,yc,yd); } }catch(e){} }
     // long facades: window band, colour band; the dock doors of warehouses are added by the caller
     const wy0=Math.min(3.4,h*.35), wy1=Math.min(wy0+3.2,h-2.2), band=Cc(wh?"#3F5F8E":accent), glass=Cc(wh?"#4A5D73":"#2F4358");
     for(const sgn of [-1,1]){ const v=sgn*(W/2)+sgn*.14, nrm=[sgn*vx,0,sgn*vz];
