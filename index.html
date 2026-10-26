@@ -15933,7 +15933,7 @@ EXP.share=function(){
     if(el("shSec").checked&&row.sector) o.s=row.sector;
     if(el("shLg").checked){ try{ const lg=logisticsAt(p.c); o.lg={p:[lg.port.name,Math.round(lg.port.km)],a:[lg.air.name,Math.round(lg.air.km)],c:Math.round(lg.cairo)}; }catch(e){} }
     if(el("shUt").checked){ const u={}; if(row.mva!=null) u.e=Math.round(row.mva*10)/10; if(row.water!=null) u.w=Math.round(row.water); if(row.sewage!=null) u.s=Math.round(row.sewage); if(Object.keys(u).length) o.ut=u; }
-    const url=location.origin+"/c.html#"+b64u(JSON.stringify(o));
+    const url=location.origin+"/c.html?v=8211#"+b64u(JSON.stringify(o));
     let qr=""; try{ const Q=qrcode(0,"M"); Q.addData(url); Q.make(); qr=Q.createSvgTag({cellSize:4,margin:2,scalable:true}); }catch(e){}
     const r=el("shRes"); r.hidden=false;
     r.innerHTML=`<div class="sh-qr">${qr||"<em>QR could not be made — copy the link instead.</em>"}</div>
