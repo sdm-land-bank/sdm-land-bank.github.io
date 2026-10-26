@@ -16026,7 +16026,7 @@ EXP.ar=async function(park){
   const DBUD=((()=>{ try{ return matchMedia("(pointer:coarse)").matches; }catch(e){ return false; } })()?330000:720000);
   const Cc=h=>new T.Color(h), dQuad=(a,b,c,d,col,n)=>{ [[a,b,c],[a,c,d]].forEach(t=>t.forEach(v=>{ det.p.push(v[0],v[1],v[2]); det.n.push(n[0],n[1],n[2]); det.c.push(col.r,col.g,col.b); })); };
   const dTri=(a,b,c,col)=>{ const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2], vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2]; let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1; nx/=l; ny/=l; nz/=l; [a,b,c].forEach(v=>{ det.p.push(v[0],v[1],v[2]); det.n.push(nx,ny,nz); det.c.push(col.r,col.g,col.b); }); };
-  const PAL=["#F2EBDD","#E9D9A8","#CBDAC4","#E3CDBB","#D3DEEC","#F0F1F3"], WPAL=["#AFC3DD","#B9C7D6","#C4D3C8"], ACC=["#B4553B","#D9A21B","#3F7F5A","#3C5A8A","#B83A3A","#6C4F9E"];
+  const PAL=["#F2EBDD","#E9D9A8","#CBDAC4","#E3CDBB","#D3DEEC","#F0F1F3"], WPAL=["#AFC3DD","#B9C7D6","#C4D3C8"], ACC=["#B4553B","#D9A21B","#3F7F5A","#3C5A8A","#B83A3A","#8A5A2B"];
   const TREE=["#3E8E4A","#4FA05A","#2F7A44","#5BAA5E"];
   const tree=(x,z,sz,col,palm)=>{ const tc=Cc("#7A5A3C");
     if(palm){ const ht=5.2*sz, w=.3*sz; for(let i=0;i<4;i++){ const a0=i*Math.PI/2, a1=(i+1)*Math.PI/2; dQuad([x+Math.cos(a0)*w,0,z+Math.sin(a0)*w],[x+Math.cos(a1)*w,0,z+Math.sin(a1)*w],[x+Math.cos(a1)*w*.6,ht,z+Math.sin(a1)*w*.6],[x+Math.cos(a0)*w*.6,ht,z+Math.sin(a0)*w*.6],tc,[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)]); }
@@ -16044,7 +16044,7 @@ EXP.ar=async function(park){
     const pt=(u,v,y)=>[cx+(cu+u)*ux+(cv+v)*vx, y, cz+(cu+u)*uz+(cv+v)*vz];
     if(!sold){   // reserved plot, being built: darker roof slab with a rim, and a tower crane on every third site
       dQuad(pt(-L/2*.97,-W/2*.97,h+.1),pt(L/2*.97,-W/2*.97,h+.1),pt(L/2*.97,W/2*.97,h+.1),pt(-L/2*.97,W/2*.97,h+.1),Cc("#D9A441"),[0,1,0]);
-      if(hash(k+"cr")<.34&&det.p.length<DBUD*.9){ const m=pt(L*.3,W*.3,0), mh=h+4.6, jb=Cc("#E6B422"), w=.75; const px=m[0], pz=m[2];
+      if(hash(k+"cr")<.22&&det.p.length<DBUD*.9){ const m=pt(L*.3,W*.3,0), mh=h+4.6, jb=Cc("#E6B422"), w=.75; const px=m[0], pz=m[2];
         for(let i=0;i<4;i++){ const a0=i*Math.PI/2+Math.PI/4, a1=(i+1)*Math.PI/2+Math.PI/4; dQuad([px+Math.cos(a0)*w,h,pz+Math.sin(a0)*w],[px+Math.cos(a1)*w,h,pz+Math.sin(a1)*w],[px+Math.cos(a1)*w,mh,pz+Math.sin(a1)*w],[px+Math.cos(a0)*w,mh,pz+Math.sin(a0)*w],jb,[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)]); }
         const j0=pt(L*.3-L*.32,W*.3,mh), j1=pt(L*.3+L*.14,W*.3,mh); dQuad([j0[0]+vx*.45,mh,j0[2]+vz*.45],[j1[0]+vx*.45,mh,j1[2]+vz*.45],[j1[0]-vx*.45,mh,j1[2]-vz*.45],[j0[0]-vx*.45,mh,j0[2]-vz*.45],jb,[0,1,0]); }
       return; }
