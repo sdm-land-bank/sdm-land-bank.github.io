@@ -15915,7 +15915,7 @@ EXP.share=function(){
       <label><input type="checkbox" id="shUt" checked> Electricity, water and sewage</label>
       <label class="sh-v">Link works for <select id="shDays"><option value="7">7 days</option><option value="14">14 days</option><option value="30" selected>30 days</option><option value="90">90 days</option></select></label>
     </div>
-    <div class="sh-n">The link shows this plot on the satellite map with a fly-in, plus what is ticked. It never shows the price, the client, other plots or other customers. It is a snapshot of today: anyone who has the link can see it until it expires.</div>
+    <div class="sh-n">The link shows this plot on the satellite map with a fly-in, plus what is ticked. It also outlines the whole project and has a Get directions button. It never shows the price, the client, other plots or other customers. It is a snapshot of today: anyone who has the link can see it until it expires.</div>
     <div class="sh-a"><button class="ex-b on" id="shMake" type="button">Create link and QR</button></div>
     <div class="sh-r" id="shRes" hidden></div></div>`;
   document.body.appendChild(d);
@@ -15924,6 +15924,11 @@ EXP.share=function(){
   el("shMake").onclick=()=>{
     const g=it.f.geometry, rings=(g.type==="Polygon"?[g.coordinates[0]]:g.coordinates.map(pg=>pg[0])).map(r=>r.map(c=>[r5(c[0]),r5(c[1])]));
     const o={v:1,t:Date.now(),x:Date.now()+(+el("shDays").value)*864e5,u:p.unit||"",pk:H.parkName(it.info.park),w:where,rings,c:[r5(p.c[0]),r5(p.c[1])],pg:PAGE[it.info.park]?SITE+PAGE[it.info.park]:SITE};
+    try{ const pts=[]; S.geo.features.filter(f=>f.properties.park===it.info.park).forEach(f=>{ const gg=f.geometry; (gg.type==="Polygon"?[gg.coordinates[0]]:gg.coordinates.map(pg=>pg[0])).forEach(r=>r.forEach(c=>pts.push([c[0],c[1]]))); });
+      pts.sort((a,b)=>a[0]-b[0]||a[1]-b[1]); const cr=(o2,a,b)=>(a[0]-o2[0])*(b[1]-o2[1])-(a[1]-o2[1])*(b[0]-o2[0]), lo2=[], up=[];
+      pts.forEach(pt=>{ while(lo2.length>1&&cr(lo2[lo2.length-2],lo2[lo2.length-1],pt)<=0) lo2.pop(); lo2.push(pt); });
+      for(let i=pts.length-1;i>=0;i--){ const pt=pts[i]; while(up.length>1&&cr(up[up.length-2],up[up.length-1],pt)<=0) up.pop(); up.push(pt); }
+      const hull=lo2.slice(0,-1).concat(up.slice(0,-1)); if(hull.length>=3){ hull.push(hull[0]); o.b=hull.map(c=>[r5(c[0]),r5(c[1])]); } }catch(e){}
     if(el("shArea").checked) o.a=Math.round(row.area);
     if(el("shSec").checked&&row.sector) o.s=row.sector;
     if(el("shLg").checked){ try{ const lg=logisticsAt(p.c); o.lg={p:[lg.port.name,Math.round(lg.port.km)],a:[lg.air.name,Math.round(lg.air.km)],c:Math.round(lg.cairo)}; }catch(e){} }
@@ -16039,7 +16044,7 @@ EXP.ar=async function(park){
   let sat=null, satErr=""; try{ sat=await satTexture(lo,hi); }catch(e){ satErr=String(e); console.warn("ar satellite",e); } if(tok.dead) return; window.__arDbg={satErr,has:!!sat,w:sat&&sat.cv.width,h:sat&&sat.cv.height};
   say("Building the park…");
   scene=new T.Scene(); cam=new T.PerspectiveCamera(62,innerWidth/innerHeight,.01,30);
-  scene.add(new T.AmbientLight(0xffffff,.78)); const sun=new T.DirectionalLight(0xffffff,.8); sun.position.set(.5,1,.7); scene.add(sun);
+  scene.add(new T.HemisphereLight(0xe4eeff,0x8c8576,.72)); const sun=new T.DirectionalLight(0xfff4e0,.92); sun.position.set(.5,1,.7); scene.add(sun); const fill=new T.DirectionalLight(0xbfd2ff,.28); fill.position.set(-.7,.5,-.5); scene.add(fill);
   const model=new T.Group(); scene.add(model); const body=new T.Group(); model.add(body);
   const vmat=new T.MeshLambertMaterial({vertexColors:true});
   const mk=(acc,mat)=>{ const g=new T.BufferGeometry(); g.setAttribute("position",new T.Float32BufferAttribute(acc.p,3)); g.setAttribute("normal",new T.Float32BufferAttribute(acc.n,3)); g.setAttribute("color",new T.Float32BufferAttribute(acc.c,3)); return new T.Mesh(g,mat||vmat); };
@@ -16065,10 +16070,30 @@ EXP.ar=async function(park){
   // factories on the sold plots (the same illustrative massing as the 3D map), a lower building on reserved plots
   const fac={p:[],n:[],c:[]}, det={p:[],n:[],c:[]}, chim=[], fSold=new Set(), fRes=new Set(), wSold=new Set(), wRes=new Set();
 
+
+  // ---- surfaces: corrugated cladding, ribbed roofs, soft contact shadows (all drawn once on small canvases) ----
+  const cvTex=(w,h,draw,rx,ry)=>{ const c=document.createElement("canvas"); c.width=w; c.height=h; draw(c.getContext("2d"),w,h); const t=new T.CanvasTexture(c); t.wrapS=t.wrapT=T.RepeatWrapping; t.repeat.set(rx,ry); t.anisotropy=4; return t; };
+  const wallTex=cvTex(256,256,(g,w,h)=>{ g.fillStyle="#f6f6f4"; g.fillRect(0,0,w,h);
+      for(let i=0;i<32;i++){ const x=i*8; const gr=g.createLinearGradient(x,0,x+8,0); gr.addColorStop(0,"rgba(0,0,0,.0)"); gr.addColorStop(.55,"rgba(0,0,0,.07)"); gr.addColorStop(1,"rgba(255,255,255,.05)"); g.fillStyle=gr; g.fillRect(x,0,8,h); }
+      g.fillStyle="rgba(0,0,0,.22)"; g.fillRect(0,h-3,w,3); g.fillRect(0,h/2-1,w,2); g.fillStyle="rgba(255,255,255,.35)"; g.fillRect(0,h-6,w,2); },1/6,1/6);
+  const roofTex=cvTex(256,256,(g,w,h)=>{ g.fillStyle="#f0f0ee"; g.fillRect(0,0,w,h);
+      for(let i=0;i<4;i++){ g.fillStyle="rgba(0,0,0,.16)"; g.fillRect(i*64,0,2,h); g.fillRect(0,i*64,w,2); }
+      for(let i=0;i<900;i++){ g.fillStyle="rgba(0,0,0,"+(Math.random()*.05)+")"; g.fillRect(Math.random()*w,Math.random()*h,2,2); } },1/8,1/8);
+  const aoTex=cvTex(64,64,(g,w,h)=>{ for(let i=0;i<22;i++){ g.fillStyle="rgba(0,0,0,.032)"; g.beginPath(); const r=w/2-i-1; g.roundRect?g.roundRect(i,i,w-2*i,h-2*i,10):g.rect(i,i,w-2*i,h-2*i); g.fill(); } },1,1); aoTex.wrapS=aoTex.wrapT=T.ClampToEdgeWrapping;
+  const wacc={p:[],n:[],c:[],u:[]}, racc={p:[],n:[],c:[],u:[]}, sacc={p:[],n:[],c:[],u:[]}, aacc={p:[],n:[],c:[]};
+  const pushV=(acc,p,n,c,u)=>{ acc.p.push(p[0],p[1],p[2]); acc.n.push(n[0],n[1],n[2]); acc.c.push(c.r,c.g,c.b); if(acc.u) acc.u.push(u[0],u[1]); };
+  // push a triangle so that it faces the same way as its normal (the lights then treat the front and back correctly)
+  const pushT=(acc,a,b,c,n,col,ua,ub,uc)=>{ const ex=b[0]-a[0],ey=b[1]-a[1],ez=b[2]-a[2], fx=c[0]-a[0],fy=c[1]-a[1],fz=c[2]-a[2]; const d=(ey*fz-ez*fy)*n[0]+(ez*fx-ex*fz)*n[1]+(ex*fy-ey*fx)*n[2]; if(d<0){ pushV(acc,a,n,col,ua); pushV(acc,c,n,col,uc); pushV(acc,b,n,col,ub); } else { pushV(acc,a,n,col,ua); pushV(acc,b,n,col,ub); pushV(acc,c,n,col,uc); } };
+  function addWalls(ring,y0,y1,col){ const P=ring.slice(0,-1).map(c=>[mx(c),mz(c)]); if(P.length<3) return; let cx=0,cz=0; P.forEach(q=>{ cx+=q[0]; cz+=q[1]; }); cx/=P.length; cz/=P.length; let cum=0;
+    for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length], dx=b[0]-a[0], dz=b[1]-a[1], l=Math.hypot(dx,dz); if(l<.05) continue; let nx=dz/l, nz=-dx/l; if(((a[0]+b[0])/2-cx)*nx+((a[1]+b[1])/2-cz)*nz<0){ nx=-nx; nz=-nz; }
+      const n=[nx,0,nz], A=[a[0],y0,a[1]], B=[b[0],y0,b[1]], C=[b[0],y1,b[1]], D=[a[0],y1,a[1]], u0=cum, u1=cum+l; cum+=l;
+      pushT(wacc,A,B,C,n,col,[u0,y0],[u1,y0],[u1,y1]); pushT(wacc,A,C,D,n,col,[u0,y0],[u1,y1],[u0,y1]); } }
+  function addRoof(ring,y,col){ const P=ring.slice(0,-1).map(c=>new T.Vector2(mx(c),mz(c))); if(P.length<3) return; let tri; try{ tri=T.ShapeUtils.triangulateShape(P,[]); }catch(e){ return; } const n=[0,1,0]; tri.forEach(f=>{ const q=f.map(i=>[P[i].x,y,P[i].y]), u=f.map(i=>[P[i].x,P[i].y]); pushT(racc,q[0],q[1],q[2],n,col,u[0],u[1],u[2]); }); }
+  const mkUV=(acc,mat)=>{ const g=new T.BufferGeometry(); g.setAttribute("position",new T.Float32BufferAttribute(acc.p,3)); g.setAttribute("normal",new T.Float32BufferAttribute(acc.n,3)); g.setAttribute("color",new T.Float32BufferAttribute(acc.c,3)); if(acc.u) g.setAttribute("uv",new T.Float32BufferAttribute(acc.u,2)); return new T.Mesh(g,mat); };
   // detail pass: roofs with solar panels or a white barrel vault, window and colour bands, dock doors, a few trees. One merged mesh, so it stays one draw call;
   // it stops adding detail when the vertex budget of the device is used up (phones get less than computers).
   const DBUD=((()=>{ try{ return matchMedia("(pointer:coarse)").matches; }catch(e){ return false; } })()?330000:720000);
-  const Cc=h=>new T.Color(h), dQuad=(a,b,c,d,col,n)=>{ [[a,b,c],[a,c,d]].forEach(t=>t.forEach(v=>{ det.p.push(v[0],v[1],v[2]); det.n.push(n[0],n[1],n[2]); det.c.push(col.r,col.g,col.b); })); };
+  const Cc=h=>new T.Color(h), dQuad=(a,b,c,d,col,n)=>{ [[a,b,c],[a,c,d]].forEach(t=>{ const ex=t[1][0]-t[0][0],ey=t[1][1]-t[0][1],ez=t[1][2]-t[0][2], fx=t[2][0]-t[0][0],fy=t[2][1]-t[0][1],fz=t[2][2]-t[0][2]; const dd=(ey*fz-ez*fy)*n[0]+(ez*fx-ex*fz)*n[1]+(ex*fy-ey*fx)*n[2]; (dd<0?[t[0],t[2],t[1]]:t).forEach(v=>{ det.p.push(v[0],v[1],v[2]); det.n.push(n[0],n[1],n[2]); det.c.push(col.r,col.g,col.b); }); }); };
   const dTri=(a,b,c,col)=>{ const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2], vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2]; let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1; nx/=l; ny/=l; nz/=l; [a,b,c].forEach(v=>{ det.p.push(v[0],v[1],v[2]); det.n.push(nx,ny,nz); det.c.push(col.r,col.g,col.b); }); };
   const PAL=["#F2EBDD","#E9D9A8","#CBDAC4","#E3CDBB","#D3DEEC","#F0F1F3"], WPAL=["#AFC3DD","#B9C7D6","#C4D3C8"], ACC=["#B4553B","#D9A21B","#3F7F5A","#3C5A8A","#B83A3A","#8A5A2B"];
   const TREE=["#3E8E4A","#4FA05A","#2F7A44","#5BAA5E"];
@@ -16078,26 +16103,32 @@ EXP.ar=async function(park){
     const r=1.7*sz, h0=1.8*sz, n=7; for(let i=0;i<4;i++){ const a0=i*Math.PI/2, a1=(i+1)*Math.PI/2, w=.25*sz; dQuad([x+Math.cos(a0)*w,0,z+Math.sin(a0)*w],[x+Math.cos(a1)*w,0,z+Math.sin(a1)*w],[x+Math.cos(a1)*w,h0,z+Math.sin(a1)*w],[x+Math.cos(a0)*w,h0,z+Math.sin(a0)*w],tc,[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)]); }
     const c=Cc(col), c2=c.clone().multiplyScalar(.8), yc=h0+r*.95, yt=h0+r*2.1, yb=h0-.2*sz; for(let i=0;i<n;i++){ const a0=i/n*Math.PI*2, a1=(i+1)/n*Math.PI*2, p0=[x+Math.cos(a0)*r,yc,z+Math.sin(a0)*r], p1=[x+Math.cos(a1)*r,yc,z+Math.sin(a1)*r]; dTri(p0,[x,yt,z],p1,i%2?c:c2); dTri(p1,[x,yb,z],p0,c2); } };
   function detail(ring,h,wh,sold,k,accent){
-    if(det.p.length>DBUD) return;
     const P=ring.slice(0,-1).map(c=>[mx(c),mz(c)]); if(P.length<3) return;
     let cx=0,cz=0; P.forEach(q=>{ cx+=q[0]; cz+=q[1]; }); cx/=P.length; cz/=P.length;
     let bl=0,bi=0; for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length], l=Math.hypot(b[0]-a[0],b[1]-a[1]); if(l>bl){ bl=l; bi=i; } }
     const a0=P[bi], b0=P[(bi+1)%P.length], ux=(b0[0]-a0[0])/bl, uz=(b0[1]-a0[1])/bl, vx=-uz, vz=ux;
     let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9, A=0; P.forEach((q,i)=>{ const u=(q[0]-cx)*ux+(q[1]-cz)*uz, v=(q[0]-cx)*vx+(q[1]-cz)*vz; u0=Math.min(u0,u); u1=Math.max(u1,u); v0=Math.min(v0,v); v1=Math.max(v1,v); const n=P[(i+1)%P.length]; A+=q[0]*n[1]-n[0]*q[1]; }); A=Math.abs(A)/2;
-    const L=u1-u0, W=v1-v0, cu=(u0+u1)/2, cv=(v0+v1)/2; if(L<12||W<8||A/(L*W)<.75) return;
+    const L=u1-u0, W=v1-v0, cu=(u0+u1)/2, cv=(v0+v1)/2; if(L<8||W<6||A/(L*W)<.7) return;
     const pt=(u,v,y)=>[cx+(cu+u)*ux+(cv+v)*vx, y, cz+(cu+u)*uz+(cv+v)*vz];
+    { const m=2.2+h*.5, E=new T.Color(0x000000), a0=pt(-L/2-m,-W/2-m,.19), a1=pt(L/2+m,-W/2-m,.19), a2=pt(L/2+m,W/2+m,.19), a3=pt(-L/2-m,W/2+m,.19), n=[0,1,0];   // soft contact shadow around the building
+      [[a0,[0,0]],[a1,[1,0]],[a2,[1,1]],[a0,[0,0]],[a2,[1,1]],[a3,[0,1]]].forEach(q=>pushV(sacc,q[0],n,E,q[1])); }
+    if(L<12||W<8||det.p.length>DBUD) return;
     if(!sold){   // reserved plot, being built: darker roof slab with a rim, and a tower crane on every third site
-      dQuad(pt(-L/2*.97,-W/2*.97,h+.1),pt(L/2*.97,-W/2*.97,h+.1),pt(L/2*.97,W/2*.97,h+.1),pt(-L/2*.97,W/2*.97,h+.1),Cc("#D9A441"),[0,1,0]);
       if(hash(k+"cr")<.22&&det.p.length<DBUD*.9){ const m=pt(L*.3,W*.3,0), mh=h+4.6, jb=Cc("#E6B422"), w=.75; const px=m[0], pz=m[2];
         for(let i=0;i<4;i++){ const a0=i*Math.PI/2+Math.PI/4, a1=(i+1)*Math.PI/2+Math.PI/4; dQuad([px+Math.cos(a0)*w,h,pz+Math.sin(a0)*w],[px+Math.cos(a1)*w,h,pz+Math.sin(a1)*w],[px+Math.cos(a1)*w,mh,pz+Math.sin(a1)*w],[px+Math.cos(a0)*w,mh,pz+Math.sin(a0)*w],jb,[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)]); }
         const j0=pt(L*.3-L*.32,W*.3,mh), j1=pt(L*.3+L*.14,W*.3,mh); dQuad([j0[0]+vx*.45,mh,j0[2]+vz*.45],[j1[0]+vx*.45,mh,j1[2]+vz*.45],[j1[0]-vx*.45,mh,j1[2]-vz*.45],[j0[0]-vx*.45,mh,j0[2]-vz*.45],jb,[0,1,0]); }
       return; }
-    const rf=Cc(wh?"#F1F3F6":"#D3D8DE"); dQuad(pt(-L/2*.97,-W/2*.97,h+.1),pt(L/2*.97,-W/2*.97,h+.1),pt(L/2*.97,W/2*.97,h+.1),pt(-L/2*.97,W/2*.97,h+.1),rf,[0,1,0]);   // roof
     const mode=wh?(hash(k+"s")<.55?"solar":"skylight"):(hash(k+"p")<.7?"solar":"vault");
     if(mode==="solar"&&L>20&&W>12){ const n=Math.max(1,Math.min(5,Math.floor((W-4)/4.6))), rw=3.2, gap=1.4, tot=n*rw+(n-1)*gap, Lp=L-6; for(let i=0;i<n;i++){ const v=-tot/2+i*(rw+gap); const c1=Cc(i%2?"#1F4E96":"#2A5FAE"), c2=Cc(i%2?"#2A5FAE":"#1F4E96"); dQuad(pt(-Lp/2,v,h+.5),pt(0,v,h+.5),pt(0,v+rw,h+.5),pt(-Lp/2,v+rw,h+.5),c1,[0,1,0]); dQuad(pt(0,v,h+.5),pt(Lp/2,v,h+.5),pt(Lp/2,v+rw,h+.5),pt(0,v+rw,h+.5),c2,[0,1,0]); } }
     else if(mode==="skylight"){ const n=Math.min(4,Math.floor(L/22)); for(let i=0;i<n;i++){ const u=-L/2+(i+.5)*L/n; dQuad(pt(u-3,-W*.3,h+.45),pt(u+3,-W*.3,h+.45),pt(u+3,W*.3,h+.45),pt(u-3,W*.3,h+.45),Cc("#9FB6CF"),[0,1,0]); } }
     else if(mode==="vault"&&W>12){ const Wv=W*.72, Lv=L*.8, rise=Math.min(3.8,Wv*.13), S=7; for(let i=0;i<S;i++){ const va=-Wv/2+Wv*i/S, vb=-Wv/2+Wv*(i+1)/S, ya=h+.1+rise*Math.sin(Math.PI*i/S), yb=h+.1+rise*Math.sin(Math.PI*(i+1)/S), dl=Math.hypot(vb-va,yb-ya)||1, nv=-(yb-ya)/dl, ny=(vb-va)/dl;
         dQuad(pt(-Lv/2,va,ya),pt(Lv/2,va,ya),pt(Lv/2,vb,yb),pt(-Lv/2,vb,yb),Cc(i%2?"#F7F8FA":"#EEF0F3"),[nv*vx,ny,nv*vz]); } }
+    // rooftop units (air handling, vents) at the corners, and a paved yard in front of the long facade
+    { const hv=Cc("#B9BFC7"), hv2=Cc("#8E959E"); for(let q=0;q<(L>34?3:2);q++){ const su=(q%2?1:-1)*(L/2-4-q*3), sv=(q>1?-1:1)*(W/2-3), x0=su-1.6, x1=su+1.6, v0=sv-1.2, v1=sv+1.2, y0=h+.2, y1=y0+1.6;
+        dQuad(pt(x0,v0,y1),pt(x1,v0,y1),pt(x1,v1,y1),pt(x0,v1,y1),hv2,[0,1,0]); dQuad(pt(x0,v0,y0),pt(x1,v0,y0),pt(x1,v0,y1),pt(x0,v0,y1),hv,[ -vx,0,-vz]); dQuad(pt(x1,v1,y0),pt(x0,v1,y0),pt(x0,v1,y1),pt(x1,v1,y1),hv,[vx,0,vz]);
+        dQuad(pt(x1,v0,y0),pt(x1,v1,y0),pt(x1,v1,y1),pt(x1,v0,y1),hv,[ux,0,uz]); dQuad(pt(x0,v1,y0),pt(x0,v0,y0),pt(x0,v0,y1),pt(x0,v1,y1),hv,[-ux,0,-uz]); }
+      const yside=hash(k+"t")<.5?-1:1, ya=pt(-L*.46,yside*(W/2+.2),.21), yb=pt(L*.46,yside*(W/2+.2),.21), yc=pt(L*.46,yside*(W/2+5.4),.21), yd=pt(-L*.46,yside*(W/2+5.4),.21), mid=pt(0,yside*(W/2+5.4),0);
+      try{ if(G.inPlot(mid[0],mid[2])){ const ac=Cc("#4B5058"); const up=[0,1,0], tri3=(a,b,c)=>pushT(aacc,a,b,c,up,ac); tri3(ya,yb,yc); tri3(ya,yc,yd); } }catch(e){} }
     // long facades: window band, colour band; the dock doors of warehouses are added by the caller
     const wy0=Math.min(3.4,h*.35), wy1=Math.min(wy0+3.2,h-2.2), band=Cc(wh?"#3F5F8E":accent), glass=Cc(wh?"#4A5D73":"#2F4358");
     for(const sgn of [-1,1]){ const v=sgn*(W/2)+sgn*.14, nrm=[sgn*vx,0,sgn*vz];
@@ -16114,14 +16145,19 @@ EXP.ar=async function(park){
     const SCL=(k,r)=>{ const g=grp.get(k), pa=plotA.get(k); if(!g||!pa||g.a<1) return r; const f=Math.max(.4,Math.min(.92,Math.sqrt(.5*pa/g.a))), x0=g.x/g.a, y0=g.y/g.a; return r.map(c=>[x0+(c[0]-x0)*f,y0+(c[1]-y0)*f]); };
     window.__arCover=()=>{ let b=0,p=0,o=0,mx_=0,over=0; grp.forEach((g,k)=>{ const pa=plotA.get(k); if(!pa) return; o+=g.a; { const f0=Math.max(.4,Math.min(.92,Math.sqrt(.5*pa/g.a))); mx_=Math.max(mx_,g.a*f0*f0/pa); if(g.a/pa>.5) over++; } const f=Math.max(.4,Math.min(.92,Math.sqrt(.5*pa/g.a))); b+=g.a*f*f; p+=pa; }); return {built:b,plot:p,ratio:b/p,before:o/p,maxPlotRatio:mx_,plotsOverHalfBefore:over,plots:grp.size}; };
     (FC?FC.features:[]).forEach(f=>{ const k=f.properties.k, st=stOf.get(k); if(st!=="sold"&&st!=="reserved") return; const pi=S.plots&&S.plots.get(k), lt=String((pi&&pi.row&&pi.row.landType)||"").toLowerCase(), wh=lt==="logistics"||lt==="services", ring=SCL(k,f.geometry.coordinates[0]), sold=st==="sold", h=(wh?(8+hash(k+"w")*4):f.properties.h*.88)*(sold?1:.4), sh=new T.Shape(); ring.forEach((c,i)=>{ if(i===0) sh.moveTo(mx(c),-mz(c)); else sh.lineTo(mx(c),-mz(c)); });
-      const geo=new T.ExtrudeGeometry(sh,{depth:h,bevelEnabled:false}); geo.rotateX(-Math.PI/2); geo.translate(0,.2,0); const pc=f.properties.c||"", accent=ACC[(hash(k+"col")*ACC.length)|0];
-      const wall=new T.Color(!sold?"#F2C265":wh?WPAL[(hash(k+"w")*WPAL.length)|0]:pc==="#868B95"?"#8B909A":pc==="#C9D6DF"?accent:PAL[(hash(k+"w2")*PAL.length)|0]); if(sold&&!wh&&pc==="#C9D6DF") wall.lerp(new T.Color("#FFFFFF"),.25); mergeInto(fac,geo,wall); detail(ring,h,wh,sold,k,accent); (sold?fSold:fRes).add(k); if(wh){ (sold?wSold:wRes).add(k);
+      const pc=f.properties.c||"", accent=ACC[(hash(k+"col")*ACC.length)|0];
+      const wall=new T.Color(!sold?"#F2C265":wh?WPAL[(hash(k+"w")*WPAL.length)|0]:pc==="#868B95"?"#8B909A":pc==="#C9D6DF"?accent:PAL[(hash(k+"w2")*PAL.length)|0]); if(sold&&!wh&&pc==="#C9D6DF") wall.lerp(new T.Color("#FFFFFF"),.25);
+      addWalls(ring,1.3,h+.2,wall); addWalls(ring,.2,1.3,new T.Color(sold?"#9AA0A8":"#B79A55")); addRoof(ring,h+.2,new T.Color(!sold?"#D9A441":wh?"#F1F3F6":"#C9CED5")); detail(ring,h,wh,sold,k,accent); (sold?fSold:fRes).add(k); if(wh){ (sold?wSold:wRes).add(k);
         let cx=0,cz=0,bi=0,bl=0; for(let i=0;i<ring.length-1;i++){ cx+=mx(ring[i]); cz+=mz(ring[i]); const l=Math.hypot(mx(ring[i+1])-mx(ring[i]),mz(ring[i+1])-mz(ring[i])); if(l>bl){ bl=l; bi=i; } } cx/=ring.length-1; cz/=ring.length-1;
         if(sold&&bl>18){ const ax=mx(ring[bi]), az=mz(ring[bi]), dx=mx(ring[bi+1])-ax, dz=mz(ring[bi+1])-az, an=Math.atan2(dz,dx); let nx=-dz/bl, nz=dx/bl; if((ax-cx)*nx+(az-cz)*nz<0){ nx=-nx; nz=-nz; } const nd=Math.min(7,Math.floor(bl/13));
           for(let d=0;d<nd;d++){ const u=(d+.5)/nd*bl, g=new T.BoxGeometry(5,4.2,.8); g.rotateY(-an); g.translate(ax+dx/bl*u+nx*.3,2.3,az+dz/bl*u+nz*.3); mergeInto(fac,g,new T.Color("#3A4350")); } } }
       if(sold&&!wh&&f.properties.c==="#868B95"&&hash(k)<.2){ let cx=0,cz=0; for(let i=0;i<ring.length-1;i++){ cx+=mx(ring[i]); cz+=mz(ring[i]); } chim.push([cx/(ring.length-1),h+.2,cz/(ring.length-1)]); } });
   }catch(e){ console.warn("ar factories",e); }
   if(fac.p.length) body.add(mk(fac));
+  if(wacc.p.length) body.add(mkUV(wacc,new T.MeshLambertMaterial({map:wallTex,vertexColors:true,side:T.DoubleSide})));
+  if(racc.p.length) body.add(mkUV(racc,new T.MeshLambertMaterial({map:roofTex,vertexColors:true,side:T.DoubleSide})));
+  if(aacc.p.length) body.add(mk(aacc,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3})));
+  if(sacc.p.length){ const sm=mkUV(sacc,new T.MeshBasicMaterial({map:aoTex,color:0x000000,transparent:true,opacity:.9,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2})); sm.renderOrder=1; body.add(sm); }
   if(det.p.length) body.add(mk(det,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide})));
   // smoke
   const PER=4, NP=chim.length*PER; let smoke=null, sA=null, sP=null, sS=null, sPh=null;
