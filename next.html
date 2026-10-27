@@ -16531,8 +16531,8 @@ body.sk-on{overflow:hidden!important}
 .sk-hint{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);padding:10px 18px;border-radius:999px!important;font-weight:600;font-size:13px;white-space:nowrap;max-width:calc(100vw - 120px);overflow:hidden;text-overflow:ellipsis;pointer-events:none!important;transition:opacity .4s,transform .4s}
 .sk-hint.off{opacity:0;transform:translate(-50%,8px)}
 .sk-hint em{font-style:normal;color:#FFD60A}
-.sk-live,.sk-card{position:absolute;left:calc(50% + 35px);bottom:16px;transform:translateX(-50%);width:min(560px,calc(100vw - 110px));animation:skUp .25s cubic-bezier(.2,.9,.3,1.1)}
-.sk-live{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 16px;width:auto;max-width:calc(100vw - 110px)}
+.sk-live{position:absolute;left:calc(50% + 35px);bottom:16px;transform:translateX(-50%);animation:skUp .25s cubic-bezier(.2,.9,.3,1.1);display:flex;align-items:center;gap:10px;padding:8px 8px 8px 16px;max-width:calc(100vw - 110px)}
+.sk-card{position:absolute;right:12px;bottom:34px;width:min(430px,calc(100vw - 110px));max-height:calc(100% - 90px);overflow:auto;animation:skUpR .25s cubic-bezier(.2,.9,.3,1.1)}
 .sk-live .v{font-size:18px;font-weight:800;white-space:nowrap}
 .sk-live .s{font-size:12px;color:rgba(255,255,255,.7);white-space:nowrap}
 .sk-live button,.sk-card .acts button{height:36px;border:0;border-radius:10px;background:rgba(255,255,255,.14);color:#fff;font-weight:600;font-size:13px;padding:0 12px;cursor:pointer;white-space:nowrap}
@@ -16560,13 +16560,15 @@ body.sk-on{overflow:hidden!important}
 @keyframes skIn{from{opacity:0;transform:translate(-30px,-50%)}to{opacity:1;transform:translate(0,-50%)}}
 @keyframes skInR{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:none}}
 @keyframes skUp{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes skUpR{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @keyframes skPop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
 @keyframes skFl{0%{opacity:.85}100%{opacity:0}}
 body.sk-on #laraDock,body.sk-on .lara-edge,body.sk-on #toast{z-index:2147482600}
 body.sk-on #laraDock{display:none!important}
 @media (max-width:1100px){ .sk-top .sk-tb span{display:none} .sk-tb{padding:0 10px} }
-@media (max-height:800px){ .sk-b{height:42px;width:48px} .sk-b span{display:none} .sk-full .maplibregl-ctrl-bottom-left{left:72px} }
-@media (max-width:620px){ .sk-live,.sk-card{left:calc(50% + 30px);width:calc(100vw - 90px)} .sk-card .big{font-size:22px} .sk-hint{max-width:calc(100vw - 90px);left:calc(50% + 30px)} }
+@media (max-height:860px){ .sk-b{height:42px;width:46px} .sk-b span{display:none} .sk-full .maplibregl-ctrl-bottom-left{left:72px} }
+@media (max-height:690px){ .sk-tools{display:grid;grid-template-columns:46px 46px;gap:1px 2px} .sk-sep{grid-column:1/-1} .sk-full .maplibregl-ctrl-bottom-left{left:120px} .sk-live{left:calc(50% + 55px)} .sk-hint{left:calc(50% + 55px)} }
+@media (max-width:620px){ .sk-live{left:calc(50% + 30px);max-width:calc(100vw - 90px)} .sk-card{left:66px;right:8px;width:auto;bottom:12px} .sk-card .big{font-size:22px} .sk-hint{max-width:calc(100vw - 90px);left:calc(50% + 30px)} .sk-top{left:72px;right:8px;overflow-x:auto;scrollbar-width:none} }
 @media (prefers-reduced-motion:reduce){ .sk-tools,.sk-top,.sk-pop,.sk-live,.sk-card{animation:none} }
 </style>
 
@@ -16781,14 +16783,14 @@ function laserDraw(now){ const L=SK.laser; while(L.length&&now-L[0].t>1100) L.sh
   ctx.restore(); need(); }
 
 /* ---------- hit tests ---------- */
-function hit(s,pt){ const tol=14;
+function hit(s,pt,edge){ const tol=14;   // edge: closed shapes count only near their outline (the eraser), not anywhere inside
   if(s.t==="text"){ const b=sbox(s); return pt[0]>=b[0]-8&&pt[0]<=b[2]+8&&pt[1]>=b[1]-8&&pt[1]<=b[3]+8; }
-  if(s.t==="circle"){ const c=P(s.pts[0]); return hyp(c,pt)<=hyp(c,P(dest(s.pts[0],s.r,0)))+tol; }
-  const V=s.pts.map(P); if(CLOSED.has(s.t)&&V.length>2&&inPoly(pt,V)) return true;
+  if(s.t==="circle"){ const c=P(s.pts[0]), rp=hyp(c,P(dest(s.pts[0],s.r,0))), d=hyp(c,pt); return edge?Math.abs(d-rp)<=tol:d<=rp+tol; }
+  const V=s.pts.map(P); if(!edge&&CLOSED.has(s.t)&&V.length>2&&inPoly(pt,V)) return true;
   const ex=s.t==="pen"||s.t==="hl"?s.w*zk(s)/2:0, L=CLOSED.has(s.t)?V.concat([V[0]]):V;
   if(L.length===1) return hyp(pt,L[0])<=tol+ex;
   for(let i=1;i<L.length;i++) if(segDist(pt,L[i-1],L[i])<=tol+ex) return true; return false; }
-function hitShape(pt){ for(let i=SK.shapes.length-1;i>=0;i--) if(hit(SK.shapes[i],pt)) return SK.shapes[i]; return null; }
+function hitShape(pt,edge){ for(let i=SK.shapes.length-1;i>=0;i--) if(hit(SK.shapes[i],pt,edge)) return SK.shapes[i]; return null; }
 function handleAt(s,pt){ if(!s) return null;
   if(s.t==="circle") return hyp(pt,P(dest(s.pts[0],s.r,map.getBearing()+90)))<18?{k:"r"}:null;
   if(s.t==="poly"||s.t==="rect"){ if(hyp(pt,rotHandle(s))<18) return {k:"rot"}; }
@@ -16937,7 +16939,7 @@ function onUp(e){
   else if(d.k==="vert"){ const c=SK.cur; if(c&&d.lasso&&c.lassoing){ delete c.lassoing; const simp=rdp(d.lasso,2.5); if(simp.length>=3){ c.pts=simp.map(p=>U(p[0],p[1])); finishPath(); } else SK.cur=null; } live(); }
   else if((d.k==="move"||d.k==="handle")&&d.changed){ SK.ver++; persist(); card(); }
   SK.snapAt=null; need(); }
-function eraseAt(pt){ const s=hitShape(pt); if(!s) return; if(!SK.drag.did){ pushUndo(); SK.drag.did=true; } SK.shapes=SK.shapes.filter(x=>x!==s); if(SK.sel===s.id){ SK.sel=null; card(); } SK.ver++; persist(); btns(); need(); }
+function eraseAt(pt){ const s=hitShape(pt,true); if(!s) return; if(!SK.drag.did){ pushUndo(); SK.drag.did=true; } SK.shapes=SK.shapes.filter(x=>x!==s); if(SK.sel===s.id){ SK.sel=null; card(); } SK.ver++; persist(); btns(); need(); }
 function hoverCur(pt){ if(SK.tool!=="select") return; const s=byId(SK.sel); cv.style.cursor=(s&&handleAt(s,pt))?"pointer":hitShape(pt)?"move":""; }
 function onWheel(e){ if(!SK.on) return; e.preventDefault(); if(SK.frozen){ flash("The map is frozen — tap <em>Frozen</em> to move it"); return; }
   const k=e.deltaMode===1?16:1, pt=xy(e); if(e.ctrlKey) zoomAbout(pt,-e.deltaY*k*.01); else if(Math.abs(e.deltaX)>Math.abs(e.deltaY)*1.2||e.shiftKey) panPx(-e.deltaX*k,-(e.shiftKey?0:e.deltaY)*k); else zoomAbout(pt,-e.deltaY*k*.003); need(); }
