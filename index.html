@@ -16475,5 +16475,668 @@ MAP: Borders = the white borders of the surveyed project polygons (map_control b
 }catch(e){ console.warn("Lara explore",e); }
 })();
 </script>
+
+<style>
+/* ---- V83 Sketch & measure ---- */
+.sk-ctl button{width:36px!important;height:36px!important;display:grid!important;place-items:center;color:#fff!important;background:linear-gradient(160deg,#d23a55,#9e1f35)!important;border-radius:4px}
+.sk-ctl button svg{width:20px;height:20px}
+.sk-ctl{box-shadow:0 4px 14px rgba(158,31,53,.45)!important}
+body.sk-on{overflow:hidden!important}
+.sk-full{position:fixed!important;inset:0!important;left:0!important;top:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;z-index:2147482000!important;margin:0!important;border-radius:0!important;transform:none!important;max-width:none!important;max-height:none!important;background:#0b0b0c}
+.sk-full .maplibregl-ctrl-group,.sk-full .maplibregl-popup,.sk-full .maplibregl-ctrl-top-left,.sk-full .maplibregl-ctrl-top-right{display:none!important}
+.sk-full .maplibregl-ctrl-bottom-left{left:84px}
+.sk-full .maplibregl-ctrl-scale{background:rgba(20,20,22,.7);color:#fff;border-color:#fff;font:600 11px -apple-system,BlinkMacSystemFont,Inter,sans-serif}
+#skCv{position:absolute;left:0;top:0;z-index:5;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:crosshair}
+#skCv.c-select{cursor:default}#skCv.c-hand{cursor:grab}#skCv.c-hand.grab{cursor:grabbing}#skCv.c-text{cursor:text}
+#skUI{position:fixed;inset:0;z-index:2147482500;pointer-events:none;font:13px -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none}
+#skUI>*{pointer-events:auto}
+#skUI .sk-glass{background:rgba(28,28,30,.74);-webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 34px rgba(0,0,0,.38);border-radius:16px}
+#skUI button{font-family:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.sk-tools{position:absolute;left:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:1px;padding:6px;max-height:calc(100% - 24px);overflow-y:auto;scrollbar-width:none;animation:skIn .35s cubic-bezier(.2,.9,.3,1.2)}
+.sk-tools::-webkit-scrollbar{display:none}
+.sk-b{width:58px;height:50px;flex:none;border:0;border-radius:11px;background:transparent;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;padding:0}
+.sk-b:hover{background:rgba(255,255,255,.1)}
+.sk-b.on{background:#fff;color:#111}
+.sk-b svg{width:22px;height:22px;flex:none}
+.sk-b span{font-size:9.5px;font-weight:600;letter-spacing:.01em;opacity:.9;line-height:1}
+.sk-b:disabled{opacity:.35;cursor:default}
+.sk-sep{height:1px;background:rgba(255,255,255,.16);margin:4px 6px;flex:none}
+.sk-dot{display:block;width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+.sk-top{position:absolute;right:12px;top:12px;display:flex;gap:2px;padding:5px;animation:skInR .35s cubic-bezier(.2,.9,.3,1.2)}
+.sk-tb{height:40px;padding:0 12px;border:0;border-radius:11px;background:transparent;color:#fff;display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap}
+.sk-tb:hover{background:rgba(255,255,255,.1)}
+.sk-tb svg{width:19px;height:19px;flex:none}
+.sk-tb.on{background:rgba(255,255,255,.94);color:#111}
+.sk-tb.done{background:#B3263D;color:#fff;margin-left:4px}
+.sk-tb.done:hover{background:#c92d47}
+.sk-pop{position:absolute;padding:14px;min-width:230px;max-width:calc(100vw - 24px);animation:skPop .18s ease-out}
+.sk-pop b{display:block;font-size:14px;margin-bottom:8px}
+.sk-pop p{margin:8px 0 0;font-size:12px;color:rgba(255,255,255,.7);line-height:1.4}
+.sk-pop label{display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 0;cursor:pointer}
+.sk-pop input[type=number]{width:100%;height:36px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font:600 16px inherit;padding:0 10px;margin-top:4px}
+.sk-sw{display:grid;grid-template-columns:repeat(5,34px);gap:8px}
+.sk-sw button{width:34px;height:34px;border-radius:50%;border:2px solid rgba(255,255,255,.35);cursor:pointer;padding:0}
+.sk-sw button.on{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.35)}
+.sk-wd{display:flex;gap:8px;margin-top:12px}
+.sk-wd button{flex:1;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:transparent;display:grid;place-items:center;cursor:pointer}
+.sk-wd button.on{background:rgba(255,255,255,.92)}
+.sk-wd button i{display:block;width:26px;border-radius:9px;background:#fff}
+.sk-wd button.on i{background:#111}
+.sk-seg{display:flex;gap:4px;background:rgba(255,255,255,.08);border-radius:10px;padding:3px;margin-top:8px}
+.sk-seg button{flex:1;height:32px;border:0;border-radius:8px;background:transparent;color:#fff;font-weight:600;font-size:12.5px;cursor:pointer;white-space:nowrap;padding:0 8px}
+.sk-seg button.on{background:#fff;color:#111}
+.sk-go{height:38px;border:0;border-radius:10px;background:#fff;color:#111;font-weight:700;font-size:13.5px;cursor:pointer;padding:0 14px;margin-top:12px;width:100%}
+.sk-go.red{background:#B3263D;color:#fff}
+.sk-row{display:flex;gap:8px}
+.sk-hint{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);padding:10px 18px;border-radius:999px!important;font-weight:600;font-size:13px;white-space:nowrap;max-width:calc(100vw - 120px);overflow:hidden;text-overflow:ellipsis;pointer-events:none!important;transition:opacity .4s,transform .4s}
+.sk-hint.off{opacity:0;transform:translate(-50%,8px)}
+.sk-hint em{font-style:normal;color:#FFD60A}
+.sk-live{position:absolute;left:calc(50% + 35px);bottom:16px;transform:translateX(-50%);animation:skUp .25s cubic-bezier(.2,.9,.3,1.1);display:flex;align-items:center;gap:10px;padding:8px 8px 8px 16px;max-width:calc(100vw - 110px)}
+.sk-card{position:absolute;right:12px;bottom:34px;width:min(430px,calc(100vw - 110px));max-height:calc(100% - 90px);overflow:auto;animation:skUpR .25s cubic-bezier(.2,.9,.3,1.1)}
+.sk-live .v{font-size:18px;font-weight:800;white-space:nowrap}
+.sk-live .s{font-size:12px;color:rgba(255,255,255,.7);white-space:nowrap}
+.sk-live button,.sk-card .acts button{height:36px;border:0;border-radius:10px;background:rgba(255,255,255,.14);color:#fff;font-weight:600;font-size:13px;padding:0 12px;cursor:pointer;white-space:nowrap}
+.sk-live button.pri,.sk-card .acts button.pri{background:#fff;color:#111}
+.sk-card{padding:14px 16px}
+.sk-card .hd{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+.sk-card .hd i{width:10px;height:10px;border-radius:50%}
+.sk-card .hd .x{margin-left:auto;width:28px;height:28px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff;font-size:16px;cursor:pointer;line-height:1}
+.sk-card .big{font-size:28px;font-weight:800;letter-spacing:-.01em;margin-top:4px;line-height:1.15}
+.sk-card .sub{font-size:13px;color:rgba(255,255,255,.75);margin-top:2px}
+.sk-card .pl{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.14);font-size:13px}
+.sk-card .pl b{font-size:15px}
+.sk-card .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.sk-card .chips span{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border-radius:999px;padding:4px 10px;font-size:12px}
+.sk-card .chips i{width:9px;height:9px;border-radius:50%}
+.sk-card .segs{margin-top:6px;font-size:12px;color:rgba(255,255,255,.75);max-height:84px;overflow:auto}
+.sk-card .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;align-items:center}
+.sk-card .acts .cs{display:flex;gap:5px;margin-right:auto}
+.sk-card .acts .cs button{width:24px;height:24px;padding:0;border-radius:50%;border:2px solid rgba(255,255,255,.3)}
+.sk-card .acts .cs button.on{border-color:#fff}
+.sk-card .acts button.del{background:rgba(255,69,58,.2);color:#ff6961}
+.sk-text{position:absolute;min-width:180px;height:38px;border-radius:9px;border:2px solid #fff;background:rgba(20,20,22,.85);color:#fff;font:700 18px -apple-system,BlinkMacSystemFont,Inter,sans-serif;padding:0 10px;outline:none;z-index:3}
+.sk-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none!important}
+.sk-flash.go{animation:skFl .55s ease-out}
+@keyframes skIn{from{opacity:0;transform:translate(-30px,-50%)}to{opacity:1;transform:translate(0,-50%)}}
+@keyframes skInR{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:none}}
+@keyframes skUp{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes skUpR{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes skPop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+@keyframes skFl{0%{opacity:.85}100%{opacity:0}}
+body.sk-on #laraDock,body.sk-on .lara-edge,body.sk-on #toast{z-index:2147482600}
+body.sk-on #laraDock{display:none!important}
+@media (max-width:1100px){ .sk-top .sk-tb span{display:none} .sk-tb{padding:0 10px} }
+@media (max-height:860px){ .sk-b{height:42px;width:46px} .sk-b span{display:none} .sk-full .maplibregl-ctrl-bottom-left{left:72px} }
+@media (max-height:690px){ .sk-tools{display:grid;grid-template-columns:46px 46px;gap:1px 2px} .sk-sep{grid-column:1/-1} .sk-full .maplibregl-ctrl-bottom-left{left:120px} .sk-live{left:calc(50% + 55px)} .sk-hint{left:calc(50% + 55px)} }
+@media (max-width:620px){ .sk-live{left:calc(50% + 30px);max-width:calc(100vw - 90px)} .sk-card{left:66px;right:8px;width:auto;bottom:12px} .sk-card .big{font-size:22px} .sk-hint{max-width:calc(100vw - 90px);left:calc(50% + 30px)} .sk-top{left:72px;right:8px;overflow-x:auto;scrollbar-width:none} }
+@media (prefers-reduced-motion:reduce){ .sk-tools,.sk-top,.sk-pop,.sk-live,.sk-card{animation:none} }
+</style>
+
+<script>
+/* V83 — Sketch & measure */
+(function(){
+"use strict";
+const q=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const say=(m,bad)=>{ try{ toast(m,bad); }catch(e){} };
+const ready=()=>typeof map!=="undefined"&&map&&map.getContainer&&map.getStyle&&typeof S!=="undefined"&&S&&S.geo;
+const FONT='-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif';
+const COLORS=["#FF3B30","#FF9F0A","#FFD60A","#34C759","#00C7BE","#0A84FF","#BF5AF2","#FF2D55","#FFFFFF","#1C1C1E"];
+const WIDTHS=[2,4,8], FED=4200.83;
+const SK={on:false,tool:"pen",color:"#FF3B30",wi:1,shapes:[],undo:[],redo:[],sel:null,cur:null,drag:null,frozen:true,snap:true,penSeen:false,
+  unitA:"m2",fed:true,laser:[],nid:1,ver:0,snapAt:null,pulse:null};
+try{ const o=JSON.parse(localStorage.getItem("sid.sketch.v1")||"null");
+  if(o){ ["tool","color","wi","frozen","snap","unitA","fed"].forEach(k=>{ if(o[k]!=null) SK[k]=o[k]; });
+    if(Array.isArray(o.shapes)) SK.shapes=o.shapes.filter(s=>s&&s.t&&Array.isArray(s.pts)&&s.pts.length);
+    SK.nid=SK.shapes.reduce((m,s)=>Math.max(m,(+s.id||0)+1),1); } }catch(e){}
+let saveT=null;
+function persist(){ clearTimeout(saveT); saveT=setTimeout(()=>{ try{ localStorage.setItem("sid.sketch.v1",JSON.stringify({tool:SK.tool,color:SK.color,wi:SK.wi,frozen:SK.frozen,snap:SK.snap,unitA:SK.unitA,fed:SK.fed,shapes:SK.shapes})); }catch(e){} },200); }
+
+/* ---------- earth geometry (metres, WGS84 ellipsoid: local radii of curvature; long lines fall back to the sphere) ---------- */
+const R=6371008.8, rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI, EA=6378137, E2=0.00669437999014;
+const radii=lat=>{ const s=Math.sin(rad(lat)), w=1-E2*s*s; return [EA*(1-E2)/Math.pow(w,1.5), EA/Math.sqrt(w)]; };   // [meridian M, prime vertical N]
+function hav(a,b){ const dp=rad(b[1]-a[1]), dl=rad(b[0]-a[0]); const h=Math.sin(dp/2)**2+Math.cos(rad(a[1]))*Math.cos(rad(b[1]))*Math.sin(dl/2)**2; return 2*R*Math.asin(Math.min(1,Math.sqrt(h))); }
+function vin(p1,p2){ const f=1/298.257223563, b=(1-f)*EA, L=rad(p2[0]-p1[0]), U1=Math.atan((1-f)*Math.tan(rad(p1[1]))), U2=Math.atan((1-f)*Math.tan(rad(p2[1])));
+  const sU1=Math.sin(U1),cU1=Math.cos(U1),sU2=Math.sin(U2),cU2=Math.cos(U2); let lam=L,ss,cs,sig,c2a,c2sm;
+  for(let i=0;i<200;i++){ const sl=Math.sin(lam),cl=Math.cos(lam); ss=Math.sqrt((cU2*sl)**2+(cU1*sU2-sU1*cU2*cl)**2); if(!ss) return 0; cs=sU1*sU2+cU1*cU2*cl; sig=Math.atan2(ss,cs);
+    const sa=cU1*cU2*sl/ss; c2a=1-sa*sa; c2sm=c2a?cs-2*sU1*sU2/c2a:0; const C=f/16*c2a*(4+f*(4-3*c2a)), lp=lam; lam=L+(1-C)*f*sa*(sig+C*ss*(c2sm+C*cs*(-1+2*c2sm*c2sm))); if(Math.abs(lam-lp)<1e-12) break; if(i===199) return null; }
+  const u2=c2a*(EA*EA-b*b)/(b*b), A=1+u2/16384*(4096+u2*(-768+u2*(320-175*u2))), B=u2/1024*(256+u2*(-128+u2*(74-47*u2)));
+  return b*A*(sig-B*ss*(c2sm+B/4*(cs*(-1+2*c2sm*c2sm)-B/6*c2sm*(-3+4*ss*ss)*(-3+4*c2sm*c2sm)))); }
+function dist(a,b){ const h=hav(a,b); if(h>30000){ const v=vin(a,b); return v==null?h:v; } const lm=(a[1]+b[1])/2, [M,N]=radii(lm); return Math.hypot(rad(b[0]-a[0])*N*Math.cos(rad(lm)),rad(b[1]-a[1])*M); }
+function pathLen(p){ let s=0; for(let i=1;i<p.length;i++) s+=dist(p[i-1],p[i]); return s; }
+function ringArea(p){ const n=p.length; if(n<3) return 0; let y0=0,x0=p[0][0],mnx=1e9,mxx=-1e9,mny=1e9,mxy=-1e9;
+  p.forEach(c=>{ y0+=c[1]; mnx=Math.min(mnx,c[0]); mxx=Math.max(mxx,c[0]); mny=Math.min(mny,c[1]); mxy=Math.max(mxy,c[1]); }); y0/=n;
+  if(mxx-mnx>.4||mxy-mny>.4){ let t=0; const RR=6371008.8; for(let i=0;i<n;i++){ const a=p[i], b=p[(i+1)%n], c=p[(i+2)%n]; t+=(rad(c[0])-rad(a[0]))*Math.sin(rad(b[1])); } return Math.abs(t*RR*RR/2); }
+  const [M,N]=radii(y0), kx=N*Math.cos(rad(y0)), ky=M; let s=0;
+  for(let i=0;i<n;i++){ const a=p[i], b=p[(i+1)%n]; s+=rad(a[0]-x0)*kx*rad(b[1]-y0)*ky-rad(b[0]-x0)*kx*rad(a[1]-y0)*ky; } return Math.abs(s)/2; }
+function dest(c,d,brg){ const th=rad(brg);
+  if(d<=30000){ const [M,N]=radii(c[1]); return [c[0]+deg(d*Math.sin(th)/(N*Math.cos(rad(c[1])))),c[1]+deg(d*Math.cos(th)/M)]; }
+  const dl=d/R, p1=rad(c[1]), l1=rad(c[0]);
+  const p2=Math.asin(Math.sin(p1)*Math.cos(dl)+Math.cos(p1)*Math.sin(dl)*Math.cos(th));
+  const l2=l1+Math.atan2(Math.sin(th)*Math.sin(dl)*Math.cos(p1),Math.cos(dl)-Math.sin(p1)*Math.sin(p2)); return [deg(l2),deg(p2)]; }
+function circleRing(c,r,n){ n=n||96; const o=[]; for(let i=0;i<n;i++) o.push(dest(c,r,i*360/n)); return o; }
+const CLOSED=new Set(["poly","rect","circle"]), VERT=new Set(["line","poly","rect","arrow"]);
+const areaOf=s=>s.t==="circle"?Math.PI*s.r*s.r:ringArea(s.pts);
+const perimOf=s=>s.t==="circle"?2*Math.PI*s.r:pathLen(s.pts.concat([s.pts[0]]));
+
+/* ---------- formats ---------- */
+const nf=(n,d)=>Number(n).toLocaleString("en-US",{maximumFractionDigits:d,minimumFractionDigits:0});
+function fLen(m){ if(!isFinite(m)) return "—"; if(m<10) return nf(m,1)+" m"; if(m<999.5) return nf(Math.round(m),0)+" m"; return nf(m/1000,m<100000?2:1)+" km"; }
+function fArea(a){ if(!isFinite(a)) return "—"; const u=SK.unitA;
+  if(u==="fed") return nf(a/FED,a/FED<100?2:1)+" feddan";
+  if(u==="ha") return nf(a/1e4,a<1e6?2:1)+" ha";
+  if(u==="km2") return nf(a/1e6,3)+" km²";
+  return nf(Math.round(a),0)+" m²"; }
+function fArea2(a){ const u=SK.unitA, o=[]; if(u!=="m2") o.push(nf(Math.round(a),0)+" m²"); if(SK.fed&&u!=="fed") o.push(nf(a/FED,2)+" feddan"); if(u==="m2"&&a>=1e6) o.push(nf(a/1e6,2)+" km²"); return o.join(" · "); }
+const UNIT_LBL={m2:"m²",fed:"feddan",ha:"ha",km2:"km²"};
+
+/* ---------- screen helpers ---------- */
+const P=ll=>{ const p=map.project(ll); return [p.x,p.y]; };
+const U=(x,y)=>{ const l=map.unproject([x,y]); return [l.lng,l.lat]; };
+const hyp=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+const mid=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];
+function segDist(p,a,b){ const dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy; let t=L?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L:0; t=Math.max(0,Math.min(1,t)); return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy); }
+function inPoly(p,ring){ let ins=false; for(let i=0,j=ring.length-1;i<ring.length;j=i++){ const a=ring[i],b=ring[j]; if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0]) ins=!ins; } return ins; }
+function rdp(pts,eps){ if(pts.length<3) return pts.slice(); let dm=0,ix=0; const a=pts[0],b=pts[pts.length-1];
+  for(let i=1;i<pts.length-1;i++){ const d=segDist(pts[i],a,b); if(d>dm){ dm=d; ix=i; } }
+  if(dm>eps){ const l=rdp(pts.slice(0,ix+1),eps), r=rdp(pts.slice(ix),eps); return l.slice(0,-1).concat(r); } return [a,b]; }
+const rp=c=>c.length>2?[+c[0].toFixed(8),+c[1].toFixed(8),+(+c[2]).toFixed(2)]:[+c[0].toFixed(9),+c[1].toFixed(9)];   // 9 decimals ≈ 0.1 mm for measured shapes
+const byId=id=>SK.shapes.find(s=>s.id===id)||null;
+const zk=s=>Math.max(.2,Math.min(6,Math.pow(2,map.getZoom()-(s.z==null?map.getZoom():s.z))));
+
+/* ---------- icons ---------- */
+const IC={
+  select:'<path d="M5 3l14 8-6.2 1.6L10 19z"/>',
+  hand:'<path d="M12 3v18M3 12h18"/><path d="M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/>',
+  pen:'<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/>',
+  hl:'<path d="M9 17l-2-2 9-10 4 4-10 9z"/><path d="M7 15l-3 4h5l1-1"/><path d="M13 21h7"/>',
+  laser:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',
+  line:'<path d="M5 19L19 5"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M9 12l2 2M12 9l2 2"/>',
+  poly:'<path d="M5 9l6-5 8 4-2 10H7z"/>',
+  rect:'<rect x="4" y="6" width="16" height="12" rx="1.5"/>',
+  circle:'<circle cx="12" cy="12" r="8"/><path d="M12 12h8"/><circle cx="12" cy="12" r=".6" fill="currentColor"/>',
+  arrow:'<path d="M5 19L19 5"/><path d="M10 5h9v9"/>',
+  text:'<path d="M5 7V5h14v2M12 5v14M9 19h6"/>',
+  eraser:'<path d="M4 16l9-11 7 6-8 9H8z"/><path d="M9 9l6 5"/><path d="M12 20h8"/>',
+  undo:'<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/>',
+  redo:'<path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>',
+  unlock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 017.6-1.8"/>',
+  magnet:'<path d="M6 4v8a6 6 0 0012 0V4h-4v8a2 2 0 01-4 0V4z"/><path d="M6 8h4M14 8h4"/>',
+  ruler:'<path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/>',
+  factory:'<path d="M3 21V11l5 3v-3l5 3v-3l5 3V5h3v16z"/><path d="M7 18h2M12 18h2"/>',
+  camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  check:'<path d="M5 12l5 5L20 7"/>'
+};
+const svg=p=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const TOOLS=[
+  ["select","Select","Select a drawing: move it, reshape it, see its size (V)"],
+  ["hand","Move","Move the map: drag, pinch or scroll (H)"],
+  ["pen","Pen","Pen — pressure with Apple Pencil. Hold still at the end of a stroke to snap it to a perfect line, circle or shape (P)"],
+  ["hl","Marker","Highlighter (I)"],
+  ["laser","Laser","Laser pointer — the trail fades away (K)"],
+  ["line","Distance","Measure a distance: tap points, tap the last point to finish (L)"],
+  ["poly","Area","Measure an area: tap the corners or draw around it (A)"],
+  ["rect","Box","Rectangle with its size (R)"],
+  ["circle","Circle","Circle from the centre, with radius and area (C)"],
+  ["arrow","Arrow","Arrow (X)"],
+  ["text","Text","Text — tap where it goes (T)"],
+  ["eraser","Eraser","Eraser: tap or rub over a drawing (E)"]];
+const HINT={select:"Tap a drawing to select it · drag to move · drag the dots to reshape",hand:"Drag to move the map · pinch or scroll to zoom",
+  pen:"Draw · <em>hold still</em> at the end of a stroke to snap it to a perfect line, circle or shape",hl:"Highlight plots and areas",laser:"Laser pointer · the trail fades away",
+  line:"Tap points to measure · tap the last point or double-tap to finish",poly:"Tap the corners, or draw around an area · tap the first point to close",
+  rect:"Drag to draw a box · hold Shift for a square",circle:"Drag from the centre outwards",arrow:"Drag to draw an arrow",text:"Tap where the text goes",eraser:"Tap or rub over a drawing to erase it"};
+
+/* ---------- state changes ---------- */
+function pushUndo(){ SK.undo.push(JSON.stringify(SK.shapes)); if(SK.undo.length>100) SK.undo.shift(); SK.redo=[]; btns(); }
+function commit(s,select){ pushUndo(); s.id=SK.nid++; s.pts=s.pts.map(rp); if(s.r!=null) s.r=+(+s.r).toFixed(2);
+  delete s.live; delete s.hv; delete s.path; delete s.a; SK.shapes.push(s); SK.ver++; persist();
+  if(select){ SK.sel=s.id; } card(); btns(); return s; }
+function undo(){ if(SK.cur&&SK.cur.path){ SK.cur.pts.pop(); if(!SK.cur.pts.length) SK.cur=null; live(); need(); return; }
+  if(!SK.undo.length){ flash("Nothing to undo"); return; } SK.redo.push(JSON.stringify(SK.shapes)); SK.shapes=JSON.parse(SK.undo.pop()); after(); }
+function redo(){ if(!SK.redo.length) return; SK.undo.push(JSON.stringify(SK.shapes)); SK.shapes=JSON.parse(SK.redo.pop()); after(); }
+function after(){ SK.ver++; if(SK.sel&&!byId(SK.sel)) SK.sel=null; persist(); card(); btns(); need(); }
+function delSel(){ const s=byId(SK.sel); if(!s) return; pushUndo(); SK.shapes=SK.shapes.filter(x=>x!==s); SK.sel=null; after(); }
+
+/* ---------- canvas ---------- */
+let cv=null,ctx=null,dpr=1,raf=0;
+function sizeCv(){ if(!cv) return; const el=map.getContainer(), w=el.clientWidth, h=el.clientHeight; dpr=Math.min(3,window.devicePixelRatio||1);
+  cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr); cv.style.width=w+"px"; cv.style.height=h+"px"; need(); }
+function need(){ if(!raf&&SK.on) raf=requestAnimationFrame(()=>{ raf=0; try{ draw(); }catch(e){ console.error("sketch draw",e); } }); }
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function pill(x,y,t1,t2,col){ ctx.save(); ctx.font=`700 13px ${FONT}`; const w1=ctx.measureText(t1).width; let w2=0;
+  if(t2){ ctx.font=`500 11px ${FONT}`; w2=ctx.measureText(t2).width; }
+  const W=Math.max(w1,w2)+26, H=t2?39:25, W0=cv.clientWidth, H0=cv.clientHeight;
+  x=Math.max(W/2+4,Math.min(W0-W/2-4,x)); y=Math.max(H/2+4,Math.min(H0-H/2-4,y)); const L=x-W/2, T=y-H/2;
+  ctx.shadowColor="rgba(0,0,0,.35)"; ctx.shadowBlur=10; ctx.fillStyle="rgba(20,20,22,.88)"; rr(L,T,W,H,8); ctx.fill(); ctx.shadowBlur=0;
+  ctx.fillStyle=col==="#1C1C1E"?"#8e8e93":col; rr(L+5,T+5,3,H-10,1.5); ctx.fill();
+  ctx.fillStyle="#fff"; ctx.textBaseline="middle"; ctx.font=`700 13px ${FONT}`; ctx.fillText(t1,L+15,t2?T+13:T+H/2+.5);
+  if(t2){ ctx.font=`500 11px ${FONT}`; ctx.fillStyle="rgba(255,255,255,.78)"; ctx.fillText(t2,L+15,T+28); } ctx.restore(); }
+function cased(V,closed,col,w,fillA){ if(V.length<2) return; ctx.beginPath(); ctx.moveTo(V[0][0],V[0][1]); for(let i=1;i<V.length;i++) ctx.lineTo(V[i][0],V[i][1]); if(closed) ctx.closePath();
+  if(closed&&fillA){ ctx.fillStyle=col; ctx.globalAlpha=fillA; ctx.fill(); ctx.globalAlpha=1; }
+  ctx.strokeStyle=col==="#FFFFFF"?"rgba(0,0,0,.55)":"rgba(255,255,255,.92)"; ctx.lineWidth=w+3; ctx.stroke(); ctx.strokeStyle=col; ctx.lineWidth=w; ctx.stroke(); }
+function dots(V,col){ V.forEach(p=>{ ctx.beginPath(); ctx.arc(p[0],p[1],4,0,7); ctx.fillStyle="#fff"; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle=col; ctx.stroke(); }); }
+function centroid(V){ let x=0,y=0; V.forEach(p=>{ x+=p[0]; y+=p[1]; }); return [x/V.length,y/V.length]; }
+function smooth(V){ ctx.beginPath(); ctx.moveTo(V[0][0],V[0][1]); if(V.length===2){ ctx.lineTo(V[1][0],V[1][1]); return; }
+  for(let i=1;i<V.length-1;i++){ const m=mid(V[i],V[i+1]); ctx.quadraticCurveTo(V[i][0],V[i][1],m[0],m[1]); } const l=V[V.length-1]; ctx.lineTo(l[0],l[1]); }
+
+function draw(){
+  if(!cv||!SK.on) return; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,cv.width/dpr,cv.height/dpr);
+  const labels=[], now=performance.now();
+  SK.shapes.forEach(s=>drawShape(s,labels,now));
+  if(SK.cur) drawShape(SK.cur,labels,now);
+  if(SK.tool==="select"&&SK.sel){ const s=byId(SK.sel); if(s) handles(s); }
+  labels.forEach(L=>pill(L[0],L[1],L[2],L[3],L[4]));
+  laserDraw(now);
+  if(SK.snapAt){ ctx.beginPath(); ctx.arc(SK.snapAt[0],SK.snapAt[1],9,0,7); ctx.strokeStyle="#FFD60A"; ctx.lineWidth=2.5; ctx.stroke(); ctx.beginPath(); ctx.arc(SK.snapAt[0],SK.snapAt[1],2.5,0,7); ctx.fillStyle="#FFD60A"; ctx.fill(); }
+  if(SK.pulse&&now-SK.pulse.t<700) need(); else SK.pulse=null;
+  if(SK.cur&&SK.cur.path) live();
+}
+function drawShape(s,labels,now){
+  const col=s.c||"#FF3B30"; ctx.save(); ctx.lineJoin="round"; ctx.lineCap="round";
+  if(SK.pulse&&SK.pulse.id===s.id){ const k=1-(now-SK.pulse.t)/700; ctx.shadowColor=col; ctx.shadowBlur=24*Math.max(0,k); }
+  const isSel=SK.sel===s.id;
+  if(s.t==="pen"){ const k=zk(s), w=s.w*k, V=s.pts.map(P); ctx.strokeStyle=col; ctx.fillStyle=col;
+    if(V.length===1||(V.length===2&&hyp(V[0],V[1])<.5)){ ctx.beginPath(); ctx.arc(V[0][0],V[0][1],Math.max(1,w*.6),0,7); ctx.fill(); }
+    else for(let i=1;i<V.length;i++){ const pr=((s.pts[i][2]??.5)+(s.pts[i-1][2]??.5))/2; ctx.lineWidth=Math.max(.7,w*(.35+pr*1.3)); ctx.beginPath();
+      const a=i===1?V[0]:mid(V[i-1],V[i]); const b=i===V.length-1?V[i]:mid(V[i],V[i+1]); ctx.moveTo(a[0],a[1]);
+      if(i===V.length-1) ctx.lineTo(b[0],b[1]); else ctx.quadraticCurveTo(V[i][0],V[i][1],b[0],b[1]); ctx.stroke(); } }
+  else if(s.t==="hl"){ const V=s.pts.map(P); ctx.globalAlpha=.38; ctx.strokeStyle=col; ctx.lineWidth=s.w*zk(s); if(V.length===1) V.push([V[0][0]+.1,V[0][1]]); smooth(V); ctx.stroke(); ctx.globalAlpha=1; }
+  else if(s.t==="line"){ const pts=s.hv?s.pts.concat([s.hv]):s.pts, V=pts.map(P); cased(V,false,col,3); dots(V,col);
+    if(pts.length>=2){ let tot=0; for(let i=1;i<pts.length;i++){ const d=dist(pts[i-1],pts[i]); tot+=d; if(pts.length>2&&hyp(V[i-1],V[i])>80){ const m=mid(V[i-1],V[i]); labels.push([m[0],m[1],fLen(d),"",col]); } }
+      const e=V[V.length-1]; labels.push([e[0],e[1]-28,fLen(tot),pts.length>2?`${pts.length-1} segments`:"",col]); } }
+  else if(s.t==="poly"||s.t==="rect"){ const pts=s.hv?s.pts.concat([s.hv]):s.pts, V=pts.map(P);
+    if(pts.length<3){ cased(V,false,col,3); dots(V,col); if(pts.length===2){ const m=mid(V[0],V[1]); labels.push([m[0],m[1]-24,fLen(dist(pts[0],pts[1])),"",col]); } }
+    else { cased(V,true,col,3,.2); if(s.t==="poly"||isSel||s.live) dots(V,col); const a=ringArea(pts), c=centroid(V);
+      let t2=fArea2(a); if(s.t==="rect"&&pts.length===4){ const w=dist(pts[0],pts[1]), h=dist(pts[1],pts[2]); t2=`${fLen(w)} × ${fLen(h)}`+(t2?" · "+t2:""); }
+      else if(!t2) t2="perimeter "+fLen(pathLen(pts.concat([pts[0]])));
+      labels.push([c[0],c[1],(s.fp?"Footprint ":"")+fArea(a),t2,col]); } }
+  else if(s.t==="circle"){ if(s.r>0){ const ring=circleRing(s.pts[0],s.r).map(P), C=P(s.pts[0]); cased(ring,true,col,3,.18);
+      const E=P(dest(s.pts[0],s.r,map.getBearing()+90)); ctx.setLineDash([6,5]); ctx.beginPath(); ctx.moveTo(C[0],C[1]); ctx.lineTo(E[0],E[1]); ctx.strokeStyle=col; ctx.lineWidth=2; ctx.stroke(); ctx.setLineDash([]);
+      dots([C],col); const m=mid(C,E); labels.push([m[0],m[1]-20,"r "+fLen(s.r),"",col]); labels.push([C[0],C[1]+30,fArea(Math.PI*s.r*s.r),fArea2(Math.PI*s.r*s.r)||("Ø "+fLen(2*s.r)),col]); } }
+  else if(s.t==="arrow"){ const V=s.pts.map(P); if(V.length>=2&&hyp(V[0],V[1])>1){ const w=(s.w||4)+1; cased(V,false,col,w); const a=V[0], b=V[1], ang=Math.atan2(b[1]-a[1],b[0]-a[0]), L=10+w*3;
+      ctx.beginPath(); ctx.moveTo(b[0],b[1]); ctx.lineTo(b[0]-L*Math.cos(ang-.45),b[1]-L*Math.sin(ang-.45)); ctx.lineTo(b[0]-L*Math.cos(ang+.45),b[1]-L*Math.sin(ang+.45)); ctx.closePath();
+      ctx.fillStyle=col; ctx.strokeStyle=col==="#FFFFFF"?"rgba(0,0,0,.55)":"rgba(255,255,255,.92)"; ctx.lineWidth=2; ctx.stroke(); ctx.fill(); } }
+  else if(s.t==="text"){ const p=P(s.pts[0]), fs=Math.max(8,Math.min(160,(s.fs||22)*zk(s))); ctx.font=`800 ${fs}px ${FONT}`; ctx.textBaseline="alphabetic";
+    ctx.lineWidth=Math.max(2,fs/6); ctx.strokeStyle=col==="#1C1C1E"?"rgba(255,255,255,.85)":"rgba(0,0,0,.6)"; ctx.strokeText(s.text,p[0],p[1]); ctx.fillStyle=col; ctx.fillText(s.text,p[0],p[1]); }
+  ctx.restore();
+  if(isSel&&SK.tool==="select"&&(s.t==="pen"||s.t==="hl"||s.t==="text")){ const b=sbox(s); ctx.save(); ctx.setLineDash([5,4]); ctx.strokeStyle="#fff"; ctx.lineWidth=1.5; ctx.strokeRect(b[0]-6,b[1]-6,b[2]-b[0]+12,b[3]-b[1]+12); ctx.restore(); }
+}
+function sbox(s){ if(s.t==="text"){ const p=P(s.pts[0]), fs=(s.fs||22)*zk(s); ctx.font=`800 ${fs}px ${FONT}`; const w=ctx.measureText(s.text).width; return [p[0],p[1]-fs*.8,p[0]+w,p[1]+fs*.2]; }
+  const V=(s.t==="circle"?circleRing(s.pts[0],s.r,32):s.pts).map(P); let b=[1e9,1e9,-1e9,-1e9]; V.forEach(p=>{ b[0]=Math.min(b[0],p[0]); b[1]=Math.min(b[1],p[1]); b[2]=Math.max(b[2],p[0]); b[3]=Math.max(b[3],p[1]); }); return b; }
+function rotHandle(s){ const b=sbox(s); return [(b[0]+b[2])/2,b[1]-34]; }
+function handles(s){ ctx.save(); const col=s.c||"#FF3B30"; const H=p=>{ ctx.beginPath(); ctx.arc(p[0],p[1],8,0,7); ctx.fillStyle="#fff"; ctx.shadowColor="rgba(0,0,0,.4)"; ctx.shadowBlur=6; ctx.fill(); ctx.shadowBlur=0; ctx.lineWidth=2.5; ctx.strokeStyle=col; ctx.stroke(); };
+  if(s.t==="circle"){ H(P(dest(s.pts[0],s.r,map.getBearing()+90))); }
+  else if(VERT.has(s.t)) s.pts.map(P).forEach(H);
+  if(s.t==="poly"||s.t==="rect"){ const r=rotHandle(s), b=sbox(s); ctx.beginPath(); ctx.moveTo(r[0],r[1]+9); ctx.lineTo(r[0],b[1]); ctx.strokeStyle="rgba(255,255,255,.8)"; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(r[0],r[1],9,0,7); ctx.fillStyle="#0A84FF"; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle="#fff"; ctx.stroke();
+    ctx.beginPath(); ctx.arc(r[0],r[1],4.5,.6,5.6); ctx.stroke(); }
+  ctx.restore(); }
+
+/* ---------- laser ---------- */
+function laserAdd(p){ SK.laser.push({x:p[0],y:p[1],t:performance.now()}); need(); }
+function laserDraw(now){ const L=SK.laser; while(L.length&&now-L[0].t>1100) L.shift(); if(!L.length) return;
+  ctx.save(); ctx.lineCap="round"; ctx.lineJoin="round";
+  for(let i=1;i<L.length;i++){ const a=1-(now-L[i].t)/1100; ctx.strokeStyle=`rgba(255,40,60,${Math.max(0,a)})`; ctx.shadowColor="rgba(255,40,60,.9)"; ctx.shadowBlur=14; ctx.lineWidth=5*Math.max(.25,a); ctx.beginPath(); ctx.moveTo(L[i-1].x,L[i-1].y); ctx.lineTo(L[i].x,L[i].y); ctx.stroke(); }
+  const h=L[L.length-1]; if(SK.drag&&SK.drag.k==="laser"){ ctx.beginPath(); ctx.arc(h.x,h.y,6,0,7); ctx.fillStyle="#fff"; ctx.shadowBlur=18; ctx.fill(); }
+  ctx.restore(); need(); }
+
+/* ---------- hit tests ---------- */
+function hit(s,pt,edge){ const tol=14;   // edge: closed shapes count only near their outline (the eraser), not anywhere inside
+  if(s.t==="text"){ const b=sbox(s); return pt[0]>=b[0]-8&&pt[0]<=b[2]+8&&pt[1]>=b[1]-8&&pt[1]<=b[3]+8; }
+  if(s.t==="circle"){ const c=P(s.pts[0]), rp=hyp(c,P(dest(s.pts[0],s.r,0))), d=hyp(c,pt); return edge?Math.abs(d-rp)<=tol:d<=rp+tol; }
+  const V=s.pts.map(P); if(!edge&&CLOSED.has(s.t)&&V.length>2&&inPoly(pt,V)) return true;
+  const ex=s.t==="pen"||s.t==="hl"?s.w*zk(s)/2:0, L=CLOSED.has(s.t)?V.concat([V[0]]):V;
+  if(L.length===1) return hyp(pt,L[0])<=tol+ex;
+  for(let i=1;i<L.length;i++) if(segDist(pt,L[i-1],L[i])<=tol+ex) return true; return false; }
+function hitShape(pt,edge){ for(let i=SK.shapes.length-1;i>=0;i--) if(hit(SK.shapes[i],pt,edge)) return SK.shapes[i]; return null; }
+function handleAt(s,pt){ if(!s) return null;
+  if(s.t==="circle") return hyp(pt,P(dest(s.pts[0],s.r,map.getBearing()+90)))<18?{k:"r"}:null;
+  if(s.t==="poly"||s.t==="rect"){ if(hyp(pt,rotHandle(s))<18) return {k:"rot"}; }
+  if(VERT.has(s.t)){ const V=s.pts.map(P); for(let i=0;i<V.length;i++) if(hyp(pt,V[i])<18) return {k:"v",i}; }
+  return null; }
+
+/* ---------- snap to plot corners and to own points ---------- */
+let SC=null;
+function snapPts(){ const key=[map.getZoom().toFixed(4),map.getCenter().lng.toFixed(7),map.getCenter().lat.toFixed(7),map.getBearing().toFixed(2),SK.ver,cv.clientWidth,cv.clientHeight].join("|");
+  if(SC&&SC.key===key) return SC.pts; const out=[];
+  if(map.getZoom()>=12.5&&S.geo&&S.geo.features){ const b=map.getBounds();
+    for(const f of S.geo.features){ const g=f.geometry; if(!g) continue; const rings=g.type==="Polygon"?[g.coordinates[0]]:g.type==="MultiPolygon"?g.coordinates.map(p=>p[0]):[];
+      for(const r of rings){ if(!r) continue; for(const c of r){ if(!b.contains(c)) continue; const p=P(c); out.push([p[0],p[1],c[0],c[1],0]); } } if(out.length>60000) break; } }
+  SK.shapes.forEach(s=>{ if(VERT.has(s.t)) s.pts.forEach(c=>{ const p=P(c); out.push([p[0],p[1],c[0],c[1],s.id]); }); });
+  SC={key,pts:out}; return out; }
+function snap(pt,excl){ SK.snapAt=null; if(!SK.snap) return null; let best=null,bd=14;
+  for(const p of snapPts()){ if(excl&&p[4]===excl) continue; const d=Math.hypot(p[0]-pt[0],p[1]-pt[1]); if(d<bd){ bd=d; best=p; } }
+  if(best){ SK.snapAt=[best[0],best[1]]; return [best[2],best[3]]; } return null; }
+const at=(pt,excl)=>snap(pt,excl)||U(pt[0],pt[1]);
+
+/* ---------- plots inside a shape ---------- */
+let PC=null;
+function plotList(){ const F=(S.geo&&S.geo.features)||[]; if(PC&&PC.f===F&&PC.n===F.length) return PC.list; const list=[];
+  F.forEach(f=>{ const g=f.geometry; if(!g) return; const polys=g.type==="Polygon"?[g.coordinates]:g.type==="MultiPolygon"?g.coordinates:[]; let a=0,x=0,y=0,n=0;
+    polys.forEach(p=>{ const r=p&&p[0]; if(!r) return; a+=ringArea(r); r.forEach(c=>{ x+=c[0]; y+=c[1]; n++; }); }); if(n) list.push({k:f.properties&&f.properties.k,c:[x/n,y/n],a}); });
+  PC={f:F,n:F.length,list}; return list; }
+function inside(s){ const out={n:0,a:0,by:new Map()}; if(!CLOSED.has(s.t)) return out; const ring=s.t==="circle"?null:s.pts;
+  let bb=[1e9,1e9,-1e9,-1e9]; (s.t==="circle"?circleRing(s.pts[0],s.r,36):ring).forEach(c=>{ bb[0]=Math.min(bb[0],c[0]); bb[1]=Math.min(bb[1],c[1]); bb[2]=Math.max(bb[2],c[0]); bb[3]=Math.max(bb[3],c[1]); });
+  plotList().forEach(p=>{ const c=p.c; if(c[0]<bb[0]||c[0]>bb[2]||c[1]<bb[1]||c[1]>bb[3]) return;
+    if(!(s.t==="circle"?dist(c,s.pts[0])<=s.r:inPoly(c,ring))) return;
+    out.n++; out.a+=p.a; const pl=S.plots&&S.plots.get&&S.plots.get(p.k), st=(pl&&pl.st)||(typeof STATUS!=="undefined"&&STATUS.nodata)||{label:"No register row",color:"#D1D1D6"};
+    const key=st.label||"—", b=out.by.get(key)||{label:key,color:(!st.color||st.color==="transparent")?"#D1D1D6":st.color,n:0,a:0}; b.n++; b.a+=p.a; out.by.set(key,b); });
+  return out; }
+
+/* ---------- "hold to snap": a rough stroke becomes a perfect line, circle or shape ---------- */
+function recognize(){ const c=SK.cur; if(!c||c.t!=="pen") return; const V=c.pts.map(P); if(V.length<5) return;
+  let len=0; for(let i=1;i<V.length;i++) len+=hyp(V[i-1],V[i]); if(len<40) return;
+  const a=V[0], b=V[V.length-1]; let res=null, name="";
+  if(hyp(a,b)<Math.max(30,len*.17)){ const C=centroid(V), rs=V.map(p=>hyp(p,C)), m=rs.reduce((x,y)=>x+y,0)/rs.length, sd=Math.sqrt(rs.reduce((x,y)=>x+(y-m)**2,0)/rs.length);
+    if(m>12&&sd/m<.14){ const cl=U(C[0],C[1]); res={t:"circle",pts:[cl],r:dist(cl,U(C[0]+m,C[1]))}; name="circle"; }
+    else { let simp=rdp(V.concat([V[0]]),Math.max(7,len*.035)); simp.pop(); if(simp.length>3&&hyp(simp[0],simp[simp.length-1])<Math.max(30,len*.17)) simp.pop();
+      if(simp.length>=3&&simp.length<=10){ let rect=simp.length===4; if(rect) for(let i=0;i<4;i++){ const p0=simp[(i+3)%4],p1=simp[i],p2=simp[(i+1)%4]; const v1=[p0[0]-p1[0],p0[1]-p1[1]], v2=[p2[0]-p1[0],p2[1]-p1[1]];
+          const ang=Math.acos(Math.max(-1,Math.min(1,(v1[0]*v2[0]+v1[1]*v2[1])/(Math.hypot(...v1)*Math.hypot(...v2)||1))))*180/Math.PI; if(Math.abs(ang-90)>20) rect=false; }
+        res={t:rect?"rect":"poly",pts:simp.map(p=>U(p[0],p[1]))}; name=rect?"rectangle":simp.length===3?"triangle":"shape"; } } }
+  else { let md=0; V.forEach(p=>{ md=Math.max(md,segDist(p,a,b)); });
+    if(md<Math.max(8,hyp(a,b)*.07)){ res={t:"line",pts:[U(a[0],a[1]),U(b[0],b[1])]}; name="straight line"; }
+    else { const simp=rdp(V,Math.max(7,len*.03)); if(simp.length<=6){ res={t:"line",pts:simp.map(p=>U(p[0],p[1]))}; name="measured path"; } } }
+  if(!res) return; res.c=c.c; res.w=3; res.z=c.z; SK.cur=null; if(SK.drag) SK.drag.k="done";
+  const s=commit(res,true); SK.pulse={id:s.id,t:performance.now()}; flash("Snapped to a "+name); try{ navigator.vibrate&&navigator.vibrate(12); }catch(e){} need(); }
+function armHold(){ clearTimeout(SK.holdT); if(SK.tool!=="pen") return; SK.holdT=setTimeout(()=>{ const d=SK.drag; if(d&&d.k==="draw"&&SK.cur) recognize(); },550); }
+
+/* ---------- map movement by hand (the map's own handlers never see the drawing layer) ---------- */
+function panPx(dx,dy){ const w=cv.clientWidth/2, h=cv.clientHeight/2; map.jumpTo({center:map.unproject([w-dx,h-dy])}); }
+function zoomAbout(pt,dz){ const ll=map.unproject(pt), z=Math.max(map.getMinZoom(),Math.min(map.getMaxZoom(),map.getZoom()+dz)); map.jumpTo({zoom:z}); const p=map.project(ll); panPx(pt[0]-p.x,pt[1]-p.y); }
+const ptrs=new Map(); let gest=null, spaceDown=false, lastTap={t:0,x:-99,y:-99};
+function gestStart(){ gest={pts:new Map(ptrs),t0:performance.now(),moved:false,max:ptrs.size}; }
+function gestMove(){ if(!gest) return; const ids=[...ptrs.keys()].filter(id=>gest.pts.has(id)); gest.max=Math.max(gest.max,ptrs.size);
+  if(ids.length){ const o=gest.pts.get(ids[0]), n=ptrs.get(ids[0]); if(hyp(o,n)>3) gest.moved=true; }
+  if(!SK.frozen&&ids.length===1){ const o=gest.pts.get(ids[0]), n=ptrs.get(ids[0]); panPx(n[0]-o[0],n[1]-o[1]); }
+  else if(!SK.frozen&&ids.length>=2){ const o1=gest.pts.get(ids[0]),o2=gest.pts.get(ids[1]),n1=ptrs.get(ids[0]),n2=ptrs.get(ids[1]);
+    const om=mid(o1,o2), nm=mid(n1,n2), d0=hyp(o1,o2), d1=hyp(n1,n2); panPx(nm[0]-om[0],nm[1]-om[1]); if(d0>10&&d1>10) zoomAbout(nm,Math.log2(d1/d0)); }
+  else if(SK.frozen&&gest.moved&&!gest.told){ gest.told=true; flash("The map is frozen — tap <em>Frozen</em> to move it"); }
+  gest.pts=new Map(ptrs); }
+
+/* ---------- pointer input ---------- */
+function xy(e){ const r=cv.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]; }
+function onDown(e){
+  if(!SK.on) return; e.preventDefault(); pops(null); const pt=xy(e);
+  if(e.pointerType==="pen"&&!SK.penSeen){ SK.penSeen=true; hint(); }
+  const ti=q("#skUI .sk-text"); if(ti) ti.blur();
+  if(e.pointerType==="touch"){ ptrs.set(e.pointerId,pt); const d=SK.drag;
+    if(d&&d.ptype==="pen") return;                       // a palm or finger resting while the pencil draws
+    if(ptrs.size>=2||SK.penSeen||SK.tool==="hand"){
+      if(d&&d.ptype==="touch"){ // a second finger: whatever the first finger started becomes a map gesture
+        if(d.k==="draw"||d.k==="shape") SK.cur=null; if(d.k==="vert"&&SK.cur){ SK.cur.pts.pop(); if(!SK.cur.pts.length) SK.cur=null; live(); }
+        if(d.changed&&d.orig){ const s=byId(d.orig.id); if(s) Object.assign(s,JSON.parse(JSON.stringify(d.orig))); if(SK.undo.length) SK.undo.pop(); } SK.drag=null; SK.snapAt=null; }
+      if(!SK.drag){ gestStart(); need(); return; } } }
+  if(SK.drag) return;
+  if(e.button===1||spaceDown||(SK.tool==="hand"&&e.pointerType!=="touch")){ if(SK.frozen){ flash("The map is frozen — tap <em>Frozen</em> to move it"); return; } SK.drag={k:"pan",pid:e.pointerId,last:pt,ptype:e.pointerType}; cv.classList.add("grab"); capture(e); return; }
+  if(e.button>1) return;
+  capture(e); toolDown(pt,e); if(SK.drag) SK.drag.ptype=e.pointerType; need(); }
+function capture(e){ try{ cv.setPointerCapture(e.pointerId); }catch(_){} }
+function toolDown(pt,e){ const pid=e.pointerId, pr=e.pointerType==="pen"?(e.pressure||.5):.5, t=SK.tool;
+  if(t==="pen"||t==="hl"){ const ll=U(pt[0],pt[1]); SK.cur={t,c:SK.color,w:t==="hl"?WIDTHS[SK.wi]*4+8:WIDTHS[SK.wi],z:map.getZoom(),pts:[[ll[0],ll[1],pr]],live:1}; SK.drag={k:"draw",pid,last:pt,hold:pt}; armHold(); return; }
+  if(t==="laser"){ SK.drag={k:"laser",pid}; laserAdd(pt); return; }
+  if(t==="line"||t==="poly"){ pathDown(pt,pid); return; }
+  if(t==="rect"||t==="circle"||t==="arrow"){ const a=at(pt); SK.cur={t,c:SK.color,w:WIDTHS[SK.wi],z:map.getZoom(),a,pts:t==="circle"?[a]:[a,a],r:0,live:1}; SK.drag={k:"shape",pid}; return; }
+  if(t==="text"){ textAt(pt); return; }
+  if(t==="eraser"){ SK.drag={k:"erase",pid,did:false}; eraseAt(pt); return; }
+  if(t==="select"){ selDown(pt,pid,e); return; } }
+function pathDown(pt,pid){ const now=performance.now(), c=SK.cur, t=SK.tool;
+  if(c&&c.path&&c.t===t){ const V=c.pts.map(P);
+    if(t==="line"&&V.length>=2&&hyp(pt,V[V.length-1])<16){ finishPath(); return; }
+    if(t==="poly"&&V.length>=3&&hyp(pt,V[0])<18){ finishPath(); return; }
+    if(now-lastTap.t<330&&hyp(pt,[lastTap.x,lastTap.y])<14&&V.length>=(t==="poly"?3:2)){ finishPath(); return; } }
+  lastTap={t:now,x:pt[0],y:pt[1]}; const ll=at(pt);
+  if(!c||!c.path||c.t!==t){ SK.cur={t,c:SK.color,w:3,z:map.getZoom(),pts:[ll],path:1,live:1}; SK.sel=null; card(); } else { c.pts.push(ll); delete c.hv; }
+  SK.drag={k:"vert",pid,start:pt,moved:false,lasso:t==="poly"&&SK.cur.pts.length===1?[pt]:null}; live(); }
+function finishPath(){ const c=SK.cur; if(!c||!c.path) return; const out=[];
+  c.pts.forEach(p=>{ if(!out.length||hyp(P(out[out.length-1]),P(p))>3) out.push(p); });
+  if(c.t==="poly"&&out.length>3&&hyp(P(out[0]),P(out[out.length-1]))<5) out.pop();
+  SK.cur=null; c.pts=out; if((c.t==="line"&&out.length>=2)||(c.t==="poly"&&out.length>=3)) commit(c,true); live(); need(); }
+function selDown(pt,pid,e){ const cur=byId(SK.sel), h=cur&&handleAt(cur,pt);
+  const orig=s=>JSON.parse(JSON.stringify(s));
+  if(h){ SK.drag={k:"handle",h,s:cur,pid,orig:orig(cur),start:pt,V0:cur.pts.map(P),C0:centroid(cur.pts.map(P)),changed:false}; return; }
+  const s=hitShape(pt);
+  if(s){ SK.sel=s.id; card(); SK.drag={k:"move",s,pid,orig:orig(s),start:pt,V0:s.pts.map(P),changed:false}; return; }
+  if(SK.sel){ SK.sel=null; card(); }
+  if(!SK.frozen&&e.pointerType!=="touch"){ SK.drag={k:"pan",pid,last:pt}; cv.classList.add("grab"); } }
+function onMove(e){
+  if(!SK.on) return; const pt=xy(e);
+  if(e.pointerType==="touch"&&ptrs.has(e.pointerId)){ ptrs.set(e.pointerId,pt); if(gest){ gestMove(); need(); return; } }
+  const d=SK.drag;
+  if(!d){ if(SK.cur&&SK.cur.path&&e.pointerType!=="touch"){ SK.cur.hv=at(pt); need(); } else if(SK.snapAt){ SK.snapAt=null; need(); } hoverCur(pt); return; }
+  if(d.pid!=null&&d.pid!==e.pointerId) return;
+  if(d.k==="pan"){ panPx(pt[0]-d.last[0],pt[1]-d.last[1]); d.last=pt; }
+  else if(d.k==="draw"){ const evs=(e.getCoalescedEvents&&e.getCoalescedEvents())||[]; const list=evs.length?evs:[e];
+    for(const ev of list){ const p=xy(ev); if(hyp(p,d.last)<1.2) continue; d.last=p; const ll=U(p[0],p[1]); SK.cur.pts.push([ll[0],ll[1],ev.pointerType==="pen"?(ev.pressure||.5):.5]); }
+    if(hyp(pt,d.hold)>5){ d.hold=pt; armHold(); } }
+  else if(d.k==="laser") laserAdd(pt);
+  else if(d.k==="shape"){ const c=SK.cur; if(!c) return; let b=snap(pt); let B=b?P(b):pt; const A=P(c.a);
+    if(c.t==="rect"){ if(e.shiftKey&&!b){ const m=Math.max(Math.abs(B[0]-A[0]),Math.abs(B[1]-A[1])); B=[A[0]+Math.sign(B[0]-A[0]||1)*m,A[1]+Math.sign(B[1]-A[1]||1)*m]; }
+      c.pts=[c.a,U(B[0],A[1]),b||U(B[0],B[1]),U(A[0],B[1])]; }
+    else if(c.t==="circle") c.r=dist(c.a,b||U(B[0],B[1]));
+    else c.pts=[c.a,b||U(B[0],B[1])]; }
+  else if(d.k==="vert"){ const c=SK.cur; if(!c) return; if(!d.moved&&hyp(pt,d.start)>10) d.moved=true;
+    if(d.lasso){ if(d.moved){ if(hyp(pt,d.lasso[d.lasso.length-1])>2) d.lasso.push(pt); c.pts=d.lasso.map(p=>U(p[0],p[1])); c.lassoing=1; } }
+    else if(d.moved){ const ll=at(pt); if(c.pts.length===1) c.pts.push(ll); else c.pts[c.pts.length-1]=ll; } }
+  else if(d.k==="erase") eraseAt(pt);
+  else if(d.k==="move"){ const dx=pt[0]-d.start[0], dy=pt[1]-d.start[1]; if(!d.changed&&Math.hypot(dx,dy)<3) return; if(!d.changed){ pushUndo(); d.changed=true; }
+    d.s.pts=d.V0.map((p,i)=>{ const ll=U(p[0]+dx,p[1]+dy); return d.orig.pts[i].length>2?[ll[0],ll[1],d.orig.pts[i][2]]:ll; }); }
+  else if(d.k==="handle"){ if(!d.changed){ pushUndo(); d.changed=true; } const s=d.s;
+    if(d.h.k==="r") s.r=dist(s.pts[0],U(pt[0],pt[1]));
+    else if(d.h.k==="v"){ s.pts[d.h.i]=at(pt,s.id); }
+    else if(d.h.k==="rot"){ const C=d.C0, a=Math.atan2(pt[1]-C[1],pt[0]-C[0])-Math.atan2(d.start[1]-C[1],d.start[0]-C[0]), cs=Math.cos(a), sn=Math.sin(a);
+      s.pts=d.V0.map(p=>{ const x=p[0]-C[0], y=p[1]-C[1]; return U(C[0]+x*cs-y*sn,C[1]+x*sn+y*cs); }); } }
+  need(); }
+function onUp(e){
+  if(!SK.on) return;
+  if(e.pointerType==="touch"&&ptrs.has(e.pointerId)){ ptrs.delete(e.pointerId);
+    if(gest){ if(!ptrs.size){ const g=gest; gest=null; if(g.max===2&&!g.moved&&performance.now()-g.t0<350){ undo(); flash("Undo"); } } else gest={pts:new Map(ptrs),t0:gest.t0,moved:gest.moved,max:gest.max,told:gest.told}; return; } }
+  const d=SK.drag; if(!d||(d.pid!=null&&d.pid!==e.pointerId)) return; SK.drag=null; clearTimeout(SK.holdT); cv.classList.remove("grab");
+  const cancel=e.type==="pointercancel";
+  if(d.k==="draw"){ const c=SK.cur; SK.cur=null; if(c&&c.pts.length&&!(cancel&&c.pts.length<3)){ if(c.pts.length===1) c.pts.push(c.pts[0].slice()); commit(c,false); } }
+  else if(d.k==="shape"){ const c=SK.cur; SK.cur=null; if(c&&!cancel){ const A=P(c.a), B=c.t==="circle"?P(dest(c.a,c.r||0,90)):P(c.t==="rect"?c.pts[2]:c.pts[1]); if(hyp(A,B)>6) commit(c,c.t!=="arrow"); } }
+  else if(d.k==="vert"){ const c=SK.cur; if(c&&d.lasso&&c.lassoing){ delete c.lassoing; const simp=rdp(d.lasso,2.5); if(simp.length>=3){ c.pts=simp.map(p=>U(p[0],p[1])); finishPath(); } else SK.cur=null; } live(); }
+  else if((d.k==="move"||d.k==="handle")&&d.changed){ SK.ver++; persist(); card(); }
+  SK.snapAt=null; need(); }
+function eraseAt(pt){ const s=hitShape(pt,true); if(!s) return; if(!SK.drag.did){ pushUndo(); SK.drag.did=true; } SK.shapes=SK.shapes.filter(x=>x!==s); if(SK.sel===s.id){ SK.sel=null; card(); } SK.ver++; persist(); btns(); need(); }
+function hoverCur(pt){ if(SK.tool!=="select") return; const s=byId(SK.sel); cv.style.cursor=(s&&handleAt(s,pt))?"pointer":hitShape(pt)?"move":""; }
+function onWheel(e){ if(!SK.on) return; e.preventDefault(); if(SK.frozen){ flash("The map is frozen — tap <em>Frozen</em> to move it"); return; }
+  const k=e.deltaMode===1?16:1, pt=xy(e); if(e.ctrlKey) zoomAbout(pt,-e.deltaY*k*.01); else if(Math.abs(e.deltaX)>Math.abs(e.deltaY)*1.2||e.shiftKey) panPx(-e.deltaX*k,-(e.shiftKey?0:e.deltaY)*k); else zoomAbout(pt,-e.deltaY*k*.003); need(); }
+
+/* ---------- text ---------- */
+function textAt(pt){ const ll=U(pt[0],pt[1]), inp=document.createElement("input");
+  inp.className="sk-text"; inp.placeholder="Type, then Enter"; inp.maxLength=120; inp.setAttribute("enterkeyhint","done"); inp.style.left=Math.min(pt[0],innerWidth-200)+"px"; inp.style.top=(pt[1]-30)+"px"; inp.style.color=SK.color==="#1C1C1E"?"#fff":SK.color;
+  q("#skUI").appendChild(inp); inp.focus(); setTimeout(()=>{ if(document.activeElement!==inp) inp.focus(); },60);
+  let done=false; const fin=ok=>{ if(done) return; done=true; const v=inp.value.trim(); inp.remove(); if(ok&&v) commit({t:"text",c:SK.color,z:map.getZoom(),fs:[16,22,32][SK.wi]||22,pts:[ll],text:v},false); need(); };
+  inp.addEventListener("keydown",ev=>{ ev.stopPropagation(); if(ev.key==="Enter") fin(true); else if(ev.key==="Escape") fin(false); });
+  inp.addEventListener("blur",()=>fin(true)); }
+
+/* ---------- UI ---------- */
+let ui=null, hintT=null;
+function buildUI(){ ui=document.createElement("div"); ui.id="skUI";
+  ui.innerHTML=`<div class="sk-tools sk-glass" id="skTools" role="toolbar" aria-label="Sketch tools">
+      ${TOOLS.map(([id,l,tip])=>`<button type="button" class="sk-b" data-tool="${id}" title="${esc(tip)}" aria-label="${esc(l)}">${svg(IC[id])}<span>${l}</span></button>`).join("")}
+      <div class="sk-sep"></div>
+      <button type="button" class="sk-b" id="skColB" title="Colour and thickness" aria-label="Colour"><i class="sk-dot" id="skDot"></i><span>Colour</span></button>
+      <div class="sk-sep"></div>
+      <button type="button" class="sk-b" id="skUndo" title="Undo (⌘Z) — or tap the screen with two fingers">${svg(IC.undo)}<span>Undo</span></button>
+      <button type="button" class="sk-b" id="skRedo" title="Redo (⇧⌘Z)">${svg(IC.redo)}<span>Redo</span></button>
+    </div>
+    <div class="sk-top sk-glass" role="toolbar" aria-label="Sketch options">
+      <button type="button" class="sk-tb" id="skFrz" title="Frozen: the map does not move, only drawing happens. Free: fingers or the Move tool move the map (F)"></button>
+      <button type="button" class="sk-tb" id="skSnap" title="Snap points to plot corners and to your own points">${svg(IC.magnet)}<span>Snap</span></button>
+      <button type="button" class="sk-tb" id="skUnit" title="Area units">${svg(IC.ruler)}<span id="skUnitL"></span></button>
+      <button type="button" class="sk-tb" id="skFpB" title="Place a factory footprint of a given size and move it around">${svg(IC.factory)}<span>Fit a factory</span></button>
+      <button type="button" class="sk-tb" id="skShot" title="Save a picture of the map with the sketch">${svg(IC.camera)}<span>Photo</span></button>
+      <button type="button" class="sk-tb" id="skClr" title="Clear the whole sketch (Undo brings it back)">${svg(IC.trash)}<span>Clear</span></button>
+      <button type="button" class="sk-tb done" id="skDone" title="Leave sketch mode (Esc). The sketch is kept for next time.">${svg(IC.check)}<span>Done</span></button>
+    </div>
+    <div class="sk-pop sk-glass" id="skPal" hidden><b>Colour</b><div class="sk-sw">${COLORS.map(c=>`<button type="button" data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join("")}</div>
+      <div class="sk-wd">${WIDTHS.map((w,i)=>`<button type="button" data-w="${i}" aria-label="Thickness ${i+1}"><i style="height:${[3,6,11][i]}px"></i></button>`).join("")}</div></div>
+    <div class="sk-pop sk-glass" id="skUnits" hidden style="right:12px;top:70px"><b>Area shown in</b>
+      <div class="sk-seg" id="skUSeg">${Object.entries(UNIT_LBL).map(([k,l])=>`<button type="button" data-u="${k}">${l}</button>`).join("")}</div>
+      <label><input type="checkbox" id="skFed"> Also show feddan</label><p>Lengths: metres below 1 km, kilometres from 1 km. 1 feddan = 4,200.83 m².</p></div>
+    <div class="sk-pop sk-glass" id="skFp" hidden style="right:12px;top:70px;width:290px"><b>Fit a factory</b>
+      <label style="display:block">Area (m²)<input type="number" id="skFpA" min="50" step="100" value="10000" inputmode="numeric"></label>
+      <div class="sk-seg" id="skFpR"><button type="button" data-r="1" class="on">Square</button><button type="button" data-r="1.5">2 : 3</button><button type="button" data-r="2">1 : 2</button></div>
+      <button type="button" class="sk-go" id="skFpGo">Place it on the map</button><p>Drag it to move it, turn it with the blue handle, drag a corner to reshape. Snap lines it up with plot corners.</p></div>
+    <div class="sk-pop sk-glass" id="skClrP" hidden style="right:12px;top:70px"><b>Clear the whole sketch?</b><p>Undo brings it back.</p>
+      <div class="sk-row"><button type="button" class="sk-go" id="skClrNo">Keep</button><button type="button" class="sk-go red" id="skClrYes">Clear</button></div></div>
+    <div class="sk-hint sk-glass off" id="skHint" aria-live="polite"></div>
+    <div class="sk-live sk-glass" id="skLive" hidden></div>
+    <div class="sk-card sk-glass" id="skCard" hidden></div>
+    <div class="sk-flash" id="skFlash"></div>`;
+  document.body.appendChild(ui);
+  ui.querySelectorAll("[data-tool]").forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+  q("#skColB").onclick=e=>{ const p=q("#skPal"); if(!p.hidden){ pops(null); return; } pops("skPal"); const r=e.currentTarget.getBoundingClientRect(); p.style.left=(r.right+10)+"px"; p.style.top=Math.max(12,Math.min(innerHeight-p.offsetHeight-12,r.top-60))+"px"; };
+  q("#skPal").onclick=e=>{ const c=e.target.closest("[data-c]"), w=e.target.closest("[data-w]"); if(c){ SK.color=c.dataset.c; if(["select","hand","eraser","laser"].includes(SK.tool)) setTool("pen"); }
+    if(w) SK.wi=+w.dataset.w; persist(); btns(); };
+  q("#skUndo").onclick=undo; q("#skRedo").onclick=redo;
+  q("#skFrz").onclick=()=>{ SK.frozen=!SK.frozen; persist(); btns(); hint(); flash(SK.frozen?"Map frozen — only drawing happens":(SK.penSeen?"Map free — fingers move the map, the pencil draws":"Map free — use Move, or drag with two fingers")); };
+  q("#skSnap").onclick=()=>{ SK.snap=!SK.snap; persist(); btns(); flash(SK.snap?"Snap on — points click onto plot corners":"Snap off"); };
+  q("#skUnit").onclick=()=>pops(q("#skUnits").hidden?"skUnits":null);
+  q("#skUSeg").onclick=e=>{ const b=e.target.closest("[data-u]"); if(!b) return; SK.unitA=b.dataset.u; persist(); btns(); card(); need(); };
+  q("#skFed").onchange=e=>{ SK.fed=e.target.checked; persist(); card(); need(); };
+  q("#skFpB").onclick=()=>{ pops(q("#skFp").hidden?"skFp":null); const i=q("#skFpA"); if(!q("#skFp").hidden) setTimeout(()=>{ i.focus(); i.select(); },40); };
+  q("#skFpR").onclick=e=>{ const b=e.target.closest("[data-r]"); if(!b) return; q("#skFpR").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); };
+  q("#skFpA").onkeydown=e=>{ e.stopPropagation(); if(e.key==="Enter") q("#skFpGo").click(); };
+  q("#skFpGo").onclick=placeFootprint;
+  q("#skShot").onclick=photo;
+  q("#skClr").onclick=()=>{ if(!SK.shapes.length){ flash("Nothing to clear"); return; } pops(q("#skClrP").hidden?"skClrP":null); };
+  q("#skClrNo").onclick=()=>pops(null);
+  q("#skClrYes").onclick=()=>{ pushUndo(); SK.shapes=[]; SK.sel=null; SK.cur=null; pops(null); after(); flash("Sketch cleared — Undo brings it back"); };
+  q("#skDone").onclick=exit;
+  btns(); }
+function pops(id){ let was=false; ["skPal","skUnits","skFp","skClrP"].forEach(k=>{ const p=q("#"+k); if(!p) return; if(!p.hidden&&k!==id) was=true; p.hidden=k!==id; }); return was; }
+function btns(){ if(!ui) return;
+  ui.querySelectorAll("[data-tool]").forEach(b=>{ const on=b.dataset.tool===SK.tool; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on); });
+  q("#skDot").style.background=SK.color;
+  q("#skPal").querySelectorAll("[data-c]").forEach(b=>b.classList.toggle("on",b.dataset.c===SK.color));
+  q("#skPal").querySelectorAll("[data-w]").forEach(b=>b.classList.toggle("on",+b.dataset.w===SK.wi));
+  q("#skUndo").disabled=!SK.undo.length&&!(SK.cur&&SK.cur.path); q("#skRedo").disabled=!SK.redo.length;
+  const f=q("#skFrz"); f.innerHTML=svg(SK.frozen?IC.lock:IC.unlock)+`<span>${SK.frozen?"Frozen":"Free"}</span>`; f.classList.toggle("on",SK.frozen);
+  q("#skSnap").classList.toggle("on",SK.snap); q("#skUnitL").textContent=UNIT_LBL[SK.unitA]||"m²";
+  q("#skUSeg").querySelectorAll("[data-u]").forEach(b=>b.classList.toggle("on",b.dataset.u===SK.unitA)); q("#skFed").checked=!!SK.fed;
+  if(cv){ cv.className="c-"+SK.tool; cv.style.cursor=""; } }
+function setTool(t){ if(SK.cur&&SK.cur.path) finishPath(); SK.cur=null; SK.tool=t; persist(); btns(); card(); hint(); need(); }
+function hint(){ const h=q("#skHint"); if(!h) return; const busy=!q("#skCard").hidden||!q("#skLive").hidden;
+  let m=HINT[SK.tool]||""; if(SK.frozen&&SK.tool==="hand") m="The map is frozen — tap <em>Frozen</em> to let it move"; else if(!SK.frozen&&SK.penSeen&&SK.tool!=="hand") m+=" · fingers move the map";
+  h.innerHTML=m; h.classList.toggle("off",busy); clearTimeout(hintT); hintT=setTimeout(()=>h.classList.add("off"),6000); }
+function flash(m){ const h=q("#skHint"); if(!h) return; h.innerHTML=m; h.classList.remove("off"); clearTimeout(hintT); hintT=setTimeout(()=>h.classList.add("off"),2600); }
+function live(){ const el=q("#skLive"); if(!el) return; const c=SK.cur; if(!c||!c.path){ if(!el.hidden){ el.hidden=true; hint(); } btns(); return; }
+  const pts=c.hv?c.pts.concat([c.hv]):c.pts; let v="—", s="";
+  if(c.t==="line"){ v=fLen(pathLen(pts)); s=`${Math.max(0,c.pts.length)} point${c.pts.length===1?"":"s"}`; }
+  else { v=pts.length>=3?fArea(ringArea(pts)):pts.length===2?fLen(dist(pts[0],pts[1])):"—"; s=pts.length>=3?`${c.pts.length} corners · perimeter ${fLen(pathLen(pts.concat([pts[0]])))}`:"tap the corners"; }
+  const html=`<div><div class="v">${v}</div><div class="s">${esc(s)}</div></div><button type="button" id="skLU">Undo point</button><button type="button" id="skLC">Cancel</button><button type="button" class="pri" id="skLF">Finish</button>`;
+  if(el.dataset.h!==html){ el.dataset.h=html; el.innerHTML=html; q("#skLU").onclick=()=>undo(); q("#skLC").onclick=()=>{ SK.cur=null; live(); need(); }; q("#skLF").onclick=()=>finishPath(); }
+  if(el.hidden){ el.hidden=false; q("#skHint").classList.add("off"); q("#skCard").hidden=true; } btns(); }
+function card(){ const el=q("#skCard"); if(!el) return; const s=byId(SK.sel); if(!s||!SK.on||(SK.cur&&SK.cur.path)){ const was=!el.hidden; el.hidden=true; el.dataset.h=""; if(was&&!(SK.cur&&SK.cur.path)) hint(); return; }
+  const T={line:"Distance",poly:"Area",rect:s.fp?"Factory footprint":"Rectangle",circle:"Circle",pen:"Drawing",hl:"Highlight",arrow:"Arrow",text:"Text"}[s.t]||"Drawing";
+  let big="", sub="", extra="";
+  if(s.t==="line"){ const L=pathLen(s.pts); big=fLen(L); sub=s.pts.length>2?`${s.pts.length-1} segments`:"straight line";
+    if(s.pts.length>2) extra=`<div class="segs">${s.pts.slice(1).map((p,i)=>`${i+1}. ${fLen(dist(s.pts[i],p))}`).join(" · ")}</div>`; }
+  else if(s.t==="arrow"){ big=fLen(dist(s.pts[0],s.pts[1])); sub="arrow length"; }
+  else if(CLOSED.has(s.t)){ const a=areaOf(s); big=fArea(a); const p=[];
+    if(s.t==="rect"&&s.pts.length===4) p.push(`${fLen(dist(s.pts[0],s.pts[1]))} × ${fLen(dist(s.pts[1],s.pts[2]))}`);
+    if(s.t==="circle") p.push(`radius ${fLen(s.r)}`,`diameter ${fLen(2*s.r)}`); p.push(`perimeter ${fLen(perimOf(s))}`); const a2=fArea2(a); if(a2) p.push(a2); sub=p.join(" · ");
+    const I=inside(s); extra=I.n?`<div class="pl"><b>${nf(I.n,0)} plot${I.n===1?"":"s"}</b> inside · ${fArea(I.a)} of surveyed land<div class="chips">${[...I.by.values()].sort((x,y)=>y.a-x.a).map(b=>`<span><i style="background:${esc(b.color)}"></i>${esc(b.label)} · ${nf(b.n,0)} · ${fArea(b.a)}</span>`).join("")}</div></div>`
+      :`<div class="pl">No surveyed plots inside${map.getZoom()<11?" · zoom in to a project":""}</div>`; }
+  else if(s.t==="text"){ big=esc(s.text); }
+  else { big=T; sub="drawn by hand"; }
+  const html=`<div class="hd"><i style="background:${esc(s.c)}"></i>${T}<button type="button" class="x" id="skCX" aria-label="Close">×</button></div><div class="big">${big}</div>${sub?`<div class="sub">${esc(sub)}</div>`:""}${extra}
+    <div class="acts"><div class="cs">${COLORS.slice(0,8).map(c=>`<button type="button" data-rc="${c}" class="${c===s.c?"on":""}" style="background:${c}" aria-label="Colour ${c}"></button>`).join("")}</div>
+    ${SK.tool!=="select"&&s.t!=="pen"&&s.t!=="hl"?`<button type="button" id="skCE">Edit</button>`:""}<button type="button" id="skCZ">Zoom to</button><button type="button" class="del" id="skCD">Delete</button></div>`;
+  if(el.dataset.h!==html){ el.dataset.h=html; el.innerHTML=html;
+    q("#skCX").onclick=()=>{ SK.sel=null; card(); need(); }; q("#skCD").onclick=delSel;
+    q("#skCZ").onclick=()=>{ const s2=byId(SK.sel); if(!s2) return; const R0=s2.t==="circle"?circleRing(s2.pts[0],s2.r,36):s2.pts; let b=[[1e9,1e9],[-1e9,-1e9]];
+      R0.forEach(c=>{ b[0][0]=Math.min(b[0][0],c[0]); b[0][1]=Math.min(b[0][1],c[1]); b[1][0]=Math.max(b[1][0],c[0]); b[1][1]=Math.max(b[1][1],c[1]); });
+      map.fitBounds(b,{padding:{top:90,bottom:230,left:110,right:60},maxZoom:18.5,duration:800,bearing:map.getBearing(),pitch:0}); };
+    const e=q("#skCE"); if(e) e.onclick=()=>setTool("select");
+    el.querySelectorAll("[data-rc]").forEach(b=>b.onclick=()=>{ const s2=byId(SK.sel); if(!s2) return; pushUndo(); s2.c=b.dataset.rc; SK.ver++; persist(); card(); need(); }); }
+  if(el.hidden){ el.hidden=false; q("#skHint").classList.add("off"); } }
+
+/* ---------- fit a factory ---------- */
+function placeFootprint(){ const A=+q("#skFpA").value; if(!(A>=50&&A<=5e7)){ flash("Type an area between 50 and 50,000,000 m²"); return; }
+  const r=+((q("#skFpR .on")||{}).dataset||{}).r||1, w=Math.sqrt(A*r), h=Math.sqrt(A/r), b=map.getBearing(), cc=map.getCenter(), c=[cc.lng,cc.lat];
+  const [M,N]=radii(c[1]), th=rad(b), off=(x,y)=>{ const e=x*Math.cos(th)+y*Math.sin(th), n=-x*Math.sin(th)+y*Math.cos(th); return [c[0]+deg(e/(N*Math.cos(rad(c[1])))),c[1]+deg(n/M)]; };
+  const pts=[off(-w/2,h/2),off(w/2,h/2),off(w/2,-h/2),off(-w/2,-h/2)];   // corners in metres around the centre, turned with the map
+  pops(null); if(SK.cur&&SK.cur.path) finishPath(); SK.cur=null; SK.tool="select";
+  const s=commit({t:"rect",c:SK.color==="#1C1C1E"?"#0A84FF":SK.color,w:3,z:map.getZoom(),pts,fp:Math.round(A)},true);
+  persist(); btns(); SK.pulse={id:s.id,t:performance.now()};
+  const V=pts.map(P); if(V.some(p=>p[0]<0||p[1]<0||p[0]>cv.clientWidth||p[1]>cv.clientHeight)) q("#skCZ")&&q("#skCZ").click();
+  flash("Drag the footprint to move it · blue handle turns it"); need(); }
+
+/* ---------- photo of the sketch ---------- */
+function photo(){ pops(null); const mc=map.getCanvas(); let done=false;
+  const make=()=>{ if(done) return; done=true; try{
+    const W=mc.width, H=mc.height, o=document.createElement("canvas"); o.width=W; o.height=H; const g=o.getContext("2d");
+    g.drawImage(mc,0,0); g.drawImage(cv,0,0,cv.width,cv.height,0,0,W,H);
+    const k=W/cv.clientWidth, d=new Date(), txt=`SID · Elsewedy Industrial Development · ${d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})} ${d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}`;
+    g.font=`700 ${13*k}px ${FONT}`; const tw=g.measureText(txt).width; g.fillStyle="rgba(20,20,22,.8)"; g.beginPath(); const x=12*k,y=H-44*k,w=tw+28*k,h=30*k,r=8*k;
+    g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.fill();
+    g.fillStyle="#B3263D"; g.fillRect(x+8*k,y+7*k,3*k,16*k); g.fillStyle="#fff"; g.textBaseline="middle"; g.fillText(txt,x+18*k,y+h/2);
+    const fl=q("#skFlash"); fl.classList.remove("go"); void fl.offsetWidth; fl.classList.add("go");
+    o.toBlob(b=>{ if(b) share(b); else flash("The picture could not be made"); },"image/jpeg",.9);
+  }catch(err){ flash("The picture could not be made ("+esc(err.message||err)+")"); } };
+  map.once("render",make); map.triggerRepaint(); setTimeout(make,600); }
+async function share(b){ const d=new Date(), name=`SID sketch ${d.toISOString().slice(0,10)} ${String(d.getHours()).padStart(2,"0")}-${String(d.getMinutes()).padStart(2,"0")}.jpg`;
+  try{ const f=new File([b],name,{type:"image/jpeg"}); if(navigator.canShare&&navigator.canShare({files:[f]})&&(navigator.maxTouchPoints>1)){ await navigator.share({files:[f],title:"SID sketch"}); return; } }
+  catch(e){ if(e&&e.name==="AbortError") return; }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000); flash("Picture saved — "+esc(name)); }
+
+/* ---------- enter / leave ---------- */
+let home=null, kbWas=true, scaleCtl=null, fsMine=false;
+const onMapMove=()=>need(), onMapResize=()=>sizeCv();
+function enter(){ if(SK.on) return; if(!ready()){ say("The map is still loading",true); return; }
+  if(document.body.classList.contains("wow-on")){ say("Close Explore first",true); return; }
+  if(typeof PR!=="undefined"&&PR&&PR.on){ say("Close the presentation first",true); return; }
+  SK.on=true; SK.cur=null; SK.drag=null; ptrs.clear(); gest=null;
+  const el=map.getContainer(); home={parent:el.parentNode,next:el.nextSibling};
+  document.body.appendChild(el); el.classList.add("sk-full"); document.body.classList.add("sk-on");
+  cv=document.createElement("canvas"); cv.id="skCv"; el.appendChild(cv); ctx=cv.getContext("2d");
+  cv.addEventListener("pointerdown",onDown); cv.addEventListener("pointermove",onMove); cv.addEventListener("pointerup",onUp); cv.addEventListener("pointercancel",onUp);
+  cv.addEventListener("wheel",onWheel,{passive:false}); cv.addEventListener("contextmenu",e=>e.preventDefault()); cv.addEventListener("dblclick",e=>e.preventDefault());
+  buildUI();
+  try{ kbWas=map.keyboard.isEnabled(); map.keyboard.disable(); }catch(e){}
+  try{ scaleCtl=new maplibregl.ScaleControl({maxWidth:150,unit:"metric"}); map.addControl(scaleCtl,"bottom-left"); }catch(e){ scaleCtl=null; }
+  map.on("move",onMapMove); map.on("resize",onMapResize);
+  map.resize(); sizeCv(); if(map.getPitch()>.5) map.easeTo({pitch:0,duration:700});
+  try{ const de=document.documentElement; if(!document.fullscreenElement&&!document.webkitFullscreenElement&&matchMedia("(pointer:coarse)").matches){ const r=de.requestFullscreen?de.requestFullscreen():de.webkitRequestFullscreen&&de.webkitRequestFullscreen(); fsMine=true; if(r&&r.catch) r.catch(()=>{ fsMine=false; }); } }catch(e){ fsMine=false; }
+  setTimeout(()=>{ try{ map.resize(); sizeCv(); }catch(e){} },350);
+  hint(); card(); btns(); need(); }
+function exit(){ if(!SK.on) return; if(SK.cur&&SK.cur.path) finishPath(); SK.cur=null; SK.drag=null; const t=q("#skUI .sk-text"); if(t) t.blur();
+  SK.on=false; persist(); cancelAnimationFrame(raf); raf=0;
+  map.off("move",onMapMove); map.off("resize",onMapResize);
+  try{ if(scaleCtl) map.removeControl(scaleCtl); }catch(e){} scaleCtl=null;
+  try{ if(kbWas) map.keyboard.enable(); }catch(e){}
+  if(cv){ cv.remove(); cv=null; ctx=null; } if(ui){ ui.remove(); ui=null; }
+  const el=map.getContainer(); el.classList.remove("sk-full"); document.body.classList.remove("sk-on");
+  if(home&&home.parent&&home.parent.isConnected){ if(home.next&&home.next.parentNode===home.parent) home.parent.insertBefore(el,home.next); else home.parent.appendChild(el); }
+  home=null; SK.sel=null;
+  try{ if(fsMine&&(document.fullscreenElement||document.webkitFullscreenElement)){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); } }catch(e){} fsMine=false;
+  setTimeout(()=>{ try{ map.resize(); }catch(e){} },60); map.resize(); }
+
+window.addEventListener("keydown",e=>{ if(!SK.on) return; const t=e.target; if(t&&(t.tagName==="INPUT"||t.tagName==="TEXTAREA"||t.tagName==="SELECT"||t.isContentEditable)) return;
+  const k=e.key, lk=(k||"").toLowerCase(), mod=e.metaKey||e.ctrlKey, stop=()=>{ e.preventDefault(); e.stopImmediatePropagation(); };
+  if(k==="Escape"){ stop(); if(SK.cur){ if(SK.cur.path) finishPath(); else SK.cur=null; need(); } else if(pops(null)){} else if(SK.sel){ SK.sel=null; card(); need(); } else exit(); return; }
+  if(mod&&lk==="z"){ stop(); e.shiftKey?redo():undo(); return; } if(mod&&lk==="y"){ stop(); redo(); return; }
+  if((k==="Delete"||k==="Backspace")&&SK.sel){ stop(); delSel(); return; }
+  if(k==="Enter"&&SK.cur&&SK.cur.path){ stop(); finishPath(); return; }
+  if(k===" "){ stop(); spaceDown=true; return; }
+  if(mod||e.altKey) return;
+  const K={v:"select",h:"hand",p:"pen",i:"hl",k:"laser",l:"line",m:"line",a:"poly",r:"rect",b:"rect",c:"circle",o:"circle",x:"arrow",t:"text",e:"eraser"};
+  if(K[lk]){ stop(); setTool(K[lk]); return; } if(lk==="f"){ stop(); q("#skFrz").click(); return; } if(lk==="s"){ stop(); q("#skSnap").click(); } },true);
+window.addEventListener("keyup",e=>{ if(e.key===" ") spaceDown=false; },true);
+
+/* ---------- the pencil button on the map ---------- */
+class SkCtl{ onAdd(){ const d=document.createElement("div"); d.className="maplibregl-ctrl maplibregl-ctrl-group sk-ctl";
+    d.innerHTML=`<button type="button" title="Sketch & measure — full-screen map, draw with Apple Pencil, measure distances and areas" aria-label="Sketch and measure">${svg(IC.pen)}</button>`;
+    d.querySelector("button").addEventListener("click",e=>{ e.stopPropagation(); enter(); }); this._d=d; return d; }
+  onRemove(){ this._d&&this._d.remove(); } }
+setInterval(()=>{ try{ if(typeof map!=="undefined"&&map&&map.addControl&&map.getContainer&&!map.getContainer().querySelector(".sk-ctl")) map.addControl(new SkCtl(),"bottom-right"); }catch(e){} },1500);
+window.SID_SKETCH={enter,exit,state:SK,_t:{dist,ringArea,fLen,fArea,recognize,inside}};
+})();
+</script>
 </body>
 </html>
