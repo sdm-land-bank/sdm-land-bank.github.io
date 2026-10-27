@@ -11751,7 +11751,7 @@ function edAFRaw(c,r){ const x=r[c.k]; return x==null||x===""?"(blank)":String(x
 function edAFLabel(c,raw){ if(c.k==="park") return S.reg.parks[raw]?.name||raw; if(c.k==="status") return STATUS[raw]?.label||raw; return raw; }
 function edAFOpen(k,btn){
   edAFClose(); const c=colOf(k); if(!c) return;
-  if(regHide(k)){ toast("This column is locked — unlock cost / GP first"); return; }
+  if(regHide(k)){ regUnlock(()=>{ const b=$(`#edHead .afb[data-af="${k}"]`); if(b) edAFOpen(k,b); }); return; }
   const cnt=new Map(); ED.rows.forEach(r=>{ const v=edAFRaw(c,r); cnt.set(v,(cnt.get(v)||0)+1); });
   const num=c.type==="num"||c.type==="int";
   const vals=[...cnt.keys()].sort((a,b)=>a==="(blank)"?1:b==="(blank)"?-1:(num?a-b:String(edAFLabel(c,a)).localeCompare(String(edAFLabel(c,b)),undefined,{numeric:true})));
