@@ -16265,6 +16265,19 @@ EXP.ar=async function(park){
     (FC?FC.features:[]).forEach(f=>{ const k=f.properties.k, st=stOf.get(k); if(st!=="sold"&&st!=="reserved") return; const pi=S.plots&&S.plots.get(k), lt=String((pi&&pi.row&&pi.row.landType)||"").toLowerCase(), wh=lt==="logistics"||lt==="services", ring=SCL(k,f.geometry.coordinates[0]), sold=st==="sold", h=(wh?(8+hash(k+"w")*4):f.properties.h*.88)*(sold?1:.4), sh=new T.Shape(); ring.forEach((c,i)=>{ if(i===0) sh.moveTo(mx(c),-mz(c)); else sh.lineTo(mx(c),-mz(c)); });
       const pc=f.properties.c||"", accent=ACC[(hash(k+"col")*ACC.length)|0];
       const wall=new T.Color(!sold?"#F2C265":wh?WPAL[(hash(k+"w")*WPAL.length)|0]:pc==="#868B95"?"#8B909A":pc==="#C9D6DF"?accent:PAL[(hash(k+"w2")*PAL.length)|0]); if(sold&&!wh&&pc==="#C9D6DF") wall.lerp(new T.Color("#FFFFFF"),.25);
+      const SB=window.SID_3D;
+      if(sold&&SB){ // V85: the Planner's factory / warehouse models on the footprint's oriented rectangle (same area, same height)
+        const P=ring.slice(0,-1).map(c=>[mx(c),mz(c)]), n=P.length; let bi=0,bl=0,A=0; for(let i=0;i<n;i++){ const p=P[i], q=P[(i+1)%n], l=Math.hypot(q[0]-p[0],q[1]-p[1]); if(l>bl){ bl=l; bi=i; } A+=p[0]*q[1]-q[0]*p[1]; } A=Math.abs(A)/2;
+        const a=P[bi], b=P[(bi+1)%n], u=[(b[0]-a[0])/bl,(b[1]-a[1])/bl], v=[-u[1],u[0]]; let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;
+        P.forEach(p=>{ const s=(p[0]-a[0])*u[0]+(p[1]-a[1])*u[1], q=(p[0]-a[0])*v[0]+(p[1]-a[1])*v[1]; u0=Math.min(u0,s); u1=Math.max(u1,s); v0=Math.min(v0,q); v1=Math.max(v1,q); });
+        let L=u1-u0, W=v1-v0; if(L>1&&W>1&&A<L*W*.97){ const sc2=Math.sqrt(A/(L*W)); L*=sc2; W*=sc2; }
+        const c=[a[0]+u[0]*(u0+u1)/2+v[0]*(v0+v1)/2,a[1]+u[1]*(u0+u1)/2+v[1]*(v0+v1)/2]; let U=u, V=v; if(L<W){ const tmp=L; L=W; W=tmp; U=v; V=[-u[0],-u[1]]; }
+        const inP=(x,z)=>{ try{ return G.inPlot(x,z); }catch(e){ return true; } };
+        if(wh){ const side=sg=>[c[0]+V[0]*sg*(W/2+5),c[1]+V[1]*sg*(W/2+5)], pp=side(1), nn=side(-1); if(!inP(pp[0],pp[1])&&inP(nn[0],nn[1])) V=[-V[0],-V[1]]; }   // dock doors face the open yard, not the street
+        const out=SB.build(T,{c,u:U,v:V},L,W,h,wh?"warehouse":"factory",k,{w:wacc,r:racc,d:det,s:sacc,a:aacc},{ok:inP});
+        if(det.p.length<DBUD*.8){ const ts=hash(k+"t")<.5?-1:1, nT=Math.min(4,Math.floor(L/18)); for(let i=0;i<nT;i++){ const s=-L/2+(i+.5)*L/nT, tt=ts*(W/2+(wh&&ts>0?12:4.6)), x=c[0]+U[0]*s+V[0]*tt, z=c[1]+U[1]*s+V[1]*tt; if(inP(x,z)) SB.tree(T,det,x,z,.9+hash(k+i)*.45,TREE[(i+((hash(k)*4)|0))%4],hash(k+i+"p")<.5); } }
+        if(out&&out.chimney) chim.push(out.chimney);
+        fSold.add(k); if(wh) wSold.add(k); return; }
       addWalls(ring,1.3,h+.2,wall); addWalls(ring,.2,1.3,new T.Color(sold?"#9AA0A8":"#B79A55")); addRoof(ring,h+.2,new T.Color(!sold?"#D9A441":wh?"#F1F3F6":"#C9CED5")); detail(ring,h,wh,sold,k,accent); (sold?fSold:fRes).add(k); if(wh){ (sold?wSold:wRes).add(k);
         let cx=0,cz=0,bi=0,bl=0; for(let i=0;i<ring.length-1;i++){ cx+=mx(ring[i]); cz+=mz(ring[i]); const l=Math.hypot(mx(ring[i+1])-mx(ring[i]),mz(ring[i+1])-mz(ring[i])); if(l>bl){ bl=l; bi=i; } } cx/=ring.length-1; cz/=ring.length-1;
         if(sold&&bl>18){ const ax=mx(ring[bi]), az=mz(ring[bi]), dx=mx(ring[bi+1])-ax, dz=mz(ring[bi+1])-az, an=Math.atan2(dz,dx); let nx=-dz/bl, nz=dx/bl; if((ax-cx)*nx+(az-cz)*nz<0){ nx=-nx; nz=-nz; } const nd=Math.min(7,Math.floor(bl/13));
@@ -17420,7 +17433,7 @@ function subdivide(B,target){ // B: block polygon (local). Plots face the road a
 /* ---------- 3D kit (the same look as the AR models) ---------- */
 let MAT=null; const CC=new Map(); const col=h=>{ let c=CC.get(h); if(!c){ c=new T.Color(h); CC.set(h,c); } return c; };
 const kit=()=>({p:[],n:[],c:[],u:[]});
-function pv(k,p,n,c,uv){ k.p.push(p[0],p[1],p[2]); k.n.push(n[0],n[1],n[2]); k.c.push(c.r,c.g,c.b); k.u.push(uv?uv[0]:0,uv?uv[1]:0); }
+function pv(k,p,n,c,uv){ k.p.push(p[0],p[1],p[2]); k.n.push(n[0],n[1],n[2]); k.c.push(c.r,c.g,c.b); if(k.u) k.u.push(uv?uv[0]:0,uv?uv[1]:0); }
 function tri(k,a,b,c,n,cl,ua,ub,uc){ if(!n){ const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2], vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2]; let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1; n=[nx/l,ny/l,nz/l]; }
   const ex=b[0]-a[0],ey=b[1]-a[1],ez=b[2]-a[2], fx=c[0]-a[0],fy=c[1]-a[1],fz=c[2]-a[2], d=(ey*fz-ez*fy)*n[0]+(ez*fx-ex*fz)*n[1]+(ex*fy-ey*fx)*n[2];
   if(d<0){ pv(k,a,n,cl,ua); pv(k,c,n,cl,uc); pv(k,b,n,cl,ub); } else { pv(k,a,n,cl,ua); pv(k,b,n,cl,ub); pv(k,c,n,cl,uc); } }
@@ -17442,23 +17455,24 @@ function treeAt(k,x,z,sz,cl,palm){ const tc=col("#7A5A3C");   // the AR's tree a
   const r=1.7*sz, h0=1.8*sz, n=7; for(let i=0;i<4;i++){ const a0=i*Math.PI/2, a1=(i+1)*Math.PI/2, w=.25*sz; quad(k,[x+Math.cos(a0)*w,0,z+Math.sin(a0)*w],[x+Math.cos(a1)*w,0,z+Math.sin(a1)*w],[x+Math.cos(a1)*w,h0,z+Math.sin(a1)*w],[x+Math.cos(a0)*w,h0,z+Math.sin(a0)*w],[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)],tc); }
   const c=col(cl), c2=c.clone().multiplyScalar(.8), yc=h0+r*.95, yt=h0+r*2.1, yb=h0-.2*sz; for(let i=0;i<n;i++){ const a0=i/n*Math.PI*2, a1=(i+1)/n*Math.PI*2, p0=[x+Math.cos(a0)*r,yc,z+Math.sin(a0)*r], p1=[x+Math.cos(a1)*r,yc,z+Math.sin(a1)*r]; tri(k,p0,[x,yt,z],p1,null,i%2?c:c2); tri(k,p1,[x,yb,z],p0,null,c2); } }
 const PAL=["#F2EBDD","#E9D9A8","#CBDAC4","#E3CDBB","#D3DEEC","#F0F1F3"], WPAL=["#AFC3DD","#B9C7D6","#C4D3C8"], ACC=["#B4553B","#D9A21B","#3F7F5A","#3C5A8A","#B83A3A","#8A5A2B"];
-function building(it,K){ const F=iFrame(it), L=it.len, W=it.w, h=Math.max(1,it.h), id=String(it.id), P=iCorners(it), pt=(s,t,y)=>[F.c[0]+F.u[0]*s+F.v[0]*t,y,F.c[1]+F.u[1]*s+F.v[1]*t];
+// one building on an oriented rectangle: centre F.c, long axis F.u, short axis F.v (metres, x east, z south); shared with the AR table view
+function building(it,K){ return buildingAt(iFrame(it),it.len,it.w,Math.max(1,it.h),it.k,String(it.id),K); }
+function buildingAt(F,L,W,h,k,id,K,opts){ const pt=(s,t,y)=>[F.c[0]+F.u[0]*s+F.v[0]*t,y,F.c[1]+F.u[1]*s+F.v[1]*t], P=[[-L/2,-W/2],[L/2,-W/2],[L/2,W/2],[-L/2,W/2]].map(([s,t])=>[F.c[0]+F.u[0]*s+F.v[0]*t,F.c[1]+F.u[1]*s+F.v[1]*t]), out={chimney:null};
   const sideN=sg=>[F.v[0]*sg,0,F.v[1]*sg], endN=sg=>[F.u[0]*sg,0,F.u[1]*sg], accent=ACC[(hash(id+"a")*ACC.length)|0];
   { const m=2.2+Math.min(h,20)*.4, a0=pt(-L/2-m,-W/2-m,.2), a1=pt(L/2+m,-W/2-m,.2), a2=pt(L/2+m,W/2+m,.2), a3=pt(-L/2-m,W/2+m,.2), E=col("#000"); [[a0,[0,0]],[a1,[1,0]],[a2,[1,1]],[a0,[0,0]],[a2,[1,1]],[a3,[0,1]]].forEach(q=>pv(K.s,q[0],UP,E,q[1])); }
-  const k=it.k;
   if(k==="tank"){ const r=Math.min(L,W)/2, cx=F.c[0], cz=F.c[1], y0=h*.55; for(const [s,t] of [[-.6,-.6],[.6,-.6],[.6,.6],[-.6,.6]]){ const q=pt(s*r,t*r,0); box(K.d,{c:[q[0],q[2]],u:F.u,v:F.v},-.35,.35,-.35,.35,0,y0,col("#8E959E")); }
-    cyl(K.d,cx,cz,r,y0,h,col("#E7ECF1"),24,col("#D9DEE4")); cyl(K.d,cx,cz,r+.05,h-2.2,h-1.2,col("#B3263D"),24,false); return; }
+    cyl(K.d,cx,cz,r,y0,h,col("#E7ECF1"),24,col("#D9DEE4")); cyl(K.d,cx,cz,r+.05,h-2.2,h-1.2,col("#B3263D"),24,false); return out; }
   if(k==="substation"){ walls(K.d,P,0,2.4,col("#BFC4CA")); flat(K.d,P,.25,col("#8F8C85"));
     box(K.d,F,-L/2+1,-L/2+Math.max(4,L*.25),-W/2+1,W/2-1,0,4.5,col("#E3DED3"),col("#C9CED5"));
     const n=Math.max(1,Math.min(4,Math.floor((L*.65)/8))); for(let i=0;i<n;i++){ const s=-L/2+Math.max(4,L*.25)+3+i*((L*.7)/n); box(K.d,F,s,s+4,-1.6,1.6,0,3.2,col("#7D8794"),col("#6B7480")); for(const t of [-1,0,1]){ const q=pt(s+2,t,0); cyl(K.d,q[0],q[2],.22,3.2,4.6,col("#E9ECEF"),8); } }
-    return; }
+    return out; }
   const glassC=col("#2F4358");
   if(k==="showroom"){ walls(K.w,P,.15,h-1.2,col("#7FA7CF")); walls(K.w,P,h-1.2,h,col("#F4F5F7")); flat(K.r,P,h,col("#EEF0F3"));
     for(let i=1;i<Math.floor(L/6);i++){ const s=-L/2+i*6; for(const sg of [-1,1]) quad(K.d,pt(s-.15,sg*(W/2+.05),.15),pt(s+.15,sg*(W/2+.05),.15),pt(s+.15,sg*(W/2+.05),h-1.2),pt(s-.15,sg*(W/2+.05),h-1.2),sideN(sg),col("#E6E9EE")); }
-    box(K.d,F,L/2,L/2+4.5,-W*.3,W*.3,h*.62,h*.62+.5,col("#F4F5F7")); return; }
+    box(K.d,F,L/2,L/2+4.5,-W*.3,W*.3,h*.62,h*.62+.5,col("#F4F5F7")); return out; }
   if(k==="admin"){ walls(K.w,P,.15,h,col("#ECE8E0")); flat(K.r,P,h,col("#C9CED5")); walls(K.d,P.map(p=>[p[0],p[1]]),h,h+1,col("#E3DED3"));
     const fl=Math.max(1,Math.floor(h/4)); for(let f=0;f<fl;f++){ const y0=f*4+1, y1=Math.min(h-.4,f*4+3.2); for(const sg of [-1,1]){ quad(K.d,pt(-L*.46,sg*(W/2+.12),y0),pt(L*.46,sg*(W/2+.12),y0),pt(L*.46,sg*(W/2+.12),y1),pt(-L*.46,sg*(W/2+.12),y1),sideN(sg),glassC); quad(K.d,pt(sg*(L/2+.12),-W*.42,y0),pt(sg*(L/2+.12),W*.42,y0),pt(sg*(L/2+.12),W*.42,y1),pt(sg*(L/2+.12),-W*.42,y1),endN(sg),glassC); } }
-    box(K.d,F,L/2,L/2+3,-3,3,3.2,3.6,col("#B3263D")); return; }
+    box(K.d,F,L/2,L/2+3,-3,3,3.2,3.6,col("#B3263D")); return out; }
   // factory and warehouse: walls, base, roof, window and colour bands, then the roof: solar rows, skylights or a barrel vault, rooftop units, dock doors
   const wh=k==="warehouse", wall=col(wh?WPAL[(hash(id+"w")*WPAL.length)|0]:PAL[(hash(id+"w2")*PAL.length)|0]);
   walls(K.w,P,1.3,h+.2,wall); walls(K.w,P,.2,1.3,col("#9AA0A8")); flat(K.r,P,h+.2,col(wh?"#F1F3F6":"#C9CED5"));
@@ -17471,9 +17485,9 @@ function building(it,K){ const F=iFrame(it), L=it.len, W=it.w, h=Math.max(1,it.h
       quad(K.d,pt(-Lv/2,va,ya),pt(Lv/2,va,ya),pt(Lv/2,vb,yb),pt(-Lv/2,vb,yb),[nv*F.v[0],ny,nv*F.v[1]],col(i%2?"#F7F8FA":"#EEF0F3")); } }
   for(let qn=0;qn<(L>34?3:2);qn++){ const su=(qn%2?1:-1)*(L/2-4-qn*3), sv=(qn>1?-1:1)*(W/2-3); if(L>12&&W>8) box(K.d,F,su-1.6,su+1.6,sv-1.2,sv+1.2,h+.2,h+1.8,col("#B9BFC7"),col("#8E959E")); }
   if(wh&&L>18){ const nd=Math.min(9,Math.floor(L/13)); for(let d=0;d<nd;d++){ const s=-L/2+(d+.5)*L/nd; box(K.d,F,s-2.5,s+2.5,W/2,W/2+.5,.2,4.4,col("#3A4350")); }
-    const ap=[pt(-L*.48,W/2+.5,.22),pt(L*.48,W/2+.5,.22),pt(L*.48,W/2+9,.22),pt(-L*.48,W/2+9,.22)]; quad(K.a,ap[0],ap[1],ap[2],ap[3],UP,col("#4B5058")); }
-  if(!wh&&hash(id+"ch")<.4&&L>20){ const q=pt(L*.3,-W*.22,0); cyl(K.d,q[0],q[2],1.1,h,h+9,col("#C6C9CE"),12,col("#6E7378")); cyl(K.d,q[0],q[2],1.15,h+6.5,h+7.6,col("#B3263D"),12,false); }
-}
+    const ap=[pt(-L*.48,W/2+.5,.22),pt(L*.48,W/2+.5,.22),pt(L*.48,W/2+9,.22),pt(-L*.48,W/2+9,.22)], am=pt(0,W/2+5,0); if(!opts||!opts.ok||opts.ok(am[0],am[2])) quad(K.a,ap[0],ap[1],ap[2],ap[3],UP,col("#4B5058")); }
+  if(!wh&&hash(id+"ch")<.4&&L>20){ const q=pt(L*.3,-W*.22,0); cyl(K.d,q[0],q[2],1.1,h,h+9,col("#C6C9CE"),12,col("#6E7378")); cyl(K.d,q[0],q[2],1.15,h+6.5,h+7.6,col("#B3263D"),12,false); out.chimney=[q[0],h+9,q[2]]; }
+  return out; }
 function object(it,K){ const F=iFrame(it), pt=(s,t,y)=>[F.c[0]+F.u[0]*s+F.v[0]*t,y,F.c[1]+F.u[1]*s+F.v[1]*t], k=it.k;
   if(k==="palm") return treeAt(K.d,F.c[0],F.c[1],it.h/6.5,OB.palm.c,true);
   if(k==="tree") return treeAt(K.d,F.c[0],F.c[1],it.h/7,["#3E8E4A","#2F7A44","#4FA05A"][(hash(it.id)*3)|0],false);
@@ -17844,6 +17858,8 @@ async function activate(api){ A=api; if(PL.on) return; PL.on=true; PL.cur=null; 
 function deactivate(leaving){ if(!PL.on) return; if(PL.cur) finishCur(); PL.on=false; PL.drag=null; closeMenu(); persist();
   try{ map.off("styledata",onStyle); if(map.getLayer("sid-plan3d")) map.removeLayer("sid-plan3d"); }catch(e){} layer=null; VEH=[];
   if(ui){ ui.remove(); ui=null; } const b3=q("#pl3d"); if(b3) b3.remove(); if(!leaving&&map.getPitch()>.5) map.easeTo({pitch:0,duration:600}); }
+// the building and tree models, shared with the AR table view (sold factories and warehouses)
+window.SID_3D={build(T3,F,L,W,h,k,id,K,opts){ if(!T) T=T3; return buildingAt(F,L,W,h,k,String(id),K,opts); }, tree(T3,K,x,z,sz,c,palm){ if(!T) T=T3; treeAt(K,x,z,sz,c,palm); }};
 window.SID_PLAN={get on(){ return PL.on; },activate,deactivate,down,move,up,hover,cancel,undo,redo,del,esc:escK,enter:enterK,key,hint:hintTxt,draw2d,obstacles,tool:()=>PL.tool,setTool,
   state:PL,_t:{Lc,Gc,detectBlock,subdivide,stats,iCorners,fitOnPlot,autoPlots,placeBuilding,commitRoad,commitLand,commitPlot,graph,noAccess,lArea,layer:()=>layer,veh:()=>VEH,scr,itemScreen}};
 })();
