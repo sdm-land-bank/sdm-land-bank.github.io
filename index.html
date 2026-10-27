@@ -6169,7 +6169,7 @@ function wfDialog(keys){
   const same=f=>{ const v=[...new Set(rows.map(r=>r[f]).filter(Boolean))]; return v.length===1?v[0]:""; };
   const park=[...new Set(rows.map(r=>r.park))], area=rows.reduce((s,r)=>s+(r.area||0),0);
   const path=w==="sales"?`Your request goes to the sales manager of <b>${esc(team||"your team")}</b>, then to sales operation, then live on the map.`
-    :w==="manager"?"Your request goes to sales operation, then live on the map.":"You are sales operation — the change goes live as soon as you save it.";
+    :w==="manager"?"Your request goes to sales operation, then live on the map.":w==="direct"?"No approval needed — the change goes live as soon as you save it.":"You are sales operation — the change goes live as soon as you save it.";
   const ov=document.createElement("div"); ov.className="wf-ov"; ov.id="wfDlg";
   ov.innerHTML=`<form class="wf-box" autocomplete="off" novalidate>
     <div class="wf-h"><div><b>Change status</b><span>${rows.length} plot${rows.length>1?"s":""} · ${fInt(area)} sqm · ${esc(park.map(p=>S.reg.parks[p]?.name||p).join(", "))}</span></div><button type="button" class="wf-x" aria-label="Close">×</button></div>
@@ -12751,7 +12751,7 @@ const SID_PAGES=[
 const ALL_PAGE_IDS=SID_PAGES.flatMap(p=>[p.id,...(p.subs||[]).flatMap(g=>g.items.map(i=>i[0]))]);
 function canSee(id){
   if(!SBME) return true; if(SBME.is_admin) return true;
-  if(id==="approvals") return !!SBME.wf;
+  if(id==="approvals"){ const A=SBME.pages||[]; return !!SBME.wf&&(A.includes("*")||A.includes("approvals")); }
   if(id==="audit"){ const A=SBME.pages||[]; return A.includes("*")||A.includes("audit"); }
   if(id==="demand") return slStatsOk();
   if(id==="usage") return false;
@@ -12812,7 +12812,7 @@ function viewSettings(){
   const R=(SET.roles||[]).find(r=>r.role===SET.cur), D=SET.draft||(R?{label:R.label||R.role,pages:[...(R.pages||[])],can_edit:!!R.can_edit,is_admin:!!R.is_admin,wf:R.wf||""}:null);
   SET.draft=D;
   if(D&&!D.is_admin&&D.pages.includes("portfolio")&&!D.pages.includes("inventory")) D.pages.push("inventory");
-  const auto=id=>D&&!D.is_admin&&((id==="approvals"&&!!D.wf)||(id==="demand"&&D.wf==="ops"));
+  const auto=id=>D&&!D.is_admin&&((id==="demand"&&D.wf==="ops"));
   const has=id=>D&&(D.is_admin||D.pages.includes("*")||D.pages.includes(id)||auto(id));
   const box=(id,label,cls="")=>`<label class="set-ck ${cls}"><input type="checkbox" data-pg="${id}" ${has(id)?"checked":""} ${D&&(D.is_admin||auto(id))?"disabled":""}><span>${esc(label)}${auto(id)?" <em>— comes with the Plot status changes part</em>":""}</span></label>`;
   return `<div class="set">
@@ -12853,7 +12853,8 @@ function viewSettings(){
             <option value="" ${!D.wf?"selected":""}>No part — cannot change plot status</option>
             <option value="sales" ${D.wf==="sales"?"selected":""}>Sales — asks; their team's manager, then sales operation approve</option>
             <option value="manager" ${D.wf==="manager"?"selected":""}>Sales manager — approves their team; own requests go to sales operation</option>
-            <option value="ops" ${D.wf==="ops"?"selected":""}>Sales operation — final approval; changes directly</option></select></label>`}
+            <option value="ops" ${D.wf==="ops"?"selected":""}>Sales operation — final approval; changes directly</option>
+            <option value="direct" ${D.wf==="direct"?"selected":""}>Direct — changes status without approval (Development, Finance); does not approve others</option></select></label>`}
           <label class="set-ck big"><input type="checkbox" id="setEdit" ${D.can_edit||D.is_admin?"checked":""} ${D.is_admin?"disabled":""}><span>Can change shared data<em>sync, upload the MDS, save register edits, change the sync link</em></span></label></div>
         ${D.is_admin?`<p class="note">Administrators can open every page and sub-page and manage users here. This role cannot be narrowed.</p>`:`<div class="set-bulk"><button type="button" class="fp-link" id="setAll">Tick everything</button><button type="button" class="fp-link" id="setNone">Clear everything</button></div>`}
         <div class="set-tree">${SID_PAGES.map(p=>`<div class="set-pg">${box(p.id,p.label,"top")}
@@ -12912,8 +12913,7 @@ function wireSettings(){
   $("#setLabel").oninput=e=>D.label=e.target.value; $("#setEdit").onchange=e=>D.can_edit=e.target.checked;
   const wfs=$("#setWf"); if(wfs) wfs.onchange=e=>D.wf=e.target.value;
   $("#setSaveRole").onclick=()=>{ sync(); busy(async()=>{ const upd={label:D.label.trim()||SET.cur,pages:D.pages.filter(p=>ALL_PAGE_IDS.includes(p)),can_edit:D.can_edit,updated_at:new Date().toISOString()}; if(!SET.teamsMissing) upd.wf=D.wf||null;
-    if(upd.wf&&!upd.pages.includes("approvals")) upd.pages.push("approvals");
-    const r=await SB.from("sid_roles").update(upd).eq("role",SET.cur); if(r.error) throw r.error; },"Role saved — applies at their next sign-in or reload"); };
+    const r=await SB.from("sid_roles").update(upd).eq("role",SET.cur); if(r.error&&/sid_roles_wf_check/.test(r.error.message||"")) throw new Error("\u201cDirect\u201d needs one database step first: run sql_13_direct_status.sql in Supabase, then save again."); if(r.error) throw r.error; },"Role saved — applies at their next sign-in or reload"); };
   $("#setDelRole").onclick=()=>{ const n=(SET.users||[]).filter(u=>u.role===SET.cur).length;
     if(n){ toast(`${n} user${n>1?"s have":" has"} this role — give them another role first`,true); return; }
     if(confirm("Delete this role?")) busy(async()=>{ const r=await SB.from("sid_roles").delete().eq("role",SET.cur); if(r.error) throw r.error; SET.cur=null; },"Role deleted"); };
