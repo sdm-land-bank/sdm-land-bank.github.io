@@ -6368,7 +6368,7 @@ function audWho(a){ return a.by_name||a.by_email?`${esc(a.by_name||a.by_email)}$
 function audCust(a){ return [a.client,a.company].filter(Boolean).filter((x,i,l)=>l.indexOf(x)===i).map(esc).join(" · "); }
 
 /* ---- plot card: the clock icon → this plot's history ---- */
-function audBtn(r){ if(!r||!r.key||typeof sbReady!=="function"||!sbReady()) return "";
+function audBtn(r){ if(!r||!r.key||typeof sbReady!=="function"||!sbReady()||!canSee("audit")) return "";
   return `<button class="sp-log" data-ak="${esc(r.key)}" data-au="${esc(r.unit||"")}" title="Change history" aria-label="Change history of ${esc(r.unit||"this plot")}"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9"/><path d="M2.3 2.6v2.6h2.6"/><path d="M8 5.2V8l2 1.3"/></svg></button>`; }
 async function audPlot(key,unit){
   $("#audDlg")?.remove();
@@ -12689,6 +12689,7 @@ const SID_PAGES=[
   {id:"editor",label:"MDS register (editor)"},
   {id:"health",label:"Data health"},
   {id:"approvals",label:"Approvals (status requests)"},
+  {id:"audit",label:"Change log (who changed which plot, and when)"},
   {id:"demand",label:"Offer demand (from Sales Leads)"},
   {id:"lara",label:"Lara — voice assistant (button, wake word, microphone)"}
 ];
@@ -12696,11 +12697,12 @@ const ALL_PAGE_IDS=SID_PAGES.flatMap(p=>[p.id,...(p.subs||[]).flatMap(g=>g.items
 function canSee(id){
   if(!SBME) return true; if(SBME.is_admin) return true;
   if(id==="approvals") return !!SBME.wf;
-  if(id==="audit") return true;
+  if(id==="audit"){ const A=SBME.pages||[]; return A.includes("*")||A.includes("audit"); }
   if(id==="demand") return slStatsOk();
   if(id==="usage") return false;
   if(id==="settings") return false;
   const P=SBME.pages||[]; if(P.includes("*")) return true;
+  if(id==="sales") return P.includes("sales")&&P.some(p=>String(p).startsWith("lb."));
   const map=P.includes("inventory")||P.includes("portfolio");          // Portfolio and Inventory are one page now
   if(id==="inventory"||id==="portfolio") return map;
   if(id==="portfolio.present") return map&&P.includes(id);
@@ -12754,8 +12756,10 @@ function viewSettings(){
   const fd=x=>x?new Date(x).toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"never";
   const R=(SET.roles||[]).find(r=>r.role===SET.cur), D=SET.draft||(R?{label:R.label||R.role,pages:[...(R.pages||[])],can_edit:!!R.can_edit,is_admin:!!R.is_admin,wf:R.wf||""}:null);
   SET.draft=D;
-  const has=id=>D&&(D.is_admin||D.pages.includes("*")||D.pages.includes(id));
-  const box=(id,label,cls="")=>`<label class="set-ck ${cls}"><input type="checkbox" data-pg="${id}" ${has(id)?"checked":""} ${D&&D.is_admin?"disabled":""}><span>${esc(label)}</span></label>`;
+  if(D&&!D.is_admin&&D.pages.includes("portfolio")&&!D.pages.includes("inventory")) D.pages.push("inventory");
+  const auto=id=>D&&!D.is_admin&&((id==="approvals"&&!!D.wf)||(id==="demand"&&D.wf==="ops"));
+  const has=id=>D&&(D.is_admin||D.pages.includes("*")||D.pages.includes(id)||auto(id));
+  const box=(id,label,cls="")=>`<label class="set-ck ${cls}"><input type="checkbox" data-pg="${id}" ${has(id)?"checked":""} ${D&&(D.is_admin||auto(id))?"disabled":""}><span>${esc(label)}${auto(id)?" <em>— comes with the Plot status changes part</em>":""}</span></label>`;
   return `<div class="set">
   <div class="set-h"><div><b>Settings</b><span>Who can sign in, and what each role can open. Changes apply the next time that person opens the dashboard.</span></div>
     <button class="ebtn" id="setReload">Refresh</button></div>
@@ -12838,7 +12842,8 @@ function wireSettings(){
     if((SET.roles||[]).some(r=>r.role===key)){ toast("A role with that name exists",true); return; }
     busy(async()=>{ const r=await SB.from("sid_roles").insert({role:key,label:name.trim(),pages:["portfolio"],can_edit:false}); if(r.error) throw r.error; SET.cur=key; },"Role created — tick its pages and save"); };
   const D=SET.draft; if(!D||D.is_admin) return;
-  const sync=()=>{ D.pages=[...C.querySelectorAll(".set-tree input[data-pg]:checked")].map(i=>i.dataset.pg); };
+  const sync=()=>{ D.pages=[...C.querySelectorAll(".set-tree input[data-pg]:checked")].map(i=>i.dataset.pg);
+    if(D.pages.includes("sales")&&!D.pages.some(p=>p.startsWith("lb."))){ D.pages=D.pages.filter(p=>p!=="sales"); const sb=C.querySelector('.set-tree input[data-pg="sales"]'); if(sb) sb.checked=false; } };
   C.querySelectorAll(".set-tree input[data-pg]").forEach(i=>i.onchange=()=>{
     const id=i.dataset.pg, pg=SID_PAGES.find(p=>p.id===id);
     if(pg&&pg.subs){ C.querySelectorAll(".set-tree input[data-pg]").forEach(x=>{ if(pg.subs.some(g=>g.items.some(it=>it[0]===x.dataset.pg))) x.checked=i.checked; }); }
@@ -15915,7 +15920,7 @@ EXP.share=function(){
       <label><input type="checkbox" id="shUt" checked> Electricity, water and sewage</label>
       <label class="sh-v">Link works for <select id="shDays"><option value="7">7 days</option><option value="14">14 days</option><option value="30" selected>30 days</option><option value="90">90 days</option></select></label>
     </div>
-    <div class="sh-n">The link shows this plot on the satellite map with a fly-in, plus what is ticked. It never shows the price, the client, other plots or other customers. It is a snapshot of today: anyone who has the link can see it until it expires.</div>
+    <div class="sh-n">The link shows this plot on the satellite map with a fly-in, plus what is ticked. It also outlines the whole project and has a Get directions button. It never shows the price, the client, other plots or other customers. It is a snapshot of today: anyone who has the link can see it until it expires.</div>
     <div class="sh-a"><button class="ex-b on" id="shMake" type="button">Create link and QR</button></div>
     <div class="sh-r" id="shRes" hidden></div></div>`;
   document.body.appendChild(d);
@@ -15924,11 +15929,16 @@ EXP.share=function(){
   el("shMake").onclick=()=>{
     const g=it.f.geometry, rings=(g.type==="Polygon"?[g.coordinates[0]]:g.coordinates.map(pg=>pg[0])).map(r=>r.map(c=>[r5(c[0]),r5(c[1])]));
     const o={v:1,t:Date.now(),x:Date.now()+(+el("shDays").value)*864e5,u:p.unit||"",pk:H.parkName(it.info.park),w:where,rings,c:[r5(p.c[0]),r5(p.c[1])],pg:PAGE[it.info.park]?SITE+PAGE[it.info.park]:SITE};
+    try{ const pts=[]; S.geo.features.filter(f=>f.properties.park===it.info.park).forEach(f=>{ const gg=f.geometry; (gg.type==="Polygon"?[gg.coordinates[0]]:gg.coordinates.map(pg=>pg[0])).forEach(r=>r.forEach(c=>pts.push([c[0],c[1]]))); });
+      pts.sort((a,b)=>a[0]-b[0]||a[1]-b[1]); const cr=(o2,a,b)=>(a[0]-o2[0])*(b[1]-o2[1])-(a[1]-o2[1])*(b[0]-o2[0]), lo2=[], up=[];
+      pts.forEach(pt=>{ while(lo2.length>1&&cr(lo2[lo2.length-2],lo2[lo2.length-1],pt)<=0) lo2.pop(); lo2.push(pt); });
+      for(let i=pts.length-1;i>=0;i--){ const pt=pts[i]; while(up.length>1&&cr(up[up.length-2],up[up.length-1],pt)<=0) up.pop(); up.push(pt); }
+      const hull=lo2.slice(0,-1).concat(up.slice(0,-1)); if(hull.length>=3){ hull.push(hull[0]); o.b=hull.map(c=>[r5(c[0]),r5(c[1])]); } }catch(e){}
     if(el("shArea").checked) o.a=Math.round(row.area);
     if(el("shSec").checked&&row.sector) o.s=row.sector;
     if(el("shLg").checked){ try{ const lg=logisticsAt(p.c); o.lg={p:[lg.port.name,Math.round(lg.port.km)],a:[lg.air.name,Math.round(lg.air.km)],c:Math.round(lg.cairo)}; }catch(e){} }
     if(el("shUt").checked){ const u={}; if(row.mva!=null) u.e=Math.round(row.mva*10)/10; if(row.water!=null) u.w=Math.round(row.water); if(row.sewage!=null) u.s=Math.round(row.sewage); if(Object.keys(u).length) o.ut=u; }
-    const url=location.origin+"/c.html#"+b64u(JSON.stringify(o));
+    const url=location.origin+"/c.html?v=8211#"+b64u(JSON.stringify(o));
     let qr=""; try{ const Q=qrcode(0,"M"); Q.addData(url); Q.make(); qr=Q.createSvgTag({cellSize:4,margin:2,scalable:true}); }catch(e){}
     const r=el("shRes"); r.hidden=false;
     r.innerHTML=`<div class="sh-qr">${qr||"<em>QR could not be made — copy the link instead.</em>"}</div>
