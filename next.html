@@ -17211,13 +17211,13 @@ window.SID_SKETCH={enter,exit,setMode,state:SK,api:API,_t:{dist,ringArea,fLen,fA
 /* ---- V84 SID Planner ---- */
 #plTools{display:none}
 body.sk-build #plTools{display:flex}
-.pl-opt{position:absolute;left:84px;top:12px;display:flex;align-items:center;gap:6px;padding:6px 8px;max-width:calc(100vw - 96px);overflow-x:auto;scrollbar-width:none;animation:skInR .3s ease-out}
+.pl-opt{position:absolute;right:12px;top:72px;display:flex;align-items:center;gap:6px;padding:6px 8px;max-width:calc(100vw - 96px);overflow-x:auto;scrollbar-width:none;animation:skInR .3s ease-out}
 .pl-opt::-webkit-scrollbar{display:none}
 .pl-opt b{font-size:12px;color:rgba(255,255,255,.7);font-weight:700;white-space:nowrap;padding:0 4px;text-transform:uppercase;letter-spacing:.05em}
 .pl-opt button{height:34px;border:0;border-radius:9px;background:rgba(255,255,255,.1);color:#fff;font-weight:600;font-size:12.5px;padding:0 12px;cursor:pointer;white-space:nowrap}
 .pl-opt button.on{background:#fff;color:#111}
 .pl-opt input{width:90px;height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font:600 14px inherit;padding:0 8px}
-.pl-kpi{position:absolute;left:84px;top:64px;padding:10px 14px;display:grid;grid-template-columns:auto auto;gap:3px 16px;font-size:12px;min-width:220px;cursor:pointer}
+.pl-kpi{position:absolute;left:84px;top:12px;padding:10px 14px;display:grid;grid-template-columns:auto auto;gap:3px 16px;font-size:12px;min-width:220px;cursor:pointer}
 .pl-kpi span{color:rgba(255,255,255,.68)} .pl-kpi b{text-align:right;font-weight:700;white-space:nowrap}
 .pl-kpi .t{grid-column:1/-1;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#FFD60A;margin-bottom:2px}
 .pl-kpi.min{min-width:0;grid-template-columns:auto} .pl-kpi.min span,.pl-kpi.min b:not(.keep){display:none}
@@ -17247,8 +17247,8 @@ body.sk-build #plTools{display:flex}
 #plCard .w{margin-top:8px;font-size:12.5px;color:#FF9F0A}
 #plCard .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 #plCard .acts button.del{background:rgba(255,69,58,.2);color:#ff6961}
-@media (max-height:690px){ .pl-opt,.pl-kpi{left:120px} #plLive{left:calc(50% + 55px)} }
-@media (max-width:620px){ .pl-kpi{top:auto;bottom:12px;left:66px} #plCard{left:66px;right:8px;width:auto;bottom:12px} }
+@media (max-height:690px){ .pl-kpi{left:120px} #plLive{left:calc(50% + 55px)} }
+@media (max-width:620px){ .pl-kpi{top:auto;bottom:12px;left:66px} .pl-opt{left:66px;right:8px} #plCard{left:66px;right:8px;width:auto;bottom:12px} }
 </style>
 
 <script>
