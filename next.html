@@ -16255,6 +16255,9 @@ EXP.ar=async function(park){
     // a few trees in the yard in front of the building (only where the ground is a plot, never on a street)
     if(det.p.length<DBUD*.8){ const side=hash(k+"t")<.5?-1:1, nT=Math.min(4,Math.floor(L/18)); for(let i=0;i<nT;i++){ const u=-L/2+(i+.5)*L/nT, v=side*(W/2+4.6), p=pt(u,v,0); try{ if(G.inPlot(p[0],p[2])) tree(p[0],p[2],.9+hash(k+i)*.45,TREE[(i+((hash(k)*4)|0))%4],hash(k+i+"p")<.5); }catch(e){} } }
   }
+  // V85: sold plots get the Planner's factory / warehouse model, one per plot, in their own group drawn at real proportions (x1.3 height on the table)
+  const PG=new T.Group(), PK={w:{p:[],n:[],c:[],u:[]},r:{p:[],n:[],c:[],u:[]},d:{p:[],n:[],c:[]},s:{p:[],n:[],c:[],u:[]},a:{p:[],n:[],c:[]}}, PGdone=new Set(), PCH=[], PVE=1.3, plotRing=new Map();
+  feats.forEach(f=>{ const g=f.geometry, R=g.type==="Polygon"?[g.coordinates[0]]:g.coordinates.map(p=>p[0]); let best=null, ba=-1; R.forEach(r=>{ let a=0; for(let i=0;i<r.length-1;i++) a+=mx(r[i])*mz(r[i+1])-mx(r[i+1])*mz(r[i]); a=Math.abs(a); if(a>ba){ ba=a; best=r; } }); if(best) plotRing.set(f.properties.k,best); });
   try{ const FC=(typeof FACTORY_FC!=="undefined"&&FACTORY_FC)||(typeof buildFactories==="function"?buildFactories():null);
     // building rule: a plot may be built on at most 50% of its area: buildings above that are scaled down to exactly half, and all buildings are a little smaller (x0.92 each way)
     const ringArea=r=>{ let a=0; for(let i=0;i<r.length-1;i++) a+=mx(r[i])*mz(r[i+1])-mx(r[i+1])*mz(r[i]); return Math.abs(a)/2; };
@@ -16266,18 +16269,19 @@ EXP.ar=async function(park){
       const pc=f.properties.c||"", accent=ACC[(hash(k+"col")*ACC.length)|0];
       const wall=new T.Color(!sold?"#F2C265":wh?WPAL[(hash(k+"w")*WPAL.length)|0]:pc==="#868B95"?"#8B909A":pc==="#C9D6DF"?accent:PAL[(hash(k+"w2")*PAL.length)|0]); if(sold&&!wh&&pc==="#C9D6DF") wall.lerp(new T.Color("#FFFFFF"),.25);
       const SB=window.SID_3D;
-      if(sold&&SB){ // V85: the Planner's factory / warehouse models on the footprint's oriented rectangle (same area, same height)
-        const P=ring.slice(0,-1).map(c=>[mx(c),mz(c)]), n=P.length; let bi=0,bl=0,A=0; for(let i=0;i<n;i++){ const p=P[i], q=P[(i+1)%n], l=Math.hypot(q[0]-p[0],q[1]-p[1]); if(l>bl){ bl=l; bi=i; } A+=p[0]*q[1]-q[0]*p[1]; } A=Math.abs(A)/2;
-        const a=P[bi], b=P[(bi+1)%n], u=[(b[0]-a[0])/bl,(b[1]-a[1])/bl], v=[-u[1],u[0]]; let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;
-        P.forEach(p=>{ const s=(p[0]-a[0])*u[0]+(p[1]-a[1])*u[1], q=(p[0]-a[0])*v[0]+(p[1]-a[1])*v[1]; u0=Math.min(u0,s); u1=Math.max(u1,s); v0=Math.min(v0,q); v1=Math.max(v1,q); });
-        let L=u1-u0, W=v1-v0; if(L>1&&W>1&&A<L*W*.97){ const sc2=Math.sqrt(A/(L*W)); L*=sc2; W*=sc2; }
-        const c=[a[0]+u[0]*(u0+u1)/2+v[0]*(v0+v1)/2,a[1]+u[1]*(u0+u1)/2+v[1]*(v0+v1)/2]; let U=u, V=v; if(L<W){ const tmp=L; L=W; W=tmp; U=v; V=[-u[0],-u[1]]; }
-        const inP=(x,z)=>{ try{ return G.inPlot(x,z); }catch(e){ return true; } };
-        if(wh){ const side=sg=>[c[0]+V[0]*sg*(W/2+5),c[1]+V[1]*sg*(W/2+5)], pp=side(1), nn=side(-1); if(!inP(pp[0],pp[1])&&inP(nn[0],nn[1])) V=[-V[0],-V[1]]; }   // dock doors face the open yard, not the street
-        const out=SB.build(T,{c,u:U,v:V},L,W,h,wh?"warehouse":"factory",k,{w:wacc,r:racc,d:det,s:sacc,a:aacc},{ok:inP});
-        if(det.p.length<DBUD*.8){ const ts=hash(k+"t")<.5?-1:1, nT=Math.min(4,Math.floor(L/18)); for(let i=0;i<nT;i++){ const s=-L/2+(i+.5)*L/nT, tt=ts*(W/2+(wh&&ts>0?12:4.6)), x=c[0]+U[0]*s+V[0]*tt, z=c[1]+U[1]*s+V[1]*tt; if(inP(x,z)) SB.tree(T,det,x,z,.9+hash(k+i)*.45,TREE[(i+((hash(k)*4)|0))%4],hash(k+i+"p")<.5); } }
-        if(out&&out.chimney) chim.push(out.chimney);
-        fSold.add(k); if(wh) wSold.add(k); return; }
+      if(sold&&SB){ if(!PGdone.has(k)){ PGdone.add(k); const pr=plotRing.get(k); if(pr){ // fitted like the Planner: along the plot's longest side, set back from the edges, at most half the plot
+          const P=pr.slice(0,-1).map(c=>[mx(c),mz(c)]), n=P.length; let bi=0,bl=0,A=0; for(let i=0;i<n;i++){ const p=P[i], q=P[(i+1)%n], l=Math.hypot(q[0]-p[0],q[1]-p[1]); if(l>bl){ bl=l; bi=i; } A+=p[0]*q[1]-q[0]*p[1]; } A=Math.abs(A)/2;
+          const a=P[bi], b=P[(bi+1)%n], u=[(b[0]-a[0])/bl,(b[1]-a[1])/bl], v=[-u[1],u[0]]; let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;
+          P.forEach(p=>{ const s=(p[0]-a[0])*u[0]+(p[1]-a[1])*u[1], q=(p[0]-a[0])*v[0]+(p[1]-a[1])*v[1]; u0=Math.min(u0,s); u1=Math.max(u1,s); v0=Math.min(v0,q); v1=Math.max(v1,q); });
+          const Lu=u1-u0, Lv=v1-v0, sb=Math.max(2,Math.min(8,.12*Math.min(Lu,Lv))); let L=Math.max(4,Lu-2*sb), W=Math.max(4,Lv-2*sb); if(L*W>.5*A){ const f2=Math.sqrt(.5*A/(L*W)); L*=f2; W*=f2; }
+          let c=[a[0]+u[0]*(u0+u1)/2+v[0]*(v0+v1)/2,a[1]+u[1]*(u0+u1)/2+v[1]*(v0+v1)/2]; { let ins=false; for(let i=0,j=n-1;i<n;j=i++){ const pi=P[i],pj=P[j]; if((pi[1]>c[1])!==(pj[1]>c[1])&&c[0]<(pj[0]-pi[0])*(c[1]-pi[1])/(pj[1]-pi[1])+pi[0]) ins=!ins; } if(!ins){ let x=0,z=0; P.forEach(p=>{ x+=p[0]; z+=p[1]; }); c=[x/n,z/n]; } }
+          let U=u, V=v; if(L<W){ const tmp=L; L=W; W=tmp; U=v; V=[-u[0],-u[1]]; }
+          const inP=(x,z)=>{ try{ return G.inPlot(x,z); }catch(e){ return true; } };
+          if(wh){ const side=sg=>[c[0]+V[0]*sg*(W/2+5),c[1]+V[1]*sg*(W/2+5)], pp=side(1), nn=side(-1); if(!inP(pp[0],pp[1])&&inP(nn[0],nn[1])) V=[-V[0],-V[1]]; }   // dock doors face the open yard, not the street
+          const hh=wh?10+hash(k+"hw")*2:10+hash(k+"hf")*5, out=SB.build(T,{c,u:U,v:V},L,W,hh,wh?"warehouse":"factory",k,PK,{ok:inP});
+          const nT=Math.min(4,Math.floor(L/18)), ts=hash(k+"t")<.5?-1:1; for(let i=0;i<nT;i++){ const s=-L/2+(i+.5)*L/nT, tt=ts*(W/2+(wh&&ts>0?12:4.6)), x=c[0]+U[0]*s+V[0]*tt, z=c[1]+U[1]*s+V[1]*tt; if(inP(x,z)) SB.tree(T,PK.d,x,z,.9+hash(k+i)*.45,TREE[(i+((hash(k)*4)|0))%4],hash(k+i+"p")<.5); }
+          if(out&&out.chimney){ const e=[out.chimney[0],out.chimney[1]*PVE/VE,out.chimney[2]]; chim.push(e); PCH.push({e,y:out.chimney[1]}); } }
+          fSold.add(k); if(wh) wSold.add(k); } return; }
       addWalls(ring,1.3,h+.2,wall); addWalls(ring,.2,1.3,new T.Color(sold?"#9AA0A8":"#B79A55")); addRoof(ring,h+.2,new T.Color(!sold?"#D9A441":wh?"#F1F3F6":"#C9CED5")); detail(ring,h,wh,sold,k,accent); (sold?fSold:fRes).add(k); if(wh){ (sold?wSold:wRes).add(k);
         let cx=0,cz=0,bi=0,bl=0; for(let i=0;i<ring.length-1;i++){ cx+=mx(ring[i]); cz+=mz(ring[i]); const l=Math.hypot(mx(ring[i+1])-mx(ring[i]),mz(ring[i+1])-mz(ring[i])); if(l>bl){ bl=l; bi=i; } } cx/=ring.length-1; cz/=ring.length-1;
         if(sold&&bl>18){ const ax=mx(ring[bi]), az=mz(ring[bi]), dx=mx(ring[bi+1])-ax, dz=mz(ring[bi+1])-az, an=Math.atan2(dz,dx); let nx=-dz/bl, nz=dx/bl; if((ax-cx)*nx+(az-cz)*nz<0){ nx=-nx; nz=-nz; } const nd=Math.min(7,Math.floor(bl/13));
@@ -16290,6 +16294,12 @@ EXP.ar=async function(park){
   if(aacc.p.length) body.add(mk(aacc,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3})));
   if(sacc.p.length){ const sm=mkUV(sacc,new T.MeshBasicMaterial({map:aoTex,color:0x000000,transparent:true,opacity:.9,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2})); sm.renderOrder=1; body.add(sm); }
   if(det.p.length) body.add(mk(det,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide})));
+  if(PK.w.p.length) PG.add(mkUV(PK.w,new T.MeshLambertMaterial({map:wallTex,vertexColors:true,side:T.DoubleSide})));
+  if(PK.r.p.length) PG.add(mkUV(PK.r,new T.MeshLambertMaterial({map:roofTex,vertexColors:true,side:T.DoubleSide})));
+  if(PK.d.p.length) PG.add(mk(PK.d,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide})));
+  if(PK.a.p.length) PG.add(mk(PK.a,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3})));
+  if(PK.s.p.length){ const sm=mkUV(PK.s,new T.MeshBasicMaterial({map:aoTex,color:0x000000,transparent:true,opacity:.9,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2})); sm.renderOrder=1; PG.add(sm); }
+  PG.scale.y=PVE/VE; body.add(PG);
   // smoke
   const PER=4, NP=chim.length*PER; let smoke=null, sA=null, sP=null, sS=null, sPh=null;
   if(NP){ const c2=document.createElement("canvas"); c2.width=c2.height=64; const x2=c2.getContext("2d"), gd=x2.createRadialGradient(32,32,2,32,32,30); gd.addColorStop(0,"rgba(255,255,255,1)"); gd.addColorStop(.5,"rgba(255,255,255,.55)"); gd.addColorStop(1,"rgba(255,255,255,0)"); x2.fillStyle=gd; x2.fillRect(0,0,64,64);
@@ -16338,9 +16348,9 @@ EXP.ar=async function(park){
     trucks.forEach(t=>{ t.w.step(t.v*TS*dt); const p=t.w.pos(), l=t.w.look(10), th=Math.atan2(l[1]-p[1],l[0]-p[0]); if(!t.init){ t.h=th; t.init=true; } let d=th-t.h; d=Math.atan2(Math.sin(d),Math.cos(d)); t.h+=d*Math.min(1,dt*3.5); const off=1.2; t.g.position.set(p[0]-Math.sin(t.h)*off,0,p[1]+Math.cos(t.h)*off); t.g.rotation.y=-t.h; t.g.scale.set(tscale[0],tscale[1],tscale[2]); });
     if(smoke){ const ms=drive?1:sc*scale; for(let e=0;e<chim.length;e++) for(let k=0;k<PER;k++){ const i=e*PER+k, u=(sec*.33+sPh[i])%1, a=u<.08?u/.08:1-(u-.08)/.92; sP[i*3]=chim[e][0]+wind[0]*u*(drive?1:1.6)+Math.sin(sec*1.7+i)*3*u; sP[i*3+1]=chim[e][1]+u*55; sP[i*3+2]=chim[e][2]+wind[1]*u*(drive?1:1.6)+Math.cos(sec*1.3+i)*3*u; sA[i]=Math.max(0,a)*.4; sS[i]=9+u*34; }
       const g=smoke.geometry; g.attributes.position.needsUpdate=true; g.attributes.aAlpha.needsUpdate=true; g.attributes.aSize.needsUpdate=true; smoke.material.uniforms.uK.value=renderer.domElement.height/(2*Math.tan(cam.fov*Math.PI/360)); smoke.material.uniforms.uS.value=drive?1:sc*scale; }
-    if(drive&&car){ car.step(14*dt); const p=car.pos(), l=car.look(22), th=Math.atan2(-(l[0]-p[0]),-(l[1]-p[1])); if(!carInit){ carH=th; carInit=true; } let d=th-carH; d=Math.atan2(Math.sin(d),Math.cos(d)); carH+=Math.max(-1.1*dt,Math.min(1.1*dt,d)); model.position.set(0,0,0); model.scale.setScalar(1); body.scale.set(1,1,1); body.rotation.y=0; model.rotation.x=0;
+    if(drive&&car){ car.step(14*dt); const p=car.pos(), l=car.look(22), th=Math.atan2(-(l[0]-p[0]),-(l[1]-p[1])); if(!carInit){ carH=th; carInit=true; } let d=th-carH; d=Math.atan2(Math.sin(d),Math.cos(d)); carH+=Math.max(-1.1*dt,Math.min(1.1*dt,d)); model.position.set(0,0,0); model.scale.setScalar(1); body.scale.set(1,1,1); body.rotation.y=0; model.rotation.x=0; PG.scale.y=1; PCH.forEach(q=>{ q.e[1]=q.y; });
       cam.position.set(p[0],2.5+Math.sin(sec*9)*.04,p[1]); cam.rotation.set(-.04+lookP+gP,carH+lookY+gY,0,"YXZ"); }
-    else { body.scale.set(1,VE,1); body.rotation.y=yaw; model.rotation.x=hasOri?0:pitchTilt; model.scale.setScalar(sc*scale); }
+    else { body.scale.set(1,VE,1); PG.scale.y=PVE/VE; PCH.forEach(q=>{ q.e[1]=q.y*PVE/VE; }); body.rotation.y=yaw; model.rotation.x=hasOri?0:pitchTilt; model.scale.setScalar(sc*scale); }
     renderer.render(scene,cam); raf=requestAnimationFrame(frame); };
   say(info()); raf=requestAnimationFrame(frame);
 };
