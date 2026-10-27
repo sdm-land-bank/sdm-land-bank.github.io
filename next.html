@@ -12870,7 +12870,6 @@ function viewSettings(){
   const R=(SET.roles||[]).find(r=>r.role===SET.cur), D=SET.draft||(R?{label:R.label||R.role,pages:[...(R.pages||[])],can_edit:!!R.can_edit,is_admin:!!R.is_admin,wf:R.wf||""}:null);
   SET.draft=D;
   if(D&&!D.is_admin&&D.pages.includes("portfolio")&&!D.pages.includes("inventory")) D.pages.push("inventory");
-  if(D&&!D.is_admin&&D.wf==="ops"&&!D.pages.includes("*")&&!D.pages.includes("demand")&&!D.demandSeen){ D.demandSeen=true; D.pages.push("demand"); }
   const auto=id=>false;
   const has=id=>D&&(D.is_admin||D.pages.includes("*")||D.pages.includes(id)||auto(id));
   const box=(id,label,cls="")=>`<label class="set-ck ${cls}"><input type="checkbox" data-pg="${id}" ${has(id)?"checked":""} ${D&&(D.is_admin||auto(id))?"disabled":""}><span>${esc(label)}${auto(id)?" <em>— comes with the Plot status changes part</em>":""}</span></label>`;
