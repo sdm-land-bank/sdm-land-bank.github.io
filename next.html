@@ -16509,6 +16509,10 @@ body.sk-on{overflow:hidden!important}
 .sk-tb svg{width:19px;height:19px;flex:none}
 .sk-tb.on{background:rgba(255,255,255,.94);color:#111}
 .sk-tb.done{background:#B3263D;color:#fff;margin-left:4px}
+.sk-mode{display:flex;gap:2px;background:rgba(255,255,255,.1);border-radius:11px;padding:3px;margin-right:6px}
+.sk-mode button{height:34px;padding:0 14px;border:0;border-radius:9px;background:transparent;color:#fff;font-weight:700;font-size:13px;cursor:pointer}
+.sk-mode button.on{background:#fff;color:#111}
+body.sk-build #skTools,body.sk-build #skFpB,body.sk-build #skClr{display:none!important}
 .sk-tb.done:hover{background:#c92d47}
 .sk-pop{position:absolute;padding:14px;min-width:230px;max-width:calc(100vw - 24px);animation:skPop .18s ease-out}
 .sk-pop b{display:block;font-size:14px;margin-bottom:8px}
@@ -16580,18 +16584,19 @@ body.sk-on #laraDock{display:none!important}
 const q=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const say=(m,bad)=>{ try{ toast(m,bad); }catch(e){} };
+const PLAN=()=>SK.mode==="build"&&window.SID_PLAN&&window.SID_PLAN.on?window.SID_PLAN:null, isHand=()=>SK.mode==="build"?!!(window.SID_PLAN&&window.SID_PLAN.tool()==="hand"):SK.tool==="hand";
 const ready=()=>typeof map!=="undefined"&&map&&map.getContainer&&map.getStyle&&typeof S!=="undefined"&&S&&S.geo;
 const FONT='-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif';
 const COLORS=["#FF3B30","#FF9F0A","#FFD60A","#34C759","#00C7BE","#0A84FF","#BF5AF2","#FF2D55","#FFFFFF","#1C1C1E"];
 const WIDTHS=[2,4,8], FED=4200.83;
-const SK={on:false,tool:"pen",color:"#FF3B30",wi:1,shapes:[],undo:[],redo:[],sel:null,cur:null,drag:null,frozen:true,snap:true,penSeen:false,
+const SK={mode:"sketch",on:false,tool:"pen",color:"#FF3B30",wi:1,shapes:[],undo:[],redo:[],sel:null,cur:null,drag:null,frozen:true,snap:true,penSeen:false,
   unitA:"m2",fed:true,laser:[],nid:1,ver:0,snapAt:null,pulse:null};
 try{ const o=JSON.parse(localStorage.getItem("sid.sketch.v1")||"null");
-  if(o){ ["tool","color","wi","frozen","snap","unitA","fed"].forEach(k=>{ if(o[k]!=null) SK[k]=o[k]; });
+  if(o){ ["mode","tool","color","wi","frozen","snap","unitA","fed"].forEach(k=>{ if(o[k]!=null) SK[k]=o[k]; });
     if(Array.isArray(o.shapes)) SK.shapes=o.shapes.filter(s=>s&&s.t&&Array.isArray(s.pts)&&s.pts.length);
     SK.nid=SK.shapes.reduce((m,s)=>Math.max(m,(+s.id||0)+1),1); } }catch(e){}
 let saveT=null;
-function persist(){ clearTimeout(saveT); saveT=setTimeout(()=>{ try{ localStorage.setItem("sid.sketch.v1",JSON.stringify({tool:SK.tool,color:SK.color,wi:SK.wi,frozen:SK.frozen,snap:SK.snap,unitA:SK.unitA,fed:SK.fed,shapes:SK.shapes})); }catch(e){} },200); }
+function persist(){ clearTimeout(saveT); saveT=setTimeout(()=>{ try{ localStorage.setItem("sid.sketch.v1",JSON.stringify({mode:SK.mode,tool:SK.tool,color:SK.color,wi:SK.wi,frozen:SK.frozen,snap:SK.snap,unitA:SK.unitA,fed:SK.fed,shapes:SK.shapes})); }catch(e){} },200); }
 
 /* ---------- earth geometry (metres, WGS84 ellipsoid: local radii of curvature; long lines fall back to the sphere) ---------- */
 const R=6371008.8, rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI, EA=6378137, E2=0.00669437999014;
@@ -16728,7 +16733,7 @@ function pillSize(t1,t2){ ctx.save(); ctx.font=`700 13px ${FONT}`; const w1=ctx.
 function segHitsRect(a,b,r){ let t0=0,t1=1; const dx=b[0]-a[0], dy=b[1]-a[1], p=[-dx,dx,-dy,dy], q=[a[0]-r[0],r[2]-a[0],a[1]-r[1],r[3]-a[1]];
   for(let i=0;i<4;i++){ if(p[i]===0){ if(q[i]<0) return false; } else { const k=q[i]/p[i]; if(p[i]<0){ if(k>t1) return false; if(k>t0) t0=k; } else { if(k<t0) return false; if(k<t1) t1=k; } } } return true; }
 const rectsHit=(a,b)=>a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1];
-function obstacles(){ const segs=[], add=V=>{ for(let i=1;i<V.length;i++) segs.push([V[i-1],V[i]]); };
+function obstacles(){ const segs=[], add=V=>{ for(let i=1;i<V.length;i++) segs.push([V[i-1],V[i]]); }; if(PLAN()) return PLAN().obstacles();
   SK.shapes.concat(SK.cur?[SK.cur]:[]).forEach(s=>{ try{
     if(s.t==="text") return;
     if(s.t==="circle"){ if(s.r>0){ const V=circleRing(s.pts[0],s.r,48).map(P); add(V.concat([V[0]])); segs.push([P(s.pts[0]),P(dest(s.pts[0],s.r,map.getBearing()+90))]); } return; }
@@ -16752,10 +16757,11 @@ function placeLabels(labels){ if(!labels.length) return; const segs=obstacles(),
 
 function draw(){
   if(!cv||!SK.on) return; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,cv.width/dpr,cv.height/dpr);
-  const labels=[], now=performance.now();
-  SK.shapes.forEach(s=>drawShape(s,labels,now));
-  if(SK.cur) drawShape(SK.cur,labels,now);
-  if(SK.tool==="select"&&SK.sel){ const s=byId(SK.sel); if(s) handles(s); }
+  const labels=[], now=performance.now(), pl=PLAN();
+  if(pl){ try{ pl.draw2d(ctx,labels,now); }catch(e){ console.error("plan draw",e); } }
+  else { SK.shapes.forEach(s=>drawShape(s,labels,now));
+    if(SK.cur) drawShape(SK.cur,labels,now);
+    if(SK.tool==="select"&&SK.sel){ const s=byId(SK.sel); if(s) handles(s); } }
   placeLabels(labels);
   laserDraw(now);
   if(SK.snapAt){ ctx.beginPath(); ctx.arc(SK.snapAt[0],SK.snapAt[1],9,0,7); ctx.strokeStyle="#FFD60A"; ctx.lineWidth=2.5; ctx.stroke(); ctx.beginPath(); ctx.arc(SK.snapAt[0],SK.snapAt[1],2.5,0,7); ctx.fillStyle="#FFD60A"; ctx.fill(); }
@@ -16883,7 +16889,9 @@ function gestMove(){ if(!gest) return; const ids=[...ptrs.keys()].filter(id=>ges
   if(ids.length){ const o=gest.pts.get(ids[0]), n=ptrs.get(ids[0]); if(hyp(o,n)>3) gest.moved=true; }
   if(!SK.frozen&&ids.length===1){ const o=gest.pts.get(ids[0]), n=ptrs.get(ids[0]); panPx(n[0]-o[0],n[1]-o[1]); }
   else if(!SK.frozen&&ids.length>=2){ const o1=gest.pts.get(ids[0]),o2=gest.pts.get(ids[1]),n1=ptrs.get(ids[0]),n2=ptrs.get(ids[1]);
-    const om=mid(o1,o2), nm=mid(n1,n2), d0=hyp(o1,o2), d1=hyp(n1,n2); panPx(nm[0]-om[0],nm[1]-om[1]); if(d0>10&&d1>10) zoomAbout(nm,Math.log2(d1/d0)); }
+    const om=mid(o1,o2), nm=mid(n1,n2), d0=hyp(o1,o2), d1=hyp(n1,n2); panPx(nm[0]-om[0],nm[1]-om[1]); if(d0>10&&d1>10) zoomAbout(nm,Math.log2(d1/d0));
+    if(d0>40&&d1>40){ let da=(Math.atan2(n2[1]-n1[1],n2[0]-n1[0])-Math.atan2(o2[1]-o1[1],o2[0]-o1[0]))*180/Math.PI; if(da>180) da-=360; if(da<-180) da+=360;
+      if(Math.abs(da)>.15){ const ll=map.unproject(nm); map.jumpTo({bearing:map.getBearing()-da}); const p=map.project(ll); panPx(nm[0]-p.x,nm[1]-p.y); } } }
   else if(SK.frozen&&gest.moved&&!gest.told){ gest.told=true; flash("The map is frozen — tap <em>Frozen</em> to move it"); }
   gest.pts=new Map(ptrs); }
 
@@ -16895,15 +16903,18 @@ function onDown(e){
   const ti=q("#skUI .sk-text"); if(ti) ti.blur();
   if(e.pointerType==="touch"){ ptrs.set(e.pointerId,pt); const d=SK.drag;
     if(d&&d.ptype==="pen") return;                       // a palm or finger resting while the pencil draws
-    if(ptrs.size>=2||SK.penSeen||SK.tool==="hand"){
+    if(ptrs.size>=2||SK.penSeen||isHand()){
       if(d&&d.ptype==="touch"){ // a second finger: whatever the first finger started becomes a map gesture
+        if(d.k==="plan"&&window.SID_PLAN) window.SID_PLAN.cancel();
         if(d.k==="draw"||d.k==="shape") SK.cur=null; if(d.k==="vert"&&SK.cur){ SK.cur.pts.pop(); if(!SK.cur.pts.length) SK.cur=null; live(); }
         if(d.changed&&d.orig){ const s=byId(d.orig.id); if(s) Object.assign(s,JSON.parse(JSON.stringify(d.orig))); if(SK.undo.length) SK.undo.pop(); } SK.drag=null; SK.snapAt=null; }
       if(!SK.drag){ gestStart(); need(); return; } } }
   if(SK.drag) return;
-  if(e.button===1||spaceDown||(SK.tool==="hand"&&e.pointerType!=="touch")){ if(SK.frozen){ flash("The map is frozen — tap <em>Frozen</em> to move it"); return; } SK.drag={k:"pan",pid:e.pointerId,last:pt,ptype:e.pointerType}; cv.classList.add("grab"); capture(e); return; }
+  if(e.button===1||spaceDown||(isHand()&&e.pointerType!=="touch")){ if(SK.frozen){ flash("The map is frozen — tap <em>Frozen</em> to move it"); return; } SK.drag={k:"pan",pid:e.pointerId,last:pt,ptype:e.pointerType}; cv.classList.add("grab"); capture(e); return; }
   if(e.button>1) return;
+  if(PLAN()){ capture(e); SK.drag={k:"plan",pid:e.pointerId,ptype:e.pointerType}; PLAN().down(pt,e); if(SK.drag) SK.drag.ptype=e.pointerType; need(); return; }
   capture(e); toolDown(pt,e); if(SK.drag) SK.drag.ptype=e.pointerType; need(); }
+function startPan(pt,e){ if(SK.frozen){ flash("The map is frozen — tap <em>Frozen</em> to move it"); SK.drag=null; return false; } SK.drag={k:"pan",pid:e.pointerId,last:pt,ptype:e.pointerType}; cv.classList.add("grab"); return true; }
 function capture(e){ try{ cv.setPointerCapture(e.pointerId); }catch(_){} }
 function toolDown(pt,e){ const pid=e.pointerId, pr=e.pointerType==="pen"?(e.pressure||.5):.5, t=SK.tool;
   if(t==="pen"||t==="hl"){ const ll=U(pt[0],pt[1]); SK.cur={t,c:SK.color,w:t==="hl"?WIDTHS[SK.wi]*4+8:WIDTHS[SK.wi],z:map.getZoom(),pts:[[ll[0],ll[1],pr]],live:1}; SK.drag={k:"draw",pid,last:pt,hold:pt}; armHold(); return; }
@@ -16936,9 +16947,11 @@ function onMove(e){
   if(!SK.on) return; const pt=xy(e); if(e.pointerType!=="touch"||!SK.penSeen) SK.ptr=pt;
   if(e.pointerType==="touch"&&ptrs.has(e.pointerId)){ ptrs.set(e.pointerId,pt); if(gest){ gestMove(); need(); return; } }
   const d=SK.drag;
+  if(!d&&PLAN()){ PLAN().hover(pt,e); return; }
   if(!d){ if(SK.cur&&SK.cur.path&&e.pointerType!=="touch"){ SK.cur.hv=at(pt); need(); } else if(SK.snapAt){ SK.snapAt=null; need(); } hoverCur(pt); return; }
   if(d.pid!=null&&d.pid!==e.pointerId) return;
   if(d.k==="pan"){ panPx(pt[0]-d.last[0],pt[1]-d.last[1]); d.last=pt; }
+  else if(d.k==="plan"){ if(PLAN()) PLAN().move(pt,e); }
   else if(d.k==="draw"){ const evs=(e.getCoalescedEvents&&e.getCoalescedEvents())||[]; const list=evs.length?evs:[e];
     for(const ev of list){ const p=xy(ev); if(hyp(p,d.last)<1.2) continue; d.last=p; const ll=U(p[0],p[1]); SK.cur.pts.push([ll[0],ll[1],ev.pointerType==="pen"?(ev.pressure||.5):.5]); }
     if(hyp(pt,d.hold)>5){ d.hold=pt; armHold(); } }
@@ -16963,9 +16976,10 @@ function onMove(e){
 function onUp(e){
   if(!SK.on) return;
   if(e.pointerType==="touch"&&ptrs.has(e.pointerId)){ ptrs.delete(e.pointerId);
-    if(gest){ if(!ptrs.size){ const g=gest; gest=null; if(g.max===2&&!g.moved&&performance.now()-g.t0<350){ undo(); flash("Undo"); } } else gest={pts:new Map(ptrs),t0:gest.t0,moved:gest.moved,max:gest.max,told:gest.told}; return; } }
+    if(gest){ if(!ptrs.size){ const g=gest; gest=null; if(g.max===2&&!g.moved&&performance.now()-g.t0<350){ if(PLAN()) PLAN().undo(); else undo(); flash("Undo"); } } else gest={pts:new Map(ptrs),t0:gest.t0,moved:gest.moved,max:gest.max,told:gest.told}; return; } }
   const d=SK.drag; if(!d||(d.pid!=null&&d.pid!==e.pointerId)) return; SK.drag=null; clearTimeout(SK.holdT); cv.classList.remove("grab");
   const cancel=e.type==="pointercancel";
+  if(d.k==="plan"){ if(PLAN()) PLAN().up(xy(e),e,cancel); SK.snapAt=null; need(); return; }
   if(d.k==="draw"){ const c=SK.cur; SK.cur=null; if(c&&c.pts.length&&!(cancel&&c.pts.length<3)){ if(c.pts.length===1) c.pts.push(c.pts[0].slice()); commit(c,false); } }
   else if(d.k==="shape"){ const c=SK.cur; SK.cur=null; if(c&&!cancel){ const A=P(c.a), B=c.t==="circle"?P(dest(c.a,c.r||0,90)):P(c.t==="rect"?c.pts[2]:c.pts[1]); if(hyp(A,B)>6) commit(c,c.t!=="arrow"); } }
   else if(d.k==="vert"){ const c=SK.cur; if(c&&d.lasso&&c.lassoing){ delete c.lassoing; const simp=rdp(d.lasso,2.5); if(simp.length>=3){ c.pts=simp.map(p=>U(p[0],p[1])); finishPath(); } else SK.cur=null; } live(); }
@@ -16996,6 +17010,7 @@ function buildUI(){ ui=document.createElement("div"); ui.id="skUI";
       <button type="button" class="sk-b" id="skRedo" title="Redo (⇧⌘Z)">${svg(IC.redo)}<span>Redo</span></button>
     </div>
     <div class="sk-top sk-glass" role="toolbar" aria-label="Sketch options">
+      <div class="sk-mode" role="tablist" aria-label="Mode"><button type="button" data-mode="sketch" role="tab">Sketch</button><button type="button" data-mode="build" role="tab">Build</button></div>
       <button type="button" class="sk-tb" id="skFrz" title="Frozen: the map does not move, only drawing happens. Free: fingers or the Move tool move the map (F)"></button>
       <button type="button" class="sk-tb" id="skSnap" title="Snap points to plot corners and to your own points">${svg(IC.magnet)}<span>Snap</span></button>
       <button type="button" class="sk-tb" id="skUnit" title="Area units">${svg(IC.ruler)}<span id="skUnitL"></span></button>
@@ -17039,9 +17054,17 @@ function buildUI(){ ui=document.createElement("div"); ui.id="skUI";
   q("#skClrNo").onclick=()=>pops(null);
   q("#skClrYes").onclick=()=>{ pushUndo(); SK.shapes=[]; SK.sel=null; SK.cur=null; pops(null); after(); flash("Sketch cleared — Undo brings it back"); };
   q("#skDone").onclick=exit;
+  ui.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
   btns(); }
+function setMode(m){ if(m===SK.mode&&(m!=="build"||PLAN())) return; if(SK.cur&&SK.cur.path) finishPath(); SK.cur=null; SK.sel=null; pops(null);
+  if(m==="build"&&!window.SID_PLAN){ flash("Build mode is not available"); return; }
+  SK.mode=m; persist(); document.body.classList.toggle("sk-build",m==="build");
+  if(window.SID_PLAN){ if(m==="build") window.SID_PLAN.activate(API); else window.SID_PLAN.deactivate(); }
+  if(m==="sketch"&&map.getPitch()>.5) map.easeTo({pitch:0,duration:600});
+  btns(); card(); live(); hint(); need(); }
 function pops(id){ let was=false; ["skPal","skUnits","skFp","skClrP"].forEach(k=>{ const p=q("#"+k); if(!p) return; if(!p.hidden&&k!==id) was=true; p.hidden=k!==id; }); return was; }
 function btns(){ if(!ui) return;
+  ui.querySelectorAll("[data-mode]").forEach(b=>{ const on=b.dataset.mode===SK.mode; b.classList.toggle("on",on); b.setAttribute("aria-selected",on); });
   ui.querySelectorAll("[data-tool]").forEach(b=>{ const on=b.dataset.tool===SK.tool; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on); });
   q("#skDot").style.background=SK.color;
   q("#skPal").querySelectorAll("[data-c]").forEach(b=>b.classList.toggle("on",b.dataset.c===SK.color));
@@ -17053,17 +17076,17 @@ function btns(){ if(!ui) return;
   if(cv){ cv.className="c-"+SK.tool; cv.style.cursor=""; } }
 function setTool(t){ if(SK.cur&&SK.cur.path) finishPath(); SK.cur=null; SK.tool=t; persist(); btns(); card(); hint(); need(); }
 function hint(){ const h=q("#skHint"); if(!h) return; const busy=!q("#skCard").hidden||!q("#skLive").hidden;
-  let m=HINT[SK.tool]||""; if(SK.frozen&&SK.tool==="hand") m="The map is frozen — tap <em>Frozen</em> to let it move"; else if(!SK.frozen&&SK.penSeen&&SK.tool!=="hand") m+=" · fingers move the map";
+  let m=PLAN()?PLAN().hint():(HINT[SK.tool]||""); if(SK.frozen&&isHand()) m="The map is frozen — tap <em>Frozen</em> to let it move"; else if(!SK.frozen&&SK.penSeen&&!isHand()) m+=" · fingers move the map";
   h.innerHTML=m; h.classList.toggle("off",busy); clearTimeout(hintT); hintT=setTimeout(()=>h.classList.add("off"),6000); }
 function flash(m){ const h=q("#skHint"); if(!h) return; h.innerHTML=m; h.classList.remove("off"); clearTimeout(hintT); hintT=setTimeout(()=>h.classList.add("off"),2600); }
-function live(){ const el=q("#skLive"); if(!el) return; const c=SK.cur; if(!c||!c.path){ if(!el.hidden){ el.hidden=true; hint(); } btns(); return; }
+function live(){ const el=q("#skLive"); if(!el) return; const c=SK.cur; if(!c||!c.path||SK.mode==="build"){ if(!el.hidden){ el.hidden=true; hint(); } btns(); return; }
   const pts=c.hv?c.pts.concat([c.hv]):c.pts; let v="—", s="";
   if(c.t==="line"){ v=fLen(pathLen(pts)); s=`${Math.max(0,c.pts.length)} point${c.pts.length===1?"":"s"}`; }
   else { v=pts.length>=3?fArea(ringArea(pts)):pts.length===2?fLen(dist(pts[0],pts[1])):"—"; s=pts.length>=3?`${c.pts.length} corners · perimeter ${fLen(pathLen(pts.concat([pts[0]])))}`:"tap the corners"; }
   const html=`<div><div class="v">${v}</div><div class="s">${esc(s)}</div></div><button type="button" id="skLU">Undo point</button><button type="button" id="skLC">Cancel</button><button type="button" class="pri" id="skLF">Finish</button>`;
   if(el.dataset.h!==html){ el.dataset.h=html; el.innerHTML=html; q("#skLU").onclick=()=>undo(); q("#skLC").onclick=()=>{ SK.cur=null; live(); need(); }; q("#skLF").onclick=()=>finishPath(); }
   if(el.hidden){ el.hidden=false; q("#skHint").classList.add("off"); q("#skCard").hidden=true; } btns(); }
-function card(){ const el=q("#skCard"); if(!el) return; const s=byId(SK.sel); if(!s||!SK.on||(SK.cur&&SK.cur.path)){ const was=!el.hidden; el.hidden=true; el.dataset.h=""; if(was&&!(SK.cur&&SK.cur.path)) hint(); return; }
+function card(){ const el=q("#skCard"); if(!el) return; const s=byId(SK.sel); if(!s||!SK.on||SK.mode==="build"||(SK.cur&&SK.cur.path)){ const was=!el.hidden; el.hidden=true; el.dataset.h=""; if(was&&!(SK.cur&&SK.cur.path)) hint(); return; }
   const T={line:"Distance",poly:"Area",rect:s.fp?"Factory footprint":"Rectangle",circle:"Circle",pen:"Drawing",hl:"Highlight",arrow:"Arrow",text:"Text"}[s.t]||"Drawing";
   let big="", sub="", extra="";
   if(s.t==="line"){ const L=pathLen(s.pts); big=fLen(L); sub=s.pts.length>2?`${s.pts.length-1} segments`:"straight line";
@@ -17133,11 +17156,13 @@ function enter(){ if(SK.on) return; if(!ready()){ say("The map is still loading"
   try{ kbWas=map.keyboard.isEnabled(); map.keyboard.disable(); }catch(e){}
   try{ scaleCtl=new maplibregl.ScaleControl({maxWidth:150,unit:"metric"}); map.addControl(scaleCtl,"bottom-left"); }catch(e){ scaleCtl=null; }
   map.on("move",onMapMove); map.on("resize",onMapResize);
-  map.resize(); sizeCv(); if(map.getPitch()>.5) map.easeTo({pitch:0,duration:700});
+  map.resize(); sizeCv(); if(SK.mode!=="build"&&map.getPitch()>.5) map.easeTo({pitch:0,duration:700});
+  document.body.classList.toggle("sk-build",SK.mode==="build"); if(SK.mode==="build"){ if(window.SID_PLAN) window.SID_PLAN.activate(API); else SK.mode="sketch"; }
   try{ const de=document.documentElement; if(!document.fullscreenElement&&!document.webkitFullscreenElement&&matchMedia("(pointer:coarse)").matches){ const r=de.requestFullscreen?de.requestFullscreen():de.webkitRequestFullscreen&&de.webkitRequestFullscreen(); fsMine=true; if(r&&r.catch) r.catch(()=>{ fsMine=false; }); } }catch(e){ fsMine=false; }
   setTimeout(()=>{ try{ map.resize(); sizeCv(); }catch(e){} },350);
   hint(); card(); btns(); need(); }
 function exit(){ if(!SK.on) return; if(SK.cur&&SK.cur.path) finishPath(); SK.cur=null; SK.drag=null; const t=q("#skUI .sk-text"); if(t) t.blur();
+  try{ if(window.SID_PLAN&&window.SID_PLAN.on) window.SID_PLAN.deactivate(true); }catch(e){ console.error(e); } document.body.classList.remove("sk-build");
   SK.on=false; persist(); cancelAnimationFrame(raf); raf=0;
   map.off("move",onMapMove); map.off("resize",onMapResize);
   try{ if(scaleCtl) map.removeControl(scaleCtl); }catch(e){} scaleCtl=null;
@@ -17151,6 +17176,15 @@ function exit(){ if(!SK.on) return; if(SK.cur&&SK.cur.path) finishPath(); SK.cur
 
 window.addEventListener("keydown",e=>{ if(!SK.on) return; const t=e.target; if(t&&(t.tagName==="INPUT"||t.tagName==="TEXTAREA"||t.tagName==="SELECT"||t.isContentEditable)) return;
   const k=e.key, lk=(k||"").toLowerCase(), mod=e.metaKey||e.ctrlKey, stop=()=>{ e.preventDefault(); e.stopImmediatePropagation(); };
+  const pl=PLAN(); if(pl){
+    if(k==="Escape"){ stop(); if(pops(null)) return; if(!pl.esc()) exit(); return; }
+    if(mod&&lk==="z"){ stop(); e.shiftKey?pl.redo():pl.undo(); return; } if(mod&&lk==="y"){ stop(); pl.redo(); return; }
+    if(k==="Delete"||k==="Backspace"){ if(pl.del()) stop(); return; }
+    if(k==="Enter"){ if(pl.enter()) stop(); return; }
+    if(k===" "){ stop(); spaceDown=true; return; }
+    if(mod||e.altKey) return;
+    if(lk==="f"){ stop(); q("#skFrz").click(); return; } if(lk==="s"){ stop(); q("#skSnap").click(); return; }
+    if(pl.key(lk)) stop(); return; }
   if(k==="Escape"){ stop(); if(SK.cur){ if(SK.cur.path) finishPath(); else SK.cur=null; need(); } else if(pops(null)){} else if(SK.sel){ SK.sel=null; card(); need(); } else exit(); return; }
   if(mod&&lk==="z"){ stop(); e.shiftKey?redo():undo(); return; } if(mod&&lk==="y"){ stop(); redo(); return; }
   if((k==="Delete"||k==="Backspace")&&SK.sel){ stop(); delSel(); return; }
@@ -17167,7 +17201,638 @@ class SkCtl{ onAdd(){ const d=document.createElement("div"); d.className="maplib
     d.querySelector("button").addEventListener("click",e=>{ e.stopPropagation(); enter(); }); this._d=d; return d; }
   onRemove(){ this._d&&this._d.remove(); } }
 setInterval(()=>{ try{ if(typeof map!=="undefined"&&map&&map.addControl&&map.getContainer&&!map.getContainer().querySelector(".sk-ctl")) map.addControl(new SkCtl(),"bottom-right"); }catch(e){} },1500);
-window.SID_SKETCH={enter,exit,state:SK,_t:{dist,ringArea,fLen,fArea,recognize,inside,draw}};
+const API={SK,P,U,dist,pathLen,ringArea,dest,radii,fLen,fArea,fArea2,nf,flash,hint,need,pill,upNormal,snap:(pt,ex)=>snap(pt,ex),startPan,svg,IC,FONT,esc,hyp,segDist,inPoly,rdp,centroid,rr,
+  cv:()=>cv, ctx:()=>ctx, panPx, btns, ui:()=>ui};
+window.SID_SKETCH={enter,exit,setMode,state:SK,api:API,_t:{dist,ringArea,fLen,fArea,recognize,inside,draw}};
+})();
+</script>
+
+<style>
+/* ---- V84 SID Planner ---- */
+#plTools{display:none}
+body.sk-build #plTools{display:flex}
+.pl-opt{position:absolute;left:84px;top:12px;display:flex;align-items:center;gap:6px;padding:6px 8px;max-width:calc(100vw - 96px);overflow-x:auto;scrollbar-width:none;animation:skInR .3s ease-out}
+.pl-opt::-webkit-scrollbar{display:none}
+.pl-opt b{font-size:12px;color:rgba(255,255,255,.7);font-weight:700;white-space:nowrap;padding:0 4px;text-transform:uppercase;letter-spacing:.05em}
+.pl-opt button{height:34px;border:0;border-radius:9px;background:rgba(255,255,255,.1);color:#fff;font-weight:600;font-size:12.5px;padding:0 12px;cursor:pointer;white-space:nowrap}
+.pl-opt button.on{background:#fff;color:#111}
+.pl-opt input{width:90px;height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font:600 14px inherit;padding:0 8px}
+.pl-kpi{position:absolute;left:84px;top:64px;padding:10px 14px;display:grid;grid-template-columns:auto auto;gap:3px 16px;font-size:12px;min-width:220px;cursor:pointer}
+.pl-kpi span{color:rgba(255,255,255,.68)} .pl-kpi b{text-align:right;font-weight:700;white-space:nowrap}
+.pl-kpi .t{grid-column:1/-1;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#FFD60A;margin-bottom:2px}
+.pl-kpi.min{min-width:0;grid-template-columns:auto} .pl-kpi.min span,.pl-kpi.min b:not(.keep){display:none}
+.pl-kpi .w{color:#FF9F0A}
+.pl-menu{position:absolute;padding:6px;min-width:210px;display:flex;flex-direction:column;gap:2px;animation:skPop .15s ease-out;z-index:4}
+.pl-menu .h{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.6);padding:6px 10px 4px}
+.pl-menu button{display:flex;align-items:center;gap:10px;height:42px;border:0;border-radius:9px;background:transparent;color:#fff;font-weight:600;font-size:14px;padding:0 10px;cursor:pointer;text-align:left}
+.pl-menu button:hover,.pl-menu button:focus{background:rgba(255,255,255,.12);outline:none}
+.pl-menu button i{width:14px;height:14px;border-radius:4px;flex:none}
+.pl-menu button em{margin-left:auto;font-style:normal;font-size:11px;color:rgba(255,255,255,.55)}
+.pl-dims{position:absolute;padding:14px;width:280px;animation:skPop .15s ease-out;z-index:5}
+.pl-dims b{display:block;font-size:14px;margin-bottom:10px}
+.pl-dims .g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pl-dims label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:rgba(255,255,255,.7)}
+.pl-dims input,.pl-dims select{height:36px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font:600 15px -apple-system,BlinkMacSystemFont,Inter,sans-serif;padding:0 8px}
+.pl-dims select option{color:#111}
+.pl-dims .r{display:flex;gap:8px;margin-top:12px} .pl-dims .r button{flex:1}
+#plLive{position:absolute;left:calc(50% + 35px);bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:8px 8px 8px 16px;max-width:calc(100vw - 110px);animation:skUp .25s}
+#plLive .v{font-size:18px;font-weight:800;white-space:nowrap} #plLive .s{font-size:12px;color:rgba(255,255,255,.7);white-space:nowrap}
+#plLive button,#plCard .acts button,#plCard select{height:36px;border:0;border-radius:10px;background:rgba(255,255,255,.14);color:#fff;font-weight:600;font-size:13px;padding:0 12px;cursor:pointer;white-space:nowrap}
+#plCard select option{color:#111}
+#plLive button.pri,#plCard .acts button.pri{background:#fff;color:#111}
+#plCard{position:absolute;right:12px;bottom:34px;width:min(400px,calc(100vw - 110px));padding:14px 16px;animation:skUpR .25s}
+#plCard .hd{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+#plCard .hd .x{margin-left:auto;width:28px;height:28px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff;font-size:16px;cursor:pointer}
+#plCard .big{font-size:26px;font-weight:800;margin-top:4px;line-height:1.15} #plCard .sub{font-size:13px;color:rgba(255,255,255,.75);margin-top:3px}
+#plCard .w{margin-top:8px;font-size:12.5px;color:#FF9F0A}
+#plCard .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+#plCard .acts button.del{background:rgba(255,69,58,.2);color:#ff6961}
+@media (max-height:690px){ .pl-opt,.pl-kpi{left:120px} #plLive{left:calc(50% + 55px)} }
+@media (max-width:620px){ .pl-kpi{top:auto;bottom:12px;left:66px} #plCard{left:66px;right:8px;width:auto;bottom:12px} }
+</style>
+
+<script>
+/* V84 — SID Planner */
+(function(){
+"use strict";
+let A=null, T=null, layer=null;
+const q=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const RT=[{k:"main",l:"Main road",w:30},{k:"sec",l:"Secondary",w:20},{k:"serv",l:"Service",w:12}];
+const BK={factory:{l:"Factory",w:40,len:70,h:12,c:"#E9D9A8"},warehouse:{l:"Warehouse",w:45,len:80,h:11,c:"#AFC3DD"},showroom:{l:"Showroom",w:24,len:40,h:8,c:"#7FA7CF"},
+  admin:{l:"Admin building",w:20,len:36,h:16,c:"#ECE8E0"},substation:{l:"Substation",w:30,len:40,h:6,c:"#BFC4CA"},tank:{l:"Water tank",w:14,len:14,h:22,c:"#E7ECF1"}};
+const OB={palm:{l:"Palm tree",w:7,len:7,h:6.5,c:"#4FA05A"},tree:{l:"Tree",w:6,len:6,h:7,c:"#3E8E4A"},shrub:{l:"Shrub",w:3,len:3,h:2.2,c:"#5BAA5E"},
+  lamp:{l:"Street light",w:1.2,len:3,h:9,c:"#9AA3AD"},truck:{l:"Truck",w:3,len:12,h:4,c:"#F2F4F7"},sign:{l:"Park sign",w:2,len:10,h:5,c:"#B3263D"}};
+const TREES=["palm","tree","shrub"], OBJS=["lamp","truck","sign"], GAP={palm:9,tree:8,shrub:4,lamp:30,truck:16,sign:24};
+const KIND=k=>BK[k]||OB[k]||{l:k,w:10,len:10,h:5,c:"#ccc"};
+const isBld=k=>!!BK[k];
+const PL={on:false,tool:"road",rt:1,bk:"factory",tk:"palm",ok:"lamp",target:5000,v3:false,plan:null,undo:[],redo:[],sel:null,cur:null,nid:1,ver:0,dirty:new Set(["all"]),pm:null,block:null,menu:null};
+const blank=()=>({o:null,land:null,roads:[],plots:[],items:[],sec:0});
+PL.plan=blank();
+try{ const o=JSON.parse(localStorage.getItem("sid.plan.v1")||"null"); if(o&&o.plan){ PL.plan=Object.assign(blank(),o.plan); ["tool","rt","bk","tk","ok","target","v3"].forEach(k=>{ if(o[k]!=null) PL[k]=o[k]; }); } }catch(e){}
+const ids=()=>{ const p=PL.plan; return [p.land?p.land.id:0].concat(p.roads.map(r=>r.id),p.plots.map(r=>r.id),p.items.map(r=>r.id)); };
+PL.nid=Math.max(0,...ids())+1;
+const empty=()=>{ const p=PL.plan; return !p.land&&!p.roads.length&&!p.plots.length&&!p.items.length; };
+let saveT=0;
+function persist(){ clearTimeout(saveT); saveT=setTimeout(()=>{ try{ localStorage.setItem("sid.plan.v1",JSON.stringify({plan:PL.plan,tool:PL.tool,rt:PL.rt,bk:PL.bk,tk:PL.tk,ok:PL.ok,target:PL.target,v3:PL.v3})); }catch(e){ A&&A.flash("The plan is too big to keep in this browser"); } },250); }
+function pushUndo(){ PL.undo.push(JSON.stringify(PL.plan)); if(PL.undo.length>80) PL.undo.shift(); PL.redo=[]; }
+function changed(what){ PL.ver++; (what||["all"]).forEach(w=>PL.dirty.add(w)); persist(); kpi(); card(); if(A) A.need(); if(layer) map.triggerRepaint(); }
+function undo(){ if(PL.cur){ if(PL.cur.pts&&PL.cur.pts.length>1){ PL.cur.pts.pop(); live(); A.need(); return; } PL.cur=null; live(); A.need(); return; }
+  if(!PL.undo.length){ A.flash("Nothing to undo"); return; } PL.redo.push(JSON.stringify(PL.plan)); PL.plan=JSON.parse(PL.undo.pop()); O=null; fixSel(); changed(); }
+function redo(){ if(!PL.redo.length) return; PL.undo.push(JSON.stringify(PL.plan)); PL.plan=JSON.parse(PL.redo.pop()); O=null; fixSel(); changed(); }
+function fixSel(){ if(PL.sel&&!obj(PL.sel)) PL.sel=null; }
+function obj(s){ if(!s) return null; const p=PL.plan; if(s.t==="land") return p.land&&p.land.id===s.id?p.land:null; const L=s.t==="road"?p.roads:s.t==="plot"?p.plots:p.items; return L.find(x=>x.id===s.id)||null; }
+const r9=c=>[+(+c[0]).toFixed(9),+(+c[1]).toFixed(9)];
+const hash=str=>{ str=String(str); let h=2166136261; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0)/4294967295; };
+
+/* ---------- real-scale local frame: metres east (x), up (y), south (z), drawn exactly where the map draws them ---------- */
+let O=null;
+function frame(){ const p=PL.plan; if(!p.o){ const c=map.getCenter(); p.o=[+c.lng.toFixed(7),+c.lat.toFixed(7)]; }
+  const k=p.o.join(); if(O&&O.k===k) return O; const MC=maplibregl.MercatorCoordinate, m0=MC.fromLngLat(p.o,0), me=MC.fromLngLat(A.dest(p.o,1000,90),0), ms=MC.fromLngLat(A.dest(p.o,1000,180),0);
+  O={k,mx:m0.x,my:m0.y,sx:(me.x-m0.x)/1000,sy:(ms.y-m0.y)/1000,sa:m0.meterInMercatorCoordinateUnits()}; return O; }
+const Lc=ll=>{ const f=frame(), m=maplibregl.MercatorCoordinate.fromLngLat(ll,0); return [(m.x-f.mx)/f.sx,(m.y-f.my)/f.sy]; };
+const Gc=(x,z)=>{ const f=frame(), l=new maplibregl.MercatorCoordinate(f.mx+x*f.sx,f.my+z*f.sy,0).toLngLat(); return r9([l.lng,l.lat]); };
+const lhyp=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+function lArea(P){ let a=0; for(let i=0;i<P.length;i++){ const p=P[i], n=P[(i+1)%P.length]; a+=p[0]*n[1]-n[0]*p[1]; } return a/2; }
+function lCent(P){ let x=0,z=0; P.forEach(p=>{ x+=p[0]; z+=p[1]; }); return [x/P.length,z/P.length]; }
+function lInPoly(p,R){ let ins=false; for(let i=0,j=R.length-1;i<R.length;j=i++){ const a=R[i],b=R[j]; if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0]) ins=!ins; } return ins; }
+function projSeg(p,a,b){ const dx=b[0]-a[0],dz=b[1]-a[1],L=dx*dx+dz*dz; let t=L?((p[0]-a[0])*dx+(p[1]-a[1])*dz)/L:0; t=Math.max(0,Math.min(1,t)); return {t,p:[a[0]+t*dx,a[1]+t*dz],d:Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dz)}; }
+// item rectangle: long axis u (bearing rot, 0 = north), short axis v
+function iFrame(it){ const c=Lc(it.c), r=it.rot*Math.PI/180; return {c,u:[Math.sin(r),-Math.cos(r)],v:[Math.cos(r),Math.sin(r)]}; }
+function iCorners(it){ const {c,u,v}=iFrame(it), a=it.len/2, b=it.w/2; return [[-a,-b],[a,-b],[a,b],[-a,b]].map(([s,t])=>[c[0]+u[0]*s+v[0]*t,c[1]+u[1]*s+v[1]*t]); }
+const bearingOf=(u)=>((Math.atan2(u[0],-u[1])*180/Math.PI)+360)%360;
+const geoArea=pts=>A.ringArea(pts);
+
+/* ---------- screen <-> ground ---------- */
+function scr(x,y,z){ const m=PL.pm; if(!m) return null; const X=m[0]*x+m[4]*y+m[8]*z+m[12], Y=m[1]*x+m[5]*y+m[9]*z+m[13], W=m[3]*x+m[7]*y+m[11]*z+m[15]; if(W<=1e-9) return null; const cv=A.cv(); return [(X/W+1)/2*cv.clientWidth,(1-Y/W)/2*cv.clientHeight]; }
+const gScr=p=>A.P(Gc(p[0],p[1]));           // ground point (local) -> screen
+const ground=pt=>Lc(A.U(pt[0],pt[1]));        // screen -> ground (local)
+function mpp(pt){ const a=A.U(pt[0],pt[1]), b=A.U(pt[0]+20,pt[1]); return Math.max(.01,A.dist(a,b)/20); }
+function hull(P){ P=P.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]); if(P.length<3) return P; const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]); const lo=[],up=[];
+  for(const p of P){ while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0) lo.pop(); lo.push(p); } for(let i=P.length-1;i>=0;i--){ const p=P[i]; while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0) up.pop(); up.push(p); }
+  up.pop(); lo.pop(); return lo.concat(up); }
+function itemScreen(it){ const C=iCorners(it), pts=[]; for(const y of [0,it.h]) for(const c of C){ const s=scr(c[0],y,c[1])||(y===0?gScr(c):null); if(s) pts.push(s); } return hull(pts); }
+
+/* ---------- road network ---------- */
+let GR=null;
+function graph(){ if(GR&&GR.v===PL.ver) return GR; const key=ll=>(+ll[0]).toFixed(8)+","+(+ll[1]).toFixed(8), nodes=[], idx=new Map();
+  const node=ll=>{ const k=key(ll); let i=idx.get(k); if(i==null){ const p=Lc(ll); i=nodes.length; nodes.push({x:p[0],z:p[1],out:[],w:0}); idx.set(k,i); } return i; };
+  PL.plan.roads.forEach(rd=>{ for(let i=1;i<rd.pts.length;i++){ const a=node(rd.pts[i-1]), b=node(rd.pts[i]); if(a===b) continue; const L=Math.hypot(nodes[b].x-nodes[a].x,nodes[b].z-nodes[a].z);
+      nodes[a].out.push({to:b,len:L,w:rd.w}); nodes[b].out.push({to:a,len:L,w:rd.w}); nodes[a].w=Math.max(nodes[a].w,rd.w); nodes[b].w=Math.max(nodes[b].w,rd.w); } });
+  GR={v:PL.ver,nodes,at:ll=>{ const i=idx.get(key(ll)); return i==null?null:nodes[i]; }}; return GR; }
+// a new road joins the network: points on another road and crossings become shared junctions on both roads
+function joinRoads(rd){ const R=PL.plan.roads, ins=new Map(), add=(road,seg,t,ll)=>{ if(!ins.has(road)) ins.set(road,[]); ins.get(road).push({seg,t,ll}); };
+  const V=rd.pts.map(Lc);
+  R.forEach(o=>{ if(o===rd) return; const W=o.pts.map(Lc);
+    V.forEach((p,i)=>{ for(let j=1;j<W.length;j++){ const pr=projSeg(p,W[j-1],W[j]); if(pr.d<.05&&pr.t>1e-6&&pr.t<1-1e-6){ add(o,j-1,pr.t,rd.pts[i]); break; } } });
+    for(let i=1;i<V.length;i++) for(let j=1;j<W.length;j++){ const a=V[i-1],b=V[i],c=W[j-1],d=W[j], den=(b[0]-a[0])*(d[1]-c[1])-(b[1]-a[1])*(d[0]-c[0]); if(Math.abs(den)<1e-9) continue;
+      const t=((c[0]-a[0])*(d[1]-c[1])-(c[1]-a[1])*(d[0]-c[0]))/den, s=((c[0]-a[0])*(b[1]-a[1])-(c[1]-a[1])*(b[0]-a[0]))/den;
+      const la=lhyp(a,b), lc=lhyp(c,d); if(t*la<.5||(1-t)*la<.5||s*lc<.5||(1-s)*lc<.5) continue; if(t<0||t>1||s<0||s>1) continue;
+      const X=Gc(a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])); add(rd,i-1,t,X); add(o,j-1,s,X); } });
+  ins.forEach((list,road)=>{ list.sort((x,y)=>y.seg-x.seg||y.t-x.t); list.forEach(x=>{ road.pts.splice(x.seg+1,0,x.ll); }); }); }
+function roadArea(){ let a=0; PL.plan.roads.forEach(r=>{ for(let i=1;i<r.pts.length;i++) a+=A.dist(r.pts[i-1],r.pts[i])*r.w; }); return a; }
+
+/* ---------- blocks between roads, and plots made for a block ---------- */
+function detectBlock(ptLocal){ const p=PL.plan, land=p.land&&p.land.pts.map(Lc); const pts=[]; if(land) pts.push(...land); p.roads.forEach(r=>r.pts.forEach(c=>pts.push(Lc(c))));
+  if(!land&&!p.roads.length) return {err:"Draw the land or the roads first"};
+  let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9; pts.forEach(v=>{ x0=Math.min(x0,v[0]); x1=Math.max(x1,v[0]); z0=Math.min(z0,v[1]); z1=Math.max(z1,v[1]); });
+  const ext=Math.max(x1-x0,z1-z0), res=Math.max(.75,ext/1100), W=Math.ceil((x1-x0)/res)+3, H=Math.ceil((z1-z0)/res)+3, bx=x0-res, bz=z0-res, N=W*H, blk=new Uint8Array(N);
+  const cx=i=>bx+(i+.5)*res, cz=j=>bz+(j+.5)*res;
+  if(land){ for(let j=0;j<H;j++){ const z=cz(j), xs=[]; for(let i=0;i<land.length;i++){ const a=land[i], b=land[(i+1)%land.length]; if((a[1]<=z&&b[1]>z)||(b[1]<=z&&a[1]>z)) xs.push(a[0]+(z-a[1])/(b[1]-a[1])*(b[0]-a[0])); } xs.sort((u,v)=>u-v);
+      for(let i=0;i<W;i++){ const x=cx(i); let n=0; for(const v of xs) if(v<x) n++; if(n%2===0) blk[j*W+i]=1; } } }
+  else for(let i=0;i<W;i++){ blk[i]=1; blk[(H-1)*W+i]=1; }
+  p.roads.forEach(r=>{ const V=r.pts.map(Lc), rr=r.w/2; for(let k=1;k<V.length;k++){ const a=V[k-1], b=V[k]; const i0=Math.max(0,Math.floor((Math.min(a[0],b[0])-rr-bx)/res)), i1=Math.min(W-1,Math.ceil((Math.max(a[0],b[0])+rr-bx)/res)), j0=Math.max(0,Math.floor((Math.min(a[1],b[1])-rr-bz)/res)), j1=Math.min(H-1,Math.ceil((Math.max(a[1],b[1])+rr-bz)/res));
+      for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){ if(projSeg([cx(i),cz(j)],a,b).d<=rr) blk[j*W+i]=1; } } });
+  p.plots.forEach(pl=>{ const P=pl.pts.map(Lc); let a0=1e9,a1=-1e9,b0=1e9,b1=-1e9; P.forEach(v=>{ a0=Math.min(a0,v[0]); a1=Math.max(a1,v[0]); b0=Math.min(b0,v[1]); b1=Math.max(b1,v[1]); });
+    for(let j=Math.max(0,Math.floor((b0-bz)/res));j<=Math.min(H-1,Math.ceil((b1-bz)/res));j++) for(let i=Math.max(0,Math.floor((a0-bx)/res));i<=Math.min(W-1,Math.ceil((a1-bx)/res));i++) if(lInPoly([cx(i),cz(j)],P)) blk[j*W+i]=1; });
+  const si=Math.floor((ptLocal[0]-bx)/res), sj=Math.floor((ptLocal[1]-bz)/res); if(si<0||sj<0||si>=W||sj>=H||blk[sj*W+si]) return {err:"Tap inside an empty block between roads"};
+  const comp=new Uint8Array(N), st=[sj*W+si]; comp[st[0]]=1; let n=0, open=false;
+  while(st.length){ const c=st.pop(); n++; const i=c%W, j=(c/W)|0; if(i===0||j===0||i===W-1||j===H-1) open=true;
+    for(const [di,dj] of [[1,0],[-1,0],[0,1],[0,-1]]){ const a=i+di, b=j+dj; if(a<0||b<0||a>=W||b>=H) continue; const k=b*W+a; if(!comp[k]&&!blk[k]){ comp[k]=1; st.push(k); } } }
+  if(open) return {err:"This area is not closed — draw the land boundary first"};
+  // outline of the cells (each boundary edge once, the block on its left), then the largest loop, simplified to straight sides
+  const E=new Map(), ek=(x,y)=>x+","+y, edge=(a,b)=>{ const k=ek(a[0],a[1]); if(!E.has(k)) E.set(k,[]); E.get(k).push(b); };
+  for(let j=0;j<H;j++) for(let i=0;i<W;i++){ if(!comp[j*W+i]) continue; const C=(x,y)=>comp[y*W+x]===1;
+    if(j===0||!C(i,j-1)) edge([i+1,j],[i,j]); if(j===H-1||!C(i,j+1)) edge([i,j+1],[i+1,j+1]); if(i===0||!C(i-1,j)) edge([i,j],[i,j+1]); if(i===W-1||!C(i+1,j)) edge([i+1,j+1],[i+1,j]); }
+  let best=null, bestA=0;
+  while(E.size){ const k0=E.keys().next().value; let cur=k0.split(",").map(Number); const loop=[]; let guard=0;
+    while(guard++<4e6){ const k=ek(cur[0],cur[1]), l=E.get(k); if(!l||!l.length){ E.delete(k); break; } const nx=l.pop(); if(!l.length) E.delete(k); loop.push(cur); cur=nx; if(ek(cur[0],cur[1])===k0) break; }
+    if(loop.length>2){ const a=Math.abs(lArea(loop)); if(a>bestA){ bestA=a; best=loop; } } }
+  if(!best) return {err:"Could not find the block"};
+  let poly=best.map(([i,j])=>[bx+i*res,bz+j*res]); poly=A.rdp(poly.concat([poly[0]]),res*.9); poly.pop(); if(poly.length>3&&lhyp(poly[0],poly[poly.length-1])<res) poly.pop();
+  if(poly.length<3) return {err:"The block is too small"};
+  if(lArea(poly)<0) poly.reverse();
+  return {poly,res,cells:n};
+}
+function clipHalf(P,a,n){ const out=[], f=p=>(p[0]-a[0])*n[0]+(p[1]-a[1])*n[1]; for(let i=0;i<P.length;i++){ const c=P[i], d=P[(i+1)%P.length], fc=f(c), fd=f(d);
+    if(fc>=0) out.push(c); if((fc>=0)!==(fd>=0)){ const t=fc/(fc-fd); out.push([c[0]+t*(d[0]-c[0]),c[1]+t*(d[1]-c[1])]); } } return out; }
+function cleanPoly(P){ const o=[]; P.forEach(p=>{ if(!o.length||lhyp(o[o.length-1],p)>.05) o.push(p); }); if(o.length>2&&lhyp(o[0],o[o.length-1])<.05) o.pop();
+  for(let k=0;k<3;k++) for(let i=o.length-1;i>=0&&o.length>3;i--){ const a=o[(i-1+o.length)%o.length], b=o[i], c=o[(i+1)%o.length], cr=(b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]); if(Math.abs(cr)<.02*Math.max(1,lhyp(a,c))) o.splice(i,1); } return o; }
+function subdivide(B,target){ // B: block polygon (local). Plots face the road along the block's road side; deep blocks get two rows back to back.
+  const roads=PL.plan.roads.map(r=>({V:r.pts.map(Lc),w:r.w})); let bi=-1, bl=0, any=-1, al=0;
+  for(let i=0;i<B.length;i++){ const a=B[i], b=B[(i+1)%B.length], l=lhyp(a,b), m=[(a[0]+b[0])/2,(a[1]+b[1])/2]; if(l>al){ al=l; any=i; }
+    const near=roads.some(r=>{ for(let k=1;k<r.V.length;k++) if(projSeg(m,r.V[k-1],r.V[k]).d<=r.w/2+3) return true; return false; }); if(near&&l>bl){ bl=l; bi=i; } }
+  if(bi<0) bi=any; const a=B[bi], b=B[(bi+1)%B.length], L=lhyp(a,b), u=[(b[0]-a[0])/L,(b[1]-a[1])/L]; let v=[-u[1],u[0]]; const c=lCent(B); if((c[0]-a[0])*v[0]+(c[1]-a[1])*v[1]<0) v=[-v[0],-v[1]];
+  let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9; B.forEach(p=>{ const s=(p[0]-a[0])*u[0]+(p[1]-a[1])*u[1], t=(p[0]-a[0])*v[0]+(p[1]-a[1])*v[1]; u0=Math.min(u0,s); u1=Math.max(u1,s); v0=Math.min(v0,t); v1=Math.max(v1,t); });
+  // depth: one row, two rows back to back, or bands of two rows with a 12 m service road between them (so every plot faces a road)
+  const D=v1-v0, ideal=Math.sqrt(target*1.5), SR=12, out=[], srvV=[], rowsOf=[];
+  const nearRoad=m=>roads.some(r=>{ for(let k=1;k<r.V.length;k++) if(projSeg(m,r.V[k-1],r.V[k]).d<=r.w/2+3) return true; return false; });
+  let far=false; for(let i=0;i<B.length;i++){ const p=B[i], q=B[(i+1)%B.length], m=[(p[0]+q[0])/2,(p[1]+q[1])/2], tv=(m[0]-a[0])*v[0]+(m[1]-a[1])*v[1]; if(tv>v1-.15*D&&lhyp(p,q)>D*.3&&nearRoad(m)){ far=true; break; } }
+  // rows as close to the ideal depth as possible; pairs of rows back to back with a 12 m service road between pairs.
+  // far side on a road: (R R road)… R R ; far side not on a road: R road (R R road)… R  → every row faces a road
+  const dOf=k=>far?(D-SR*(k-1))/(2*k):(D-SR*k)/(2*k);
+  if(D<=1.5*ideal) rowsOf.push([v0,v1+1]);
+  else { let k=1, bestE=1e9; for(let kk=1;kk<=Math.max(1,Math.ceil(D/ideal));kk++){ const dd=dOf(kk); if(dd<.45*ideal) break; const e=Math.abs(Math.log(dd/ideal)); if(e<bestE){ bestE=e; k=kk; } } const d=dOf(k);   // the number of row pairs whose depth is closest to the ideal
+    if(d<.45*ideal) rowsOf.push([v0,v1+1]);
+    else { let s=v0; const row=()=>{ rowsOf.push([s,s+d]); s+=d; }, road=()=>{ srvV.push(s+SR/2); s+=SR; };
+      if(far){ for(let i=0;i<k;i++){ row(); row(); if(i<k-1) road(); } }
+      else { row(); road(); for(let i=0;i<k-1;i++){ row(); row(); road(); } row(); }
+      rowsOf[rowsOf.length-1][1]=v1+1; } }
+  rowsOf.forEach(([va,vb])=>{ const band=P=>clipHalf(clipHalf(P,[a[0]+v[0]*va,a[1]+v[1]*va],v),[a[0]+v[0]*vb,a[1]+v[1]*vb],[-v[0],-v[1]]);
+    const row=band(B); if(row.length<3) return; const rowA=Math.abs(lArea(row)); const n=Math.max(1,Math.round(rowA/target)), cuts=[];
+    // cut positions along u so that each plot gets an equal share of the row area (works for slanted and odd-shaped blocks)
+    const areaTo=s=>{ const P=clipHalf(row,[a[0]+u[0]*s,a[1]+u[1]*s],[-u[0],-u[1]]); return P.length<3?0:Math.abs(lArea(P)); };
+    for(let k=1;k<n;k++){ const goal=rowA*k/n; let lo=u0-1, hi=u1+1; for(let it=0;it<50;it++){ const m=(lo+hi)/2; if(areaTo(m)<goal) lo=m; else hi=m; } cuts.push((lo+hi)/2); }
+    const edges=[u0-1].concat(cuts,[u1+1]);
+    for(let k=0;k+1<edges.length;k++){ let P=clipHalf(row,[a[0]+u[0]*edges[k],a[1]+u[1]*edges[k]],u); P=clipHalf(P,[a[0]+u[0]*edges[k+1],a[1]+u[1]*edges[k+1]],[-u[0],-u[1]]); P=cleanPoly(P); if(P.length>=3&&Math.abs(lArea(P))>1) out.push(P); } });
+  // service roads: across the block, ends carried on to the centre line of the road they meet (so they join it)
+  const RS=PL.plan.roads.map(r=>r.pts.map(Lc)), srv=[];
+  srvV.forEach(vc=>{ const o=[a[0]+v[0]*vc,a[1]+v[1]*vc]; let s0=1e9, s1=-1e9;
+    for(let i=0;i<B.length;i++){ const p=B[i], q=B[(i+1)%B.length], fp=(p[0]-o[0])*v[0]+(p[1]-o[1])*v[1], fq=(q[0]-o[0])*v[0]+(q[1]-o[1])*v[1]; if((fp>=0)!==(fq>=0)){ const k=fp/(fp-fq), x=[p[0]+k*(q[0]-p[0]),p[1]+k*(q[1]-p[1])], s=(x[0]-o[0])*u[0]+(x[1]-o[1])*u[1]; s0=Math.min(s0,s); s1=Math.max(s1,s); } }
+    if(!(s1>s0)) return; const ends=[[s0,-1],[s1,1]].map(([s,dir])=>{ const e=[o[0]+u[0]*s,o[1]+u[1]*s], f=[e[0]+u[0]*dir*40,e[1]+u[1]*dir*40]; let best=null, bt=2;
+      RS.forEach(V=>{ for(let k=1;k<V.length;k++){ const c=V[k-1], d=V[k], den=(f[0]-e[0])*(d[1]-c[1])-(f[1]-e[1])*(d[0]-c[0]); if(Math.abs(den)<1e-9) continue; const tt=((c[0]-e[0])*(d[1]-c[1])-(c[1]-e[1])*(d[0]-c[0]))/den, ss=((c[0]-e[0])*(f[1]-e[1])-(c[1]-e[1])*(f[0]-e[0]))/den; if(tt>=0&&tt<=1&&ss>=0&&ss<=1&&tt<bt){ bt=tt; best=[e[0]+tt*(f[0]-e[0]),e[1]+tt*(f[1]-e[1])]; } } });
+      return best||e; }); srv.push(ends); });
+  return {plots:out,roads:srv}; }
+
+/* ---------- 3D kit (the same look as the AR models) ---------- */
+let MAT=null; const CC=new Map(); const col=h=>{ let c=CC.get(h); if(!c){ c=new T.Color(h); CC.set(h,c); } return c; };
+const kit=()=>({p:[],n:[],c:[],u:[]});
+function pv(k,p,n,c,uv){ k.p.push(p[0],p[1],p[2]); k.n.push(n[0],n[1],n[2]); k.c.push(c.r,c.g,c.b); k.u.push(uv?uv[0]:0,uv?uv[1]:0); }
+function tri(k,a,b,c,n,cl,ua,ub,uc){ if(!n){ const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2], vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2]; let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1; n=[nx/l,ny/l,nz/l]; }
+  const ex=b[0]-a[0],ey=b[1]-a[1],ez=b[2]-a[2], fx=c[0]-a[0],fy=c[1]-a[1],fz=c[2]-a[2], d=(ey*fz-ez*fy)*n[0]+(ez*fx-ex*fz)*n[1]+(ex*fy-ey*fx)*n[2];
+  if(d<0){ pv(k,a,n,cl,ua); pv(k,c,n,cl,uc); pv(k,b,n,cl,ub); } else { pv(k,a,n,cl,ua); pv(k,b,n,cl,ub); pv(k,c,n,cl,uc); } }
+function quad(k,a,b,c,d,n,cl,uv){ tri(k,a,b,c,n,cl,uv&&uv[0],uv&&uv[1],uv&&uv[2]); tri(k,a,c,d,n,cl,uv&&uv[0],uv&&uv[2],uv&&uv[3]); }
+const UP=[0,1,0];
+function flat(k,P,y,cl){ if(P.length<3) return; let tr; try{ tr=T.ShapeUtils.triangulateShape(P.map(p=>new T.Vector2(p[0],p[1])),[]); }catch(e){ return; } tr.forEach(f=>tri(k,[P[f[0]][0],y,P[f[0]][1]],[P[f[1]][0],y,P[f[1]][1]],[P[f[2]][0],y,P[f[2]][1]],UP,cl,[P[f[0]][0],P[f[0]][1]],[P[f[1]][0],P[f[1]][1]],[P[f[2]][0],P[f[2]][1]])); }
+function walls(k,P,y0,y1,cl){ if(P.length<3) return; const c=lCent(P); let cum=0;
+  for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length], l=lhyp(a,b); if(l<.05) continue; let nx=(b[1]-a[1])/l, nz=-(b[0]-a[0])/l; if(((a[0]+b[0])/2-c[0])*nx+((a[1]+b[1])/2-c[1])*nz<0){ nx=-nx; nz=-nz; }
+    quad(k,[a[0],y0,a[1]],[b[0],y0,b[1]],[b[0],y1,b[1]],[a[0],y1,a[1]],[nx,0,nz],cl,[[cum,y0],[cum+l,y0],[cum+l,y1],[cum,y1]]); cum+=l; } }
+function ribbon(k,a,b,w,cl,y){ const L=lhyp(a,b)||1e-9, nx=-(b[1]-a[1])/L*w/2, nz=(b[0]-a[0])/L*w/2; quad(k,[a[0]+nx,y,a[1]+nz],[b[0]+nx,y,b[1]+nz],[b[0]-nx,y,b[1]-nz],[a[0]-nx,y,a[1]-nz],UP,cl); }
+function disc(k,c,r,cl,y,n){ n=n||24; for(let i=0;i<n;i++){ const a0=i/n*2*Math.PI, a1=(i+1)/n*2*Math.PI; tri(k,[c[0],y,c[1]],[c[0]+Math.cos(a0)*r,y,c[1]+Math.sin(a0)*r],[c[0]+Math.cos(a1)*r,y,c[1]+Math.sin(a1)*r],UP,cl); } }
+function box(k,F,u0,u1,v0,v1,y0,y1,cl,top){ const pt=(s,t,y)=>[F.c[0]+F.u[0]*s+F.v[0]*t,y,F.c[1]+F.u[1]*s+F.v[1]*t], P=[[u0,v0],[u1,v0],[u1,v1],[u0,v1]].map(([s,t])=>{ const q=pt(s,t,0); return [q[0],q[2]]; });
+  walls(k,P,y0,y1,cl); flat(k,P,y1,top||cl); }
+function cyl(k,cx,cz,r,y0,y1,cl,n,cap){ n=n||16; for(let i=0;i<n;i++){ const a0=i/n*2*Math.PI, a1=(i+1)/n*2*Math.PI, m=(a0+a1)/2; quad(k,[cx+Math.cos(a0)*r,y0,cz+Math.sin(a0)*r],[cx+Math.cos(a1)*r,y0,cz+Math.sin(a1)*r],[cx+Math.cos(a1)*r,y1,cz+Math.sin(a1)*r],[cx+Math.cos(a0)*r,y1,cz+Math.sin(a0)*r],[Math.cos(m),0,Math.sin(m)],cl); }
+  if(cap!==false) disc(k,[cx,cz],r,cap||cl,y1,n); }
+function treeAt(k,x,z,sz,cl,palm){ const tc=col("#7A5A3C");   // the AR's tree and palm
+  if(palm){ const ht=5.2*sz, w=.3*sz; for(let i=0;i<4;i++){ const a0=i*Math.PI/2, a1=(i+1)*Math.PI/2; quad(k,[x+Math.cos(a0)*w,0,z+Math.sin(a0)*w],[x+Math.cos(a1)*w,0,z+Math.sin(a1)*w],[x+Math.cos(a1)*w*.6,ht,z+Math.sin(a1)*w*.6],[x+Math.cos(a0)*w*.6,ht,z+Math.sin(a0)*w*.6],[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)],tc); }
+    const c=col(cl), c2=c.clone().multiplyScalar(.8); for(let i=0;i<8;i++){ const an=i/8*Math.PI*2, sp=.34, r=3.3*sz; tri(k,[x,ht+.2,z],[x+Math.cos(an-sp)*r,ht-1.5*sz,z+Math.sin(an-sp)*r],[x+Math.cos(an+sp)*r,ht-1.5*sz,z+Math.sin(an+sp)*r],null,i%2?c:c2); } return; }
+  const r=1.7*sz, h0=1.8*sz, n=7; for(let i=0;i<4;i++){ const a0=i*Math.PI/2, a1=(i+1)*Math.PI/2, w=.25*sz; quad(k,[x+Math.cos(a0)*w,0,z+Math.sin(a0)*w],[x+Math.cos(a1)*w,0,z+Math.sin(a1)*w],[x+Math.cos(a1)*w,h0,z+Math.sin(a1)*w],[x+Math.cos(a0)*w,h0,z+Math.sin(a0)*w],[Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)],tc); }
+  const c=col(cl), c2=c.clone().multiplyScalar(.8), yc=h0+r*.95, yt=h0+r*2.1, yb=h0-.2*sz; for(let i=0;i<n;i++){ const a0=i/n*Math.PI*2, a1=(i+1)/n*Math.PI*2, p0=[x+Math.cos(a0)*r,yc,z+Math.sin(a0)*r], p1=[x+Math.cos(a1)*r,yc,z+Math.sin(a1)*r]; tri(k,p0,[x,yt,z],p1,null,i%2?c:c2); tri(k,p1,[x,yb,z],p0,null,c2); } }
+const PAL=["#F2EBDD","#E9D9A8","#CBDAC4","#E3CDBB","#D3DEEC","#F0F1F3"], WPAL=["#AFC3DD","#B9C7D6","#C4D3C8"], ACC=["#B4553B","#D9A21B","#3F7F5A","#3C5A8A","#B83A3A","#8A5A2B"];
+function building(it,K){ const F=iFrame(it), L=it.len, W=it.w, h=Math.max(1,it.h), id=String(it.id), P=iCorners(it), pt=(s,t,y)=>[F.c[0]+F.u[0]*s+F.v[0]*t,y,F.c[1]+F.u[1]*s+F.v[1]*t];
+  const sideN=sg=>[F.v[0]*sg,0,F.v[1]*sg], endN=sg=>[F.u[0]*sg,0,F.u[1]*sg], accent=ACC[(hash(id+"a")*ACC.length)|0];
+  { const m=2.2+Math.min(h,20)*.4, a0=pt(-L/2-m,-W/2-m,.2), a1=pt(L/2+m,-W/2-m,.2), a2=pt(L/2+m,W/2+m,.2), a3=pt(-L/2-m,W/2+m,.2), E=col("#000"); [[a0,[0,0]],[a1,[1,0]],[a2,[1,1]],[a0,[0,0]],[a2,[1,1]],[a3,[0,1]]].forEach(q=>pv(K.s,q[0],UP,E,q[1])); }
+  const k=it.k;
+  if(k==="tank"){ const r=Math.min(L,W)/2, cx=F.c[0], cz=F.c[1], y0=h*.55; for(const [s,t] of [[-.6,-.6],[.6,-.6],[.6,.6],[-.6,.6]]){ const q=pt(s*r,t*r,0); box(K.d,{c:[q[0],q[2]],u:F.u,v:F.v},-.35,.35,-.35,.35,0,y0,col("#8E959E")); }
+    cyl(K.d,cx,cz,r,y0,h,col("#E7ECF1"),24,col("#D9DEE4")); cyl(K.d,cx,cz,r+.05,h-2.2,h-1.2,col("#B3263D"),24,false); return; }
+  if(k==="substation"){ walls(K.d,P,0,2.4,col("#BFC4CA")); flat(K.d,P,.25,col("#8F8C85"));
+    box(K.d,F,-L/2+1,-L/2+Math.max(4,L*.25),-W/2+1,W/2-1,0,4.5,col("#E3DED3"),col("#C9CED5"));
+    const n=Math.max(1,Math.min(4,Math.floor((L*.65)/8))); for(let i=0;i<n;i++){ const s=-L/2+Math.max(4,L*.25)+3+i*((L*.7)/n); box(K.d,F,s,s+4,-1.6,1.6,0,3.2,col("#7D8794"),col("#6B7480")); for(const t of [-1,0,1]){ const q=pt(s+2,t,0); cyl(K.d,q[0],q[2],.22,3.2,4.6,col("#E9ECEF"),8); } }
+    return; }
+  const glassC=col("#2F4358");
+  if(k==="showroom"){ walls(K.w,P,.15,h-1.2,col("#7FA7CF")); walls(K.w,P,h-1.2,h,col("#F4F5F7")); flat(K.r,P,h,col("#EEF0F3"));
+    for(let i=1;i<Math.floor(L/6);i++){ const s=-L/2+i*6; for(const sg of [-1,1]) quad(K.d,pt(s-.15,sg*(W/2+.05),.15),pt(s+.15,sg*(W/2+.05),.15),pt(s+.15,sg*(W/2+.05),h-1.2),pt(s-.15,sg*(W/2+.05),h-1.2),sideN(sg),col("#E6E9EE")); }
+    box(K.d,F,L/2,L/2+4.5,-W*.3,W*.3,h*.62,h*.62+.5,col("#F4F5F7")); return; }
+  if(k==="admin"){ walls(K.w,P,.15,h,col("#ECE8E0")); flat(K.r,P,h,col("#C9CED5")); walls(K.d,P.map(p=>[p[0],p[1]]),h,h+1,col("#E3DED3"));
+    const fl=Math.max(1,Math.floor(h/4)); for(let f=0;f<fl;f++){ const y0=f*4+1, y1=Math.min(h-.4,f*4+3.2); for(const sg of [-1,1]){ quad(K.d,pt(-L*.46,sg*(W/2+.12),y0),pt(L*.46,sg*(W/2+.12),y0),pt(L*.46,sg*(W/2+.12),y1),pt(-L*.46,sg*(W/2+.12),y1),sideN(sg),glassC); quad(K.d,pt(sg*(L/2+.12),-W*.42,y0),pt(sg*(L/2+.12),W*.42,y0),pt(sg*(L/2+.12),W*.42,y1),pt(sg*(L/2+.12),-W*.42,y1),endN(sg),glassC); } }
+    box(K.d,F,L/2,L/2+3,-3,3,3.2,3.6,col("#B3263D")); return; }
+  // factory and warehouse: walls, base, roof, window and colour bands, then the roof: solar rows, skylights or a barrel vault, rooftop units, dock doors
+  const wh=k==="warehouse", wall=col(wh?WPAL[(hash(id+"w")*WPAL.length)|0]:PAL[(hash(id+"w2")*PAL.length)|0]);
+  walls(K.w,P,1.3,h+.2,wall); walls(K.w,P,.2,1.3,col("#9AA0A8")); flat(K.r,P,h+.2,col(wh?"#F1F3F6":"#C9CED5"));
+  const wy0=Math.min(3.4,h*.35), wy1=Math.min(wy0+3.2,h-2.2), band=col(wh?"#3F5F8E":accent), glass=col(wh?"#4A5D73":"#2F4358");
+  for(const sg of [-1,1]){ const v=sg*(W/2+.14); if(wy1>wy0+.8) quad(K.d,pt(-L*.42,v,wy0),pt(L*.42,v,wy0),pt(L*.42,v,wy1),pt(-L*.42,v,wy1),sideN(sg),glass); quad(K.d,pt(-L/2,v,h-1.7),pt(L/2,v,h-1.7),pt(L/2,v,h-.15),pt(-L/2,v,h-.15),sideN(sg),band); }
+  const mode=wh?(hash(id+"s")<.55?"solar":"sky"):(hash(id+"p")<.65?"solar":"vault");
+  if(mode==="solar"&&L>20&&W>12){ const n=Math.max(1,Math.min(6,Math.floor((W-4)/4.6))), rw=3.2, gap=1.4, tot=n*rw+(n-1)*gap, Lp=L-6; for(let i=0;i<n;i++){ const v=-tot/2+i*(rw+gap); quad(K.d,pt(-Lp/2,v,h+.6),pt(0,v,h+.6),pt(0,v+rw,h+.6),pt(-Lp/2,v+rw,h+.6),UP,col(i%2?"#1F4E96":"#2A5FAE")); quad(K.d,pt(0,v,h+.6),pt(Lp/2,v,h+.6),pt(Lp/2,v+rw,h+.6),pt(0,v+rw,h+.6),UP,col(i%2?"#2A5FAE":"#1F4E96")); } }
+  else if(mode==="sky"){ const n=Math.max(1,Math.min(5,Math.floor(L/22))); for(let i=0;i<n;i++){ const s=-L/2+(i+.5)*L/n; quad(K.d,pt(s-3,-W*.3,h+.5),pt(s+3,-W*.3,h+.5),pt(s+3,W*.3,h+.5),pt(s-3,W*.3,h+.5),UP,col("#9FB6CF")); } }
+  else if(W>12){ const Wv=W*.72, Lv=L*.8, rise=Math.min(3.8,Wv*.13), S=7; for(let i=0;i<S;i++){ const va=-Wv/2+Wv*i/S, vb=-Wv/2+Wv*(i+1)/S, ya=h+.2+rise*Math.sin(Math.PI*i/S), yb=h+.2+rise*Math.sin(Math.PI*(i+1)/S), dl=Math.hypot(vb-va,yb-ya)||1, nv=-(yb-ya)/dl, ny=(vb-va)/dl;
+      quad(K.d,pt(-Lv/2,va,ya),pt(Lv/2,va,ya),pt(Lv/2,vb,yb),pt(-Lv/2,vb,yb),[nv*F.v[0],ny,nv*F.v[1]],col(i%2?"#F7F8FA":"#EEF0F3")); } }
+  for(let qn=0;qn<(L>34?3:2);qn++){ const su=(qn%2?1:-1)*(L/2-4-qn*3), sv=(qn>1?-1:1)*(W/2-3); if(L>12&&W>8) box(K.d,F,su-1.6,su+1.6,sv-1.2,sv+1.2,h+.2,h+1.8,col("#B9BFC7"),col("#8E959E")); }
+  if(wh&&L>18){ const nd=Math.min(9,Math.floor(L/13)); for(let d=0;d<nd;d++){ const s=-L/2+(d+.5)*L/nd; box(K.d,F,s-2.5,s+2.5,W/2,W/2+.5,.2,4.4,col("#3A4350")); }
+    const ap=[pt(-L*.48,W/2+.5,.22),pt(L*.48,W/2+.5,.22),pt(L*.48,W/2+9,.22),pt(-L*.48,W/2+9,.22)]; quad(K.a,ap[0],ap[1],ap[2],ap[3],UP,col("#4B5058")); }
+  if(!wh&&hash(id+"ch")<.4&&L>20){ const q=pt(L*.3,-W*.22,0); cyl(K.d,q[0],q[2],1.1,h,h+9,col("#C6C9CE"),12,col("#6E7378")); cyl(K.d,q[0],q[2],1.15,h+6.5,h+7.6,col("#B3263D"),12,false); }
+}
+function object(it,K){ const F=iFrame(it), pt=(s,t,y)=>[F.c[0]+F.u[0]*s+F.v[0]*t,y,F.c[1]+F.u[1]*s+F.v[1]*t], k=it.k;
+  if(k==="palm") return treeAt(K.d,F.c[0],F.c[1],it.h/6.5,OB.palm.c,true);
+  if(k==="tree") return treeAt(K.d,F.c[0],F.c[1],it.h/7,["#3E8E4A","#2F7A44","#4FA05A"][(hash(it.id)*3)|0],false);
+  if(k==="shrub") return treeAt(K.d,F.c[0],F.c[1],it.h/5.5,"#5BAA5E",false);
+  if(k==="lamp"){ box(K.d,F,-.14,.14,-.14,.14,0,it.h,col("#8F98A3")); box(K.d,F,-.1,.1,0,2.2,it.h-.35,it.h-.15,col("#8F98A3")); box(K.d,F,-.35,.35,1.6,2.6,it.h-.6,it.h-.3,col("#F5F3E8")); return; }
+  if(k==="truck"){ const L=it.len, W=it.w, h=it.h; box(K.d,F,-L/2,L*.14,-W/2,W/2,.9,h,col("#F2F4F7")); box(K.d,F,L*.18,L/2,-W/2*.96,W/2*.96,.7,h*.82,col(["#B3263D","#1F6FE0","#E8A317","#2A9D57"][(hash(it.id)*4)|0]));
+    for(const s of [-L*.36,-L*.22,L*.32]) for(const t of [-W/2,W/2]){ const q=pt(s,t,0); cyl(K.d,q[0],q[2],.5,0,.4,col("#222"),8); } return; }
+  if(k==="sign"){ const L=it.len, h=it.h; box(K.d,F,-L*.42,-L*.42+.3,-.15,.15,0,h,col("#8F98A3")); box(K.d,F,L*.42-.3,L*.42,-.15,.15,0,h,col("#8F98A3")); box(K.d,F,-L/2,L/2,-.25,.25,h*.45,h,col("#B3263D"),col("#8E1E31")); box(K.d,F,-L*.4,L*.4,.25,.3,h*.62,h*.82,col("#FFFFFF")); return; }
+}
+function itemGeo(it,K){ try{ if(isBld(it.k)) building(it,K); else object(it,K); }catch(e){ console.warn("plan item",e); } }
+
+/* ---------- the 3D layer ---------- */
+function mkMesh(k,mat){ const g=new T.BufferGeometry(); g.setAttribute("position",new T.Float32BufferAttribute(k.p,3)); g.setAttribute("normal",new T.Float32BufferAttribute(k.n,3)); g.setAttribute("color",new T.Float32BufferAttribute(k.c,3)); g.setAttribute("uv",new T.Float32BufferAttribute(k.u,2)); const m=new T.Mesh(g,mat); m.frustumCulled=false; return m; }
+function clearG(g){ for(let i=g.children.length-1;i>=0;i--){ const o=g.children[i]; g.remove(o); o.traverse(x=>{ if(x.geometry&&!x.userData.shared) x.geometry.dispose(); }); } }
+function mats(){ if(MAT) return MAT; const cvTex=(w,h,draw,rx,ry)=>{ const c=document.createElement("canvas"); c.width=w; c.height=h; draw(c.getContext("2d"),w,h); const t=new T.CanvasTexture(c); t.wrapS=t.wrapT=T.RepeatWrapping; t.repeat.set(rx,ry); return t; };
+  const wallTex=cvTex(256,256,(g,w,h)=>{ g.fillStyle="#f6f6f4"; g.fillRect(0,0,w,h); for(let i=0;i<32;i++){ const x=i*8, gr=g.createLinearGradient(x,0,x+8,0); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(.55,"rgba(0,0,0,.07)"); gr.addColorStop(1,"rgba(255,255,255,.05)"); g.fillStyle=gr; g.fillRect(x,0,8,h); }
+      g.fillStyle="rgba(0,0,0,.22)"; g.fillRect(0,h-3,w,3); g.fillRect(0,h/2-1,w,2); g.fillStyle="rgba(255,255,255,.35)"; g.fillRect(0,h-6,w,2); },1/6,1/6);
+  const roofTex=cvTex(256,256,(g,w,h)=>{ g.fillStyle="#f0f0ee"; g.fillRect(0,0,w,h); for(let i=0;i<4;i++){ g.fillStyle="rgba(0,0,0,.16)"; g.fillRect(i*64,0,2,h); g.fillRect(0,i*64,w,2); } for(let i=0;i<900;i++){ g.fillStyle="rgba(0,0,0,"+(((i*7919)%100)/2000)+")"; g.fillRect((i*37)%w,(i*91)%h,2,2); } },1/8,1/8);
+  const aoTex=cvTex(64,64,(g,w,h)=>{ for(let i=0;i<22;i++){ g.fillStyle="rgba(0,0,0,.032)"; g.beginPath(); g.rect(i,i,w-2*i,h-2*i); g.fill(); } },1,1); aoTex.wrapS=aoTex.wrapT=T.ClampToEdgeWrapping;
+  const gnd=(o,ro)=>{ const m=new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,transparent:o<1,opacity:o,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-ro,polygonOffsetUnits:-ro}); return m; };
+  MAT={wall:new T.MeshLambertMaterial({map:wallTex,vertexColors:true,side:T.DoubleSide}),roof:new T.MeshLambertMaterial({map:roofTex,vertexColors:true,side:T.DoubleSide}),
+    det:new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide}),ao:new T.MeshBasicMaterial({map:aoTex,color:0x000000,transparent:true,opacity:.85,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-6,polygonOffsetUnits:-6}),
+    land:gnd(.42,1),plot:gnd(.88,2),side:gnd(1,3),asph:gnd(1,4),mark:gnd(1,5),apron:gnd(1,6),
+    line:new T.LineBasicMaterial({color:0x8a8172,transparent:true,opacity:.95,depthWrite:false}),warn:new T.LineBasicMaterial({color:0xff9f0a,depthWrite:false}),
+    sel:new T.LineBasicMaterial({color:0xffd60a,depthWrite:false})};
+  return MAT; }
+const RO={land:1,plot:2,side:3,asph:4,mark:5,apron:7,ao:8,line:9};
+function addK(g,k,mat,ro){ if(!k.p.length) return; const m=mkMesh(k,mat); if(ro) m.renderOrder=ro; g.add(m); }
+function buildLand(g){ const L=PL.plan.land; if(!L) return; const P=L.pts.map(Lc), M=mats(), f=kit(), w=kit(); flat(f,P,.04,col("#D8C9A2")); walls(w,P,0,2.4,col("#D6CCB8")); addK(g,f,M.land,RO.land); addK(g,w,M.det); }
+function buildPlots(g){ const M=mats(), f=kit(), lines=[], warn=[]; const built=new Set(PL.plan.items.filter(i=>isBld(i.k)&&i.plot).map(i=>i.plot)), bad=new Set(noAccess());
+  PL.plan.plots.forEach(pl=>{ const P=pl.pts.map(Lc); flat(f,P,.09,col(built.has(pl.id)?"#CFC4A8":"#DCD2B8")); const arr=bad.has(pl.id)?warn:lines; for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length]; arr.push(a[0],.13,a[1],b[0],.13,b[1]); } });
+  addK(g,f,M.plot,RO.plot);
+  for(const [arr,m] of [[lines,M.line],[warn,M.warn]]) if(arr.length){ const lg=new T.BufferGeometry(); lg.setAttribute("position",new T.Float32BufferAttribute(arr,3)); const ls=new T.LineSegments(lg,m); ls.renderOrder=RO.line; ls.frustumCulled=false; g.add(ls); } }
+function buildRoads(g){ const R=PL.plan.roads; if(!R.length) return; const M=mats(), gr=graph(), side=kit(), asph=kit(), mark=kit();
+  const C={side:col("#A9A193"),asph:col("#3B3F45"),white:col("#F4F4F0"),yellow:col("#E8C34A"),green:col("#6E9B5A")};
+  R.forEach(rd=>{ const V=rd.pts.map(Lc), w=rd.w; for(let i=1;i<V.length;i++){ ribbon(side,V[i-1],V[i],w+6,C.side,.14); ribbon(asph,V[i-1],V[i],w,C.asph,.17); } V.forEach(p=>{ disc(side,p,(w+6)/2,C.side,.14); disc(asph,p,w/2,C.asph,.17); });
+    for(let i=1;i<V.length;i++){ const a=V[i-1], b=V[i], L=lhyp(a,b); if(L<2) continue; const u=[(b[0]-a[0])/L,(b[1]-a[1])/L], n=[-u[1],u[0]];
+      const na=gr.at(rd.pts[i-1]), nb=gr.at(rd.pts[i]), ta=na&&na.out.length>=3?na.w/2+4:(i===1?1:0), tb=nb&&nb.out.length>=3?nb.w/2+4:(i===V.length-1?1:0); if(ta+tb>=L-1) continue;
+      const P=(s,o)=>[a[0]+u[0]*s+n[0]*o,a[1]+u[1]*s+n[1]*o], line=(o,wd,cl,dash,gap)=>{ let s=ta; while(s<L-tb){ const e=dash?Math.min(L-tb,s+dash):L-tb; ribbon(mark,P(s,o),P(e,o),wd,cl,.2); s=dash?e+gap:L; } };
+      line(w/2-1.4,.3,C.white); line(-(w/2-1.4),.3,C.white);
+      if(w>=26){ line(0,3,C.green); line(w/4,.25,C.white,3,7); line(-w/4,.25,C.white,3,7); } else line(0,.25,w>=18?C.yellow:C.white,4,6); } });
+  gr.nodes.forEach(nd=>{ if(nd.out.length>=3){ disc(side,[nd.x,nd.z],nd.w/2+5,C.side,.14,32); disc(asph,[nd.x,nd.z],nd.w/2+1.5,C.asph,.17,32); } });
+  addK(g,side,M.side,RO.side); addK(g,asph,M.asph,RO.asph); addK(g,mark,M.mark,RO.mark); }
+function buildItems(g,skip){ const M=mats(), K={w:kit(),r:kit(),d:kit(),s:kit(),a:kit()}; PL.plan.items.forEach(it=>{ if(it.id!==skip) itemGeo(it,K); });
+  addK(g,K.a,M.apron,RO.apron); addK(g,K.s,M.ao,RO.ao); addK(g,K.w,M.wall); addK(g,K.r,M.roof); addK(g,K.d,M.det); }
+function buildLive(g,it){ clearG(g); if(!it) return; const M=mats(), K={w:kit(),r:kit(),d:kit(),s:kit(),a:kit()}; itemGeo(it,K); addK(g,K.a,M.apron,RO.apron); addK(g,K.s,M.ao,RO.ao); addK(g,K.w,M.wall); addK(g,K.r,M.roof); addK(g,K.d,M.det); }
+/* cars and trucks drive every road, keep right, turn at junctions */
+let VEH=[], SH=null;
+function walker(G,e){ const N=G.nodes; let from=e[0], to=e[1], len=(N[from].out.find(o=>o.to===to)||{len:10}).len, t=Math.random()*len, nxt=null;
+  const pick=()=>{ const o=N[to].out, fw=o.filter(x=>x.to!==from), c=fw.length?fw:o; return c[(Math.random()*c.length)|0]; }; nxt=pick();
+  return {step(d){ t+=d; let g=0; while(t>=len&&g++<50){ t-=len; from=to; to=nxt.to; len=nxt.len||1; nxt=pick(); } },
+    pose(){ const a=N[from], b=N[to], k=Math.max(0,Math.min(1,t/len)), dx=b.x-a.x, dz=b.z-a.z, L=Math.hypot(dx,dz)||1, w=(N[from].out.find(o=>o.to===to)||{w:12}).w; return {x:a.x+dx*k-dz/L*w/4,z:a.z+dz*k+dx/L*w/4,h:Math.atan2(-dz,dx)}; }}; }
+function buildCars(g){ clearG(g); VEH=[]; const G=graph(), edges=[]; G.nodes.forEach((n,i)=>n.out.forEach(o=>edges.push([i,o.to]))); if(!edges.length) return;
+  if(!SH){ SH={body:new T.BoxGeometry(4.4,1.1,1.9),cab:new T.BoxGeometry(2.3,.8,1.7),trl:new T.BoxGeometry(7.7,3.2,2.6),tcab:new T.BoxGeometry(3,2.6,2.5),
+      white:new T.MeshLambertMaterial({color:0xf2f4f7}),cols:[0xb3263d,0x1f6fe0,0xe8a317,0x2a9d57,0xf2f4f7,0x30343a,0x9aa3ad].map(c=>new T.MeshLambertMaterial({color:c})),glass:new T.MeshLambertMaterial({color:0x2f4358})}; }
+  let total=0; PL.plan.roads.forEach(r=>{ for(let i=1;i<r.pts.length;i++) total+=A.dist(r.pts[i-1],r.pts[i]); });
+  const n=Math.min(70,Math.max(2,Math.round(total/65)));
+  for(let i=0;i<n;i++){ const gp=new T.Group(), truck=i%4===3;
+    if(truck){ const a=new T.Mesh(SH.trl,SH.white); a.position.set(-2,1.9,0); const b=new T.Mesh(SH.tcab,SH.cols[i%4]); b.position.set(3.6,1.6,0); [a,b].forEach(m=>{ m.geometry.userData.shared=1; m.userData.shared=1; }); gp.add(a,b); }
+    else { const a=new T.Mesh(SH.body,SH.cols[(i*3)%SH.cols.length]); a.position.set(0,.75,0); const b=new T.Mesh(SH.cab,SH.glass); b.position.set(-.3,1.65,0); [a,b].forEach(m=>{ m.userData.shared=1; }); gp.add(a,b); }
+    g.add(gp); VEH.push({g:gp,w:walker(G,edges[(Math.random()*edges.length)|0]),v:truck?(9+Math.random()*3):(12+Math.random()*6)}); } }
+function drive(dt){ VEH.forEach(c=>{ c.w.step(c.v*dt); const p=c.w.pose(); c.g.position.set(p.x,0,p.z); c.g.rotation.y=p.h; }); }
+function sync(L){ const D=PL.dirty; if(!D.size) return; const all=D.has("all");
+  if(all||D.has("land")){ clearG(L.g.land); buildLand(L.g.land); }
+  if(all||D.has("plots")||D.has("roads")||D.has("items")){ clearG(L.g.plots); buildPlots(L.g.plots); }
+  if(all||D.has("roads")){ clearG(L.g.roads); buildRoads(L.g.roads); buildCars(L.g.cars); }
+  if(all||D.has("items")){ clearG(L.g.items); buildItems(L.g.items,PL.liveId); }
+  D.clear(); }
+function mkLayer(){ return {id:"sid-plan3d",type:"custom",renderingMode:"3d",
+  onAdd(m,gl){ this.r=new T.WebGLRenderer({canvas:m.getCanvas(),context:gl,antialias:true}); this.r.autoClear=false; this.cam=new T.Camera(); this.sc=new T.Scene();
+    const amb=new T.AmbientLight(0xffffff,.5), sun=new T.DirectionalLight(0xffffff,.62), fill=new T.DirectionalLight(0xffffff,.16); sun.position.set(-60,120,80); fill.position.set(80,60,-90); this.sc.add(amb,sun,fill);
+    this.g={}; ["land","plots","roads","items","live","cars"].forEach(k=>{ const g=new T.Group(); this.sc.add(g); this.g[k]=g; }); PL.dirty.add("all"); this.t0=performance.now(); this.ok=true; },
+  render(gl,arg){ try{ const mm=(arg&&arg.defaultProjectionData&&arg.defaultProjectionData.mainMatrix)||(arg&&arg.modelViewProjectionMatrix)||arg; if(!PL.on) return;
+      sync(this); const f=frame(), M=new T.Matrix4().set(f.sx,0,0,f.mx, 0,0,f.sy,f.my, 0,f.sa,0,0, 0,0,0,1);
+      this.cam.projectionMatrix=new T.Matrix4().fromArray(mm).multiply(M); PL.pm=this.cam.projectionMatrix.elements.slice();
+      const now=performance.now(), dt=Math.min(.1,(now-this.t0)/1000); this.t0=now; drive(dt);
+      if(this.r.resetState) this.r.resetState(); else this.r.state.reset(); this.r.render(this.sc,this.cam); if(VEH.length&&!document.hidden) map.triggerRepaint(); }catch(e){ console.error("plan render",e); this.err=String(e&&e.message||e); } },
+  onRemove(){ try{ Object.values(this.g).forEach(clearG); }catch(e){} try{ this.r.dispose(); }catch(e){} this.ok=false; } }; }
+let threeP=null;
+function loadThree(){ if(window.THREE) return Promise.resolve(window.THREE); if(threeP) return threeP; threeP=new Promise((ok,no)=>{ const s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"; s.onload=()=>ok(window.THREE); s.onerror=()=>{ threeP=null; no(new Error("3D did not load")); }; document.head.appendChild(s); }); return threeP; }
+let addTry=0;
+function addLayer(){ if(!PL.on||!T) return; try{ if(!map.getLayer("sid-plan3d")){ const L=mkLayer(); MAT=null; CC.clear(); SH=null; map.addLayer(L); layer=L; } addTry=0; map.triggerRepaint(); }
+  catch(e){ if(++addTry<40){ setTimeout(addLayer,250); return; } console.error("plan layer",e); A.flash("3D could not start: "+esc(e.message||e)); } }   // the style may still be loading: try again
+const onStyle=()=>{ if(PL.on&&T&&!map.getLayer("sid-plan3d")) setTimeout(addLayer,50); };
+
+/* ---------- planning checks and numbers ---------- */
+function noAccess(){ const R=PL.plan.roads.map(r=>({V:r.pts.map(Lc),w:r.w})); if(!R.length) return PL.plan.plots.map(p=>p.id);
+  return PL.plan.plots.filter(pl=>{ const P=pl.pts.map(Lc); for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length]; for(let s=0;s<=4;s++){ const m=[a[0]+(b[0]-a[0])*s/4,a[1]+(b[1]-a[1])*s/4]; for(const r of R) for(let k=1;k<r.V.length;k++) if(projSeg(m,r.V[k-1],r.V[k]).d<=r.w/2+4) return false; } } return true; }).map(p=>p.id); }
+function stats(){ const p=PL.plan, land=p.land?geoArea(p.land.pts):null, plots=p.plots.reduce((a,x)=>a+geoArea(x.pts),0), bl=p.items.filter(i=>isBld(i.k)), built=bl.reduce((a,i)=>a+i.w*i.len,0);
+  let rl=0; p.roads.forEach(r=>{ for(let i=1;i<r.pts.length;i++) rl+=A.dist(r.pts[i-1],r.pts[i]); });
+  const onPlots=new Set(bl.map(i=>i.plot).filter(Boolean)), builtPlotsA=p.plots.filter(x=>onPlots.has(x.id)).reduce((a,x)=>a+geoArea(x.pts),0), builtOnPlots=bl.filter(i=>i.plot).reduce((a,i)=>a+i.w*i.len,0);
+  return {land,plots,nPlots:p.plots.length,avg:p.plots.length?plots/p.plots.length:null,rl,nb:bl.length,built,cover:builtPlotsA?builtOnPlots/builtPlotsA:null,trees:p.items.filter(i=>TREES.includes(i.k)).length,warn:noAccess().length}; }
+let kpiMin=false;
+function kpi(){ const el=q("#plKpi"); if(!el) return; const s=stats(), pct=(a,b)=>a!=null&&b?Math.round(a/b*100)+"%":"—";
+  el.classList.toggle("min",kpiMin);
+  el.innerHTML=`<div class="t">Plan ${kpiMin?"▸":"▾"}</div>
+    <span>Land</span><b>${s.land!=null?A.fArea(s.land):"—"}</b>
+    <span>Plots</span><b>${s.nPlots} · ${s.nPlots?A.fArea(s.plots):"—"}</b>
+    <span>Sellable of land</span><b>${pct(s.plots,s.land)}</b>
+    <span>Average plot</span><b>${s.avg!=null?A.fArea(s.avg):"—"}</b>
+    <span>Roads</span><b>${s.rl?A.fLen(s.rl):"—"}</b>
+    <span>Roads & open space</span><b>${s.land!=null?pct(Math.max(0,s.land-s.plots),s.land):"—"}</b>
+    <span>Buildings</span><b>${s.nb} · ${s.nb?A.fArea(s.built):"—"}</b>
+    <span>Coverage of built plots</span><b>${s.cover!=null?Math.round(s.cover*100)+"%":"—"}</b>
+    <span>Trees</span><b>${s.trees}</b>
+    ${s.warn?`<span class="w">Plots without road</span><b class="w">${s.warn}</b>`:""}`; }
+
+/* ---------- snapping (plan points, road centre lines and edges, land, then the surveyed plot corners) ---------- */
+function snapL(pt,opt){ opt=opt||{}; if(!A.SK.snap){ A.SK.snapAt=null; return null; } const tol=14*mpp(pt), g=ground(pt), p=PL.plan; let best=null, bd=tol;
+  const tryP=(c,ll)=>{ const d=lhyp(g,c); if(d<bd){ bd=d; best={l:c,ll:ll||Gc(c[0],c[1])}; } };
+  const verts=[]; if(p.land) p.land.pts.forEach(c=>verts.push(c)); p.roads.forEach(r=>{ if(r.id!==opt.ex) r.pts.forEach(c=>verts.push(c)); }); p.plots.forEach(pl=>{ if(pl.id!==opt.ex) pl.pts.forEach(c=>verts.push(c)); });
+  verts.forEach(c=>tryP(Lc(c),c));
+  if(!best){ const segs=[]; p.roads.forEach(r=>{ if(r.id===opt.ex) return; const V=r.pts.map(Lc); for(let i=1;i<V.length;i++){ if(opt.edges){ const L=lhyp(V[i-1],V[i])||1, n=[-(V[i][1]-V[i-1][1])/L,(V[i][0]-V[i-1][0])/L]; for(const s of [1,-1]){ const o=s*r.w/2; segs.push([[V[i-1][0]+n[0]*o,V[i-1][1]+n[1]*o],[V[i][0]+n[0]*o,V[i][1]+n[1]*o]]); } } else segs.push([V[i-1],V[i]]); } });
+    if(p.land){ const V=p.land.pts.map(Lc); for(let i=0;i<V.length;i++) segs.push([V[i],V[(i+1)%V.length]]); }
+    if(opt.edges) p.plots.forEach(pl=>{ if(pl.id===opt.ex) return; const V=pl.pts.map(Lc); for(let i=0;i<V.length;i++) segs.push([V[i],V[(i+1)%V.length]]); });
+    segs.forEach(([a,b])=>{ const pr=projSeg(g,a,b); if(pr.d<bd){ bd=pr.d; best={l:pr.p,ll:null}; } }); }
+  if(best){ if(!best.ll) best.ll=Gc(best.l[0],best.l[1]); A.SK.snapAt=A.P(best.ll); return best.ll; }
+  if(A.SK.snap){ const r=A.snap(pt); if(r) return r9(r); } A.SK.snapAt=null; return null; }
+const atP=(pt,opt)=>snapL(pt,opt)||r9(A.U(pt[0],pt[1]));
+
+/* ---------- UI ---------- */
+const IC2={
+  land:'<path d="M4 7l6-3 10 3-2 11-12 2z" stroke-dasharray="2.6 2.2"/>',
+  road:'<path d="M8 21L10 3M16 21L14 3"/><path d="M12 5v2.5M12 11v2.5M12 17v2.5"/>',
+  plot:'<rect x="3.5" y="5" width="17" height="14" rx="1"/><path d="M12 5v14M3.5 12h8.5"/>',
+  auto:'<rect x="3.5" y="5" width="17" height="14" rx="1"/><path d="M9 5v14M14.5 5v14"/><path d="M19 1.8l.7 1.6 1.6.7-1.6.7-.7 1.6-.7-1.6-1.6-.7 1.6-.7z" fill="currentColor"/>',
+  build:'<path d="M3 21V11l5 3v-3l5 3v-3l5 3V5h3v16z"/>',
+  tree:'<path d="M12 21v-6"/><path d="M12 3c3.6 0 6 2.6 6 5.6 0 3.2-2.6 6.4-6 6.4s-6-3.2-6-6.4C6 5.6 8.4 3 12 3z"/>',
+  obj:'<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12L4 7.5M12 12v9"/>',
+  cube3:'<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12L4 7.5M12 12v9"/>'};
+const TOOLS=[["select","Select","Select, move, turn and resize (V)"],["hand","Move","Move the map (H)"],["land","Land","Draw the land boundary: tap the corners, or drag a box (L)"],["road","Road","Draw a road: tap points, tap the last point to finish (R)"],
+  ["plot","Plot","Draw a plot: tap the corners, or drag a box lined up with the road (P)"],["auto","Auto plots","Tap an empty block between roads to divide it into plots (A)"],["build","Build","Tap a plot and choose what to build (B)"],
+  ["tree","Trees","Tap to plant, drag to plant a row (T)"],["obj","Objects","Street lights, trucks, signs — tap to place, drag for a row (O)"],["eraser","Eraser","Tap something to remove it (E)"]];
+const HINTS={select:"Tap anything to select it · drag to move · blue handle turns it · corner dots resize · double-tap for exact sizes",hand:"Drag to move the map · pinch to zoom · twist with two fingers to turn it",
+  land:"Tap the corners of the land · tap the first corner to close · or drag a box",road:"Tap points along the road · tap the last point (or double-tap) to finish · cars start driving at once",
+  plot:"Tap the corners of a plot, or drag a box — it lines up with the nearest road",auto:"Tap an empty block between the roads · choose the plot size above",build:"Tap a plot (or empty land) and choose what to build",
+  tree:"Tap to plant · drag to plant a row along your finger",obj:"Tap to place · drag to place a row",eraser:"Tap a building, tree, plot, road or the land to remove it"};
+let ui=null;
+function svgI(id){ return A.svg(IC2[id]||A.IC[id==="eraser"?"eraser":id]||""); }
+function buildUI(){ const host=A.ui(); if(!host) return; ui=document.createElement("div"); ui.id="plUI"; ui.style.cssText="position:absolute;inset:0;pointer-events:none";
+  ui.innerHTML=`<div class="sk-tools sk-glass" id="plTools" role="toolbar" aria-label="Build tools" style="pointer-events:auto">
+      ${TOOLS.map(([id,l,tip])=>`<button type="button" class="sk-b" data-pt="${id}" title="${esc(tip)}" aria-label="${esc(l)}">${svgI(id)}<span>${l}</span></button>`).join("")}
+      <div class="sk-sep"></div>
+      <button type="button" class="sk-b" id="plUndo" title="Undo (⌘Z) — or tap with two fingers">${A.svg(A.IC.undo)}<span>Undo</span></button>
+      <button type="button" class="sk-b" id="plRedo" title="Redo (⇧⌘Z)">${A.svg(A.IC.redo)}<span>Redo</span></button>
+      <button type="button" class="sk-b" id="plClr" title="Start a new plan (Undo brings it back)">${A.svg(A.IC.trash)}<span>New</span></button>
+    </div>
+    <div class="pl-opt sk-glass" id="plOpt" style="pointer-events:auto"></div>
+    <div class="pl-kpi sk-glass" id="plKpi" style="pointer-events:auto" title="Tap to fold"></div>
+    <div class="sk-glass" id="plLive" hidden style="pointer-events:auto"></div>
+    <div class="sk-glass" id="plCard" hidden style="pointer-events:auto"></div>`;
+  host.appendChild(ui);
+  const top=host.querySelector(".sk-top"); if(top&&!q("#pl3d")){ const b=document.createElement("button"); b.type="button"; b.className="sk-tb"; b.id="pl3d"; b.title="Tilt the map to see the plan in 3D"; b.innerHTML=A.svg(IC2.cube3)+"<span>3D</span>"; b.onclick=()=>set3d(!PL.v3); const shot=top.querySelector("#skShot"); top.insertBefore(b,shot); }
+  ui.querySelectorAll("[data-pt]").forEach(b=>b.onclick=()=>setTool(b.dataset.pt));
+  q("#plUndo").onclick=undo; q("#plRedo").onclick=redo;
+  q("#plClr").onclick=()=>{ if(empty()){ A.flash("The plan is already empty"); return; } menu(null,"Start a new plan?",[["clear","Clear the whole plan","Undo brings it back","#B3263D"]],k=>{ pushUndo(); PL.plan=blank(); O=null; PL.sel=null; PL.cur=null; changed(); A.flash("New plan — Undo brings the old one back"); }); };
+  q("#plKpi").onclick=()=>{ kpiMin=!kpiMin; kpi(); };
+  opts(); btns(); kpi(); card(); live(); }
+function set3d(on){ PL.v3=on; persist(); btns(); map.easeTo({pitch:on?60:0,bearing:on&&Math.abs(map.getBearing())<1?-20:map.getBearing(),duration:900}); A.flash(on?"3D view — twist two fingers to turn, Move tool to look around":"Flat view"); }
+function btns(){ if(!ui) return; ui.querySelectorAll("[data-pt]").forEach(b=>{ const on=b.dataset.pt===PL.tool; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on); });
+  q("#plUndo").disabled=!PL.undo.length&&!PL.cur; q("#plRedo").disabled=!PL.redo.length; const b3=q("#pl3d"); if(b3) b3.classList.toggle("on",!!PL.v3); }
+function opts(){ const el=q("#plOpt"); if(!el) return; let h="";
+  if(PL.tool==="road") h=`<b>Road</b>`+RT.map((r,i)=>`<button type="button" data-rt="${i}" class="${i===PL.rt?"on":""}">${r.l} · ${r.w} m</button>`).join("");
+  else if(PL.tool==="build") h=`<b>Build</b>`+Object.entries(BK).map(([k,v])=>`<button type="button" data-bk="${k}" class="${k===PL.bk?"on":""}">${v.l}</button>`).join("");
+  else if(PL.tool==="tree") h=`<b>Plant</b>`+TREES.map(k=>`<button type="button" data-tk="${k}" class="${k===PL.tk?"on":""}">${OB[k].l}</button>`).join("");
+  else if(PL.tool==="obj") h=`<b>Place</b>`+OBJS.map(k=>`<button type="button" data-ok="${k}" class="${k===PL.ok?"on":""}">${OB[k].l}</button>`).join("");
+  else if(PL.tool==="auto") h=`<b>Plot size</b>`+[2500,5000,10000,20000].map(v=>`<button type="button" data-tg="${v}" class="${v===PL.target?"on":""}">${A.nf(v,0)} m²</button>`).join("")+`<input type="number" id="plTg" min="300" step="100" value="${PL.target}" inputmode="numeric" aria-label="Plot size in m²">`;
+  el.innerHTML=h; el.hidden=!h;
+  el.onclick=e=>{ const b=e.target.closest("button"); if(!b) return; if(b.dataset.rt) PL.rt=+b.dataset.rt; if(b.dataset.bk) PL.bk=b.dataset.bk; if(b.dataset.tk) PL.tk=b.dataset.tk; if(b.dataset.ok) PL.ok=b.dataset.ok; if(b.dataset.tg) PL.target=+b.dataset.tg; persist(); opts(); };
+  const tg=q("#plTg"); if(tg){ tg.onkeydown=e=>e.stopPropagation(); tg.onchange=()=>{ const v=+tg.value; if(v>=300&&v<=1e6){ PL.target=Math.round(v); persist(); opts(); } else A.flash("Plot size between 300 and 1,000,000 m²"); }; } }
+function setTool(t){ if(PL.cur) finishCur(); PL.cur=null; closeMenu(); PL.tool=t; persist(); btns(); opts(); live(); A.hint(); A.need(); }
+function hintTxt(){ return HINTS[PL.tool]||""; }
+function live(){ const el=q("#plLive"); if(!el) return; const c=PL.cur; if(!c||!c.pts){ if(!el.hidden){ el.hidden=true; } btns(); return; }
+  const pts=c.hv?c.pts.concat([c.hv]):c.pts; let v="—", s="";
+  if(c.t==="road"){ let L=0; for(let i=1;i<pts.length;i++) L+=A.dist(pts[i-1],pts[i]); v=A.fLen(L); s=`${RT[PL.rt].l} · ${RT[PL.rt].w} m wide · ${c.pts.length} point${c.pts.length===1?"":"s"}`; }
+  else { v=pts.length>=3?A.fArea(geoArea(pts)):pts.length===2?A.fLen(A.dist(pts[0],pts[1])):"—"; s=(c.t==="land"?"Land":"Plot")+(pts.length>=3?` · ${c.pts.length} corners`:" · tap the corners"); }
+  const html=`<div><div class="v">${v}</div><div class="s">${esc(s)}</div></div><button type="button" data-a="u">Undo point</button><button type="button" data-a="c">Cancel</button><button type="button" class="pri" data-a="f">Finish</button>`;
+  if(el.dataset.h!==html){ el.dataset.h=html; el.innerHTML=html; el.onclick=e=>{ const b=e.target.closest("[data-a]"); if(!b) return; if(b.dataset.a==="u") undo(); if(b.dataset.a==="c"){ PL.cur=null; live(); A.need(); } if(b.dataset.a==="f") finishCur(); }; }
+  if(el.hidden){ el.hidden=false; const cd=q("#plCard"); if(cd) cd.hidden=true; } btns(); }
+function closeMenu(){ const m=q("#plMenu"); if(m) m.remove(); const d=q("#plDims"); if(d) d.remove(); PL.menu=null; }
+function menu(pt,title,items,on){ closeMenu(); const host=A.ui(); if(!host) return; const m=document.createElement("div"); m.id="plMenu"; m.className="pl-menu sk-glass"; m.setAttribute("role","menu");
+  m.innerHTML=`<div class="h">${esc(title)}</div>`+items.map(([k,l,sub,c])=>`<button type="button" role="menuitem" data-k="${esc(k)}">${c?`<i style="background:${esc(c)}"></i>`:""}${esc(l)}${sub?`<em>${esc(sub)}</em>`:""}</button>`).join("");
+  host.appendChild(m); const W=m.offsetWidth, H=m.offsetHeight, x=pt?Math.min(innerWidth-W-10,Math.max(10,pt[0]+14)):innerWidth/2-W/2, y=pt?Math.min(innerHeight-H-10,Math.max(10,pt[1]-H/2)):innerHeight/2-H/2; m.style.left=x+"px"; m.style.top=y+"px";
+  m.onclick=e=>{ const b=e.target.closest("[data-k]"); if(!b) return; closeMenu(); on(b.dataset.k); }; PL.menu=m; const f=m.querySelector("button"); if(f) try{ f.focus({preventScroll:true}); }catch(e){} }
+
+/* ---------- making things ---------- */
+function newId(){ return PL.nid++; }
+function ensureOrigin(){ if(empty()){ PL.plan.o=null; O=null; } frame(); }
+function commitLand(pts){ ensureOrigin(); pushUndo(); PL.plan.land={id:newId(),pts:pts.map(r9)}; PL.sel={t:"land",id:PL.plan.land.id}; changed(["land","plots"]); A.flash("Land: "+A.fArea(geoArea(PL.plan.land.pts))+" — now draw the roads"); }
+function commitRoad(pts){ ensureOrigin(); pushUndo(); const t=RT[PL.rt], rd={id:newId(),t:t.k,w:t.w,pts:pts.map(r9)}; PL.plan.roads.push(rd); joinRoads(rd); GR=null; PL.sel={t:"road",id:rd.id}; changed(["roads"]); }
+function commitPlot(pts){ ensureOrigin(); pushUndo(); const pl={id:newId(),code:nextCode(),pts:pts.map(r9)}; PL.plan.plots.push(pl); PL.sel={t:"plot",id:pl.id}; changed(["plots"]); return pl; }
+function nextCode(){ const p=PL.plan, L="ABCDEFGHJKLMNPQRSTUVWXYZ"[p.sec%24]||"Z"; const n=p.plots.filter(x=>String(x.code||"").startsWith(L+"-")).length+1; return L+"-"+String(n).padStart(2,"0"); }
+function fitOnPlot(pl,k){ // the building fills the plot along its longest side, set back from the edges, at most half the plot area (the park rule)
+  const P=pl.pts.map(Lc), KD=KIND(k); let bi=0, bl=0; for(let i=0;i<P.length;i++){ const l=lhyp(P[i],P[(i+1)%P.length]); if(l>bl){ bl=l; bi=i; } }
+  const a=P[bi], b=P[(bi+1)%P.length]; let u=[(b[0]-a[0])/bl,(b[1]-a[1])/bl], v=[-u[1],u[0]]; let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;
+  P.forEach(p=>{ const s=(p[0]-a[0])*u[0]+(p[1]-a[1])*u[1], t=(p[0]-a[0])*v[0]+(p[1]-a[1])*v[1]; u0=Math.min(u0,s); u1=Math.max(u1,s); v0=Math.min(v0,t); v1=Math.max(v1,t); });
+  const Lu=u1-u0, Lv=v1-v0, sb=Math.max(2,Math.min(8,.12*Math.min(Lu,Lv))), area=Math.abs(lArea(P)); let len=Math.max(4,Lu-2*sb), w=Math.max(4,Lv-2*sb);
+  if(k==="tank"){ len=w=Math.min(KD.len,len,w); } else if(len*w>.5*area){ const f=Math.sqrt(.5*area/(len*w)); len*=f; w*=f; }
+  if(k!=="factory"&&k!=="warehouse"&&k!=="tank"){ const L2=Math.min(Math.max(len,w),KD.len*1.4), W2=Math.min(Math.min(len,w),KD.w*1.4); if(len>=w){ len=L2; w=W2; } else { w=L2; len=W2; } }   // showroom, admin, substation keep their own size
+  const cu=(u0+u1)/2, cvv=(v0+v1)/2; let c=[a[0]+u[0]*cu+v[0]*cvv,a[1]+u[1]*cu+v[1]*cvv]; if(!lInPoly(c,P)) c=lCent(P);
+  if(len<w){ const t=len; len=w; w=t; u=v; }
+  return {c:Gc(c[0],c[1]),rot:+bearingOf(u).toFixed(2),len:+len.toFixed(2),w:+w.toFixed(2),h:KD.h}; }
+function placeBuilding(k,pl,ptLocal){ ensureOrigin(); pushUndo(); let it;
+  if(pl){ PL.plan.items=PL.plan.items.filter(i=>!(isBld(i.k)&&i.plot===pl.id)); it=Object.assign({id:newId(),k,plot:pl.id},fitOnPlot(pl,k)); }
+  else { const KD=KIND(k); it={id:newId(),k,c:Gc(ptLocal[0],ptLocal[1]),rot:roadBearing(ptLocal),len:KD.len,w:KD.w,h:KD.h,plot:null}; }
+  PL.plan.items.push(it); PL.sel={t:"item",id:it.id}; changed(["items"]); A.flash(KIND(k).l+" built — "+A.nf(it.len,0)+" × "+A.nf(it.w,0)+" m, "+A.nf(it.h,0)+" m high"); return it; }
+function roadBearing(p){ let best=null, bd=400; PL.plan.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let i=1;i<V.length;i++){ const pr=projSeg(p,V[i-1],V[i]); if(pr.d<bd){ bd=pr.d; best=[V[i-1],V[i]]; } } });
+  if(!best) return +(((map.getBearing()%360)+360)%360).toFixed(2); const L=lhyp(best[0],best[1])||1; return +bearingOf([(best[1][0]-best[0][0])/L,(best[1][1]-best[0][1])/L]).toFixed(2); }
+function placeObject(k,ptLocal,rot){ const KD=KIND(k); return {id:newId(),k,c:Gc(ptLocal[0],ptLocal[1]),rot:rot!=null?rot:roadBearing(ptLocal),len:KD.len,w:KD.w,h:+(KD.h*(TREES.includes(k)?(.85+hash(PL.nid+k)*.35):1)).toFixed(2),plot:null}; }
+function plotAt(g){ const L=PL.plan.plots; for(let i=L.length-1;i>=0;i--) if(lInPoly(g,L[i].pts.map(Lc))) return L[i]; return null; }
+function autoPlots(g){ const B=detectBlock(g); if(B.err){ A.flash(B.err); return; } const S=subdivide(B.poly,PL.target), parts=S.plots; if(!parts.length){ A.flash("This block is too small for plots of "+A.nf(PL.target,0)+" m²"); return; }
+  ensureOrigin(); pushUndo(); const p=PL.plan, letter="ABCDEFGHJKLMNPQRSTUVWXYZ"[p.sec%24]; p.sec++; const made=[];
+  parts.forEach((P,i)=>{ const pl={id:newId(),code:letter+"-"+String(i+1).padStart(2,"0"),pts:(lArea(P)>0?P:P.slice().reverse()).map(c=>Gc(c[0],c[1]))}; p.plots.push(pl); made.push(pl); });
+  S.roads.forEach(R=>{ const rd={id:newId(),t:"serv",w:12,pts:R.map(c=>Gc(c[0],c[1]))}; p.roads.push(rd); joinRoads(rd); }); GR=null;
+  PL.block={poly:B.poly,t:performance.now()}; changed(S.roads.length?["roads","plots"]:["plots"]); const tot=made.reduce((a,x)=>a+geoArea(x.pts),0);
+  A.flash(`Sector ${letter}: ${made.length} plots · average ${A.fArea(tot/made.length)}${S.roads.length?` · ${S.roads.length} service road${S.roads.length>1?"s":""} added so every plot faces a road`:""} — choose Build to put factories on them`); return made; }
+
+/* ---------- input ---------- */
+let lastTap={t:0,p:[-99,-99]};
+function hitItem(pt){ const L=PL.plan.items; for(let i=L.length-1;i>=0;i--){ const H=itemScreen(L[i]); if(H.length>2&&A.inPoly(pt,H)) return L[i]; const g=ground(pt); if(lInPoly(g,iCorners(L[i]))) return L[i]; } return null; }
+function hitAny(pt){ const it=hitItem(pt); if(it) return {t:"item",id:it.id}; const g=ground(pt), tol=10*mpp(pt);
+  const pl=plotAt(g); if(pl) return {t:"plot",id:pl.id};
+  for(const r of PL.plan.roads.slice().reverse()){ const V=r.pts.map(Lc); for(let i=1;i<V.length;i++) if(projSeg(g,V[i-1],V[i]).d<=r.w/2+tol) return {t:"road",id:r.id}; }
+  const ld=PL.plan.land; if(ld){ const V=ld.pts.map(Lc); if(lInPoly(g,V)) return {t:"land",id:ld.id}; } return null; }
+function handles(){ const s=obj(PL.sel); if(!s) return []; const H=[];
+  if(PL.sel.t==="item"){ const C=iCorners(s); C.forEach((c,i)=>H.push({k:"corner",i,p:gScr(c)})); const F=iFrame(s), top=[F.c[0]-F.u[0]*(s.len/2+Math.max(6,s.len*.18)),F.c[1]-F.u[1]*(s.len/2+Math.max(6,s.len*.18))]; H.push({k:"rot",p:gScr(top),base:gScr([F.c[0]-F.u[0]*s.len/2,F.c[1]-F.u[1]*s.len/2])}); }
+  else s.pts.forEach((c,i)=>H.push({k:"v",i,p:A.P(c)})); return H; }
+function down(pt,e){ const now=performance.now(), g=ground(pt), t=PL.tool, D={pid:e.pointerId,start:pt,g0:g,moved:false};
+  closeMenu();
+  if(t==="hand"){ if(!A.startPan(pt,e)) return; return; }
+  if(t==="land"||t==="road"||t==="plot"){ const c=PL.cur;
+    if(c&&c.t===t){ const V=c.pts.map(A.P); const last=V[V.length-1];
+      if(t==="road"&&V.length>=2&&A.hyp(pt,last)<16){ finishCur(); A.SK.drag=null; return; }
+      if(t!=="road"&&V.length>=3&&A.hyp(pt,V[0])<18){ finishCur(); A.SK.drag=null; return; }
+      if(now-lastTap.t<330&&A.hyp(pt,lastTap.p)<14&&V.length>=(t==="road"?2:3)){ finishCur(); A.SK.drag=null; return; } }
+    lastTap={t:now,p:pt}; const ll=atP(pt,{edges:t!=="road"});
+    if(!c||c.t!==t){ PL.cur={t,pts:[ll]}; PL.sel=null; card(); } else { c.pts.push(ll); delete c.hv; }
+    PL.drag=Object.assign(D,{k:"vert",first:PL.cur.pts.length===1}); live(); return; }
+  if(t==="auto"){ PL.drag=Object.assign(D,{k:"tap"}); return; }
+  if(t==="build"){ PL.drag=Object.assign(D,{k:"tap"}); return; }
+  if(t==="tree"||t==="obj"){ PL.drag=Object.assign(D,{k:"row",path:[g]}); return; }
+  if(t==="eraser"){ PL.drag=Object.assign(D,{k:"erase",did:false}); eraseAt(pt); return; }
+  if(t==="select"){ const s=obj(PL.sel); if(s){ for(const h of handles()){ if(A.hyp(pt,h.p)<18){ PL.drag=Object.assign(D,{k:"handle",h,orig:JSON.parse(JSON.stringify(s)),changed:false}); return; } } }
+    const hsel=hitAny(pt); const dbl=now-lastTap.t<350&&A.hyp(pt,lastTap.p)<16; lastTap={t:now,p:pt};
+    if(hsel){ const same=PL.sel&&PL.sel.t===hsel.t&&PL.sel.id===hsel.id; PL.sel=hsel; card(); if(dbl&&same){ dims(pt); A.SK.drag=null; return; } const o=obj(hsel);
+      PL.drag=Object.assign(D,{k:"move",orig:JSON.parse(JSON.stringify(o)),changed:false}); A.need(); return; }
+    PL.sel=null; card(); A.need(); if(!A.SK.frozen&&e.pointerType!=="touch") A.startPan(pt,e); return; } }
+function move(pt,e){ const d=PL.drag; if(!d) return; if(!d.moved&&A.hyp(pt,d.start)>8) d.moved=true; const g=ground(pt);
+  if(d.k==="vert"){ const c=PL.cur; if(!c) return;
+    if(d.first&&d.moved&&c.t!=="road"){ // drag a box: land is screen-aligned, a plot lines up with the nearest road
+      const a=Lc(c.pts[0]); let u=[1,0]; if(c.t==="plot"){ const r=roadBearing(a)*Math.PI/180; u=[Math.sin(r),-Math.cos(r)]; } else { const b=map.getBearing()*Math.PI/180; u=[Math.cos(b),Math.sin(b)]; }
+      const v=[-u[1],u[0]], q=Lc(atP(pt,{edges:true})), du=(q[0]-a[0])*u[0]+(q[1]-a[1])*u[1], dv=(q[0]-a[0])*v[0]+(q[1]-a[1])*v[1];
+      c.box=true; c.pts=[c.pts[0],Gc(a[0]+u[0]*du,a[1]+u[1]*du),Gc(a[0]+u[0]*du+v[0]*dv,a[1]+u[1]*du+v[1]*dv),Gc(a[0]+v[0]*dv,a[1]+v[1]*dv)]; live(); return; }
+    if(d.moved){ const ll=atP(pt,{edges:c.t!=="road"}); if(c.pts.length===1) c.pts.push(ll); else c.pts[c.pts.length-1]=ll; live(); } return; }
+  if(d.k==="row"){ const L=d.path[d.path.length-1]; if(lhyp(L,g)>.5) d.path.push(g); A.need(); return; }
+  if(d.k==="erase"){ eraseAt(pt); return; }
+  if(d.k==="move"){ if(!d.moved) return; const s=obj(PL.sel); if(!s) return; if(!d.changed){ pushUndo(); d.changed=true; if(PL.sel.t==="item"){ PL.liveId=s.id; PL.dirty.add("items"); } }
+    const dx=g[0]-d.g0[0], dz=g[1]-d.g0[1];
+    if(PL.sel.t==="item"){ const c0=Lc(d.orig.c); s.c=Gc(c0[0]+dx,c0[1]+dz); if(layer&&layer.g) buildLive(layer.g.live,s); }
+    else { s.pts=d.orig.pts.map(c=>{ const p=Lc(c); return Gc(p[0]+dx,p[1]+dz); }); PL.dirty.add(PL.sel.t==="road"?"roads":PL.sel.t==="plot"?"plots":"land"); if(PL.sel.t!=="land") PL.dirty.add("plots"); GR=null; PL.ver++; }
+    if(layer) map.triggerRepaint(); A.need(); return; }
+  if(d.k==="handle"){ const s=obj(PL.sel); if(!s) return; if(!d.changed){ pushUndo(); d.changed=true; if(PL.sel.t==="item"){ PL.liveId=s.id; PL.dirty.add("items"); } } const h=d.h;
+    if(h.k==="v"){ s.pts[h.i]=atP(pt,{ex:s.id,edges:PL.sel.t!=="road"}); PL.dirty.add(PL.sel.t==="road"?"roads":PL.sel.t==="plot"?"plots":"land"); PL.dirty.add("plots"); GR=null; PL.ver++; }
+    else if(h.k==="rot"){ const F=iFrame(d.orig), v=[g[0]-F.c[0],g[1]-F.c[1]]; if(Math.hypot(v[0],v[1])>1){ let r=bearingOf([-v[0]/Math.hypot(...v),-v[1]/Math.hypot(...v)]); r=(r+180)%360; if(e.shiftKey) r=Math.round(r/15)*15; s.rot=+r.toFixed(1); } if(layer&&layer.g) buildLive(layer.g.live,s); }
+    else if(h.k==="corner"){ const F=iFrame(d.orig), C=iCorners(d.orig), opp=C[(h.i+2)%4], du=(g[0]-opp[0])*F.u[0]+(g[1]-opp[1])*F.u[1], dv=(g[0]-opp[0])*F.v[0]+(g[1]-opp[1])*F.v[1];
+      s.len=+Math.max(1,Math.abs(du)).toFixed(2); s.w=+Math.max(1,Math.abs(dv)).toFixed(2); if(s.k==="tank"){ const m=Math.max(s.len,s.w); s.len=s.w=m; }
+      const cx=opp[0]+F.u[0]*du/2+F.v[0]*dv/2, cz=opp[1]+F.u[1]*du/2+F.v[1]*dv/2; s.c=Gc(cx,cz); if(layer&&layer.g) buildLive(layer.g.live,s); }
+    if(layer) map.triggerRepaint(); A.need(); card(true); return; } }
+function up(pt,e,cancel){ const d=PL.drag; PL.drag=null; if(!d) return; const g=ground(pt);
+  if(d.k==="vert"){ const c=PL.cur; if(c&&c.box){ if(!cancel&&d.moved){ const P=c.pts.map(Lc); if(Math.abs(lArea(P))>4){ PL.cur=null; if(c.t==="land") commitLand(c.pts); else commitPlot(c.pts); } else PL.cur=null; } else PL.cur=null; live(); } return; }
+  if(cancel) return;
+  if(d.k==="tap"&&!d.moved){ if(PL.tool==="auto") autoPlots(g); else if(PL.tool==="build"){ const pl=plotAt(g), has=pl&&PL.plan.items.find(i=>isBld(i.k)&&i.plot===pl.id);
+      menu(pt,pl?`Plot ${pl.code||""} · ${A.fArea(geoArea(pl.pts))}${has?" · now "+KIND(has.k).l:""}`:"Build here",Object.entries(BK).map(([k,v])=>[k,v.l,pl?"fits the plot":(A.nf(v.len,0)+" × "+A.nf(v.w,0)+" m"),k===PL.bk?"#FFD60A":null]),k=>{ PL.bk=k; persist(); opts(); placeBuilding(k,pl,g); }); }
+    return; }
+  if(d.k==="row"){ const kind=PL.tool==="tree"?PL.tk:PL.ok, path=d.path; ensureOrigin(); pushUndo(); const add=[];
+    if(!d.moved||path.length<2) add.push(placeObject(kind,g));
+    else { const gap=GAP[kind]||8, cum=[0]; for(let i=1;i<path.length;i++) cum.push(cum[i-1]+lhyp(path[i-1],path[i])); const tot=cum[cum.length-1]; let i=0;
+      for(let s=0;s<=tot+1e-6&&add.length<400;s+=gap){ while(i<path.length-2&&cum[i+1]<s) i++; const L=cum[i+1]-cum[i]||1, f=Math.max(0,Math.min(1,(s-cum[i])/L)), a=path[i], b=path[i+1];
+        add.push(placeObject(kind,[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f],+bearingOf([(b[0]-a[0])/L,(b[1]-a[1])/L]).toFixed(1))); } }
+    PL.plan.items.push(...add); changed(["items"]); A.flash(add.length===1?KIND(kind).l+" placed":`${add.length} × ${KIND(kind).l} in a row`); return; }
+  if(d.k==="move"||d.k==="handle"){ if(d.changed){ PL.liveId=null; if(layer&&layer.g) clearG(layer.g.live); const s=obj(PL.sel); if(s&&PL.sel.t==="road") joinRoads(s); GR=null; changed(PL.sel.t==="item"?["items"]:["all"]); } else if(d.k==="move"&&PL.sel&&!d.moved){ card(); } return; } }
+function hover(pt){ const c=PL.cur; if(c&&c.pts&&!c.box){ c.hv=atP(pt,{edges:c.t!=="road"}); live(); A.need(); return; }
+  if(A.SK.snapAt){ A.SK.snapAt=null; A.need(); } const cv=A.cv(); if(!cv) return;
+  if(PL.tool==="select"){ const s=obj(PL.sel); let over=false; if(s) for(const h of handles()) if(A.hyp(pt,h.p)<18){ over=true; break; } cv.style.cursor=over?"pointer":hitAny(pt)?"move":""; } else cv.style.cursor=""; }
+function finishCur(){ const c=PL.cur; if(!c) return; PL.cur=null; const out=[]; c.pts.forEach(p=>{ if(!out.length||A.hyp(A.P(out[out.length-1]),A.P(p))>3) out.push(p); });
+  if(c.t!=="road"&&out.length>3&&A.hyp(A.P(out[0]),A.P(out[out.length-1]))<5) out.pop();
+  if(c.t==="road"&&out.length>=2) commitRoad(out); else if(c.t==="land"&&out.length>=3) commitLand(out); else if(c.t==="plot"&&out.length>=3) commitPlot(out);
+  live(); A.need(); }
+function eraseAt(pt){ const h=hitAny(pt); if(!h) return; if(!PL.drag||!PL.drag.did){ pushUndo(); if(PL.drag) PL.drag.did=true; } delObj(h); }
+function delObj(h){ const p=PL.plan; if(h.t==="item") p.items=p.items.filter(x=>x.id!==h.id); else if(h.t==="plot"){ p.plots=p.plots.filter(x=>x.id!==h.id); p.items=p.items.filter(x=>x.plot!==h.id); } else if(h.t==="road") p.roads=p.roads.filter(x=>x.id!==h.id); else if(h.t==="land") p.land=null;
+  if(PL.sel&&PL.sel.t===h.t&&PL.sel.id===h.id) PL.sel=null; GR=null; changed(); }
+function del(){ if(!PL.sel) return false; pushUndo(); delObj(PL.sel); return true; }
+function cancel(){ const d=PL.drag; PL.drag=null; if(!d) return; if((d.k==="move"||d.k==="handle")&&d.changed){ const s=obj(PL.sel); if(s) Object.assign(s,d.orig); PL.undo.pop(); PL.liveId=null; if(layer&&layer.g) clearG(layer.g.live); changed(); }
+  if(d.k==="vert"&&PL.cur){ if(PL.cur.box) PL.cur=null; else { PL.cur.pts.pop(); if(!PL.cur.pts.length) PL.cur=null; } live(); } }
+function escK(){ if(q("#plMenu")||q("#plDims")){ closeMenu(); return true; } if(PL.cur){ if(PL.cur.pts&&PL.cur.pts.length>=(PL.cur.t==="road"?2:3)) finishCur(); else { PL.cur=null; live(); } A.need(); return true; } if(PL.sel){ PL.sel=null; card(); A.need(); return true; } return false; }
+function enterK(){ if(PL.cur){ finishCur(); return true; } if(q("#plDims")){ const b=q("#plDA"); if(b) b.click(); return true; } return false; }
+function key(lk){ const K={v:"select",h:"hand",l:"land",r:"road",p:"plot",a:"auto",b:"build",t:"tree",o:"obj",e:"eraser"}; if(K[lk]){ setTool(K[lk]); return true; } if(lk==="3"){ set3d(!PL.v3); return true; } return false; }
+
+/* ---------- the selection card and exact sizes ---------- */
+function card(soft){ const el=q("#plCard"); if(!el) return; const s=obj(PL.sel); if(!s||PL.cur){ el.hidden=true; el.dataset.h=""; return; } const t=PL.sel.t; let hd="", big="", sub="", w="", acts="";
+  if(t==="item"){ const KD=KIND(s.k); hd=KD.l; big=`${A.nf(s.len,1)} × ${A.nf(s.w,1)} m`; sub=`${A.nf(s.h,1)} m high · footprint ${A.fArea(s.len*s.w)} · turned ${A.nf(s.rot,0)}°`;
+    if(s.plot){ const pl=PL.plan.plots.find(x=>x.id===s.plot); if(pl){ const pa=geoArea(pl.pts); sub+=` · on plot ${pl.code} (${Math.round(s.len*s.w/pa*100)}% covered)`; } }
+    const list=isBld(s.k)?BK:OB, keys=isBld(s.k)?Object.keys(BK):TREES.includes(s.k)?TREES:OBJS;
+    acts=`<select id="plCK" aria-label="Type">${keys.map(k=>`<option value="${k}" ${k===s.k?"selected":""}>${esc(list[k].l)}</option>`).join("")}</select><button type="button" id="plCS">Exact sizes</button><button type="button" id="plCDup">Duplicate</button>`; }
+  else if(t==="plot"){ const a=geoArea(s.pts), b=PL.plan.items.find(i=>isBld(i.k)&&i.plot===s.id); hd="Plot "+(s.code||""); big=A.fArea(a); sub=`${A.fArea2(a)?A.fArea2(a)+" · ":""}perimeter ${A.fLen(A.pathLen(s.pts.concat([s.pts[0]])))}${b?" · "+KIND(b.k).l+" on it":" · empty"}`;
+    if(noAccess().includes(s.id)) w="This plot does not touch a road";
+    acts=`<select id="plCB" aria-label="Build on this plot"><option value="">${b?"Change building…":"Build…"}</option>${Object.entries(BK).map(([k,v])=>`<option value="${k}">${esc(v.l)}</option>`).join("")}</select>`; }
+  else if(t==="road"){ let L=0; for(let i=1;i<s.pts.length;i++) L+=A.dist(s.pts[i-1],s.pts[i]); hd="Road"; big=A.fLen(L); sub=`${s.w} m wide · about ${A.fArea(L*s.w)} of road`;
+    acts=`<select id="plCR" aria-label="Road type">${RT.map((r,i)=>`<option value="${i}" ${r.k===s.t?"selected":""}>${esc(r.l)} · ${r.w} m</option>`).join("")}</select>`; }
+  else if(t==="land"){ const a=geoArea(s.pts); hd="Land"; big=A.fArea(a); sub=`${A.fArea2(a)?A.fArea2(a)+" · ":""}perimeter ${A.fLen(A.pathLen(s.pts.concat([s.pts[0]])))}`; }
+  const html=`<div class="hd">${esc(hd)}<button type="button" class="x" id="plCX" aria-label="Close">×</button></div><div class="big">${big}</div><div class="sub">${esc(sub)}</div>${w?`<div class="w">${esc(w)}</div>`:""}<div class="acts">${acts}<button type="button" class="del" id="plCD">Delete</button></div>`;
+  if(el.dataset.h===html&&!el.hidden) return; if(soft&&!el.hidden){ const bg=el.querySelector(".big"), sb=el.querySelector(".sub"); if(bg&&sb){ bg.innerHTML=big; sb.textContent=sub; return; } }
+  el.dataset.h=html; el.innerHTML=html; el.hidden=false;
+  q("#plCX").onclick=()=>{ PL.sel=null; card(); A.need(); }; q("#plCD").onclick=()=>{ del(); };
+  const ck=q("#plCK"); if(ck) ck.onchange=()=>{ const o=obj(PL.sel); if(!o) return; pushUndo(); const KD=KIND(ck.value); o.k=ck.value; if(o.plot&&isBld(o.k)){ const pl=PL.plan.plots.find(x=>x.id===o.plot); if(pl) Object.assign(o,fitOnPlot(pl,o.k)); } else { o.h=KD.h; if(!isBld(o.k)){ o.len=KD.len; o.w=KD.w; } } changed(["items"]); };
+  const cs=q("#plCS"); if(cs) cs.onclick=()=>{ const r=el.getBoundingClientRect(); dims([r.left,r.top-150]); };
+  const cdup=q("#plCDup"); if(cdup) cdup.onclick=()=>{ const o=obj(PL.sel); if(!o) return; pushUndo(); const F=iFrame(o), n=JSON.parse(JSON.stringify(o)); n.id=newId(); n.plot=null; const off=Math.max(o.w,4)+6; n.c=Gc(F.c[0]+F.v[0]*off,F.c[1]+F.v[1]*off); PL.plan.items.push(n); PL.sel={t:"item",id:n.id}; changed(["items"]); };
+  const cb=q("#plCB"); if(cb) cb.onchange=()=>{ if(!cb.value) return; const pl=obj(PL.sel); placeBuilding(cb.value,pl,null); };
+  const cr=q("#plCR"); if(cr) cr.onchange=()=>{ const o=obj(PL.sel); if(!o) return; pushUndo(); const r=RT[+cr.value]; o.t=r.k; o.w=r.w; changed(["roads","plots"]); }; }
+function dims(pt){ const s=obj(PL.sel); if(!s||PL.sel.t!=="item"){ return; } closeMenu(); const host=A.ui(); const d=document.createElement("div"); d.id="plDims"; d.className="pl-dims sk-glass";
+  d.innerHTML=`<b>${esc(KIND(s.k).l)} — exact sizes</b><div class="g"><label>Length (m)<input id="plDL" type="number" step="0.5" min="1" value="${s.len}"></label><label>Width (m)<input id="plDW" type="number" step="0.5" min="1" value="${s.w}"></label>
+    <label>Height (m)<input id="plDH" type="number" step="0.5" min="0.5" value="${s.h}"></label><label>Turn (°)<input id="plDR" type="number" step="1" value="${Math.round(s.rot)}"></label></div>
+    <div class="r"><button type="button" class="sk-go" id="plDC">Cancel</button><button type="button" class="sk-go red" id="plDA" style="background:#fff;color:#111">Apply</button></div>`;
+  host.appendChild(d); const W=d.offsetWidth, H=d.offsetHeight; d.style.left=Math.max(10,Math.min(innerWidth-W-10,(pt?pt[0]:innerWidth/2)-W/2))+"px"; d.style.top=Math.max(10,Math.min(innerHeight-H-10,(pt?pt[1]:innerHeight/2)-H-10))+"px";
+  d.querySelectorAll("input").forEach(i=>{ i.onkeydown=e=>{ e.stopPropagation(); if(e.key==="Enter") q("#plDA").click(); if(e.key==="Escape") closeMenu(); }; });
+  q("#plDC").onclick=closeMenu;
+  q("#plDA").onclick=()=>{ const L=+q("#plDL").value, Wd=+q("#plDW").value, Hh=+q("#plDH").value, Rr=+q("#plDR").value; if(!(L>=1&&L<=2000&&Wd>=1&&Wd<=2000&&Hh>=.5&&Hh<=300&&isFinite(Rr))){ A.flash("Sizes: 1–2,000 m, height 0.5–300 m"); return; }
+    const o=obj(PL.sel); if(!o) return; pushUndo(); o.len=+L.toFixed(2); o.w=+Wd.toFixed(2); o.h=+Hh.toFixed(2); o.rot=+(((Rr%360)+360)%360).toFixed(1); closeMenu(); changed(["items"]); };
+  setTimeout(()=>{ const i=q("#plDL"); if(i){ i.focus(); i.select(); } },30); }
+
+/* ---------- overlay: what is being drawn, labels, selection handles ---------- */
+function draw2d(ctx,labels,now){ const p=PL.plan, sel=obj(PL.sel), Pp=A.P;
+  const poly=(V,close,stroke,w,fill,dash)=>{ if(V.length<2) return; ctx.beginPath(); ctx.moveTo(V[0][0],V[0][1]); for(let i=1;i<V.length;i++) ctx.lineTo(V[i][0],V[i][1]); if(close) ctx.closePath(); if(fill){ ctx.fillStyle=fill; ctx.fill(); } ctx.setLineDash(dash||[]); ctx.lineWidth=w+3; ctx.strokeStyle="rgba(0,0,0,.45)"; ctx.stroke(); ctx.lineWidth=w; ctx.strokeStyle=stroke; ctx.stroke(); ctx.setLineDash([]); };
+  ctx.save(); ctx.lineJoin="round"; ctx.lineCap="round";
+  if(!layer||!layer.ok){ if(p.land) poly(p.land.pts.map(Pp),true,"#E6D9B8",2,"rgba(230,217,184,.25)"); p.roads.forEach(r=>poly(r.pts.map(Pp),false,"#3B3F45",Math.max(3,r.w/mpp([cvW()/2,cvH()/2])))); p.plots.forEach(x=>poly(x.pts.map(Pp),true,"#fff",1.5,"rgba(246,241,230,.75)")); p.items.forEach(it=>poly(iCorners(it).map(gScr),true,"#B3263D",1.5,"rgba(233,217,168,.9)")); }
+  // plot codes (only when the plots are big enough on screen)
+  const mp=mpp([cvW()/2,cvH()/2]); ctx.textAlign="center"; ctx.textBaseline="middle";
+  const bOn=new Set(p.items.filter(i=>isBld(i.k)&&i.plot).map(i=>i.plot));
+  p.plots.forEach(x=>{ const a=geoArea(x.pts); if(Math.sqrt(a)/mp<46) return; const c=lCent(x.pts.map(Lc)), s=gScr(c); ctx.font=`800 12px ${A.FONT}`; ctx.lineWidth=3; ctx.strokeStyle="rgba(0,0,0,.55)"; ctx.strokeText(x.code||"",s[0],s[1]-7); ctx.fillStyle="#fff"; ctx.fillText(x.code||"",s[0],s[1]-7);
+    if(Math.sqrt(a)/mp>80&&!bOn.has(x.id)){ ctx.font=`600 10.5px ${A.FONT}`; const t=A.fArea(a); ctx.strokeText(t,s[0],s[1]+8); ctx.fillStyle="rgba(255,255,255,.9)"; ctx.fillText(t,s[0],s[1]+8); } });
+  if(PL.block&&now-PL.block.t<1400){ const k=1-(now-PL.block.t)/1400; poly(PL.block.poly.map(gScr),true,`rgba(255,214,10,${k})`,3,`rgba(255,214,10,${.25*k})`); A.need(); }
+  // what is being drawn
+  const c=PL.cur; if(c&&c.pts){ const pts=c.hv?c.pts.concat([c.hv]):c.pts, V=pts.map(Pp);
+    if(c.t==="road"){ const w=Math.max(4,RT[PL.rt].w/mp); ctx.globalAlpha=.75; poly(V,false,"#3B3F45",w); ctx.globalAlpha=1; poly(V,false,"#FFD60A",2,null,[6,6]);
+      let L=0; for(let i=1;i<pts.length;i++) L+=A.dist(pts[i-1],pts[i]); if(pts.length>=2){ const a=V[V.length-2], e=V[V.length-1], m=[(a[0]+e[0])/2,(a[1]+e[1])/2]; labels.push({x:m[0],y:m[1],t1:A.fLen(L),t2:RT[PL.rt].l+" · "+RT[PL.rt].w+" m",col:"#FFD60A",n:A.upNormal(a,e),gap:w/2+6}); } }
+    else { poly(V,pts.length>=3,c.t==="land"?"#E6D9B8":"#FFFFFF",2.5,c.t==="land"?"rgba(230,217,184,.22)":"rgba(255,255,255,.18)",c.t==="land"?[8,6]:null);
+      if(pts.length>=3){ const bot=V.reduce((m,q)=>q[1]>m[1]?q:m,V[0]), cc=A.centroid(V); labels.push({x:cc[0],y:cc[1],t1:A.fArea(geoArea(pts)),t2:c.t==="land"?"land":"plot",col:c.t==="land"?"#E6D9B8":"#fff",alt:bot}); } }
+    V.forEach(q=>{ ctx.beginPath(); ctx.arc(q[0],q[1],4,0,7); ctx.fillStyle="#fff"; ctx.fill(); }); }
+  // a row being planted
+  const d=PL.drag; if(d&&d.k==="row"&&d.moved){ const V=d.path.map(gScr); poly(V,false,"#34C759",2,null,[4,6]); }
+  // selection
+  if(sel){ const t=PL.sel.t; if(t==="item"){ const V=iCorners(sel).map(gScr); poly(V,true,"#FFD60A",2,null,[6,4]); if(PL.tool==="select") handles().forEach(h=>{ if(h.k==="rot"){ ctx.beginPath(); ctx.moveTo(h.base[0],h.base[1]); ctx.lineTo(h.p[0],h.p[1]); ctx.strokeStyle="rgba(255,255,255,.85)"; ctx.lineWidth=1.5; ctx.stroke(); ctx.beginPath(); ctx.arc(h.p[0],h.p[1],10,0,7); ctx.fillStyle="#0A84FF"; ctx.fill(); ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.stroke(); } else { ctx.beginPath(); ctx.arc(h.p[0],h.p[1],7,0,7); ctx.fillStyle="#fff"; ctx.fill(); ctx.strokeStyle="#FFD60A"; ctx.lineWidth=2.5; ctx.stroke(); } });
+      const C=iCorners(sel); labels.push({x:gScr(C[0])[0],y:gScr(C[0])[1],t1:A.nf(sel.len,1)+" × "+A.nf(sel.w,1)+" m",t2:A.nf(sel.h,1)+" m high",col:"#FFD60A",n:[0,-1],gap:12}); }
+    else { const V=sel.pts.map(Pp); poly(V,t!=="road",t==="road"?"#FFD60A":"#FFD60A",2.5,null,[6,4]); if(PL.tool==="select") V.forEach(q=>{ ctx.beginPath(); ctx.arc(q[0],q[1],7,0,7); ctx.fillStyle="#fff"; ctx.fill(); ctx.strokeStyle="#FFD60A"; ctx.lineWidth=2.5; ctx.stroke(); }); } }
+  ctx.restore(); }
+const cvW=()=>{ const c=A.cv(); return c?c.clientWidth:innerWidth; }, cvH=()=>{ const c=A.cv(); return c?c.clientHeight:innerHeight; };
+function obstacles(){ const segs=[], add=V=>{ for(let i=1;i<V.length;i++) segs.push([V[i-1],V[i]]); }; const c=PL.cur; if(c&&c.pts){ const pts=c.hv?c.pts.concat([c.hv]):c.pts; add(pts.map(A.P)); }
+  const s=obj(PL.sel); if(s&&PL.sel.t==="item"){ const V=iCorners(s).map(gScr); add(V.concat([V[0]])); } return segs; }
+
+/* ---------- on / off ---------- */
+async function activate(api){ A=api; if(PL.on) return; PL.on=true; PL.cur=null; PL.drag=null; PL.sel=null; buildUI(); A.hint();
+  try{ if(!window.THREE) A.flash("Loading 3D…"); T=await loadThree(); }catch(e){ T=null; A.flash("3D could not load — the plan is shown flat"); }
+  if(!PL.on) return; if(T){ addLayer(); map.on("styledata",onStyle); }
+  if(PL.v3&&map.getPitch()<20) map.easeTo({pitch:60,duration:900});
+  if(!empty()){ const pts=[]; const p=PL.plan; if(p.land) pts.push(...p.land.pts); p.roads.forEach(r=>pts.push(...r.pts)); p.plots.forEach(x=>pts.push(...x.pts)); p.items.forEach(i=>pts.push(i.c));
+    const b=map.getBounds(); if(!pts.some(c=>b.contains(c))){ let bb=[[1e9,1e9],[-1e9,-1e9]]; pts.forEach(c=>{ bb[0][0]=Math.min(bb[0][0],c[0]); bb[0][1]=Math.min(bb[0][1],c[1]); bb[1][0]=Math.max(bb[1][0],c[0]); bb[1][1]=Math.max(bb[1][1],c[1]); }); map.fitBounds(bb,{padding:120,duration:900,pitch:PL.v3?60:0,bearing:map.getBearing()}); A.flash("Your plan is kept — here it is"); } }
+  else A.flash("Build mode — start with Land or Road, then Auto plots, then Build"); A.need(); }
+function deactivate(leaving){ if(!PL.on) return; if(PL.cur) finishCur(); PL.on=false; PL.drag=null; closeMenu(); persist();
+  try{ map.off("styledata",onStyle); if(map.getLayer("sid-plan3d")) map.removeLayer("sid-plan3d"); }catch(e){} layer=null; VEH=[];
+  if(ui){ ui.remove(); ui=null; } const b3=q("#pl3d"); if(b3) b3.remove(); if(!leaving&&map.getPitch()>.5) map.easeTo({pitch:0,duration:600}); }
+window.SID_PLAN={get on(){ return PL.on; },activate,deactivate,down,move,up,hover,cancel,undo,redo,del,esc:escK,enter:enterK,key,hint:hintTxt,draw2d,obstacles,tool:()=>PL.tool,setTool,
+  state:PL,_t:{Lc,Gc,detectBlock,subdivide,stats,iCorners,fitOnPlot,autoPlots,placeBuilding,commitRoad,commitLand,commitPlot,graph,noAccess,lArea,layer:()=>layer,veh:()=>VEH,scr,itemScreen}};
 })();
 </script>
 </body>
