@@ -6368,7 +6368,7 @@ function audWho(a){ return a.by_name||a.by_email?`${esc(a.by_name||a.by_email)}$
 function audCust(a){ return [a.client,a.company].filter(Boolean).filter((x,i,l)=>l.indexOf(x)===i).map(esc).join(" · "); }
 
 /* ---- plot card: the clock icon → this plot's history ---- */
-function audBtn(r){ if(!r||!r.key||typeof sbReady!=="function"||!sbReady()) return "";
+function audBtn(r){ if(!r||!r.key||typeof sbReady!=="function"||!sbReady()||!canSee("audit")) return "";
   return `<button class="sp-log" data-ak="${esc(r.key)}" data-au="${esc(r.unit||"")}" title="Change history" aria-label="Change history of ${esc(r.unit||"this plot")}"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9"/><path d="M2.3 2.6v2.6h2.6"/><path d="M8 5.2V8l2 1.3"/></svg></button>`; }
 async function audPlot(key,unit){
   $("#audDlg")?.remove();
@@ -12689,6 +12689,7 @@ const SID_PAGES=[
   {id:"editor",label:"MDS register (editor)"},
   {id:"health",label:"Data health"},
   {id:"approvals",label:"Approvals (status requests)"},
+  {id:"audit",label:"Change log (who changed which plot, and when)"},
   {id:"demand",label:"Offer demand (from Sales Leads)"},
   {id:"lara",label:"Lara — voice assistant (button, wake word, microphone)"}
 ];
@@ -12696,7 +12697,7 @@ const ALL_PAGE_IDS=SID_PAGES.flatMap(p=>[p.id,...(p.subs||[]).flatMap(g=>g.items
 function canSee(id){
   if(!SBME) return true; if(SBME.is_admin) return true;
   if(id==="approvals") return !!SBME.wf;
-  if(id==="audit") return true;
+  if(id==="audit"){ const A=SBME.pages||[]; return A.includes("*")||A.includes("audit"); }
   if(id==="demand") return slStatsOk();
   if(id==="usage") return false;
   if(id==="settings") return false;
@@ -12754,8 +12755,10 @@ function viewSettings(){
   const fd=x=>x?new Date(x).toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"never";
   const R=(SET.roles||[]).find(r=>r.role===SET.cur), D=SET.draft||(R?{label:R.label||R.role,pages:[...(R.pages||[])],can_edit:!!R.can_edit,is_admin:!!R.is_admin,wf:R.wf||""}:null);
   SET.draft=D;
-  const has=id=>D&&(D.is_admin||D.pages.includes("*")||D.pages.includes(id));
-  const box=(id,label,cls="")=>`<label class="set-ck ${cls}"><input type="checkbox" data-pg="${id}" ${has(id)?"checked":""} ${D&&D.is_admin?"disabled":""}><span>${esc(label)}</span></label>`;
+  if(D&&!D.is_admin&&D.pages.includes("portfolio")&&!D.pages.includes("inventory")) D.pages.push("inventory");
+  const auto=id=>D&&!D.is_admin&&((id==="approvals"&&!!D.wf)||(id==="demand"&&D.wf==="ops"));
+  const has=id=>D&&(D.is_admin||D.pages.includes("*")||D.pages.includes(id)||auto(id));
+  const box=(id,label,cls="")=>`<label class="set-ck ${cls}"><input type="checkbox" data-pg="${id}" ${has(id)?"checked":""} ${D&&(D.is_admin||auto(id))?"disabled":""}><span>${esc(label)}${auto(id)?" <em>— comes with the Plot status changes part</em>":""}</span></label>`;
   return `<div class="set">
   <div class="set-h"><div><b>Settings</b><span>Who can sign in, and what each role can open. Changes apply the next time that person opens the dashboard.</span></div>
     <button class="ebtn" id="setReload">Refresh</button></div>
