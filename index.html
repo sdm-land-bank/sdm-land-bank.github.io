@@ -2361,6 +2361,26 @@ body.presenting .lara-dock.lb-on:not(.open){opacity:1}
 .ed-tabs span.on{background:#fff;color:#107c41;font-weight:700;border-color:#ababab;border-top:0;border-bottom:3px solid #107c41;height:100%;display:flex;align-items:center}
 .ed-foot{background:#f3f3f3;border-top:1px solid #d4d4d4;font-family:Calibri,Carlito,Arial,sans-serif}
 
+.eh .afb{margin-left:auto;flex:none;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#555;background:#f3f3f3;border:1px solid #bdbdbd;cursor:pointer;line-height:1}
+.eh .afb:hover{background:#e8f1ec;border-color:#107c41;color:#107c41}
+.eh .afb.on{background:#107c41;border-color:#0b5d31;color:#fff}
+#edAF{position:fixed;z-index:9999;width:260px;background:#fff;border:1px solid #9a9a9a;box-shadow:0 6px 18px rgba(0,0,0,.28);font:12px Calibri,Carlito,"Segoe UI",Arial,sans-serif;color:#000;display:flex;flex-direction:column}
+#edAF button{font:inherit;border:1px solid #c6c6c6;background:#fff;padding:3px 9px;cursor:pointer}
+#edAF button:hover{background:#e8f1ec;border-color:#107c41}
+#edAF .af-s{display:flex;gap:4px;padding:6px;border-bottom:1px solid #d4d4d4}
+#edAF .af-s button{flex:1}
+#edAF .af-q{margin:6px;height:24px;border:1px solid #9a9a9a;padding:0 6px;font:inherit}
+#edAF .af-l{max-height:250px;overflow:auto;margin:0 6px;border:1px solid #d4d4d4}
+#edAF .af-l label{display:flex;align-items:center;gap:6px;padding:2px 6px;cursor:pointer}
+#edAF .af-l label:hover{background:#e8f1ec}
+#edAF .af-l label span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#edAF .af-l label i{font-style:normal;color:#777;font-size:11px}
+#edAF .af-all{border-bottom:1px solid #d4d4d4;font-weight:700}
+#edAF .af-m{padding:4px 6px;color:#777}
+#edAF .af-b{display:flex;align-items:center;gap:6px;padding:6px}
+#edAF .af-n{flex:1;color:#666;font-size:11px}
+#edAF button.ok{background:#107c41;border-color:#0b5d31;color:#fff}
+
 #edLock.on{color:#b3263d}
 #edLock svg,#edLockPw svg{margin-right:5px;vertical-align:-1px}
 .reg-ov{position:fixed;inset:0;z-index:2147483300;background:rgba(10,10,14,.42);display:grid;place-items:center;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
@@ -11724,6 +11744,41 @@ const EDCOLS=[
   EDCOLS.forEach(c=>{ if(lab.has(c.k)) c.label=lab.get(c.k); else if(EX[c.k]) c.label=EX[c.k]; c.w=Math.max(c.w,Math.ceil(c.label.length*7.6)+30); }); }
 const colLetter=n=>{ let s=""; n++; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; };
 const colOf=k=>EDCOLS.find(c=>c.k===k);
+function edAFClose(){ const o=document.getElementById("edAF"); if(o) o.remove(); document.removeEventListener("mousedown",edAFOut,true); }
+function edAFOut(e){ const o=document.getElementById("edAF"); if(o&&!o.contains(e.target)&&!e.target.closest(".afb")) edAFClose(); }
+function edAFApply(){ edFilter(); const g=$("#edGrid"); $("#edHead").innerHTML=edHeadHtml(); g.scrollTop=0; ED.scroll=0; edPaint(true); edChrome(); }
+function edAFRaw(c,r){ const x=r[c.k]; return x==null||x===""?"(blank)":String(x); }
+function edAFLabel(c,raw){ if(c.k==="park") return S.reg.parks[raw]?.name||raw; if(c.k==="status") return STATUS[raw]?.label||raw; return raw; }
+function edAFOpen(k,btn){
+  edAFClose(); const c=colOf(k); if(!c) return;
+  if(regHide(k)){ toast("This column is locked — unlock cost / GP first"); return; }
+  const cnt=new Map(); ED.rows.forEach(r=>{ const v=edAFRaw(c,r); cnt.set(v,(cnt.get(v)||0)+1); });
+  const num=c.type==="num"||c.type==="int";
+  const vals=[...cnt.keys()].sort((a,b)=>a==="(blank)"?1:b==="(blank)"?-1:(num?a-b:String(edAFLabel(c,a)).localeCompare(String(edAFLabel(c,b)),undefined,{numeric:true})));
+  ED.vs=ED.vs||{}; const cur=ED.vs[k], pick=new Set(cur&&cur.size?cur:vals);
+  const o=document.createElement("div"); o.id="edAF";
+  const r=btn.getBoundingClientRect(); o.style.left=Math.max(6,Math.min(r.left,innerWidth-268))+"px"; o.style.top=(r.bottom+2)+"px";
+  o.innerHTML=`<div class="af-s"><button data-s="1">Sort A → Z</button><button data-s="-1">Sort Z → A</button></div>
+    <input class="af-q" placeholder="Search" autocomplete="off">
+    <div class="af-l"></div>
+    <div class="af-b"><span class="af-n"></span><button data-a="clear">Clear filter</button><button class="ok" data-a="ok">OK</button></div>`;
+  document.body.appendChild(o);
+  const L=o.querySelector(".af-l"), Q=o.querySelector(".af-q"), N=o.querySelector(".af-n");
+  const draw=()=>{ const q=Q.value.trim().toLowerCase(); const shown=vals.filter(v=>!q||String(edAFLabel(c,v)).toLowerCase().includes(q));
+    L.innerHTML=`<label class="af-all"><input type="checkbox" data-all="1" ${shown.length&&shown.every(v=>pick.has(v))?"checked":""}> (Select all${q?" shown":""})</label>`+
+      shown.slice(0,500).map(v=>`<label><input type="checkbox" data-v="${esc(v)}" ${pick.has(v)?"checked":""}> <span>${esc(edAFLabel(c,v))}</span><i>${fInt(cnt.get(v))}</i></label>`).join("")+(shown.length>500?`<div class="af-m">…${fInt(shown.length-500)} more — type in Search</div>`:"");
+    N.textContent=`${fInt(pick.size)} of ${fInt(vals.length)} ticked`; };
+  draw(); Q.oninput=draw; Q.focus();
+  L.onchange=e=>{ const i=e.target; if(i.dataset.all){ const q=Q.value.trim().toLowerCase(); vals.filter(v=>!q||String(edAFLabel(c,v)).toLowerCase().includes(q)).forEach(v=>i.checked?pick.add(v):pick.delete(v)); }
+    else if(i.dataset.v!=null){ i.checked?pick.add(i.dataset.v):pick.delete(i.dataset.v); } draw(); };
+  o.onclick=e=>{ const b=e.target.closest("button"); if(!b) return;
+    if(b.dataset.s){ ED.sort={k,dir:+b.dataset.s}; edAFClose(); edAFApply(); return; }
+    if(b.dataset.a==="clear"){ delete ED.vs[k]; edAFClose(); edAFApply(); return; }
+    if(b.dataset.a==="ok"){ if(pick.size===vals.length) delete ED.vs[k]; else ED.vs[k]=new Set(pick); edAFClose(); edAFApply(); } };
+  o.onkeydown=e=>{ if(e.key==="Escape") edAFClose(); if(e.key==="Enter") o.querySelector(".ok").click(); };
+  setTimeout(()=>document.addEventListener("mousedown",edAFOut,true),0);
+}
+
 const RH=24, SELW=44, TOTALW=SELW+EDCOLS.reduce((a,c)=>a+c.w,0);
 const ED={rows:null, byId:new Map(), orig:new Map(), added:new Set(), deleted:new Set(), checked:new Set(),
   view:[], idx:new Map(), q:"", cf:{}, show:"all", sort:null, cur:null, undo:[], editing:null,
@@ -11814,6 +11869,7 @@ function numPred(raw){
 }
 function edFilter(){
   const q=ED.q.trim().toLowerCase();
+  const vss=Object.entries(ED.vs||{}).filter(([,v])=>v&&v.size).map(([k,v])=>[colOf(k),v]);
   const cfs=Object.entries(ED.cf).filter(([,v])=>v!==""&&v!=null).map(([k,v])=>{
     const c=colOf(k); return {c,v,np:(c.type==="num"||c.type==="int")?numPred(v):null,s:String(v).toLowerCase()}; });
   // rows the survey join actually drew on the map (a new row is not drawn until it is saved)
@@ -11824,6 +11880,7 @@ function edFilter(){
     if(ED.show==="new"&&!ED.added.has(id)) return false;
     if(ED.show==="deleted"&&!ED.deleted.has(id)) return false;
     if(mapped&&mapped.has(id)) return false;
+    for(const [vc,vset] of vss){ if(!vset.has(edAFRaw(vc,r))) return false; }
     for(const {c,v,np,s} of cfs){
       const x=r[c.k];
       if(c.type==="enum"){ if(v==="__blank"?x!=null:String(x??"")!==v) return false; continue; }
@@ -11895,7 +11952,7 @@ function edHeadHtml(){
   <div class="eh-row">
       <div class="eh c0 stick" style="width:${SELW}px" title="Select all shown rows"><input type="checkbox" id="edAll" ${allChecked?"checked":""}></div>
       ${EDCOLS.map((c,i)=>`<div class="eh ${i===0?"c1 stick":""} ${ED.sort&&ED.sort.k===c.k?"sorted":""} ${c.type==="num"||c.type==="int"?"r":""}"
-          data-k="${c.k}" style="width:${c.w}px" title="Sort by ${esc(c.label)}">${esc(c.label)}${c.req?'<span class="rq">*</span>':""}<span class="so">${sortMark(c)}</span></div>`).join("")}
+          data-k="${c.k}" style="width:${c.w}px" title="Sort by ${esc(c.label)}">${esc(c.label)}${c.req?'<span class="rq">*</span>':""}<span class="so">${sortMark(c)}</span><span class="afb ${ED.vs&&ED.vs[c.k]&&ED.vs[c.k].size?"on":""}" data-af="${c.k}" title="Filter ${esc(c.label)}">▾</span></div>`).join("")}
     </div>
     <div class="eh-row">
       <div class="ef c0 stick" style="width:${SELW}px">${fInt(vis)}</div>
@@ -12162,11 +12219,12 @@ function wireEditor(){
   const refilter=()=>{ edFilter(); g.scrollTop=0; ED.scroll=0; edPaint(true); edChrome(); };
   let qd; $("#edQ").oninput=e=>{ clearTimeout(qd); qd=setTimeout(()=>{ ED.q=e.target.value; refilter(); },180); };
   $("#edShow").onchange=e=>{ ED.show=e.target.value; refilter(); };
-  $("#edClearF").onclick=()=>{ ED.q=""; ED.cf={}; ED.show="all"; ED.sort=null;
+  $("#edClearF").onclick=()=>{ ED.q=""; ED.cf={}; ED.vs={}; ED.show="all"; ED.sort=null;
     $("#edQ").value=""; $("#edShow").value="all"; edFilter(); $("#edHead").innerHTML=edHeadHtml(); refilter(); };
   // header: sort + column filters
   const head=$("#edHead"); let fd;
   head.onclick=e=>{
+    const ab=e.target.closest(".afb"); if(ab){ e.stopPropagation(); edAFOpen(ab.dataset.af,ab); return; }
     const h=e.target.closest(".eh[data-k]"); if(!h) return;
     const k=h.dataset.k;
     ED.sort=!ED.sort||ED.sort.k!==k?{k,dir:1}:ED.sort.dir>0?{k,dir:-1}:null;
