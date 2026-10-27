@@ -16595,8 +16595,16 @@ try{ const o=JSON.parse(localStorage.getItem("sid.sketch.v1")||"null");
   if(o){ ["mode","tool","color","wi","frozen","snap","unitA","fed"].forEach(k=>{ if(o[k]!=null) SK[k]=o[k]; });
     if(Array.isArray(o.shapes)) SK.shapes=o.shapes.filter(s=>s&&s.t&&Array.isArray(s.pts)&&s.pts.length);
     SK.nid=SK.shapes.reduce((m,s)=>Math.max(m,(+s.id||0)+1),1); } }catch(e){}
+/* a small IndexedDB store (browser storage for big data; localStorage is only 5 MB and the dashboard already fills it) */
+const KV=(()=>{ let dbP=null; const db=()=>dbP||(dbP=new Promise((ok,no)=>{ try{ const r=indexedDB.open("sid-kv",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>ok(r.result); r.onerror=()=>no(r.error); }catch(e){ no(e); } }));
+  const tx=(m,f)=>db().then(d=>new Promise((ok,no)=>{ const x=d.transaction("kv",m), s=x.objectStore("kv"), q=f(s); x.oncomplete=()=>ok(q&&q.result); x.onerror=()=>no(x.error); x.onabort=()=>no(x.error); }));
+  return {get:k=>tx("readonly",s=>s.get(k)).catch(()=>undefined), set:(k,v)=>tx("readwrite",s=>s.put(v,k)).then(()=>true).catch(()=>false)}; })();
+window.SID_KV=KV;
 let saveT=null;
-function persist(){ clearTimeout(saveT); saveT=setTimeout(()=>{ try{ localStorage.setItem("sid.sketch.v1",JSON.stringify({mode:SK.mode,tool:SK.tool,color:SK.color,wi:SK.wi,frozen:SK.frozen,snap:SK.snap,unitA:SK.unitA,fed:SK.fed,shapes:SK.shapes})); }catch(e){} },200); }
+function persist(){ clearTimeout(saveT); saveT=setTimeout(()=>{ const o={mode:SK.mode,tool:SK.tool,color:SK.color,wi:SK.wi,frozen:SK.frozen,snap:SK.snap,unitA:SK.unitA,fed:SK.fed,shapes:SK.shapes}; let ls=true;
+  try{ localStorage.setItem("sid.sketch.v1",JSON.stringify(o)); }catch(e){ ls=false; try{ localStorage.setItem("sid.sketch.v1",JSON.stringify(Object.assign({},o,{shapes:[]}))); }catch(_){} }
+  KV.set("sketch",JSON.stringify(o)).then(ok=>{ if(!ok&&!ls&&SK.on) flash("This browser's storage is full — the sketch is not kept"); }); },200); }
+KV.get("sketch").then(v=>{ if(!v||SK.on) return; try{ const o=JSON.parse(v); ["mode","tool","color","wi","frozen","snap","unitA","fed"].forEach(k=>{ if(o[k]!=null) SK[k]=o[k]; }); if(Array.isArray(o.shapes)){ SK.shapes=o.shapes.filter(s=>s&&s.t&&Array.isArray(s.pts)&&s.pts.length); SK.nid=SK.shapes.reduce((m,s)=>Math.max(m,(+s.id||0)+1),1); } }catch(e){} });
 
 /* ---------- earth geometry (metres, WGS84 ellipsoid: local radii of curvature; long lines fall back to the sphere) ---------- */
 const R=6371008.8, rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI, EA=6378137, E2=0.00669437999014;
@@ -17274,7 +17282,11 @@ const ids=()=>{ const p=PL.plan; return [p.land?p.land.id:0].concat(p.roads.map(
 PL.nid=Math.max(0,...ids())+1;
 const empty=()=>{ const p=PL.plan; return !p.land&&!p.roads.length&&!p.plots.length&&!p.items.length; };
 let saveT=0;
-function persist(){ clearTimeout(saveT); saveT=setTimeout(()=>{ try{ localStorage.setItem("sid.plan.v1",JSON.stringify({plan:PL.plan,tool:PL.tool,rt:PL.rt,bk:PL.bk,tk:PL.tk,ok:PL.ok,target:PL.target,v3:PL.v3})); }catch(e){ A&&A.flash("The plan is too big to keep in this browser"); } },250); }
+function persist(){ clearTimeout(saveT); saveT=setTimeout(()=>{ const s=JSON.stringify({plan:PL.plan,tool:PL.tool,rt:PL.rt,bk:PL.bk,tk:PL.tk,ok:PL.ok,target:PL.target,v3:PL.v3,t:Date.now()}); let ls=true;
+  try{ localStorage.setItem("sid.plan.v1",s); }catch(e){ ls=false; try{ localStorage.removeItem("sid.plan.v1"); }catch(_){} }
+  const kv=window.SID_KV; if(kv) kv.set("plan",s).then(ok=>{ if(!ok&&!ls&&A) A.flash("This browser's storage is full — the plan is not kept"); }); else if(!ls&&A) A.flash("This browser's storage is full — the plan is not kept"); },250); }
+// the plan kept in IndexedDB wins over the localStorage copy (which may be missing when that storage is full)
+setTimeout(()=>{ const kv=window.SID_KV; if(!kv) return; kv.get("plan").then(v=>{ if(!v||PL.on) return; try{ const o=JSON.parse(v); if(o&&o.plan){ PL.plan=Object.assign(blank(),o.plan); ["tool","rt","bk","tk","ok","target","v3"].forEach(k=>{ if(o[k]!=null) PL[k]=o[k]; }); PL.nid=Math.max(0,...ids())+1; O=null; PL.dirty.add("all"); } }catch(e){} }); },0);
 function pushUndo(){ PL.undo.push(JSON.stringify(PL.plan)); if(PL.undo.length>80) PL.undo.shift(); PL.redo=[]; }
 function changed(what){ PL.ver++; (what||["all"]).forEach(w=>PL.dirty.add(w)); persist(); kpi(); card(); if(A) A.need(); if(layer) map.triggerRepaint(); }
 function undo(){ if(PL.cur){ if(PL.cur.pts&&PL.cur.pts.length>1){ PL.cur.pts.pop(); live(); A.need(); return; } PL.cur=null; live(); A.need(); return; }
