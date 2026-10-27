@@ -12702,6 +12702,7 @@ function canSee(id){
   if(id==="usage") return false;
   if(id==="settings") return false;
   const P=SBME.pages||[]; if(P.includes("*")) return true;
+  if(id==="sales") return P.includes("sales")&&P.some(p=>String(p).startsWith("lb."));
   const map=P.includes("inventory")||P.includes("portfolio");          // Portfolio and Inventory are one page now
   if(id==="inventory"||id==="portfolio") return map;
   if(id==="portfolio.present") return map&&P.includes(id);
@@ -12841,7 +12842,8 @@ function wireSettings(){
     if((SET.roles||[]).some(r=>r.role===key)){ toast("A role with that name exists",true); return; }
     busy(async()=>{ const r=await SB.from("sid_roles").insert({role:key,label:name.trim(),pages:["portfolio"],can_edit:false}); if(r.error) throw r.error; SET.cur=key; },"Role created — tick its pages and save"); };
   const D=SET.draft; if(!D||D.is_admin) return;
-  const sync=()=>{ D.pages=[...C.querySelectorAll(".set-tree input[data-pg]:checked")].map(i=>i.dataset.pg); };
+  const sync=()=>{ D.pages=[...C.querySelectorAll(".set-tree input[data-pg]:checked")].map(i=>i.dataset.pg);
+    if(D.pages.includes("sales")&&!D.pages.some(p=>p.startsWith("lb."))){ D.pages=D.pages.filter(p=>p!=="sales"); const sb=C.querySelector('.set-tree input[data-pg="sales"]'); if(sb) sb.checked=false; } };
   C.querySelectorAll(".set-tree input[data-pg]").forEach(i=>i.onchange=()=>{
     const id=i.dataset.pg, pg=SID_PAGES.find(p=>p.id===id);
     if(pg&&pg.subs){ C.querySelectorAll(".set-tree input[data-pg]").forEach(x=>{ if(pg.subs.some(g=>g.items.some(it=>it[0]===x.dataset.pg))) x.checked=i.checked; }); }

@@ -2319,6 +2319,48 @@ body.presenting .lara-dock.lb-on:not(.open){opacity:1}
 
 /* ---- V47: protected cost / GP columns ---- */
 .ed-mask{color:#8e8e93;letter-spacing:.14em;cursor:pointer;user-select:none}
+/* ---- V82.13: the register looks and feels like Excel ---- */
+.ed{font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;background:#fff}
+.ed-bar{background:#f3f3f3;box-shadow:none;border-bottom:1px solid #d4d4d4;backdrop-filter:none;-webkit-backdrop-filter:none}
+.ed-sub{background:#f3f3f3}
+.ed .ebtn{border-radius:3px;background:#fff;border:1px solid #c6c6c6;box-shadow:none}
+.ed .ebtn:hover:not(:disabled){background:#e8f1ec;border-color:#107c41}
+.ed .ebtn.pri{background:#107c41;border-color:#0b5d31;color:#fff}
+.ed-title b{font-size:15px;letter-spacing:0}
+.ed-fx{display:flex;align-items:center;gap:0;background:#fff;border-bottom:1px solid #d4d4d4;height:26px}
+.ed-fx .fx-name{width:92px;height:100%;display:flex;align-items:center;justify-content:center;border-right:1px solid #d4d4d4;font-size:12px;color:#222;background:#fff}
+.ed-fx .fx-sym{width:34px;text-align:center;font:italic 700 13px Georgia,serif;color:#666;border-right:1px solid #d4d4d4;height:100%;display:flex;align-items:center;justify-content:center}
+.ed-fx .fx-val{flex:1;min-width:0;padding:0 8px;font-size:12px;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ed-grid{background:#fff}
+.ed-head{background:#f3f3f3}
+.eh.lt{height:20px;justify-content:center;padding:0;font:400 11.5px Calibri,Carlito,Arial,sans-serif;letter-spacing:0;text-transform:none;color:#444;background:#f3f3f3;border-right:1px solid #ababab;border-bottom:1px solid #ababab;cursor:default}
+.eh.lt.hl{background:#d3e8dc;color:#0b5d31;border-bottom:2px solid #107c41;font-weight:700}
+.eh.lt.corner{background:#f3f3f3}
+.eh-row .eh:not(.lt){height:24px;font:700 12px Calibri,Carlito,Arial,sans-serif;letter-spacing:0;text-transform:none;color:#000;background:#fff;border-right:1px solid #d4d4d4;border-bottom:1px solid #d4d4d4}
+.eh-row .eh.c0{background:#f3f3f3;border-right:1px solid #ababab}
+.eh.sorted{color:#107c41!important}
+.ef{height:28px;padding:2px 3px;background:#fff;border-right:1px solid #d4d4d4;border-bottom:1px solid #ababab}
+.ef input,.ef select{height:22px;border:1px solid #d4d4d4;border-radius:0;font-family:inherit}
+.ef.on input,.ef.on select{border-color:#107c41;background:#e8f1ec;color:#0b5d31}
+.ef.c0{background:#f3f3f3;border-right:1px solid #ababab}
+.er{height:24px}
+.ec{height:24px;line-height:23px;padding:0 5px;font:12px Calibri,Carlito,"Segoe UI",Arial,sans-serif;border-right:1px solid #d9d9d9;border-bottom:1px solid #d9d9d9;background:#fff}
+.er:hover .ec{background:#fff}
+.ec.num,.ec.int,.ec.date{font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;font-size:12px}
+.ec.c1,.ec.c1.sel{font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;font-size:12px;font-weight:400}
+.ec.c0{background:#f3f3f3;color:#444;border-right:1px solid #ababab;border-bottom:1px solid #d4d4d4;justify-content:center;font:11.5px Calibri,Carlito,Arial,sans-serif}
+.er.sel-row .ec.c0{background:#d3e8dc;color:#0b5d31;font-weight:700}
+.ec.sel{box-shadow:inset 0 0 0 2px #107c41}
+.ec.sel::after{content:"";position:absolute;right:-1px;bottom:-1px;width:6px;height:6px;background:#107c41;border:1px solid #fff}
+.ec.dirty,.er:hover .ec.dirty{background:#fff2cc}
+.er.new .ec{background:#e2f0d9}
+.er.chk .ec{background:#e8f1ec}
+.ec.editing input,.ec.editing select{height:24px;border:2px solid #107c41;font:12px Calibri,Carlito,Arial,sans-serif;box-shadow:none}
+.ed-tabs{display:flex;align-items:flex-end;gap:2px;background:#f3f3f3;border-top:1px solid #ababab;padding:0 8px;height:26px}
+.ed-tabs span{padding:3px 16px;font-size:12px;color:#444;border:1px solid transparent;border-bottom:0}
+.ed-tabs span.on{background:#fff;color:#107c41;font-weight:700;border-color:#ababab;border-top:0;border-bottom:3px solid #107c41;height:100%;display:flex;align-items:center}
+.ed-foot{background:#f3f3f3;border-top:1px solid #d4d4d4;font-family:Calibri,Carlito,Arial,sans-serif}
+
 #edLock.on{color:#b3263d}
 #edLock svg,#edLockPw svg{margin-right:5px;vertical-align:-1px}
 .reg-ov{position:fixed;inset:0;z-index:2147483300;background:rgba(10,10,14,.42);display:grid;place-items:center;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
@@ -11675,8 +11717,14 @@ const EDCOLS=[
   {k:"totalUsd",label:"Total USD",type:"num",w:110},
   {k:"src",label:"Source sheet",type:"text",w:150}
 ];
+
+{ const SO=[["sheet", "Project Name"], ["phase", "Phase"], ["year", "Year of Sale"], ["clientId", "Client ID"], ["unit", "Unit Code"], ["area", "Area"], ["areaRange", "Area range"], ["price", "SqM Cash Price (A)"], ["cash", "Cash Value (A)"], ["costSqm", "Cost/SQM"], ["gpSqm", "GP/SQM"], ["totalGp", "Total GP"], ["gpPct", "GP%"], ["rfPrice", "RF Price"], ["withInterest", "Total plus Interest"], ["cur", "Currency"], ["rfPriceUsd", "RF Price USD"], ["roeUsd", "ROE USD"], ["totalUsd", "Total plus interest USD"], ["landType", "Land Type"], ["status", "Status"], ["sector", "Sector"], ["contractDate", "Sales contract date"], ["eoiDate", "EOI Date"], ["reserveDate", "Reservation form Date"], ["handoverDate", "Handover Date"], ["client", "Client Name"], ["company", "Company Name"], ["quarter", "Quarter of sale"], ["soldBy", "SOLD BY"], ["dateOfCost", "Date of cost"], ["mva", "Electricity (MVA)"], ["sewage", "Sewage (m3/day)"], ["water", "Water (m3/day)"], ["soldArea", "Sold Area"], ["plannedPrice", "SqM Price planned"], ["plannedValue", "Cash Value planned"], ["collected", "Collection Amount"], ["opsStatus", "OPS Status"]], EX={"park": "Park (dashboard)", "code": "MDS code", "approvedBy": "Approved by", "actualSales": "Actual sales", "src": "Source sheet"}, pos=new Map(SO.map((x,i)=>[x[0],i])), lab=new Map(SO), have=new Set(EDCOLS.map(c=>c.k));
+  if(!have.has("dateOfCost")) EDCOLS.push({k:"dateOfCost",label:"Date of cost",type:"int",w:92});
+  EDCOLS.sort((a,b)=>(pos.has(a.k)?pos.get(a.k):1000)-(pos.has(b.k)?pos.get(b.k):1000));
+  EDCOLS.forEach(c=>{ if(lab.has(c.k)) c.label=lab.get(c.k); else if(EX[c.k]) c.label=EX[c.k]; c.w=Math.max(c.w,Math.ceil(c.label.length*7.6)+30); }); }
+const colLetter=n=>{ let s=""; n++; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; };
 const colOf=k=>EDCOLS.find(c=>c.k===k);
-const RH=30, SELW=44, TOTALW=SELW+EDCOLS.reduce((a,c)=>a+c.w,0);
+const RH=24, SELW=44, TOTALW=SELW+EDCOLS.reduce((a,c)=>a+c.w,0);
 const ED={rows:null, byId:new Map(), orig:new Map(), added:new Set(), deleted:new Set(), checked:new Set(),
   view:[], idx:new Map(), q:"", cf:{}, show:"all", sort:null, cur:null, undo:[], editing:null,
   scroll:0, scrollL:0, range:null};
@@ -11829,11 +11877,13 @@ function viewEditor(){
       <button class="ebtn" id="edClearF">Clear filters</button>
       <span class="ed-tip">Filter any column in the row under the headings · numbers take <b>&gt;5000</b> or <b>1000-3000</b> · click a heading to sort</span>
     </div>
+    <div class="ed-fx"><span class="fx-name" id="fxName">A1</span><span class="fx-sym">fx</span><span class="fx-val" id="fxVal"></span></div>
     <div class="ed-notice" id="edNotice" hidden></div>
     <div class="ed-grid" id="edGrid" tabindex="0" aria-label="MDS register grid">
       <div class="ed-head" id="edHead" style="width:${TOTALW}px"></div>
       <div class="ed-body" id="edBody" style="width:${TOTALW}px"></div>
     </div>
+    <div class="ed-tabs"><span class="on">MDS</span></div>
     <div class="ed-foot" id="edFoot"></div>
     ${lists.map(k=>`<datalist id="edl-${k}">${edList(k).map(v=>`<option value="${esc(v)}">`).join("")}</datalist>`).join("")}
   </div>`;
@@ -11841,7 +11891,8 @@ function viewEditor(){
 function edHeadHtml(){
   const sortMark=c=>ED.sort&&ED.sort.k===c.k?(ED.sort.dir>0?"▲":"▼"):"";
   const vis=ED.view.length, allChecked=vis&&ED.view.every(r=>ED.checked.has(r._id));
-  return `<div class="eh-row">
+  return `<div class="eh-row lt-row"><div class="eh lt corner c0 stick" style="width:${SELW}px"></div>${EDCOLS.map((c,i)=>`<div class="eh lt ${i===0?"c1 stick":""}" data-c="${i}" style="width:${c.w}px">${colLetter(i)}</div>`).join("")}</div>
+  <div class="eh-row">
       <div class="eh c0 stick" style="width:${SELW}px" title="Select all shown rows"><input type="checkbox" id="edAll" ${allChecked?"checked":""}></div>
       ${EDCOLS.map((c,i)=>`<div class="eh ${i===0?"c1 stick":""} ${ED.sort&&ED.sort.k===c.k?"sorted":""} ${c.type==="num"||c.type==="int"?"r":""}"
           data-k="${c.k}" style="width:${c.w}px" title="Sort by ${esc(c.label)}">${esc(c.label)}${c.req?'<span class="rq">*</span>':""}<span class="so">${sortMark(c)}</span></div>`).join("")}
@@ -11887,8 +11938,12 @@ function edRefreshRow(id){
   if(el&&i!=null&&r) el.outerHTML=edRowHtml(r,i);
 }
 function edMarkSel(){
-  $$("#edBody .ec.sel").forEach(x=>x.classList.remove("sel"));
-  const c=edCellEl(ED.cur); if(c) c.classList.add("sel");
+  $$("#edBody .ec.sel").forEach(x=>x.classList.remove("sel")); $$("#edBody .er.sel-row").forEach(x=>x.classList.remove("sel-row")); $$("#edHead .lt.hl").forEach(x=>x.classList.remove("hl"));
+  const c=edCellEl(ED.cur); if(c){ c.classList.add("sel"); const rw=c.closest(".er"); if(rw) rw.classList.add("sel-row"); }
+  const nm=$("#fxName"), fv=$("#fxVal");
+  if(ED.cur){ const i=ED.idx.get(ED.cur.id), col=EDCOLS[ED.cur.c], r=ED.byId.get(ED.cur.id), L=$(`#edHead .lt[data-c="${ED.cur.c}"]`); if(L) L.classList.add("hl");
+    if(nm) nm.textContent=colLetter(ED.cur.c)+((i==null?0:i)+1);
+    if(fv&&col&&r){ const v=r[col.k]; fv.textContent=regHide(col.k)?"***":(v==null?"":(col.k==="status"?(STATUS[v]?.label||v):v)); } } else { if(nm) nm.textContent="A1"; if(fv) fv.textContent=""; }
 }
 function edEnsureVisible(){
   const g=$("#edGrid"); if(!g||!ED.cur) return;
