@@ -12960,7 +12960,7 @@ function viewSettings(){
             <option value="manager" ${D.wf==="manager"?"selected":""}>Sales manager — approves their team; own requests go to sales operation</option>
             <option value="ops" ${D.wf==="ops"?"selected":""}>Sales operation — final approval; changes directly</option>
             <option value="direct" ${D.wf==="direct"?"selected":""}>Direct — changes status without approval (Development, Finance); does not approve others</option></select></label>`}
-          <label class="set-ck big"><input type="checkbox" id="setEdit" ${D.can_edit||D.is_admin?"checked":""} ${D.is_admin?"disabled":""}><span>Can change shared data<em>sync, upload the MDS, save register edits, change the sync link</em></span></label></div>
+          <label class="set-ck big"><input type="checkbox" id="setEdit" ${D.can_edit||D.is_admin?"checked":""} ${D.is_admin?"disabled":""}><span>Can edit the MDS register<em>save changes in the MDS register for the whole team (without it, the register is view-only)</em></span></label></div>
         ${D.is_admin?`<p class="note">Administrators can open every page and sub-page and manage users here. This role cannot be narrowed.</p>`:`<div class="set-bulk"><button type="button" class="fp-link" id="setAll">Tick everything</button><button type="button" class="fp-link" id="setNone">Clear everything</button></div>`}
         <div class="set-tree">${SID_PAGES.map(p=>`<div class="set-pg">${box(p.id,p.label,"top")}
           ${(p.subs||[]).map(g=>`<div class="set-sg"><div class="set-sgh">${esc(g.h)}${D.is_admin?"":` <button type="button" class="fp-link" data-grp="${esc(p.id)}|${esc(g.h)}">all</button>`}</div>${g.items.map(([id,l])=>box(id,l)).join("")}</div>`).join("")}</div>`).join("")}
