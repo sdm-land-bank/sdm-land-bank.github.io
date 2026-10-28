@@ -16653,7 +16653,7 @@ body.sk-on #laraDock{display:none!important}
 .sk-grip.v{width:100%;height:14px} .sk-grip.h{width:16px;align-self:stretch;margin-right:2px}
 .sk-grip.h::before{box-shadow:0 -7px currentColor,0 7px currentColor}
 .sk-mv{touch-action:none} .sk-mv.dragging{cursor:grabbing!important;opacity:.92;transition:none!important}
-.sk-compass{position:absolute;left:84px;bottom:58px;width:84px;display:flex;flex-direction:column;align-items:center;gap:2px;opacity:.42;transition:opacity .5s ease;z-index:3;touch-action:none}
+.sk-compass{position:absolute;right:16px;top:200px;width:84px;display:flex;flex-direction:column;align-items:center;gap:2px;opacity:.42;transition:opacity .5s ease;z-index:3;touch-action:none}
 .sk-compass.on,.sk-compass:hover{opacity:1;transition:opacity .12s ease}
 .sk-compass .dial{width:84px;height:84px;border-radius:50%;cursor:grab;touch-action:none;background:rgba(28,28,30,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.22);box-shadow:0 6px 18px rgba(0,0,0,.35)}
 .sk-compass .dial svg{width:100%;height:100%;display:block;pointer-events:none}
@@ -17422,11 +17422,11 @@ body.sk-build #plTools{display:flex}
 #plCard .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 #plCard .acts button.del{background:rgba(255,69,58,.2);color:#ff6961}
 @media (max-height:690px){ .pl-kpi{left:120px} #plLive{left:calc(50% + 55px)} }
-@media (max-width:620px){ .pl-kpi{top:auto!important;bottom:12px;left:66px} .pl-opt{left:66px;right:8px;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none} .pl-opt::-webkit-scrollbar{display:none} .pl-opt>*{flex:none}
+@media (max-width:620px){ .pl-kpi{top:auto!important;bottom:66px;left:66px} .pl-opt{left:66px;right:8px;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none} .pl-opt::-webkit-scrollbar{display:none} .pl-opt>*{flex:none}
   #plCard{left:66px;right:8px;width:auto;bottom:12px} #plLive{left:66px;right:8px;transform:none;max-width:none;flex-wrap:wrap;gap:6px;padding:8px 8px 8px 12px} #plLive>div{flex:1 0 100%;min-width:0} #plLive .s{overflow:hidden;text-overflow:ellipsis} #plLive button{flex:1} #plUI:has(#plCard:not([hidden])) .pl-kpi,#plUI:has(#plLive:not([hidden])) .pl-kpi{display:none} }
 
 /* ---- V88 drawings list, movable panels ---- */
-.pl-plans{position:absolute;left:84px;top:12px;width:min(330px,calc(100vw - 110px));padding:6px;animation:skInR .3s}
+.pl-plans{position:absolute;left:84px;bottom:12px;width:min(340px,calc(100vw - 110px));padding:6px;display:flex;flex-direction:column-reverse;animation:skUp .3s}
 .pl-plans .pn{display:flex;gap:6px;align-items:center}
 .pl-plans button{font-family:inherit;border:0;color:#fff;cursor:pointer}
 .pl-plans .nm{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:40px;padding:0 10px;border-radius:10px;background:rgba(255,255,255,.08);text-align:left}
@@ -17445,8 +17445,8 @@ body.sk-build #plTools{display:flex}
 .pl-list .us{max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;background:rgba(0,0,0,.18);border-radius:8px;padding:4px 6px} .pl-list .note{margin:0;font-size:11.5px;color:rgba(255,255,255,.62)}
 .pl-list .sec{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.6);padding:8px 6px 2px} .pl-list .emp{padding:10px;color:rgba(255,255,255,.6)}
 .pl-list .ft{display:flex;justify-content:flex-end;padding-top:4px}
-.pl-kpi{top:62px!important}
-@media (max-width:620px){ .pl-plans{left:66px;width:calc(100vw - 80px)} .pl-kpi{top:auto!important} }
+@media (max-width:1100px){ .pl-kpi{top:auto!important;bottom:66px;left:84px} }
+@media (max-width:620px){ .pl-plans{left:66px;width:calc(100vw - 80px)} .pl-kpi{left:66px!important;bottom:66px!important} }
 .pl-opt .mk{background:#fff!important;color:#111!important;font-weight:800}
 .pl-opt .hi{color:#FFD60A;font-size:11.5px;font-weight:600;white-space:nowrap}
 </style>
@@ -18192,11 +18192,11 @@ function masterPlan(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land firs
   const snap=JSON.stringify(p); QUIET++; const made={roads:0,plots:0,cells:0,sectors:0};
   try{
     p.roads=[]; p.plots=[]; p.items=[]; p.green=[]; p.rounds=[]; p.sec=0; GR=null; CG=null; PL.ver++;
-    const {u,v,e}=ob, Lx=e.u1-e.u0, Ly=e.v1-e.v0, S2=Land.map(q=>[q[0]*u[0]+q[1]*u[1],q[0]*v[0]+q[1]*v[1]]), IN=12, dP=Math.sqrt(T1*1.6), cent=lCent(Land);
+    const {u,v,e}=ob, Lx=e.u1-e.u0, Ly=e.v1-e.v0, S2=Land.map(q=>[q[0]*u[0]+q[1]*u[1],q[0]*v[0]+q[1]*v[1]]), IN=6, dP=Math.sqrt(T1*1.6), cent=lCent(Land);
     const mkRoad=(t,w,a,b)=>{ const rd={id:newId(),t,w,pts:[Gc(a[0],a[1]),Gc(b[0],b[1])]}; p.roads.push(rd); joinRoads(rd); made.roads++; return rd; };
     // 1. landscape buffer along the long sides of the land boundary
     const BW=8, buf=[]; for(let i=0;i<Land.length&&buf.length<24;i++){ const a=Land[i], b=Land[(i+1)%Land.length], L=lhyp(a,b); if(L<45) continue; let n=[-(b[1]-a[1])/L,(b[0]-a[0])/L]; const mid=[(a[0]+b[0])/2,(a[1]+b[1])/2]; if(!lInPoly([mid[0]+n[0]*1.5,mid[1]+n[1]*1.5],Land)) n=[-n[0],-n[1]]; if(!lInPoly([mid[0]+n[0]*1.5,mid[1]+n[1]*1.5],Land)) continue;
-      const Q=[[a[0]+n[0]*.4,a[1]+n[1]*.4],[b[0]+n[0]*.4,b[1]+n[1]*.4],[b[0]+n[0]*BW,b[1]+n[1]*BW],[a[0]+n[0]*BW,a[1]+n[1]*BW]]; if(!Q.every(q2=>lInPoly(q2,Land))) continue; buf.push(Q); p.green.push({id:newId(),k:"buffer",pts:(lArea(Q)>0?Q:Q.slice().reverse()).map(c=>Gc(c[0],c[1]))}); }
+      const Q=[[a[0]+n[0]*.4,a[1]+n[1]*.4],[b[0]+n[0]*.4,b[1]+n[1]*.4],[b[0]+n[0]*BW,b[1]+n[1]*BW],[a[0]+n[0]*BW,a[1]+n[1]*BW]]; const un=[(b[0]-a[0])/L,(b[1]-a[1])/L]; if(![[a[0]+un[0]*1.5+n[0]*.4,a[1]+un[1]*1.5+n[1]*.4],[b[0]-un[0]*1.5+n[0]*.4,b[1]-un[1]*1.5+n[1]*.4],[b[0]-un[0]*1.5+n[0]*BW,b[1]-un[1]*1.5+n[1]*BW],[a[0]+un[0]*1.5+n[0]*BW,a[1]+un[1]*1.5+n[1]*BW]].every(q2=>lInPoly(q2,Land))) continue; buf.push(Q); p.green.push({id:newId(),k:"buffer",pts:(lArea(Q)>0?Q:Q.slice().reverse()).map(c=>Gc(c[0],c[1]))}); }
     // 2. the spine along the long axis, ribs across it, and parallel roads when the land is deep
     const nx=Math.max(1,Math.round(Lx/Math.max(150,Math.min(400,Math.sqrt(T1)*5)))), half=Ly/2, nSide=Math.max(1,Math.round(half/(2*dP+20)));
     let t0=(e.v0+e.v1)/2, sp=null; for(const dt of [0,.06,-.06,.12,-.12,.2,-.2]){ const tt=t0+dt*Ly, L=spans(S2,1,tt).sort((x,y)=>(y[1]-y[0])-(x[1]-x[0]))[0]; if(L&&L[1]-L[0]>60){ sp=L; t0=tt; break; } }
