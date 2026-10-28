@@ -12132,9 +12132,12 @@ async function edSave(){
     return;
   }
   const c=edCounts(); if(!(c.changed+c.added+c.deleted)) return;
+  if(sbReady()&&!sbCanWrite()){ toast("Your role can see the MDS register but not save changes — an administrator can give your role edit rights (Settings → Roles)",true); return; }
   const btn=$("#edSave"); if(btn) btn.disabled=true;
   try{ AUD.pend=audEdits(live); }catch(e){ AUD.pend=null; }
-  S.rows=live.map(r=>hydrateRow({...r}));
+  let next=live.map(r=>hydrateRow({...r})), mg=null;
+  try{ mg=await edMergeOnline(); if(mg) next=mg.rows; }catch(e){ console.warn("merge:",e); }
+  S.rows=next;
   S.reg.savedAt={"Edits saved in dashboard":new Date().toISOString().slice(0,10)};
   S.reg.sources=[{file:"Edited in dashboard",rows:S.rows.length}];
   const ok=await persist();
@@ -12622,6 +12625,35 @@ function regWorkbook(){
 }
 const isSyncAdmin=()=>{ try{ return !!(SBME&&SBME.is_admin); }catch(e){ return false; } };
 
+/* V87.1: a register Save never wipes a colleague's save. If someone saved after this page loaded the register, their rows are
+   fetched first and only the rows changed here are put on top (matched by their content before the edit, else by park + unit). */
+async function edMergeOnline(){
+  if(!sbReady()) return null;
+  const k=await SB.from("sid_kv").select("value").eq("key","edits").maybeSingle(); const sv=k.data&&k.data.value;
+  if(!sv||!sv.savedAt||(S.restored&&sv.savedAt<=S.restored)) return null;
+  const rec=JSON.parse(await (await sbDl("edits/latest.json")).text()); if(!rec||!Array.isArray(rec.rows)||!Array.isArray(rec.cols)) return null;
+  const ix=rec.cols.map(c=>S.reg.cols.indexOf(c));
+  const srv=rec.rows.map(a=>{ const o={}; S.reg.cols.forEach(c=>o[c]=null); rec.cols.forEach((c,j)=>{ if(ix[j]>=0) o[c]=a[j]; }); return hydrateRow(o); });
+  const sig=r=>JSON.stringify(S.reg.cols.map(c=>r[c]??null)), pu=r=>(r.park||"")+"|"+(r.unit||"");
+  const bySig=new Map(), byPU=new Map();
+  srv.forEach((r,i)=>{ const s=sig(r); if(!bySig.has(s)) bySig.set(s,[]); bySig.get(s).push(i); const q=pu(r); byPU.set(q,byPU.has(q)?-1:i); });
+  const find=o=>{ const l=bySig.get(sig(o)); if(l&&l.length) return l.shift(); const j=byPU.get(pu(o)); return j!=null&&j>=0?j:-1; };
+  const out=srv.slice(), drop=new Set(); let merged=0, clash=0;
+  for(const r of ED.rows){ if(ED.added.has(r._id)) continue; const o=ED.orig.get(r._id); if(!o) continue;
+    const del=ED.deleted.has(r._id), chg=!del&&edRowChanged(r); if(!del&&!chg) continue;
+    const j=find(o); if(j<0){ clash++; continue; }
+    if(del) drop.add(j); else out[j]=hydrateRow({...r}); merged++; }
+  for(const r of ED.rows) if(ED.added.has(r._id)&&!ED.deleted.has(r._id)) out.push(hydrateRow({...r}));
+  return {rows:out.filter((_,i)=>!drop.has(i)), by:sv.savedAt, clash};
+}
+/* register edits kept only in this browser (before V87.1 a role without edit rights saved here only): offer to share them once */
+setTimeout(async()=>{ try{
+  if(!sbReady()||!sbCanWrite()) return; const rec=await idb.get(STORE_KEY); if(!rec||!rec.savedAt||rec.shared) return;
+  if(!S.restored||S.restored!==rec.savedAt) return;
+  const k=await SB.from("sid_kv").select("value").eq("key","edits").maybeSingle(); const sv=k.data&&k.data.value; if(sv&&sv.savedAt>=rec.savedAt) return;
+  if(confirm("This browser has MDS register edits saved on "+fWhen(rec.savedAt)+" that were never shared with the team.\\n\\nShare them now so everyone sees them?")) await sbSaveEdits();
+}catch(e){ console.warn("unshared edits:",e); } },6000);
+
 /* ---- one sync, through Supabase ---- */
 async function fetchLive(fresh){
   if(!sbReady()){ const e=new Error("not signed in"); e.nobridge=true; throw e; }
@@ -12639,7 +12671,7 @@ async function fetchLive(fresh){
 }
 function bridges(){ return sbReady()?[{b:"supabase",ping:false}]:[]; }
 /* the Land Bank app: its settings page, sync and upload buttons and its link banner are replaced by Settings */
-const LB_HIDE_ALWAYS=["tab-settings-nav","btn-force-sync","btn-quick-upload-sheet","banner-btn-upload","sync-error-banner"];
+const LB_HIDE_ALWAYS=["tab-excel-grid","tab-changelog","tab-settings-nav","btn-force-sync","btn-quick-upload-sheet","banner-btn-upload","sync-error-banner"];
 function lbDisplayToStorage(){
   try{ const k="industrial_dashboard_settings", cur=JSON.parse(localStorage.getItem(k)||"{}"), d=SBLB||{};
     localStorage.setItem(k,JSON.stringify({...cur,dataSource:"microsoft",microsoftSheetUrl:"https://sid-dashboard.local/mds",targetSheetName:"MDS (financial data)",
@@ -13023,10 +13055,11 @@ function sbKv(key,value,ms=1500){ if(!sbReady()) return; clearTimeout(SBT[key]);
   SBT[key]=setTimeout(async()=>{ const r=await SB.from("sid_kv").upsert({key,value,updated_at:new Date().toISOString()}); if(r.error) console.warn("kv "+key+":",r.error.message); },ms); }
 async function sbSaveEdits(){
   if(!sbReady()) return; if(!sbCanWrite()){ toast("Saved in this browser only — your account can view but not change the shared data",true); return; }
-  try{ const rec=await idb.get(STORE_KEY); if(!rec) return;
+  try{ const rec=await idb.get(STORE_KEY); if(!rec) return; rec.shared=true;
     const up=await SB.storage.from("sid").upload("edits/latest.json",new Blob([JSON.stringify(rec)],{type:"application/json"}),{upsert:true});
     if(up.error) throw up.error;
     const r=await SB.from("sid_kv").upsert({key:"edits",value:{savedAt:rec.savedAt,n:rec.n},updated_at:new Date().toISOString()}); if(r.error) throw r.error;
+    try{ await idb.set(STORE_KEY,rec); }catch(e){}
     toast("Edits saved online — the whole team sees them"); const ap=AUD.pend; AUD.pend=null; audSend("register",ap);
   }catch(e){ toast("Edits saved in this browser, but not online: "+(e.message||e),true); }
 }
