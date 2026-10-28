@@ -12642,7 +12642,7 @@ async function edMergeOnline(){
   for(const r of ED.rows){ if(ED.added.has(r._id)) continue; const o=ED.orig.get(r._id); if(!o) continue;
     const del=ED.deleted.has(r._id), chg=!del&&edRowChanged(r); if(!del&&!chg) continue;
     const j=find(o); if(j<0){ clash++; continue; }
-    if(del) drop.add(j); else out[j]=hydrateRow({...r}); merged++; }
+    if(del) drop.add(j); else { const t={...srv[j]}; for(const c of S.reg.cols) if(!edEq(o[c],r[c])) t[c]=r[c]; out[j]=hydrateRow(t); } merged++; }   // only the fields changed here
   for(const r of ED.rows) if(ED.added.has(r._id)&&!ED.deleted.has(r._id)) out.push(hydrateRow({...r}));
   return {rows:out.filter((_,i)=>!drop.has(i)), by:sv.savedAt, clash};
 }
