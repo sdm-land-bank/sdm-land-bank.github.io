@@ -17826,7 +17826,8 @@ function ensureOrigin(){ if(empty()){ PL.plan.o=null; O=null; } frame(); }
 function commitLand(pts){ ensureOrigin(); pushUndo(); PL.plan.land={id:newId(),pts:pts.map(r9)}; PL.sel={t:"land",id:PL.plan.land.id}; changed(["land","plots"]); A.flash("Land: "+A.fArea(geoArea(PL.plan.land.pts))+" — now draw the roads"); }
 function commitRoad(pts){ ensureOrigin(); pushUndo(); const t=RT[PL.rt], rd={id:newId(),t:t.k,w:t.w,pts:pts.map(r9)}; PL.plan.roads.push(rd); joinRoads(rd); GR=null; PL.sel={t:"road",id:rd.id}; changed(["roads"]); }
 function commitPlot(pts){ ensureOrigin(); pushUndo(); const pl={id:newId(),code:nextCode(),pts:pts.map(r9)}; PL.plan.plots.push(pl); PL.sel={t:"plot",id:pl.id}; changed(["plots"]); return pl; }
-function nextCode(){ const p=PL.plan, L="ABCDEFGHJKLMNPQRSTUVWXYZ"[p.sec%24]||"Z"; const n=p.plots.filter(x=>String(x.code||"").startsWith(L+"-")).length+1; return L+"-"+String(n).padStart(2,"0"); }
+const SECL="ABCDEFGHJKLMNPQRSTUVWXYZ", secLetter=n=>n<24?SECL[n]:SECL[Math.floor(n/24)-1]+SECL[n%24];   // A…Z, then AA, AB…: a code never repeats
+function nextCode(){ const p=PL.plan, L=secLetter(p.sec); const n=p.plots.filter(x=>String(x.code||"").startsWith(L+"-")).length+1; return L+"-"+String(n).padStart(2,"0"); }
 function fitOnPlot(pl,k){ // the building fills the plot along its longest side, set back from the edges, at most half the plot area (the park rule)
   const P=pl.pts.map(Lc), KD=KIND(k); let bi=0, bl=0; for(let i=0;i<P.length;i++){ const l=lhyp(P[i],P[(i+1)%P.length]); if(l>bl){ bl=l; bi=i; } }
   const a=P[bi], b=P[(bi+1)%P.length]; let u=[(b[0]-a[0])/bl,(b[1]-a[1])/bl], v=[-u[1],u[0]]; let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;
@@ -17889,7 +17890,7 @@ function autoPlots(g){ const B=detectBlock(g); if(B.err){ A.flash(B.err); return
   const fin=PL.plan.roads.map(r=>({V:r.pts.map(Lc),w:r.w})).concat(srv.map(V=>({V,w:12})));
   const parts=avoid(S.plots,OB2.concat(strips),PL.target).filter(P=>S.plots.includes(P)||reach(P,fin)), cut=S.plots.length-parts.length;
   if(!parts.length){ A.flash(S.plots.length?"No room for plots here — the landscape fills this block":"This block is too small for plots of "+A.nf(PL.target,0)+" m²"); return; }
-  ensureOrigin(); pushUndo(); const p=PL.plan, letter="ABCDEFGHJKLMNPQRSTUVWXYZ"[p.sec%24]; p.sec++; const made=[];
+  ensureOrigin(); pushUndo(); const p=PL.plan, letter=secLetter(p.sec); p.sec++; const made=[];
   parts.forEach((P,i)=>{ const pl={id:newId(),code:letter+"-"+String(i+1).padStart(2,"0"),pts:(lArea(P)>0?P:P.slice().reverse()).map(c=>Gc(c[0],c[1]))}; p.plots.push(pl); made.push(pl); });
   srv.forEach(R=>{ const rd={id:newId(),t:"serv",w:12,pts:R.map(c=>Gc(c[0],c[1]))}; p.roads.push(rd); joinRoads(rd); }); GR=null;
   // a tree standing where a new service road runs is taken out
