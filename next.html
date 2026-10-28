@@ -2364,13 +2364,13 @@ body.presenting .lara-dock.lb-on:not(.open){opacity:1}
 .eh .afb{margin-left:auto;flex:none;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#555;background:#f3f3f3;border:1px solid #bdbdbd;cursor:pointer;line-height:1}
 .eh .afb:hover{background:#e8f1ec;border-color:#107c41;color:#107c41}
 .eh .afb.on{background:#107c41;border-color:#0b5d31;color:#fff}
-#edAF{position:fixed;z-index:9999;width:260px;background:#fff;border:1px solid #9a9a9a;box-shadow:0 6px 18px rgba(0,0,0,.28);font:12px Calibri,Carlito,"Segoe UI",Arial,sans-serif;color:#000;display:flex;flex-direction:column}
+#edAF{position:fixed;z-index:9999;width:260px;overflow:hidden;background:#fff;border:1px solid #9a9a9a;box-shadow:0 6px 18px rgba(0,0,0,.28);font:12px Calibri,Carlito,"Segoe UI",Arial,sans-serif;color:#000;display:flex;flex-direction:column}
 #edAF button{font:inherit;border:1px solid #c6c6c6;background:#fff;padding:3px 9px;cursor:pointer}
 #edAF button:hover{background:#e8f1ec;border-color:#107c41}
 #edAF .af-s{display:flex;gap:4px;padding:6px;border-bottom:1px solid #d4d4d4}
 #edAF .af-s button{flex:1}
 #edAF .af-q{margin:6px;height:24px;border:1px solid #9a9a9a;padding:0 6px;font:inherit}
-#edAF .af-l{max-height:250px;overflow:auto;margin:0 6px;border:1px solid #d4d4d4}
+#edAF .af-l{max-height:250px;min-height:60px;overflow:auto;margin:0 6px;border:1px solid #d4d4d4}
 #edAF .af-l label{display:flex;align-items:center;gap:6px;padding:2px 6px;cursor:pointer}
 #edAF .af-l label:hover{background:#e8f1ec}
 #edAF .af-l label span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -5317,7 +5317,7 @@ async function regSave(v){ if(regOnline()){ const r=await SB.from("sid_kv").upse
 const REG_IC={lock:'<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="10" height="7" rx="1.6"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg>',
   open:'<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="10" height="7" rx="1.6"/><path d="M5.5 7V5a2.5 2.5 0 014.8-1"/></svg>'};
 function regBtnHtml(){ return REG_LOCK.open?REG_IC.open+"GP visible":REG_IC.lock+"GP hidden"; }
-function regRefresh(){ if($("#edBody")&&typeof edPaint==="function") edPaint(true);
+function regRefresh(){ if($("#edBody")&&typeof edPaint==="function"){ if(typeof edFilter==="function"&&ED.rows){ edFilter(); const h=$("#edHead"); if(h) h.innerHTML=edHeadHtml(); } edPaint(true); if(typeof edChrome==="function") edChrome(); }
   const b=$("#edLock"); if(b){ b.innerHTML=regBtnHtml(); b.classList.toggle("on",REG_LOCK.open); b.title=REG_LOCK.open?"Hide cost and GP again":"Show cost and GP (password)"; }
   const c=$("#edLockPw"); if(c) c.hidden=!REG_LOCK.open; }
 function regLock(){ REG_LOCK.open=false; regRefresh(); toast("Cost and GP columns are hidden"); }
@@ -11757,7 +11757,7 @@ function edAFOpen(k,btn){
   const vals=[...cnt.keys()].sort((a,b)=>a==="(blank)"?1:b==="(blank)"?-1:(num?a-b:String(edAFLabel(c,a)).localeCompare(String(edAFLabel(c,b)),undefined,{numeric:true})));
   ED.vs=ED.vs||{}; const cur=ED.vs[k], pick=new Set(cur&&cur.size?cur:vals);
   const o=document.createElement("div"); o.id="edAF";
-  const r=btn.getBoundingClientRect(); o.style.left=Math.max(6,Math.min(r.left,innerWidth-268))+"px"; o.style.top=(r.bottom+2)+"px";
+  const r=btn.getBoundingClientRect(); o.style.left=Math.max(6,Math.min(r.left,innerWidth-268))+"px"; o.style.top=(r.bottom+2)+"px"; o.style.maxHeight=Math.max(180,innerHeight-r.bottom-10)+"px";
   o.innerHTML=`<div class="af-s"><button data-s="1">Sort A → Z</button><button data-s="-1">Sort Z → A</button></div>
     <input class="af-q" placeholder="Search" autocomplete="off">
     <div class="af-l"></div>
@@ -11869,8 +11869,8 @@ function numPred(raw){
 }
 function edFilter(){
   const q=ED.q.trim().toLowerCase();
-  const vss=Object.entries(ED.vs||{}).filter(([,v])=>v&&v.size).map(([k,v])=>[colOf(k),v]);
-  const cfs=Object.entries(ED.cf).filter(([,v])=>v!==""&&v!=null).map(([k,v])=>{
+  const vss=Object.entries(ED.vs||{}).filter(([k,v])=>v&&v.size&&!regHide(k)&&colOf(k)).map(([k,v])=>[colOf(k),v]);
+  const cfs=Object.entries(ED.cf).filter(([k])=>!regHide(k)&&colOf(k)).filter(([,v])=>v!==""&&v!=null).map(([k,v])=>{
     const c=colOf(k); return {c,v,np:(c.type==="num"||c.type==="int")?numPred(v):null,s:String(v).toLowerCase()}; });
   // rows the survey join actually drew on the map (a new row is not drawn until it is saved)
   const mapped=ED.show==="unmapped"?new Set([...S.plots.values()].flatMap(p=>(p.rows||[]).map(r=>r._id))):null;
@@ -11889,12 +11889,13 @@ function edFilter(){
       if(!String(x??"").toLowerCase().includes(s)) return false;
     }
     if(q){
-      const hay=EDCOLS.map(c=>c.k==="park"?(S.reg.parks[r.park]?.name||r.park):c.k==="status"?(STATUS[r.status]?.label||r.status):r[c.k])
+      const hay=EDCOLS.filter(c=>!regHide(c.k)).map(c=>c.k==="park"?(S.reg.parks[r.park]?.name||r.park):c.k==="status"?(STATUS[r.status]?.label||r.status):r[c.k])
         .filter(v=>v!=null).join(" ").toLowerCase();
       if(!hay.includes(q)) return false;
     }
     return true;
   });
+  if(ED.sort&&(regHide(ED.sort.k)||!colOf(ED.sort.k))) ED.sort=null;
   if(ED.sort){
     const {k,dir}=ED.sort, c=colOf(k), num=c.type==="num"||c.type==="int";
     list.sort((a,b)=>{ const x=a[k],y=b[k];
@@ -11952,14 +11953,14 @@ function edHeadHtml(){
   <div class="eh-row">
       <div class="eh c0 stick" style="width:${SELW}px" title="Select all shown rows"><input type="checkbox" id="edAll" ${allChecked?"checked":""}></div>
       ${EDCOLS.map((c,i)=>`<div class="eh ${i===0?"c1 stick":""} ${ED.sort&&ED.sort.k===c.k?"sorted":""} ${c.type==="num"||c.type==="int"?"r":""}"
-          data-k="${c.k}" style="width:${c.w}px" title="Sort by ${esc(c.label)}">${esc(c.label)}${c.req?'<span class="rq">*</span>':""}<span class="so">${sortMark(c)}</span><span class="afb ${ED.vs&&ED.vs[c.k]&&ED.vs[c.k].size?"on":""}" data-af="${c.k}" title="Filter ${esc(c.label)}">▾</span></div>`).join("")}
+          data-k="${c.k}" style="width:${c.w}px" title="Sort by ${esc(c.label)}">${esc(c.label)}${c.req?'<span class="rq">*</span>':""}<span class="so">${sortMark(c)}</span><span class="afb ${ED.vs&&ED.vs[c.k]&&ED.vs[c.k].size&&!regHide(c.k)?"on":""}" data-af="${c.k}" title="Filter ${esc(c.label)}">▾</span></div>`).join("")}
     </div>
     <div class="eh-row">
       <div class="ef c0 stick" style="width:${SELW}px">${fInt(vis)}</div>
       ${EDCOLS.map((c,i)=>{ const v=ED.cf[c.k]??"", on=v!=="";
         const ctl=c.type==="enum"
           ? `<select data-k="${c.k}"><option value="">All</option>${edOpts(c.k).map(([x,l])=>`<option value="${esc(x)}" ${v===x?"selected":""}>${esc(l)}</option>`).join("")}<option value="__blank" ${v==="__blank"?"selected":""}>(blank)</option></select>`
-          : `<input data-k="${c.k}" value="${esc(v)}" placeholder="${c.type==="num"||c.type==="int"?">5000 · 1000-3000":c.type==="date"?"2025-":"Filter…"}">`;
+          : `<input data-k="${c.k}" value="${esc(v)}"${regHide(c.k)?" disabled title=\"Protected — unlock cost and GP first\"":""} placeholder="${c.type==="num"||c.type==="int"?">5000 · 1000-3000":c.type==="date"?"2025-":"Filter…"}">`;
         return `<div class="ef ${i===0?"c1 stick":""} ${on?"on":""}" style="width:${c.w}px">${ctl}</div>`; }).join("")}
     </div>`;
 }
@@ -12226,6 +12227,7 @@ function wireEditor(){
   head.onclick=e=>{
     const ab=e.target.closest(".afb"); if(ab){ e.stopPropagation(); edAFOpen(ab.dataset.af,ab); return; }
     const h=e.target.closest(".eh[data-k]"); if(!h) return;
+    if(regHide(h.dataset.k)){ const k0=h.dataset.k; regUnlock(()=>{ ED.sort={k:k0,dir:1}; edFilter(); head.innerHTML=edHeadHtml(); edPaint(true); edChrome(); }); return; }
     const k=h.dataset.k;
     ED.sort=!ED.sort||ED.sort.k!==k?{k,dir:1}:ED.sort.dir>0?{k,dir:-1}:null;
     edFilter(); head.innerHTML=edHeadHtml(); edPaint(true); edChrome();
@@ -16144,7 +16146,7 @@ EXP.ar=async function(park){
   const tok=H.newTok(); let renderer=null, scene=null, raf=0, stream=null, vid=null, ov=null, onOri=null, gone=false, cam=null;
   const onRes=()=>{ if(!renderer||!cam) return; renderer.setSize(innerWidth,innerHeight,false); cam.aspect=innerWidth/innerHeight; cam.updateProjectionMatrix(); };
   function cleanup(){ if(gone) return; gone=true; cancelAnimationFrame(raf); if(onOri) window.removeEventListener("deviceorientation",onOri); try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){}
-    try{ scene&&scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material&&o.material.map) o.material.map.dispose(); }); renderer&&renderer.dispose(); }catch(e){} if(ov) ov.remove(); window.removeEventListener("resize",onRes); }
+    try{ scene&&scene.traverse(o=>{ if(o.geometry) o.geometry.dispose(); [].concat(o.material||[]).forEach(m=>{ if(m.map) m.map.dispose(); const um=m.uniforms&&m.uniforms.map&&m.uniforms.map.value; if(um&&um.dispose) um.dispose(); m.dispose(); }); }); if(renderer){ renderer.dispose(); renderer.forceContextLoss&&renderer.forceContextLoss(); } }catch(e){} if(ov) ov.remove(); window.removeEventListener("resize",onRes); }
   H.wowStart("ar",()=>{ tok.dead=true; cleanup(); });
   try{ await H.loadThree(); }catch(e){ H.toast("The 3D library could not load — check the connection",true); H.wowStop(); return; }
   const T=window.THREE, feats=S.geo.features.filter(f=>f.properties.park===park); if(!feats.length){ H.toast("This project has no plots on the map",true); H.wowStop(); return; }
@@ -16329,8 +16331,8 @@ EXP.ar=async function(park){
   q("#arDrive").onclick=()=>{ if(!car){ H.toast("This park has no streets to drive on",true); return; } setMode(mode==="drive"?"table":"drive"); };
   q("#arMin").onclick=()=>{ scale=Math.max(.3,scale/1.5); }; q("#arPlus").onclick=()=>{ scale=Math.min(90,scale*1.5); };
   try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false}); vid.srcObject=stream; await vid.play().catch(()=>{}); camOk=true; }catch(e){}
-  if(tok.dead) return; if(!camOk) ov.classList.add("nocam");
-  const perm=await permP; const eul=new T.Euler(), q1=new T.Quaternion(-Math.SQRT1_2,0,0,Math.SQRT1_2), q0=new T.Quaternion(), zee=new T.Vector3(0,0,1);
+  if(tok.dead){ try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){} return; } if(!camOk) ov.classList.add("nocam");
+  const perm=await permP; if(tok.dead) return; const eul=new T.Euler(), q1=new T.Quaternion(-Math.SQRT1_2,0,0,Math.SQRT1_2), q0=new T.Quaternion(), zee=new T.Vector3(0,0,1);
   if(perm==="granted"&&"DeviceOrientationEvent" in window){ onOri=e=>{ if(e.alpha==null) return; hasOri=true; if(mode==="drive"){ if(ad==null) ad=e.alpha; gY=(((e.alpha-ad+540)%360)-180)*Math.PI/180; gP=Math.max(-.7,Math.min(.7,((e.beta||90)-90)*Math.PI/180)); return; } if(a0==null) a0=e.alpha; const orient=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*Math.PI/180;
       eul.set(e.beta*Math.PI/180,(e.alpha-a0)*Math.PI/180,-e.gamma*Math.PI/180,"YXZ"); cam.quaternion.setFromEuler(eul); cam.quaternion.multiply(q1); cam.quaternion.multiply(q0.setFromAxisAngle(zee,-orient)); }; window.addEventListener("deviceorientation",onOri); }
   model.position.set(0,-.34,-1.05);
@@ -17283,7 +17285,7 @@ body.sk-build #plTools{display:flex}
 #plCard .acts button.del{background:rgba(255,69,58,.2);color:#ff6961}
 @media (max-height:690px){ .pl-kpi{left:120px} #plLive{left:calc(50% + 55px)} }
 @media (max-width:620px){ .pl-kpi{top:auto!important;bottom:12px;left:66px} .pl-opt{left:66px;right:8px;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none} .pl-opt::-webkit-scrollbar{display:none} .pl-opt>*{flex:none}
-  #plCard{left:66px;right:8px;width:auto;bottom:12px} #plUI:has(#plCard:not([hidden])) .pl-kpi,#plUI:has(#plLive:not([hidden])) .pl-kpi{display:none} }
+  #plCard{left:66px;right:8px;width:auto;bottom:12px} #plLive{left:66px;right:8px;transform:none;max-width:none;flex-wrap:wrap;gap:6px;padding:8px 8px 8px 12px} #plLive>div{flex:1 0 100%;min-width:0} #plLive .s{overflow:hidden;text-overflow:ellipsis} #plLive button{flex:1} #plUI:has(#plCard:not([hidden])) .pl-kpi,#plUI:has(#plLive:not([hidden])) .pl-kpi{display:none} }
 </style>
 
 <script>
@@ -17779,7 +17781,7 @@ function buildUI(){ const host=A.ui(); if(!host) return; ui=document.createEleme
   const top=host.querySelector(".sk-top"); if(top&&!q("#pl3d")){ const b=document.createElement("button"); b.type="button"; b.className="sk-tb"; b.id="pl3d"; b.title="Tilt the map to see the plan in 3D"; b.innerHTML=A.svg(IC2.cube3)+"<span>3D</span>"; b.onclick=()=>set3d(!PL.v3); const shot=top.querySelector("#skShot"); top.insertBefore(b,shot); }
   ui.querySelectorAll("[data-pt]").forEach(b=>b.onclick=()=>setTool(b.dataset.pt));
   q("#plUndo").onclick=undo; q("#plRedo").onclick=redo;
-  q("#plClr").onclick=()=>{ if(empty()){ A.flash("The plan is already empty"); return; } menu(null,"Start a new plan?",[["clear","Clear the whole plan","Undo brings it back","#B3263D"]],k=>{ pushUndo(); PL.plan=blank(); O=null; PL.sel=null; PL.cur=null; changed(); A.flash("New plan — Undo brings the old one back"); }); };
+  q("#plClr").onclick=()=>{ if(empty()){ A.flash("The plan is already empty"); return; } menu(null,"Start a new plan?",[["clear","Clear the whole plan","Undo brings it back","#B3263D"]],k=>{ pushUndo(); PL.plan=blank(); O=null; PL.sel=null; PL.cur=null; changed(); live(); A.flash("New plan — Undo brings the old one back"); }); };
   q("#plKpi").onclick=()=>{ kpiMin=!kpiMin; kpi(); }; addEventListener("resize",placeKpi);
   opts(); btns(); kpi(); card(); live(); }
 function set3d(on){ PL.v3=on; persist(); btns(); map.easeTo({pitch:on?60:0,bearing:on&&Math.abs(map.getBearing())<1?-20:map.getBearing(),duration:900}); A.flash(on?"3D view — twist two fingers to turn, Move tool to look around":"Flat view"); }
@@ -17798,7 +17800,7 @@ function opts(){ const el=q("#plOpt"); if(!el) return; let h=""; const t=PL.tool
   el.innerHTML=h; el.hidden=!h; placeKpi();
   el.onclick=e=>{ const b=e.target.closest("button[data-o]"); if(!b) return; const o=b.dataset.o, v=b.dataset.n?+b.dataset.v:b.dataset.v; if(PL[o]===v) return; PL[o]=v;
     if(PL.cur&&PL.cur.t!==curType()) finishCur(); closeMenu(); persist(); opts(); live(); A.hint(); A.need(); };
-  const tg=q("#plTg"); if(tg){ tg.onkeydown=e=>e.stopPropagation(); tg.onchange=()=>{ const v=+tg.value; if(v>=300&&v<=1e6){ PL.target=Math.round(v); persist(); opts(); } else A.flash("Plot size between 300 and 1,000,000 m²"); }; }
+  const tg=q("#plTg"); if(tg){ tg.onkeydown=e=>e.stopPropagation(); tg.onchange=()=>{ const v=+tg.value; if(v>=300&&v<=1e6){ PL.target=Math.round(v); persist(); opts(); } else { A.flash("Plot size between 300 and 1,000,000 m²"); tg.value=PL.target; } }; }
   const gp=q("#plGap"); if(gp){ gp.onkeydown=e=>e.stopPropagation(); gp.onchange=()=>{ const v=+gp.value, k=rowKind(); if(v>=1&&v<=500){ PL.gaps[k]=Math.round(v*10)/10; persist(); A.hint(); live(); A.need(); } else { A.flash("Spacing between 1 and 500 m"); gp.value=gapOf(k); } }; } }
 // on narrower screens (iPad upright) the choices bar would run under the plan numbers: the numbers move down below it
 function placeKpi(){ const o=q("#plOpt"), k=q("#plKpi"); if(!o||!k) return; k.style.top=""; if(o.hidden||!o.innerHTML) return; const a=o.getBoundingClientRect(), b=k.getBoundingClientRect(), p=k.offsetParent?k.offsetParent.getBoundingClientRect().top:0;
@@ -17951,9 +17953,9 @@ function move(pt,e){ const d=PL.drag; if(!d) return; if(!d.moved&&A.hyp(pt,d.sta
       s.len=+Math.max(1,Math.abs(du)).toFixed(2); s.w=+Math.max(1,Math.abs(dv)).toFixed(2); if(s.k==="tank"){ const m=Math.max(s.len,s.w); s.len=s.w=m; }
       const cx=opp[0]+F.u[0]*du/2+F.v[0]*dv/2, cz=opp[1]+F.u[1]*du/2+F.v[1]*dv/2; s.c=Gc(cx,cz); if(layer&&layer.g) buildLive(layer.g.live,s); }
     if(layer) map.triggerRepaint(); A.need(); card(true); return; } }
-function up(pt,e,cancel){ const d=PL.drag; PL.drag=null; if(!d) return; const g=ground(pt);
-  if(d.k==="vert"){ const c=PL.cur; if(c&&c.box){ if(!cancel&&d.moved){ const P=c.pts.map(Lc); if(Math.abs(lArea(P))>4){ PL.cur=null; commitShape(c.t,c.pts); } else PL.cur=null; } else PL.cur=null; live(); } return; }
-  if(cancel) return;
+function up(pt,e,cx){ const d=PL.drag; PL.drag=null; if(!d) return; const g=ground(pt);
+  if(d.k==="vert"){ const c=PL.cur; if(c&&c.box){ if(!cx&&d.moved){ const P=c.pts.map(Lc); if(Math.abs(lArea(P))>4){ PL.cur=null; commitShape(c.t,c.pts); } else PL.cur=null; } else PL.cur=null; live(); } return; }
+  if(cx){ PL.drag=d; cancel(); return; }   // pointer cancelled (iPad system gesture): a move or resize is put back, nothing half-done is kept
   if(d.k==="free"){ if(!d.moved||d.path.length<3){ lastTap={t:performance.now(),p:d.start}; PL.cur={t:d.ct,pts:[atP(d.start,{edges:true})]}; live(); A.need(); return; }   // a tap starts corners
     let S=A.rdp(d.path.concat([d.path[0]]),2.5); S.pop(); const pts=S.map(p=>r9(A.U(p[0],p[1]))); if(pts.length>=3&&Math.abs(lArea(pts.map(Lc)))>4) commitShape(d.ct,pts); else A.flash("Too small — draw a bigger shape"); A.need(); return; }
   if(d.k==="tap"&&!d.moved){ if(PL.tool==="plot") autoPlots(g); else if(PL.tool==="road") placeRound(g,pt);
@@ -17974,8 +17976,8 @@ function finishCur(){ const c=PL.cur; if(!c) return; PL.cur=null; const out=[]; 
   live(); A.need(); }
 function eraseAt(pt){ const h=hitAny(pt); if(!h) return; if(!PL.drag||!PL.drag.did){ pushUndo(); if(PL.drag) PL.drag.did=true; } delObj(h); }
 function delObj(h){ const p=PL.plan; if(h.t==="plot"){ p.plots=p.plots.filter(x=>x.id!==h.id); p.items=p.items.filter(x=>x.plot!==h.id); } else if(h.t==="land") p.land=null; else if(LIST[h.t]) p[LIST[h.t]]=p[LIST[h.t]].filter(x=>x.id!==h.id);
-  if(PL.sel&&PL.sel.t===h.t&&PL.sel.id===h.id) PL.sel=null; GR=null; changed(); }
-function del(){ if(!PL.sel) return false; pushUndo(); delObj(PL.sel); return true; }
+  if(PL.sel&&PL.sel.t===h.t&&PL.sel.id===h.id) PL.sel=null; fixSel(); GR=null; changed(); }
+function del(){ if(!PL.sel) return false; if(!obj(PL.sel)){ PL.sel=null; card(); return false; } pushUndo(); delObj(PL.sel); return true; }
 function cancel(){ const d=PL.drag; PL.drag=null; if(!d) return; if((d.k==="move"||d.k==="handle")&&d.changed){ const s=obj(PL.sel); if(s) Object.assign(s,d.orig); PL.undo.pop(); PL.liveId=null; if(layer&&layer.g) clearG(layer.g.live); changed(); }
   if(d.k==="vert"&&PL.cur){ if(PL.cur.box) PL.cur=null; else { PL.cur.pts.pop(); if(!PL.cur.pts.length) PL.cur=null; } live(); } }
 function escK(){ if(q("#plMenu")||q("#plDims")){ closeMenu(); return true; } if(PL.cur){ if(PL.cur.pts&&PL.cur.pts.length>=(PL.cur.t==="road"?2:3)) finishCur(); else { PL.cur=null; live(); } A.need(); return true; } if(PL.sel){ PL.sel=null; card(); A.need(); return true; } return false; }
@@ -17986,7 +17988,7 @@ function key(lk){ const K={v:["select"],h:["hand"],l:["land"],r:["road",{rsub:"r
 /* ---------- the selection card and exact sizes ---------- */
 function card(soft){ const el=q("#plCard"); if(!el) return; const s=obj(PL.sel); if(!s||PL.cur){ el.hidden=true; el.dataset.h=""; return; } const t=PL.sel.t; let hd="", big="", sub="", w="", acts="";
   if(t==="item"){ const KD=KIND(s.k); hd=KD.l; big=`${A.nf(s.len,1)} × ${A.nf(s.w,1)} m`; sub=`${A.nf(s.h,1)} m high · footprint ${A.fArea(s.len*s.w)} · turned ${A.nf(s.rot,0)}°`;
-    if(s.plot){ const pl=PL.plan.plots.find(x=>x.id===s.plot); if(pl){ const pa=geoArea(pl.pts); sub+=` · on plot ${pl.code} (${Math.round(s.len*s.w/pa*100)}% covered)`; } }
+    if(s.plot){ const pl=PL.plan.plots.find(x=>x.id===s.plot); if(pl){ const pa=geoArea(pl.pts); sub+=` · on plot ${pl.code} (${pa>0?Math.round(s.len*s.w/pa*100)+"%":"—"} covered)`; } }
     const list=isBld(s.k)?BK:OB, keys=isBld(s.k)?Object.keys(BK):TREES.includes(s.k)?TREES:OBJS;
     acts=`<select id="plCK" aria-label="Type">${keys.map(k=>`<option value="${k}" ${k===s.k?"selected":""}>${esc(list[k].l)}</option>`).join("")}</select><button type="button" id="plCS">Exact sizes</button><button type="button" id="plCDup">Duplicate</button>`; }
   else if(t==="plot"){ const a=geoArea(s.pts), b=PL.plan.items.find(i=>isBld(i.k)&&i.plot===s.id); hd="Plot "+(s.code||""); big=A.fArea(a); sub=`${A.fArea2(a)?A.fArea2(a)+" · ":""}perimeter ${A.fLen(A.pathLen(s.pts.concat([s.pts[0]])))}${b?" · "+KIND(b.k).l+" on it":" · empty"}`;
@@ -18061,7 +18063,7 @@ function obstacles(){ const segs=[], add=V=>{ for(let i=1;i<V.length;i++) segs.p
 /* ---------- on / off ---------- */
 async function activate(api){ A=api; if(PL.on) return; PL.on=true; PL.cur=null; PL.drag=null; PL.sel=null; buildUI(); A.hint();
   try{ if(!window.THREE) A.flash("Loading 3D…"); T=await loadThree(); }catch(e){ T=null; A.flash("3D could not load — the plan is shown flat"); }
-  if(!PL.on) return; if(T){ addLayer(); map.on("styledata",onStyle); }
+  if(!PL.on) return; if(T){ addLayer(); map.off("styledata",onStyle); map.on("styledata",onStyle); }   // a quick off/on while 3D loads must not add the listener twice
   if(PL.v3&&map.getPitch()<20) map.easeTo({pitch:60,duration:900});
   if(!empty()){ const pts=[]; const p=PL.plan; if(p.land) pts.push(...p.land.pts); p.roads.forEach(r=>pts.push(...r.pts)); p.plots.forEach(x=>pts.push(...x.pts)); p.green.forEach(x=>pts.push(...x.pts)); p.items.forEach(i=>pts.push(i.c)); p.rounds.forEach(r=>pts.push(r.c));
     const b=map.getBounds(); if(!pts.some(c=>b.contains(c))){ let bb=[[1e9,1e9],[-1e9,-1e9]]; pts.forEach(c=>{ bb[0][0]=Math.min(bb[0][0],c[0]); bb[0][1]=Math.min(bb[0][1],c[1]); bb[1][0]=Math.max(bb[1][0],c[0]); bb[1][1]=Math.max(bb[1][1],c[1]); }); map.fitBounds(bb,{padding:120,duration:900,pitch:PL.v3?60:0,bearing:map.getBearing()}); A.flash("Your plan is kept — here it is"); } }
