@@ -5313,7 +5313,7 @@ const REG_IC={lock:'<svg width="12" height="12" viewBox="0 0 16 16" fill="none" 
 function regBtnHtml(){ return REG_LOCK.open?REG_IC.open+"GP visible":REG_IC.lock+"GP hidden"; }
 function regRefresh(){ if($("#edBody")&&typeof edPaint==="function"){ if(typeof edFilter==="function"&&ED.rows){ edFilter(); const h=$("#edHead"); if(h) h.innerHTML=edHeadHtml(); } edPaint(true); if(typeof edChrome==="function") edChrome(); }
   const b=$("#edLock"); if(b){ b.innerHTML=regBtnHtml(); b.classList.toggle("on",REG_LOCK.open); b.title=REG_LOCK.open?"Hide cost and GP again":"Show cost and GP (password)"; }
-  const c=$("#edLockPw"); if(c) c.hidden=!REG_LOCK.open; }
+  const c=$("#edLockPw"); if(c){ c.hidden=!(REG_LOCK.open||isSyncAdmin()); c.textContent=REG_LOCK.open?"Change password":"Reset password"; } }
 function regLock(){ REG_LOCK.open=false; regRefresh(); toast("Cost and GP columns are hidden"); }
 async function regUnlock(then,change){
   if(REG_LOCK.open&&!change){ if(then) then(); return; }
@@ -11910,7 +11910,7 @@ function viewEditor(){
       <button class="ebtn danger" id="edDel" disabled>Delete</button>
       <button class="ebtn" id="edUndo" title="Undo (Ctrl+Z)">Undo</button>
       <span class="ed-sep"></span>
-      <button class="ebtn" id="edLock">${regBtnHtml()}</button><button class="ebtn" id="edLockPw" ${REG_LOCK.open?"":"hidden"} title="Administrators: change the password">Change password</button>
+      <button class="ebtn" id="edLock">${regBtnHtml()}</button><button class="ebtn" id="edLockPw" ${REG_LOCK.open||isSyncAdmin()?"":"hidden"} title="Administrators: set a new cost & GP password">${REG_LOCK.open?"Change password":"Reset password"}</button>
       <span class="ed-sep"></span>
       <button class="ebtn" id="edXlsx" title="The register as an MDS-format workbook — it can be dropped back into Data health">Export Excel</button>
       <button class="ebtn" id="edHtml" title="A copy of this dashboard file with the saved register built in, to share with the team">Download dashboard</button>
