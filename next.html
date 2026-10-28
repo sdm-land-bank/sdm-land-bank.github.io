@@ -16646,6 +16646,25 @@ body.sk-on #laraDock{display:none!important}
 @media (max-height:690px){ .sk-tools{display:grid;grid-template-columns:46px 46px;gap:1px 2px} .sk-sep{grid-column:1/-1} .sk-full .maplibregl-ctrl-bottom-left{left:120px} .sk-live{left:calc(50% + 55px)} .sk-hint{left:calc(50% + 55px)} }
 @media (max-width:620px){ .sk-live{left:calc(50% + 30px);max-width:calc(100vw - 90px)} .sk-card{left:66px;right:8px;width:auto;bottom:12px} .sk-card .big{font-size:22px} .sk-hint{max-width:calc(100vw - 90px);left:calc(50% + 30px)} .sk-top{left:72px;right:8px;overflow-x:auto;scrollbar-width:none} }
 @media (prefers-reduced-motion:reduce){ .sk-tools,.sk-top,.sk-pop,.sk-live,.sk-card{animation:none} }
+
+/* ---- V88 movable panels, compass, plot card ---- */
+.sk-grip{flex:none;display:grid;place-items:center;cursor:grab;touch-action:none;color:rgba(255,255,255,.55)}
+.sk-grip::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:-7px 0 currentColor,7px 0 currentColor}
+.sk-grip.v{width:100%;height:14px} .sk-grip.h{width:16px;align-self:stretch;margin-right:2px}
+.sk-grip.h::before{box-shadow:0 -7px currentColor,0 7px currentColor}
+.sk-mv{touch-action:none} .sk-mv.dragging{cursor:grabbing!important;opacity:.92;transition:none!important}
+.sk-compass{position:absolute;left:84px;bottom:58px;width:84px;display:flex;flex-direction:column;align-items:center;gap:2px;opacity:.42;transition:opacity .5s ease;z-index:3;touch-action:none}
+.sk-compass.on,.sk-compass:hover{opacity:1;transition:opacity .12s ease}
+.sk-compass .dial{width:84px;height:84px;border-radius:50%;cursor:grab;touch-action:none;background:rgba(28,28,30,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.22);box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.sk-compass .dial svg{width:100%;height:100%;display:block;pointer-events:none}
+.sk-compass .sk-grip{height:12px;width:40px}
+.sk-compass .deg{font-size:10px;font-weight:700;letter-spacing:.04em;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+#skTip{position:fixed;left:0;top:0;z-index:2147483000;width:250px;pointer-events:none;opacity:0;transition:opacity .1s;padding:11px 13px;border-radius:14px;background:rgba(28,28,30,.88);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border:1px solid rgba(255,255,255,.16);box-shadow:0 12px 30px rgba(0,0,0,.4);color:#fff;font:12.5px -apple-system,BlinkMacSystemFont,Inter,sans-serif}
+#skTip.on{opacity:1}
+#skTip .h{display:flex;align-items:center;gap:8px;justify-content:space-between} #skTip .u{font-size:17px;font-weight:800} #skTip .c{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,.18)}
+#skTip .s{color:rgba(255,255,255,.66);font-size:11.5px;margin-top:1px}
+#skTip .r{display:flex;justify-content:space-between;gap:10px;margin-top:5px} #skTip .r span{color:rgba(255,255,255,.66)} #skTip .r b{font-weight:700;text-align:right}
+#skTip .e{margin-top:7px;font-size:11px;color:rgba(255,255,255,.62);border-top:1px solid rgba(255,255,255,.14);padding-top:6px}
 </style>
 
 <script>
@@ -16967,17 +16986,17 @@ function gestStart(){ gest={pts:new Map(ptrs),t0:performance.now(),moved:false,m
 function gestMove(){ if(!gest) return; const ids=[...ptrs.keys()].filter(id=>gest.pts.has(id)); gest.max=Math.max(gest.max,ptrs.size);
   if(ids.length){ const o=gest.pts.get(ids[0]), n=ptrs.get(ids[0]); if(hyp(o,n)>3) gest.moved=true; }
   if(!SK.frozen&&ids.length===1){ const o=gest.pts.get(ids[0]), n=ptrs.get(ids[0]); panPx(n[0]-o[0],n[1]-o[1]); }
-  else if(!SK.frozen&&ids.length>=2){ const o1=gest.pts.get(ids[0]),o2=gest.pts.get(ids[1]),n1=ptrs.get(ids[0]),n2=ptrs.get(ids[1]);
+  else if(ids.length>=2){ const o1=gest.pts.get(ids[0]),o2=gest.pts.get(ids[1]),n1=ptrs.get(ids[0]),n2=ptrs.get(ids[1]);
     const om=mid(o1,o2), nm=mid(n1,n2), d0=hyp(o1,o2), d1=hyp(n1,n2); panPx(nm[0]-om[0],nm[1]-om[1]); if(d0>10&&d1>10) zoomAbout(nm,Math.log2(d1/d0));
     if(d0>40&&d1>40){ let da=(Math.atan2(n2[1]-n1[1],n2[0]-n1[0])-Math.atan2(o2[1]-o1[1],o2[0]-o1[0]))*180/Math.PI; if(da>180) da-=360; if(da<-180) da+=360;
       if(Math.abs(da)>.15){ const ll=map.unproject(nm); map.jumpTo({bearing:map.getBearing()-da}); const p=map.project(ll); panPx(nm[0]-p.x,nm[1]-p.y); } } }
-  else if(SK.frozen&&gest.moved&&!gest.told){ gest.told=true; flash("The map is frozen — tap <em>Frozen</em> to move it"); }
+  else if(SK.frozen&&ids.length===1&&gest.moved&&!gest.told){ gest.told=true; flash("One finger is held for drawing — use two fingers to move, zoom and turn the map"); }
   gest.pts=new Map(ptrs); }
 
 /* ---------- pointer input ---------- */
 function xy(e){ const r=cv.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]; }
 function onDown(e){
-  if(!SK.on) return; e.preventDefault(); pops(null); const pt=xy(e); if(e.pointerType!=="touch"||!SK.penSeen) SK.ptr=pt;
+  if(!SK.on) return; e.preventDefault(); pops(null); tipHide(); const pt=xy(e); if(e.pointerType!=="touch"||!SK.penSeen) SK.ptr=pt;
   if(e.pointerType==="pen"&&!SK.penSeen){ SK.penSeen=true; hint(); }
   const ti=q("#skUI .sk-text"); if(ti) ti.blur();
   if(e.pointerType==="touch"){ ptrs.set(e.pointerId,pt); const d=SK.drag;
@@ -17025,7 +17044,7 @@ function selDown(pt,pid,e){ const cur=byId(SK.sel), h=cur&&handleAt(cur,pt);
 function onMove(e){
   if(!SK.on) return; const pt=xy(e); if(e.pointerType!=="touch"||!SK.penSeen) SK.ptr=pt;
   if(e.pointerType==="touch"&&ptrs.has(e.pointerId)){ ptrs.set(e.pointerId,pt); if(gest){ gestMove(); need(); return; } }
-  const d=SK.drag;
+  const d=SK.drag; if(!d&&!gest) tipAt(pt,e); else if(SK.tipK) tipHide();
   if(!d&&PLAN()){ PLAN().hover(pt,e); return; }
   if(!d){ if(SK.cur&&SK.cur.path&&e.pointerType!=="touch"){ SK.cur.hv=at(pt); need(); } else if(SK.snapAt){ SK.snapAt=null; need(); } hoverCur(pt); return; }
   if(d.pid!=null&&d.pid!==e.pointerId) return;
@@ -17134,7 +17153,7 @@ function buildUI(){ ui=document.createElement("div"); ui.id="skUI";
   q("#skClrYes").onclick=()=>{ pushUndo(); SK.shapes=[]; SK.sel=null; SK.cur=null; pops(null); after(); flash("Sketch cleared — Undo brings it back"); };
   q("#skDone").onclick=exit;
   ui.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
-  btns(); }
+  xtras(); btns(); }
 function setMode(m){ if(m===SK.mode&&(m!=="build"||PLAN())) return; if(SK.cur&&SK.cur.path) finishPath(); SK.cur=null; SK.sel=null; pops(null);
   if(m==="build"&&!window.SID_PLAN){ flash("Build mode is not available"); return; }
   SK.mode=m; persist(); document.body.classList.toggle("sk-build",m==="build");
@@ -17221,7 +17240,7 @@ async function share(b){ const d=new Date(), name=`SID sketch ${d.toISOString().
 
 /* ---------- enter / leave ---------- */
 let home=null, kbWas=true, scaleCtl=null, fsMine=false;
-const onMapMove=()=>need(), onMapResize=()=>sizeCv();
+const onMapMove=()=>{ compassUpd(); need(); }, onMapResize=()=>sizeCv();
 function enter(){ if(SK.on) return; if(!ready()){ say("The map is still loading",true); return; }
   if(document.body.classList.contains("wow-on")){ say("Close Explore first",true); return; }
   if(typeof PR!=="undefined"&&PR&&PR.on){ say("Close the presentation first",true); return; }
@@ -17242,7 +17261,7 @@ function enter(){ if(SK.on) return; if(!ready()){ say("The map is still loading"
   hint(); card(); btns(); need(); }
 function exit(){ if(!SK.on) return; if(SK.cur&&SK.cur.path) finishPath(); SK.cur=null; SK.drag=null; const t=q("#skUI .sk-text"); if(t) t.blur();
   try{ if(window.SID_PLAN&&window.SID_PLAN.on) window.SID_PLAN.deactivate(true); }catch(e){ console.error(e); } document.body.classList.remove("sk-build");
-  SK.on=false; persist(); cancelAnimationFrame(raf); raf=0;
+  SK.on=false; tipHide(); persist(); cancelAnimationFrame(raf); raf=0;
   map.off("move",onMapMove); map.off("resize",onMapResize);
   try{ if(scaleCtl) map.removeControl(scaleCtl); }catch(e){} scaleCtl=null;
   try{ if(kbWas) map.keyboard.enable(); }catch(e){}
@@ -17281,8 +17300,81 @@ class SkCtl{ onAdd(){ const d=document.createElement("div"); d.className="maplib
     d.querySelector("button").addEventListener("click",e=>{ e.stopPropagation(); enter(); }); this._d=d; return d; }
   onRemove(){ this._d&&this._d.remove(); } }
 setInterval(()=>{ try{ if(typeof map!=="undefined"&&map&&map.addControl&&map.getContainer&&!map.getContainer().querySelector(".sk-ctl")) map.addControl(new SkCtl(),"bottom-right"); }catch(e){} },1500);
+
+/* ---------- V88: panels you can move, a compass, and a card for the plot under the pointer ---------- */
+const POSK="sk.pos.v1"; let POS={}; try{ POS=JSON.parse(localStorage.getItem(POSK)||"{}")||{}; }catch(e){}
+const savePos=()=>{ try{ localStorage.setItem(POSK,JSON.stringify(POS)); }catch(e){} };
+function pinAt(el,l,t){ const w=el.offsetWidth,h=el.offsetHeight; l=Math.max(4,Math.min(innerWidth-w-4,l)); t=Math.max(4,Math.min(innerHeight-h-4,t)); const st=el.style;
+  st.setProperty("left",l+"px","important"); st.setProperty("top",t+"px","important"); st.setProperty("right","auto","important"); st.setProperty("bottom","auto","important"); st.setProperty("transform","none","important"); st.setProperty("animation","none","important"); el.dataset.moved="1"; return [l,t]; }
+function unpin(el){ ["left","top","right","bottom","transform","animation"].forEach(p=>el.style.removeProperty(p)); delete el.dataset.moved; }
+function movable(el,id,grip){ if(!el||el.dataset.mv) return; el.dataset.mv=id; el.classList.add("sk-mv");
+  if(grip){ const g=document.createElement("div"); const col=getComputedStyle(el).flexDirection==="column"; g.className="sk-grip "+(col?"v":"h"); g.title="Drag to move · double-tap to put it back"; el.insertBefore(g,el.firstChild); }
+  let st=null;
+  const interactive=t=>t&&t.closest&&t.closest("button,input,select,textarea,a,[contenteditable]");
+  el.addEventListener("pointerdown",e=>{ if(e.button>0) return; const g=e.target.closest&&e.target.closest(".sk-grip"); if(!g&&interactive(e.target)) return;
+    const r=el.getBoundingClientRect(); st={x:e.clientX,y:e.clientY,l:r.left,t:r.top,pid:e.pointerId,on:!!g}; });
+  el.addEventListener("pointermove",e=>{ if(!st||e.pointerId!==st.pid) return; if(!st.on){ if(Math.hypot(e.clientX-st.x,e.clientY-st.y)<5) return; st.on=true; }
+    if(!el.classList.contains("dragging")){ el.classList.add("dragging"); try{ el.setPointerCapture(e.pointerId); }catch(_){} }
+    const p=pinAt(el,st.l+e.clientX-st.x,st.t+e.clientY-st.y); POS[id]=p; e.preventDefault(); e.stopPropagation(); });
+  const end=e=>{ if(!st||(e.pointerId!==st.pid)) return; const was=st.on; st=null; if(el.classList.contains("dragging")){ el.classList.remove("dragging"); savePos(); if(was){ const k=ev=>{ ev.stopPropagation(); ev.preventDefault(); }; el.addEventListener("click",k,{capture:true,once:true}); setTimeout(()=>el.removeEventListener("click",k,true),80); } } };
+  el.addEventListener("pointerup",end); el.addEventListener("pointercancel",end);
+  el.addEventListener("dblclick",e=>{ if(e.target.closest&&e.target.closest(".sk-grip")){ unpin(el); delete POS[id]; savePos(); } });
+  if(POS[id]){ requestAnimationFrame(()=>{ if(el.isConnected) pinAt(el,POS[id][0],POS[id][1]); }); } }
+function resetLayout(){ POS={}; savePos(); document.querySelectorAll("#skUI .sk-mv").forEach(unpin); flash("Panels are back where they started"); }
+addEventListener("resize",()=>{ document.querySelectorAll("#skUI .sk-mv[data-moved]").forEach(el=>{ const r=el.getBoundingClientRect(); pinAt(el,r.left,r.top); }); });
+
+/* compass: the ring turns with the map (N is always north). Drag round it to turn the map, tap it to face north. Faint until touched. */
+function compassUpd(){ const c=q("#skCompass"); if(!c||!map) return; const b=map.getBearing(), r=c.querySelector("#skCRing"); if(r) r.setAttribute("transform","rotate("+(-b).toFixed(1)+" 50 50)");
+  const d=c.querySelector(".deg"); if(d){ const n=((b%360)+360)%360; d.textContent=(Math.round(n)%360)+"°"; } }
+function compassBuild(){ const c=document.createElement("div"); c.className="sk-compass"; c.id="skCompass";
+  c.innerHTML=`<div class="dial" title="Drag round to turn the map · tap to face north"><svg viewBox="0 0 100 100" aria-label="Compass"><g id="skCRing">
+    <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.2"/>
+    ${[...Array(24).keys()].map(i=>{ const a=i*15*Math.PI/180, l=i%6===0?9:(i%3===0?6:3.5); return `<line x1="${50+Math.sin(a)*44}" y1="${50-Math.cos(a)*44}" x2="${50+Math.sin(a)*(44-l)}" y2="${50-Math.cos(a)*(44-l)}" stroke="rgba(255,255,255,.75)" stroke-width="${i%6===0?1.8:1}"/>`; }).join("")}
+    <path d="M50 14 L57 50 L50 46 L43 50 Z" fill="#E5484D"/><path d="M50 86 L57 50 L50 54 L43 50 Z" fill="rgba(255,255,255,.7)"/>
+    <text x="50" y="12" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="-apple-system,Inter,sans-serif">N</text>
+    <text x="95" y="53.5" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(255,255,255,.85)" font-family="-apple-system,Inter,sans-serif">E</text>
+    <text x="50" y="97" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(255,255,255,.85)" font-family="-apple-system,Inter,sans-serif">S</text>
+    <text x="5" y="53.5" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(255,255,255,.85)" font-family="-apple-system,Inter,sans-serif">W</text></g>
+    <path d="M50 1 L54 8 L46 8 Z" fill="#FFD60A"/></svg></div><div class="deg"></div>`;
+  const dial=c.querySelector(".dial"); let st=null, fade=0; const ang=e=>{ const r=dial.getBoundingClientRect(); return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2))*180/Math.PI; };
+  dial.addEventListener("pointerdown",e=>{ e.stopPropagation(); e.preventDefault(); clearTimeout(fade); c.classList.add("on"); try{ dial.setPointerCapture(e.pointerId); }catch(_){} st={a:ang(e),b:map.getBearing(),t:performance.now(),moved:0,pid:e.pointerId}; });
+  dial.addEventListener("pointermove",e=>{ if(!st||e.pointerId!==st.pid) return; let d=ang(e)-st.a; if(d>180) d-=360; if(d<-180) d+=360; st.moved=Math.max(st.moved,Math.abs(d)); if(st.moved>4){ map.jumpTo({bearing:st.b-d}); need(); } });
+  const up=e=>{ if(!st||e.pointerId!==st.pid) return; const tap=st.moved<=4&&performance.now()-st.t<500; st=null; if(tap){ map.easeTo({bearing:0,duration:450}); flash("Facing north"); } fade=setTimeout(()=>c.classList.remove("on"),1600); };
+  dial.addEventListener("pointerup",up); dial.addEventListener("pointercancel",up);
+  const g=document.createElement("div"); g.className="sk-grip"; g.title="Drag to move · double-tap to put it back"; c.appendChild(g);
+  return c; }
+
+/* the card for the plot under the pointer (survey plots, and the plots of the plan being drawn) */
+function obbDims(ring){ // ring: [[lng,lat]...] -> {w,d} metres of the smallest rectangle round it, + side lengths
+  const R=ring.length>1&&ring[0][0]===ring[ring.length-1][0]&&ring[0][1]===ring[ring.length-1][1]?ring.slice(0,-1):ring; if(R.length<3) return null;
+  const la=R.reduce((a,c)=>a+c[1],0)/R.length, kx=111320*Math.cos(la*Math.PI/180), ky=110574, V=R.map(c=>[c[0]*kx,c[1]*ky]); let best=null;
+  for(let i=0;i<V.length;i++){ const a=V[i], b=V[(i+1)%V.length], L=Math.hypot(b[0]-a[0],b[1]-a[1]); if(L<.01) continue; const ux=(b[0]-a[0])/L, uy=(b[1]-a[1])/L; let u0=1e18,u1=-1e18,v0=1e18,v1=-1e18;
+    V.forEach(p=>{ const u=(p[0]-a[0])*ux+(p[1]-a[1])*uy, v=-(p[0]-a[0])*uy+(p[1]-a[1])*ux; u0=Math.min(u0,u); u1=Math.max(u1,u); v0=Math.min(v0,v); v1=Math.max(v1,v); });
+    const w=u1-u0, d=v1-v0, ar=w*d; if(!best||ar<best.ar) best={ar,w,d}; }
+  const sides=R.map((c,i)=>{ const n=R[(i+1)%R.length]; return Math.hypot((n[0]-c[0])*kx,(n[1]-c[1])*ky); });
+  return best?{w:Math.max(best.w,best.d),d:Math.min(best.w,best.d),sides}:null; }
+const fm=n=>n==null||!isFinite(n)?"—":(n>=100?Math.round(n).toLocaleString("en-US"):n.toFixed(1));
+function tipShow(x,y,o){ let t=q("#skTip"); if(!t){ t=document.createElement("div"); t.id="skTip"; document.body.appendChild(t); }
+  const dm=o.dims, ds=dm?`${fm(dm.w)} × ${fm(dm.d)} m`:"—", sd=dm&&dm.sides&&dm.sides.length<=6?dm.sides.map(v=>fm(v)).join(" · ")+" m":"";
+  t.innerHTML=`<div class="h"><span class="u">${esc(o.unit||"Unnumbered")}</span>${o.status?`<span class="c" ${o.color?`style="background:${esc(o.color)};color:${esc(o.ink||"#fff")}"`:""}>${esc(o.status)}</span>`:""}</div>${o.sub?`<div class="s">${esc(o.sub)}</div>`:""}
+    <div class="r"><span>Plot size</span><b>${o.area!=null?fm(o.area)+" m²":"—"}</b></div><div class="r"><span>Dimensions</span><b>${ds}</b></div>${sd?`<div class="e">Sides: ${sd}</div>`:""}`;
+  t.classList.add("on"); const w=t.offsetWidth,h=t.offsetHeight; let L=x+16,T=y+16; if(L+w>innerWidth-8) L=x-w-16; if(T+h>innerHeight-8) T=y-h-16; t.style.transform=`translate3d(${Math.max(8,L)|0}px,${Math.max(8,T)|0}px,0)`; }
+function tipHide(){ const t=q("#skTip"); if(t&&t.classList.contains("on")) t.classList.remove("on"); SK.tipK=null; }
+let PBB=null;
+function plotBoxes(){ const F=(S.geo&&S.geo.features)||[]; if(PBB&&PBB.f===F&&PBB.n===F.length) return PBB.list; const list=[];
+  F.forEach(f=>{ const g=f.geometry; if(!g) return; const polys=g.type==="Polygon"?[g.coordinates]:g.type==="MultiPolygon"?g.coordinates:[]; polys.forEach(p=>{ const r=p&&p[0]; if(!r||r.length<3) return; let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; r.forEach(c=>{ x0=Math.min(x0,c[0]); y0=Math.min(y0,c[1]); x1=Math.max(x1,c[0]); y1=Math.max(y1,c[1]); }); list.push({f,r,b:[x0,y0,x1,y1]}); }); });
+  PBB={f:F,n:F.length,list}; return list; }
+function tipAt(pt,e){ if(e&&e.pointerType==="touch") return; if(SK.on===false) return; let o=null; try{
+    if(PLAN()&&PLAN().plotAt){ const p=PLAN().plotAt(pt); if(p){ SK.tipK="p"+p.unit; tipShow(e.clientX,e.clientY,p); return; } }
+    if(map.getZoom()>=14){ const ll=U(pt[0],pt[1]); let hit=null; for(const it of plotBoxes()){ const b=it.b; if(ll[0]<b[0]||ll[0]>b[2]||ll[1]<b[1]||ll[1]>b[3]) continue; if(inPoly(ll,it.r)){ hit=it; break; } }
+      if(hit){ const pr=hit.f.properties||{}, info=(S.plots&&S.plots.get&&S.plots.get(pr.k))||null, r=info&&info.row, st=info&&info.st, park=(S.reg&&S.reg.parks&&S.reg.parks[pr.park])||null;
+        o={unit:pr.unit||"Unnumbered",status:st&&st.label,color:st&&st.color&&st.color!=="transparent"?st.color:null,ink:st&&st.ink,sub:(park&&park.name||"")+(r&&r.phase?" · Phase "+r.phase:""),area:r&&r.area!=null?r.area:(pr.gis!=null?pr.gis:fArea(ringArea(hit.r))),dims:obbDims(hit.r)}; if(o.area==null||!isFinite(o.area)) o.area=null; SK.tipK="s"+pr.k; tipShow(e.clientX,e.clientY,o); return; } }
+  }catch(err){ console.warn("plot card",err); }
+  tipHide(); }
+function xtras(){ const tools=q("#skTools"), top=q(".sk-top"), card=q("#skCard"); movable(tools,"skTools",true); movable(top,"skTop",true); movable(card,"skCard");
+  const cp=compassBuild(); ui.appendChild(cp); movable(cp,"compass"); compassUpd(); }
 const API={SK,P,U,dist,pathLen,ringArea,dest,radii,fLen,fArea,fArea2,nf,flash,hint,need,pill,upNormal,snap:(pt,ex)=>snap(pt,ex),startPan,svg,IC,FONT,esc,hyp,segDist,inPoly,rdp,centroid,rr,
-  cv:()=>cv, ctx:()=>ctx, panPx, btns, ui:()=>ui};
+  cv:()=>cv, ctx:()=>ctx, panPx, btns, ui:()=>ui, movable, resetLayout, obbDims, tipShow, tipHide, compassUpd};
 window.SID_SKETCH={enter,exit,setMode,state:SK,api:API,_t:{dist,ringArea,fLen,fArea,recognize,inside,draw}};
 })();
 </script>
@@ -17332,6 +17424,31 @@ body.sk-build #plTools{display:flex}
 @media (max-height:690px){ .pl-kpi{left:120px} #plLive{left:calc(50% + 55px)} }
 @media (max-width:620px){ .pl-kpi{top:auto!important;bottom:12px;left:66px} .pl-opt{left:66px;right:8px;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none} .pl-opt::-webkit-scrollbar{display:none} .pl-opt>*{flex:none}
   #plCard{left:66px;right:8px;width:auto;bottom:12px} #plLive{left:66px;right:8px;transform:none;max-width:none;flex-wrap:wrap;gap:6px;padding:8px 8px 8px 12px} #plLive>div{flex:1 0 100%;min-width:0} #plLive .s{overflow:hidden;text-overflow:ellipsis} #plLive button{flex:1} #plUI:has(#plCard:not([hidden])) .pl-kpi,#plUI:has(#plLive:not([hidden])) .pl-kpi{display:none} }
+
+/* ---- V88 drawings list, movable panels ---- */
+.pl-plans{position:absolute;left:84px;top:12px;width:min(330px,calc(100vw - 110px));padding:6px;animation:skInR .3s}
+.pl-plans .pn{display:flex;gap:6px;align-items:center}
+.pl-plans button{font-family:inherit;border:0;color:#fff;cursor:pointer}
+.pl-plans .nm{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:40px;padding:0 10px;border-radius:10px;background:rgba(255,255,255,.08);text-align:left}
+.pl-plans .nm b{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px} .pl-plans .nm small{font-size:11px;color:rgba(255,255,255,.6);white-space:nowrap} .pl-plans .nm i{margin-left:auto;font-style:normal;opacity:.7}
+.pl-plans .nw{height:40px;padding:0 12px;border-radius:10px;background:#fff;color:#111;font-weight:700;font-size:13px;white-space:nowrap}
+.pl-list{margin-top:6px;max-height:min(60vh,420px);overflow-y:auto;display:flex;flex-direction:column;gap:3px;padding-right:2px}
+.pl-list .rw{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:4px;border-radius:10px;background:rgba(255,255,255,.05)} .pl-list .rw.cur{background:rgba(255,255,255,.14)}
+.pl-list .op{flex:1;min-width:120px;display:flex;flex-direction:column;align-items:flex-start;background:transparent;text-align:left;padding:4px 6px;border-radius:8px}
+.pl-list .op .n{font-size:13.5px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .pl-list .op .d{font-size:11px;color:rgba(255,255,255,.6)}
+.pl-list .ac{display:flex;gap:3px} .pl-list .ac button,.pl-list .rw>button:not(.op),.pl-list .shr button,.pl-list .ft button{height:30px;padding:0 9px;border-radius:8px;background:rgba(255,255,255,.12);font-size:12px;font-weight:600}
+.pl-list .ac .dl,.pl-list .danger{background:rgba(255,69,58,.25)!important;color:#ff8a82} .pl-list .pri{background:#fff!important;color:#111}
+.pl-list .ask{flex:1;font-size:13px;font-weight:600;padding:0 6px}
+.pl-list .rin{flex:1;min-width:120px;height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font:600 14px -apple-system,Inter,sans-serif;padding:0 9px}
+.pl-list .shr{flex:1 0 100%;display:flex;flex-direction:column;gap:6px;padding:6px 6px 4px;border-top:1px solid rgba(255,255,255,.12);font-size:12.5px}
+.pl-list .shr label{display:flex;align-items:center;gap:8px;font-size:13px} .pl-list .shr small{color:rgba(255,255,255,.55);margin-left:6px}
+.pl-list .us{max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;background:rgba(0,0,0,.18);border-radius:8px;padding:4px 6px} .pl-list .note{margin:0;font-size:11.5px;color:rgba(255,255,255,.62)}
+.pl-list .sec{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.6);padding:8px 6px 2px} .pl-list .emp{padding:10px;color:rgba(255,255,255,.6)}
+.pl-list .ft{display:flex;justify-content:flex-end;padding-top:4px}
+.pl-kpi{top:62px!important}
+@media (max-width:620px){ .pl-plans{left:66px;width:calc(100vw - 80px)} .pl-kpi{top:auto!important} }
+.pl-opt .mk{background:#fff!important;color:#111!important;font-weight:800}
+.pl-opt .hi{color:#FFD60A;font-size:11.5px;font-weight:600;white-space:nowrap}
 </style>
 
 <script>
@@ -17353,24 +17470,118 @@ const GK={lawn:{l:"Lawn",c:"#86B85F"},park:{l:"Park",c:"#6FA552"},buffer:{l:"Gre
 const RDIA=[30,40,60,80];
 const KIND=k=>BK[k]||OB[k]||{l:k,w:10,len:10,h:5,c:"#ccc"};
 const isBld=k=>!!BK[k];
-const PL={on:false,tool:"road",rt:1,bk:"factory",tk:"palm",ok:"lamp",target:5000,v3:false,shp:"box",rsub:"road",psub:"draw",gsub:"area",gk:"lawn",how:"line",gaps:{},rdia:40,
+const PL={on:false,tool:"road",rt:1,bk:"factory",tk:"palm",ok:"lamp",target:5000,v3:false,shp:"box",rsub:"road",psub:"draw",gsub:"area",gk:"lawn",how:"line",gaps:{},rdia:40,mp:{green:8,trees:true,lights:true},
   plan:null,undo:[],redo:[],sel:null,cur:null,nid:1,ver:0,dirty:new Set(["all"]),pm:null,block:null,menu:null};
-const KEYS=["tool","rt","bk","tk","ok","target","v3","shp","rsub","psub","gsub","gk","how","gaps","rdia"];
+const KEYS=["tool","rt","bk","tk","ok","target","v3","shp","rsub","psub","gsub","gk","how","gaps","rdia","mp"];
 const blank=()=>({o:null,land:null,roads:[],plots:[],items:[],green:[],rounds:[],sec:0});
-function migrate(){ if(PL.tool==="auto"){ PL.tool="plot"; PL.psub="auto"; } else if(PL.tool==="tree"){ PL.tool="green"; PL.gsub="trees"; } else if(PL.tool==="obj") PL.tool="street"; if(!PL.gaps||typeof PL.gaps!=="object") PL.gaps={}; }
+function migrate(){ if(PL.tool==="auto"){ PL.tool="plot"; PL.psub="auto"; } else if(PL.tool==="tree"){ PL.tool="green"; PL.gsub="trees"; } else if(PL.tool==="obj") PL.tool="street"; if(!PL.gaps||typeof PL.gaps!=="object") PL.gaps={}; if(!PL.mp||typeof PL.mp!=="object") PL.mp={green:8,trees:true,lights:true}; }
 function load(o){ PL.plan=Object.assign(blank(),o.plan); KEYS.forEach(k=>{ if(o[k]!=null) PL[k]=o[k]; }); migrate(); }
 PL.plan=blank();
-try{ const o=JSON.parse(localStorage.getItem("sid.plan.v1")||"null"); if(o&&o.plan) load(o); }catch(e){}
 const ids=()=>{ const p=PL.plan; return [p.land?p.land.id:0].concat(p.roads.map(r=>r.id),p.plots.map(r=>r.id),p.items.map(r=>r.id),p.green.map(r=>r.id),p.rounds.map(r=>r.id)); };
 PL.nid=Math.max(0,...ids())+1;
 const empty=()=>{ const p=PL.plan; return !p.land&&!p.roads.length&&!p.plots.length&&!p.items.length&&!p.green.length&&!p.rounds.length; };
-let saveT=0;
-function persist(){ clearTimeout(saveT); saveT=setTimeout(()=>{ const o={plan:PL.plan,t:Date.now()}; KEYS.forEach(k=>o[k]=PL[k]); const s=JSON.stringify(o); let ls=true;
-  try{ localStorage.setItem("sid.plan.v1",s); }catch(e){ ls=false; try{ localStorage.removeItem("sid.plan.v1"); }catch(_){} }
-  const kv=window.SID_KV; if(kv) kv.set("plan",s).then(ok=>{ if(!ok&&!ls&&A) A.flash("This browser's storage is full — the plan is not kept"); }); else if(!ls&&A) A.flash("This browser's storage is full — the plan is not kept"); },250); }
-// the plan kept in IndexedDB wins over the localStorage copy (which may be missing when that storage is full)
-setTimeout(()=>{ const kv=window.SID_KV; if(!kv) return; kv.get("plan").then(v=>{ if(!v||PL.on) return; try{ const o=JSON.parse(v); if(o&&o.plan){ load(o); PL.nid=Math.max(0,...ids())+1; O=null; PL.dirty.add("all"); } }catch(e){} }); },0);
-function pushUndo(){ PL.undo.push(JSON.stringify(PL.plan)); if(PL.undo.length>80) PL.undo.shift(); PL.redo=[]; }
+let saveT=0, QUIET=0;
+/* ---------- V88: drawings belong to the signed-in person: a list to move between, names, delete, and sharing ---------- */
+const ME=()=>{ try{ return typeof SBU!=="undefined"&&SBU?{id:SBU.id,email:String(SBU.email||"").toLowerCase()}:{id:"local",email:""}; }catch(e){ return {id:"local",email:""}; } };
+const SBC=()=>{ try{ return typeof SB!=="undefined"&&SB&&typeof SBU!=="undefined"&&SBU?SB:null; }catch(e){ return null; } };
+const myName=()=>{ try{ return (typeof SBME!=="undefined"&&SBME&&SBME.name)||""; }catch(e){ return ""; } };
+let IDX=null, cloudOK=null, cloudT=0, SHARED=[], USERS=null, uidLoaded=null;
+const idxKey=()=>"plans.idx."+ME().id, dKey=id=>"plan.d."+id;
+const uuid=()=>{ try{ if(crypto.randomUUID) return crypto.randomUUID(); }catch(e){} return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{ const r=Math.random()*16|0; return (c==="x"?r:(r&3|8)).toString(16); }); };
+const fmtDT=t=>{ try{ return new Date(t).toLocaleString([],{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}); }catch(e){ return ""; } };
+const planJSON=()=>{ const o={plan:PL.plan,t:Date.now()}; KEYS.forEach(k=>o[k]=PL[k]); return JSON.stringify(o); };
+const recOf=id=>IDX&&IDX.list.find(r=>r.id===id);
+const saveIdx=()=>{ const kv=window.SID_KV; if(kv&&IDX) kv.set(idxKey(),JSON.stringify(IDX)); };
+function persist(){ clearTimeout(saveT); saveT=setTimeout(()=>flush(),250); }
+function flush(now){ clearTimeout(saveT); if(!PL.did||!IDX) return; const kv=window.SID_KV, id=PL.did, s=planJSON(), r=recOf(id); if(!r) return;
+  if(kv) kv.set(dKey(id),s).then(ok=>{ if(!ok&&A) A.flash("This browser's storage is full — the drawing is not kept"); }); else if(A) A.flash("This browser cannot keep drawings");
+  r.updated=Date.now(); r.dirty=true; saveIdx(); if(q("#plPlans")&&!(PL.pp&&PL.pp.open)) plansUI(true); cloudSoon(now?800:5000); }
+function cloudBad(e){ const m=String(e&&(e.message||e.code)||""); return /PGRST20[45]|42P01|does not exist|schema cache|Could not find/i.test(m)||(e&&e.code==="42883"); }
+function cloudSoon(ms){ clearTimeout(cloudT); if(!SBC()||cloudOK===false) return; cloudT=setTimeout(cloudPushAll,ms||5000); }
+async function cloudPush(rec,withData){ const sb=SBC(); if(!sb||cloudOK===false) return false;
+  const row={id:rec.id,name:rec.name,share:rec.share||"me",shared_emails:(rec.with||[]).map(x=>String(x).toLowerCase()),archived:!!rec.archived,updated_at:new Date(rec.updated||Date.now()).toISOString(),owner_name:myName()||null};
+  if(withData){ const raw=PL.did===rec.id?planJSON():(window.SID_KV?await window.SID_KV.get(dKey(rec.id)):null); try{ if(raw) row.data=JSON.parse(raw); }catch(e){} }
+  const r=await sb.from("sid_plans").upsert(row,{onConflict:"id"}); if(r.error){ if(cloudBad(r.error)){ cloudOK=false; } else console.warn("plan save",r.error.message); return false; } cloudOK=true; return true; }
+async function cloudPushAll(){ if(!IDX) return; for(const r of IDX.list.slice()){ if(!r.dirty&&!r.meta) continue; const ok=await cloudPush(r,!!r.dirty); if(ok){ r.dirty=false; r.meta=false; } else if(cloudOK===false) break; } saveIdx(); if(q("#plPlans")&&!(PL.pp&&PL.pp.open)) plansUI(true); }
+async function cloudSync(){ const sb=SBC(); if(!sb||cloudOK===false||!IDX) return; const me=ME();
+  const r=await sb.from("sid_plans").select("id,owner,owner_name,name,share,shared_emails,archived,updated_at").order("updated_at",{ascending:false}).limit(300);
+  if(r.error){ if(cloudBad(r.error)) cloudOK=false; return; } cloudOK=true; const seen=new Set(); SHARED=[];
+  (r.data||[]).forEach(x=>{ if(x.owner===me.id){ seen.add(x.id); const l=recOf(x.id); const t=Date.parse(x.updated_at)||0;
+      if(x.archived){ if(l&&!l.dirty){ IDX.list=IDX.list.filter(y=>y.id!==x.id); } return; }
+      if(!l){ IDX.list.push({id:x.id,name:x.name,created:t,updated:t,share:x.share,with:x.shared_emails||[],owner:me.id,remote:true}); }
+      else if(!l.dirty&&!l.meta&&t>(l.updated||0)+2000){ l.name=x.name; l.share=x.share; l.with=x.shared_emails||[]; l.updated=t; l.remote=true; } }
+    else if(!x.archived) SHARED.push({id:x.id,name:x.name,by:x.owner_name||"a colleague",updated:Date.parse(x.updated_at)||0}); });
+  IDX.list.forEach(l=>{ if(!seen.has(l.id)&&!l.remote) l.dirty=true; });
+  saveIdx(); cloudSoon(1500); if(q("#plPlans")&&!(PL.pp&&PL.pp.mode)) plansUI(true); }
+function newRec(name){ const t=Date.now(); const r={id:uuid(),name:name||"Drawing",created:t,updated:t,share:"me",with:[],owner:ME().id}; IDX.list.unshift(r); return r; }
+async function plansInit(){ const kv=window.SID_KV; if(!kv){ return; } const me=ME(); if(IDX&&uidLoaded===me.id){ return; } uidLoaded=me.id;
+  let raw=await kv.get(idxKey()); try{ IDX=raw?JSON.parse(raw):null; }catch(e){ IDX=null; } if(!IDX||!Array.isArray(IDX.list)) IDX={cur:null,list:[]};
+  if(!IDX.list.length){
+    let old=null; try{ const claimed=await kv.get("plan.claimed"); if(!claimed){ old=await kv.get("plan"); if(!old) old=localStorage.getItem("sid.plan.v1"); if(old){ await kv.set("plan.claimed",me.id); } } }catch(e){}
+    let ok=false; try{ const o=old&&JSON.parse(old); ok=!!(o&&o.plan&&(o.plan.land||(o.plan.roads||[]).length||(o.plan.plots||[]).length||(o.plan.items||[]).length)); }catch(e){}
+    const r=newRec(ok?"My first drawing":"Drawing 1"); if(ok) await kv.set(dKey(r.id),old); IDX.cur=r.id; saveIdx(); }
+  if(!recOf(IDX.cur)) IDX.cur=IDX.list[0]&&IDX.list[0].id;
+  await openDrawing(IDX.cur,true); cloudSync(); }
+async function openDrawing(id,first){ const kv=window.SID_KV, r=recOf(id); if(!r) return; if(!first&&PL.did&&PL.did!==id) flush(true);
+  let raw=kv?await kv.get(dKey(id)):null, o=null; try{ o=raw?JSON.parse(raw):null; }catch(e){}
+  if((!o||!o.plan||r.remote)&&SBC()&&cloudOK!==false){ const g=await SBC().from("sid_plans").select("data,updated_at").eq("id",id).maybeSingle(); if(g.data&&g.data.data){ o=g.data.data; r.remote=false; if(kv) kv.set(dKey(id),JSON.stringify(o)); } }
+  PL.plan=blank(); if(o&&o.plan) load(o); PL.did=id; IDX.cur=id; saveIdx(); PL.undo=[]; PL.redo=[]; PL.sel=null; PL.cur=null; PL.drag=null; PL.nid=Math.max(0,...ids())+1; O=null; GR=null; CG=null; PL.dirty.add("all"); PL.ver++;
+  if(q("#plPlans")){ plansUI(true); kpi(); card(); opts(); btns(); live(); } if(A) A.need(); if(layer) map.triggerRepaint(); if(!first&&A) fitPlan(); }
+function planPoints(){ const p=PL.plan, pts=[]; if(p.land) pts.push(...p.land.pts); p.roads.forEach(r=>pts.push(...r.pts)); p.plots.forEach(x=>pts.push(...x.pts)); p.green.forEach(x=>pts.push(...x.pts)); p.items.forEach(i=>pts.push(i.c)); p.rounds.forEach(r=>pts.push(r.c)); return pts; }
+function fitPlan(){ const pts=planPoints(); if(!pts.length) return; let bb=[[1e9,1e9],[-1e9,-1e9]]; pts.forEach(c=>{ bb[0][0]=Math.min(bb[0][0],c[0]); bb[0][1]=Math.min(bb[0][1],c[1]); bb[1][0]=Math.max(bb[1][0],c[0]); bb[1][1]=Math.max(bb[1][1],c[1]); }); try{ map.fitBounds(bb,{padding:120,duration:900,pitch:PL.v3?60:0,bearing:map.getBearing(),maxZoom:19}); }catch(e){} }
+async function newDrawing(name){ if(!IDX) return; flush(true); const r=newRec((name||"").trim()||("Drawing "+(IDX.list.length+1))); r.dirty=true; saveIdx(); PL.plan=blank(); PL.did=null; await window.SID_KV.set(dKey(r.id),planJSON()); await openDrawing(r.id,true); A.flash("New drawing — “"+r.name+"”"); }
+async function deleteDrawing(id){ const r=recOf(id); if(!r) return; const was=PL.did===id; r.archived=true; r.meta=true; if(SBC()&&cloudOK!==false) await cloudPush(r,false).catch(()=>{}); IDX.list=IDX.list.filter(x=>x.id!==id); if(window.SID_KV) window.SID_KV.set(dKey(id),"");
+  if(was){ PL.did=null; if(IDX.list.length) await openDrawing(IDX.list[0].id,true); else { const n=newRec("Drawing 1"); saveIdx(); PL.plan=blank(); await window.SID_KV.set(dKey(n.id),planJSON()); await openDrawing(n.id,true); } } saveIdx(); A.flash("Drawing deleted"); plansUI(true); }
+async function openShared(id){ const sb=SBC(); if(!sb){ A.flash("Sign in to open shared drawings"); return; } const sh=SHARED.find(x=>x.id===id); const g=await sb.from("sid_plans").select("data,name,owner_name").eq("id",id).maybeSingle(); if(!g.data||!g.data.data){ A.flash("That drawing is not available"); return; }
+  flush(true); const r=newRec((g.data.name||"Shared")+" (copy)"); r.dirty=true; r.from=g.data.owner_name||(sh&&sh.by)||""; await window.SID_KV.set(dKey(r.id),JSON.stringify(g.data.data)); saveIdx(); await openDrawing(r.id,true); fitPlan(); A.flash("A copy of "+(r.from||"the shared drawing")+"’s plan is open — your changes stay in your copy"); }
+async function loadUsers(){ if(USERS) return USERS; const sb=SBC(); if(!sb) return []; const r=await sb.rpc("sid_share_users"); if(r.error){ if(cloudBad(r.error)) cloudOK=false; return []; } const me=ME().email; USERS=(r.data||[]).filter(u=>String(u.email).toLowerCase()!==me); return USERS; }
+const shareTxt=r=>r.share==="all"?"Everyone":r.share==="users"?((r.with||[]).length+" "+((r.with||[]).length===1?"person":"people")):"Only me";
+function plansUI(keep){ const el=q("#plPlans"); if(!el) return;
+  const P=PL.pp||(PL.pp={open:false,mode:null}), cur=IDX&&recOf(PL.did);
+  let h=`<div class="pn"><button type="button" class="nm" id="plPN" aria-expanded="${P.open}" title="Your drawings"><b>${esc(cur?cur.name:"Drawing")}</b><small>${cur?"saved "+fmtDT(cur.updated):"…"}</small><i>${P.open?"▴":"▾"}</i></button><button type="button" class="nw" id="plPNew" title="Start a new drawing">＋ New</button></div>`;
+  if(P.open&&IDX){ h+=`<div class="pl-list">`;
+    IDX.list.slice().sort((a,b)=>(b.updated||0)-(a.updated||0)).forEach(r=>{ const m=P.mode&&P.mode.id===r.id?P.mode:null;
+      h+=`<div class="rw${r.id===PL.did?" cur":""}" data-id="${r.id}">`;
+      if(m&&m.t==="ren") h+=`<input class="rin" id="plRin" value="${esc(r.name)}" maxlength="60" aria-label="Drawing name"><button type="button" data-a="ren-ok" class="pri">Save</button><button type="button" data-a="cancel">Cancel</button>`;
+      else if(m&&m.t==="del") h+=`<div class="ask">Delete “${esc(r.name)}”?</div><button type="button" data-a="del-ok" class="danger">Delete</button><button type="button" data-a="cancel">Keep</button>`;
+      else { h+=`<button type="button" class="op" data-a="open"><span class="n">${esc(r.name)}${r.id===PL.did?" ✓":""}</span><span class="d">${fmtDT(r.updated)} · ${r.share==="all"?"👥 Everyone":r.share==="users"?"👤 "+shareTxt(r):"🔒 Only me"}${r.from?" · copy of "+esc(r.from)+"’s":""}</span></button><span class="ac"><button type="button" data-a="ren">Rename</button><button type="button" data-a="shr">Share</button><button type="button" data-a="del" class="dl">Delete</button></span>`; }
+      if(m&&m.t==="shr"){ const w=new Set((r.with||[]).map(x=>String(x).toLowerCase()));
+        h+=`<div class="shr"><b>Who can open a copy of this drawing?</b>
+          <label><input type="radio" name="plsh" value="me" ${r.share==="me"?"checked":""}> Only me</label>
+          <label><input type="radio" name="plsh" value="all" ${r.share==="all"?"checked":""}> Everyone in the system</label>
+          <label><input type="radio" name="plsh" value="users" ${r.share==="users"?"checked":""}> Only people I pick</label>
+          ${r.share==="users"?`<input class="rin" id="plUq" placeholder="Search people…" autocomplete="off"><div class="us" id="plUs">${(USERS||[]).map(u=>`<label data-q="${esc((u.name+" "+u.email).toLowerCase())}"><input type="checkbox" value="${esc(u.email)}" ${w.has(String(u.email).toLowerCase())?"checked":""}> ${esc(u.name||u.email)}<small>${esc(u.name?u.email:"")}</small></label>`).join("")||"<i>No one to pick yet</i>"}</div>`:""}
+          ${cloudOK===false?`<p class="note">Sharing is not switched on online yet — the drawing stays private on this device.</p>`:`<p class="note">People you share with open their own copy; your drawing is never changed by them.</p>`}
+          <button type="button" data-a="cancel" class="pri">Done</button></div>`; }
+      h+=`</div>`; });
+    if(!IDX.list.length) h+=`<div class="emp">No drawings yet</div>`;
+    if(P.mode&&P.mode.t==="new") h+=`<div class="rw new"><input class="rin" id="plNin" value="${esc(P.mode.name||"")}" maxlength="60" placeholder="Name the new drawing" aria-label="Drawing name"><button type="button" data-a="new-ok" class="pri">Create</button><button type="button" data-a="cancel">Cancel</button></div>`;
+    if(SHARED.length){ h+=`<div class="sec">Shared with me</div>`; SHARED.forEach(x=>{ h+=`<div class="rw" data-sid="${x.id}"><button type="button" class="op" data-a="open-sh"><span class="n">${esc(x.name)}</span><span class="d">by ${esc(x.by)} · ${fmtDT(x.updated)} · opens as your own copy</span></button></div>`; }); }
+    h+=`<div class="ft"><button type="button" data-a="reset">Put the panels back</button></div></div>`; }
+  el.innerHTML=h; wirePlans(el); }
+function wirePlans(el){ const P=PL.pp;
+  el.querySelector("#plPN").onclick=()=>{ P.open=!P.open; P.mode=null; if(P.open){ cloudSync(); } plansUI(); };
+  el.querySelector("#plPNew").onclick=()=>{ P.open=true; P.mode={t:"new",name:"Drawing "+((IDX?IDX.list.length:0)+1)}; plansUI(); const i=q("#plNin"); if(i){ i.focus(); i.select(); } };
+  ["#plRin","#plNin","#plUq"].forEach(sel=>{ const i=el.querySelector(sel); if(i){ i.onkeydown=e=>{ e.stopPropagation(); if(e.key==="Enter"){ const b=el.querySelector('[data-a="ren-ok"],[data-a="new-ok"]'); if(b) b.click(); } if(e.key==="Escape"){ P.mode=null; plansUI(); } }; } });
+  const uq=el.querySelector("#plUq"); if(uq) uq.oninput=()=>{ const v=uq.value.toLowerCase().trim(); el.querySelectorAll("#plUs label").forEach(l=>{ l.hidden=!!v&&!l.dataset.q.includes(v); }); };
+  el.querySelectorAll('input[name="plsh"]').forEach(i=>i.onchange=async()=>{ const r=recOf(P.mode.id); r.share=i.value; r.meta=true; r.updated=Date.now(); if(i.value==="users") await loadUsers(); saveIdx(); cloudSoon(300); plansUI(); });
+  el.querySelectorAll("#plUs input").forEach(i=>i.onchange=()=>{ const r=recOf(P.mode.id), v=String(i.value).toLowerCase(), set=new Set((r.with||[]).map(x=>String(x).toLowerCase())); i.checked?set.add(v):set.delete(v); r.with=[...set]; r.meta=true; saveIdx(); cloudSoon(1200); });
+  el.onclick=async e=>{ const b=e.target.closest("[data-a]"); if(!b) return; const a=b.dataset.a, row=b.closest(".rw"), id=row&&row.dataset.id; e.stopPropagation();
+    if(a==="open"){ if(id!==PL.did) await openDrawing(id); P.open=false; P.mode=null; plansUI(); }
+    else if(a==="open-sh"){ const sid=row.dataset.sid; P.open=false; plansUI(); await openShared(sid); }
+    else if(a==="ren"){ P.mode={t:"ren",id}; plansUI(); const i=q("#plRin"); if(i){ i.focus(); i.select(); } }
+    else if(a==="ren-ok"){ const v=(q("#plRin").value||"").trim(); const r=recOf(P.mode.id); if(v&&r){ r.name=v.slice(0,60); r.meta=true; r.updated=Date.now(); saveIdx(); cloudSoon(800); } P.mode=null; plansUI(); }
+    else if(a==="del"){ P.mode={t:"del",id}; plansUI(); }
+    else if(a==="del-ok"){ const d=P.mode.id; P.mode=null; await deleteDrawing(d); }
+    else if(a==="shr"){ P.mode={t:"shr",id}; const r=recOf(id); if(r&&r.share==="users") await loadUsers(); if(cloudOK===null&&SBC()) await cloudSync(); plansUI(); }
+    else if(a==="new-ok"){ const v=(q("#plNin").value||"").trim(); P.mode=null; P.open=false; plansUI(); await newDrawing(v); }
+    else if(a==="cancel"){ P.mode=null; plansUI(); }
+    else if(a==="reset"){ if(A.resetLayout) A.resetLayout(); } }; }
+document.addEventListener("pointerdown",e=>{ const P=PL.pp; if(!P||!P.open) return; const el=q("#plPlans"); if(el&&!el.contains(e.target)){ P.open=false; P.mode=null; plansUI(); } },true);
+function planPlotAt(pt){ if(PL.cur||PL.drag) return null; const g=ground(pt), p=PL.plan; for(let i=p.plots.length-1;i>=0;i--){ const pl=p.plots[i], P=pl.pts.map(Lc); if(!lInPoly(g,P)) continue; const b=p.items.find(it=>isBld(it.k)&&it.plot===pl.id);
+    return {unit:pl.code||"Plot",status:b?KIND(b.k).l:"Planned plot",color:b?KIND(b.k).c:null,ink:b?"#111":null,sub:"Your plan · "+(IDX&&recOf(PL.did)?recOf(PL.did).name:"drawing"),area:geoArea(pl.pts),dims:A.obbDims(pl.pts)}; } return null; }
+addEventListener("pagehide",()=>{ try{ flush(true); }catch(e){} });
+function pushUndo(){ if(QUIET) return; PL.undo.push(JSON.stringify(PL.plan)); if(PL.undo.length>80) PL.undo.shift(); PL.redo=[]; }
 function changed(what){ PL.ver++; (what||["all"]).forEach(w=>PL.dirty.add(w)); persist(); kpi(); card(); if(A) A.need(); if(layer) map.triggerRepaint(); }
 function undo(){ if(PL.cur){ if(PL.cur.pts&&PL.cur.pts.length>1){ PL.cur.pts.pop(); live(); A.need(); return; } PL.cur=null; live(); A.need(); return; }
   if(!PL.undo.length){ A.flash("Nothing to undo"); return; } PL.redo.push(JSON.stringify(PL.plan)); PL.plan=JSON.parse(PL.undo.pop()); O=null; fixSel(); changed(); }
@@ -17795,7 +18006,7 @@ const TOOLS=[["select","Select","Select, move, turn and resize (V)"],["hand","Mo
   ["green","Green","Landscape areas and trees: rows, along roads, one by one (G · T trees)"],["street","Street","Street lights, trucks and signs (O)"],["eraser","Eraser","Tap something to remove it (E)"]];
 const SHAPES=[["box","Box"],["free","Free hand"],["pts","Corners"]], HOWS=[["line","Line"],["road","Along a road"],["free","Free hand"],["one","One by one"]];
 const shpHint=w=>PL.shp==="free"?`Draw the ${w} with your finger or pencil — let go to close it`:PL.shp==="pts"?`Tap the corners of the ${w} · tap the first corner to close`:`Drag a box for the ${w} · or tap its corners`;
-function curType(){ const t=PL.tool; if(t==="land") return "land"; if(t==="road") return PL.rsub==="round"?null:"road"; if(t==="plot") return PL.psub==="auto"?null:"plot";
+function curType(){ const t=PL.tool; if(t==="land") return "land"; if(t==="road") return PL.rsub==="round"?null:"road"; if(t==="plot") return PL.psub==="auto"||PL.psub==="master"?null:"plot";
   if(t==="green"&&PL.gsub==="area") return "green"; if(rowTool()&&howOf()==="line") return "row"; return null; }
 const rowTool=()=>PL.tool==="street"||(PL.tool==="green"&&PL.gsub==="trees");
 const rowKind=()=>PL.tool==="street"?PL.ok:PL.tk;
@@ -17804,6 +18015,7 @@ const gapOf=k=>PL.gaps[k]||GAP[k]||8;
 const isOpen=t=>t==="road"||t==="row";
 function hintTxt(){ const t=PL.tool;
   if(t==="land") return shpHint("land"); if(t==="road") return PL.rsub==="round"?"Tap a junction (or a road) to put a roundabout there · cars drive round it":"Tap points along the road · tap the last point (or double-tap) to finish · cars start driving at once";
+  if(t==="plot"&&PL.psub==="master") return "Master plan: choose the plot size and landscape share, then press Make the plan — roads, roundabout, service roads, plots, park, trees and lights are made for the whole land";
   if(t==="plot") return PL.psub==="auto"?"Smart fill: tap an empty block between the roads — plots keep clear of the landscape · choose the plot size above":shpHint("plot")+" — it lines up with the nearest road";
   if(t==="green"&&PL.gsub==="area") return shpHint((GK[PL.gk]||GK.lawn).l.toLowerCase())+" · smart fill keeps clear of it";
   if(rowTool()){ const h=howOf(), l=KIND(rowKind()).l.toLowerCase(); return h==="line"?`Tap the start and end of the ${l} row (more taps bend it) · tap the last point to finish`:h==="road"?`Tap a road — ${l}s go on both sides, every ${gapOf(rowKind())} m, clear of the junctions`:h==="free"?`Drag along your finger to place a row of ${l}s · tap for one`:`Tap to place one ${l}`; }
@@ -17822,14 +18034,16 @@ function buildUI(){ const host=A.ui(); if(!host) return; ui=document.createEleme
     <div class="pl-opt sk-glass" id="plOpt" style="pointer-events:auto"></div>
     <div class="pl-kpi sk-glass" id="plKpi" style="pointer-events:auto" title="Tap to fold"></div>
     <div class="sk-glass" id="plLive" hidden style="pointer-events:auto"></div>
-    <div class="sk-glass" id="plCard" hidden style="pointer-events:auto"></div>`;
+    <div class="sk-glass" id="plCard" hidden style="pointer-events:auto"></div>
+    <div class="pl-plans sk-glass" id="plPlans" style="pointer-events:auto"></div>`;
   host.appendChild(ui);
   const top=host.querySelector(".sk-top"); if(top&&!q("#pl3d")){ const b=document.createElement("button"); b.type="button"; b.className="sk-tb"; b.id="pl3d"; b.title="Tilt the map to see the plan in 3D"; b.innerHTML=A.svg(IC2.cube3)+"<span>3D</span>"; b.onclick=()=>set3d(!PL.v3); const shot=top.querySelector("#skShot"); top.insertBefore(b,shot); }
   ui.querySelectorAll("[data-pt]").forEach(b=>b.onclick=()=>setTool(b.dataset.pt));
   q("#plUndo").onclick=undo; q("#plRedo").onclick=redo;
   q("#plClr").onclick=()=>{ if(empty()){ A.flash("The plan is already empty"); return; } menu(null,"Start a new plan?",[["clear","Clear the whole plan","Undo brings it back","#B3263D"]],k=>{ pushUndo(); PL.plan=blank(); O=null; PL.sel=null; PL.cur=null; changed(); live(); A.flash("New plan — Undo brings the old one back"); }); };
   q("#plKpi").onclick=()=>{ kpiMin=!kpiMin; kpi(); }; addEventListener("resize",placeKpi);
-  opts(); btns(); kpi(); card(); live(); }
+  opts(); btns(); kpi(); card(); live(); plansUI();
+  if(A.movable){ A.movable(q("#plTools"),"plTools",true); A.movable(q("#plOpt"),"plOpt"); A.movable(q("#plKpi"),"plKpi"); A.movable(q("#plCard"),"plCard"); A.movable(q("#plLive"),"plLive"); A.movable(q("#plPlans"),"plPlans"); } }
 function set3d(on){ PL.v3=on; persist(); btns(); map.easeTo({pitch:on?60:0,bearing:on&&Math.abs(map.getBearing())<1?-20:map.getBearing(),duration:900}); A.flash(on?"3D view — twist two fingers to turn, Move tool to look around":"Flat view"); }
 function btns(){ if(!ui) return; ui.querySelectorAll("[data-pt]").forEach(b=>{ const on=b.dataset.pt===PL.tool; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on); });
   q("#plUndo").disabled=!PL.undo.length&&!PL.cur; q("#plRedo").disabled=!PL.redo.length; const b3=q("#pl3d"); if(b3) b3.classList.toggle("on",!!PL.v3); }
@@ -17839,17 +18053,21 @@ function opts(){ const el=q("#plOpt"); if(!el) return; let h=""; const t=PL.tool
   const rows=()=>{ const k=rowKind(); return `<b>How</b>`+seg("how",HOWS.filter(x=>x[0]!=="road"||ROADOK(k)),howOf())+(howOf()==="one"?"":`<label>every<input type="number" id="plGap" min="1" max="500" step="1" value="${gapOf(k)}" inputmode="numeric" aria-label="Spacing in metres"> m</label>`); };
   if(t==="land") h=`<b>Land</b>`+SEP+shape();
   else if(t==="road") h=seg("rsub",[["road","Road"],["round","Roundabout"]],PL.rsub)+SEP+(PL.rsub==="round"?`<b>Across</b>`+seg("rdia",RDIA.map(d=>[d,d+" m"]),PL.rdia,1):seg("rt",RT.map((r,i)=>[i,`${r.l} · ${r.w} m`]),PL.rt,1));
-  else if(t==="plot") h=seg("psub",[["draw","Draw"],["auto","Smart fill"]],PL.psub)+SEP+(PL.psub==="auto"?`<b>Plot size</b>`+seg("target",[2500,5000,10000,20000].map(v=>[v,A.nf(v,0)+" m²"]),PL.target,1)+`<input type="number" id="plTg" min="300" step="100" value="${PL.target}" inputmode="numeric" aria-label="Plot size in m²">`:shape());
+  else if(t==="plot"){ const H=history(), sz=()=>`<b>Plot size</b>`+seg("target",[2500,5000,10000,20000].map(v=>[v,A.nf(v,0)+" m²"]),PL.target,1)+`<input type="number" id="plTg" min="300" step="100" value="${PL.target}" inputmode="numeric" aria-label="Plot size in m²">`+(H.n>=20?`<button type="button" id="plHist" title="The size that sold best: ${H.n} sold plots, middle size ${A.nf(H.med,0)} m²">From sales history</button>`:"");
+    h=seg("psub",[["draw","Draw"],["auto","Smart fill"],["master","Master plan"]],PL.psub)+SEP+(PL.psub==="auto"?sz():PL.psub==="master"?sz()+SEP+`<b>Landscape</b>`+seg("mpg",[5,8,12].map(v=>[v,v+"%"]),PL.mp.green,1)+`<button type="button" data-tg="trees" class="${PL.mp.trees!==false?"on":""}">Trees</button><button type="button" data-tg="lights" class="${PL.mp.lights!==false?"on":""}">Lights</button><button type="button" id="plMk" class="mk">Make the plan</button>`:shape()); }
   else if(t==="build") h=`<b>Build</b>`+seg("bk",Object.entries(BK).map(([k,v])=>[k,v.l]),PL.bk);
   else if(t==="green") h=seg("gsub",[["area","Landscape"],["trees","Trees"]],PL.gsub)+SEP+(PL.gsub==="area"?seg("gk",Object.entries(GK).map(([k,v])=>[k,v.l]),PL.gk)+SEP+shape():seg("tk",TREES.map(k=>[k,OB[k].l]),PL.tk)+SEP+rows());
   else if(t==="street") h=seg("ok",OBJS.map(k=>[k,OB[k].l]),PL.ok)+SEP+rows();
   el.innerHTML=h; el.hidden=!h; placeKpi();
-  el.onclick=e=>{ const b=e.target.closest("button[data-o]"); if(!b) return; const o=b.dataset.o, v=b.dataset.n?+b.dataset.v:b.dataset.v; if(PL[o]===v) return; PL[o]=v;
+  el.onclick=e=>{ const tg2=e.target.closest("button[data-tg]"); if(tg2){ const k=tg2.dataset.tg==="trees"?"trees":"lights"; PL.mp[k]=PL.mp[k]===false; persist(); opts(); return; }
+    const mk=e.target.closest("#plMk"); if(mk){ masterAsk(); return; } const hb=e.target.closest("#plHist"); if(hb){ const H=history(); const t=Math.max(300,Math.round(H.med/250)*250); PL.target=t; persist(); opts(); A.flash("Plot size set to "+A.nf(t,0)+" m² — the middle size of "+H.n+" sold plots"+(H.top[0]?" · most sales were near "+A.nf(H.top[0],0)+" m²":"")); return; }
+    const mg=e.target.closest('button[data-o="mpg"]'); if(mg){ PL.mp.green=+mg.dataset.v; persist(); opts(); return; }
+    const b=e.target.closest("button[data-o]"); if(!b) return; const o=b.dataset.o, v=b.dataset.n?+b.dataset.v:b.dataset.v; if(PL[o]===v) return; PL[o]=v;
     if(PL.cur&&PL.cur.t!==curType()) finishCur(); closeMenu(); persist(); opts(); live(); A.hint(); A.need(); };
   const tg=q("#plTg"); if(tg){ tg.onkeydown=e=>e.stopPropagation(); tg.onchange=()=>{ const v=+tg.value; if(v>=300&&v<=1e6){ PL.target=Math.round(v); persist(); opts(); } else { A.flash("Plot size between 300 and 1,000,000 m²"); tg.value=PL.target; } }; }
   const gp=q("#plGap"); if(gp){ gp.onkeydown=e=>e.stopPropagation(); gp.onchange=()=>{ const v=+gp.value, k=rowKind(); if(v>=1&&v<=500){ PL.gaps[k]=Math.round(v*10)/10; persist(); A.hint(); live(); A.need(); } else { A.flash("Spacing between 1 and 500 m"); gp.value=gapOf(k); } }; } }
 // on narrower screens (iPad upright) the choices bar would run under the plan numbers: the numbers move down below it
-function placeKpi(){ const o=q("#plOpt"), k=q("#plKpi"); if(!o||!k) return; k.style.top=""; if(o.hidden||!o.innerHTML) return; const a=o.getBoundingClientRect(), b=k.getBoundingClientRect(), p=k.offsetParent?k.offsetParent.getBoundingClientRect().top:0;
+function placeKpi(){ const o=q("#plOpt"), k=q("#plKpi"); if(!o||!k||k.dataset.moved) return; k.style.top=""; if(o.hidden||!o.innerHTML) return; const a=o.getBoundingClientRect(), b=k.getBoundingClientRect(), p=k.offsetParent?k.offsetParent.getBoundingClientRect().top:0;
   if(b.right>a.left-6&&b.top<a.bottom&&b.bottom>a.top) k.style.top=Math.round(a.bottom-p+8)+"px"; }
 function setTool(t,sub){ if(PL.cur) finishCur(); PL.cur=null; closeMenu(); PL.tool=t; if(sub) Object.assign(PL,sub); persist(); btns(); opts(); live(); A.hint(); A.need(); }
 function live(){ const el=q("#plLive"); if(!el) return; const c=PL.cur; if(!c||!c.pts){ if(!el.hidden){ el.hidden=true; } btns(); return; }
@@ -17899,15 +18117,15 @@ function rowPos(path,gap,start){ if(path.length<2) return []; const cum=[0]; for
   for(let s=start||0;s<=tot+1e-6&&out.length<3000;s+=gap){ while(i<path.length-2&&cum[i+1]<s) i++; const L=cum[i+1]-cum[i]||1, f=Math.max(0,Math.min(1,(s-cum[i])/L)), a=path[i], b=path[i+1]; out.push({p:[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f],u:[(b[0]-a[0])/L,(b[1]-a[1])/L]}); } return out; }
 const CAP=1500;
 // add the items, skipping any spot that already has one of the same kind (so a second tap does not double the row)
-function addItems(kind,spots,what){ const have=PL.plan.items.filter(i=>i.k===kind).map(i=>Lc(i.c)), near=gapOf(kind)*.45, add=[];
+function addItems(kind,spots,what){ const fl=m=>{ if(!QUIET) A.flash(m); }; const have=PL.plan.items.filter(i=>i.k===kind).map(i=>Lc(i.c)), near=gapOf(kind)*.45, add=[];
   for(const s of spots){ if(add.length>=CAP) break; if(have.some(h=>lhyp(h,s.p)<near)) continue; add.push(placeObject(kind,s.p,s.rot)); have.push(s.p); }
-  if(!add.length){ A.flash(spots.length?`There are ${KIND(kind).l.toLowerCase()}s there already`:"Nothing to place here"); return []; }
+  if(!add.length){ fl(spots.length?`There are ${KIND(kind).l.toLowerCase()}s there already`:"Nothing to place here"); return []; }
   ensureOrigin(); pushUndo(); PL.plan.items.push(...add); changed(["items"]);
-  A.flash(add.length===1?KIND(kind).l+" placed":`${add.length} × ${KIND(kind).l}${what?" "+what:" in a row"}${spots.length>=CAP&&add.length>=CAP?` (the first ${CAP})`:""}`); return add; }
+  fl(add.length===1?KIND(kind).l+" placed":`${add.length} × ${KIND(kind).l}${what?" "+what:" in a row"}${spots.length>=CAP&&add.length>=CAP?` (the first ${CAP})`:""}`); return add; }
 function rowAlong(path,kind){ return addItems(kind,rowPos(path,gapOf(kind)).map(s=>({p:s.p,rot:+bearingOf(s.u).toFixed(1)})),null); }
 // both sides of a road, on the pavement, every gap metres; never on another road, a junction or a roundabout; street lights face the road
-function alongRoad(rd,kind){ const V=rd.pts.map(Lc), gp=gapOf(kind), off=rd.w/2+(kind==="lamp"?1.2:1.8), R=PL.plan.roads.map(r=>({V:r.pts.map(Lc),w:r.w})), RB=rbs(), spots=[];
-  const clear=p=>{ for(const r of R) for(let k=1;k<r.V.length;k++) if(projSeg(p,r.V[k-1],r.V[k]).d<r.w/2+1) return false; for(const b of RB) if(lhyp(p,b.c)<b.r+4) return false; return true; };
+function alongRoad(rd,kind,opt){ const V=rd.pts.map(Lc), gp=gapOf(kind), off=opt&&opt.off!=null?opt.off:rd.w/2+(kind==="lamp"?1.2:1.8), R=PL.plan.roads.map(r=>({V:r.pts.map(Lc),w:r.w,id:r.id})), RB=rbs(), spots=[];
+  const clear=p=>{ if(opt&&opt.skip&&opt.skip(p)) return false; for(const r of R){ if(opt&&opt.off!=null&&r.id===rd.id) continue; for(let k=1;k<r.V.length;k++) if(projSeg(p,r.V[k-1],r.V[k]).d<r.w/2+1) return false; } for(const b of RB) if(lhyp(p,b.c)<b.r+4) return false; return true; };
   for(const sg of [1,-1]) for(let i=1;i<V.length;i++){ const a=V[i-1], b=V[i], L=lhyp(a,b); if(L<gp*.5) continue; const u=[(b[0]-a[0])/L,(b[1]-a[1])/L], n=[-u[1]*sg,u[0]*sg];
     for(let s=gp/2;s<=L-gp/4;s+=gp){ const p=[a[0]+u[0]*s+n[0]*off,a[1]+u[1]*s+n[1]*off]; if(!clear(p)) continue; let rot=bearingOf(u); const r=rot*Math.PI/180, v=[Math.cos(r),Math.sin(r)];
       if(kind==="lamp"&&v[0]*-n[0]+v[1]*-n[1]<0) rot=(rot+180)%360; spots.push({p,rot:+rot.toFixed(1)}); } }
@@ -17925,7 +18143,7 @@ function placeRound(g,pt){ const tol=Math.max(25,30*mpp(pt)), gr=graph(); let c=
 function trimRound(o){ const c=Lc(o.c), R=o.r+3, O=[]; for(let i=0;i<24;i++){ const a=i/24*2*Math.PI; O.push([c[0]+Math.cos(a)*R/Math.cos(Math.PI/24),c[1]+Math.sin(a)*R/Math.cos(Math.PI/24)]); } let n=0;
   PL.plan.plots.forEach(pl=>{ const P=pl.pts.map(Lc); if(clearOf(P,O)) return; const A0=Math.abs(lArea(P)), res=cutOff(P,[O],A0*.5/.35); if(!res.length) return; const Q=res.sort((x,y)=>Math.abs(lArea(y))-Math.abs(lArea(x)))[0]; pl.pts=(lArea(Q)>0?Q:Q.slice().reverse()).map(q=>Gc(q[0],q[1])); n++; }); return n; }
 function plotAt(g){ const L=PL.plan.plots; for(let i=L.length-1;i>=0;i--) if(lInPoly(g,L[i].pts.map(Lc))) return L[i]; return null; }
-function autoPlots(g){ const B=detectBlock(g); if(B.err){ A.flash(B.err); return; } const S=subdivide(B.poly,PL.target), OB2=keepClear(), OBr=keepClear(true);   // service roads do not swerve round single trees
+function autoPlots(g,qt){ const fl=m=>{ if(!qt) A.flash(m); }; const B=detectBlock(g); if(B.err){ fl(B.err); return; } const S=subdivide(B.poly,PL.target), OB2=keepClear(), OBr=keepClear(true);   // service roads do not swerve round single trees
   // a detour is scored by how many plots end up on a road with it
   const lines=PL.plan.roads.map(r=>({V:r.pts.map(Lc),w:r.w})); S.roads.forEach(R=>segClear(R[0],R[1],OBr).forEach(s=>lines.push({V:s,w:12})));
   const reach=(P,ls)=>{ for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length]; for(let s=0;s<=4;s++){ const m=[a[0]+(b[0]-a[0])*s/4,a[1]+(b[1]-a[1])*s/4]; for(const r of ls) for(let k=1;k<r.V.length;k++) if(projSeg(m,r.V[k-1],r.V[k]).d<=r.w/2+4) return true; } } return false; };
@@ -17935,14 +18153,84 @@ function autoPlots(g){ const B=detectBlock(g); if(B.err){ A.flash(B.err); return
   // a plot cut back by the landscape that is left with no road is dropped (an untouched one without a road stays, and shows orange)
   const fin=PL.plan.roads.map(r=>({V:r.pts.map(Lc),w:r.w})).concat(srv.map(V=>({V,w:12})));
   const parts=avoid(S.plots,OB2.concat(strips),PL.target).filter(P=>S.plots.includes(P)||reach(P,fin)), cut=S.plots.length-parts.length;
-  if(!parts.length){ A.flash(S.plots.length?"No room for plots here — the landscape fills this block":"This block is too small for plots of "+A.nf(PL.target,0)+" m²"); return; }
+  if(!parts.length){ fl(S.plots.length?"No room for plots here — the landscape fills this block":"This block is too small for plots of "+A.nf(PL.target,0)+" m²"); return; }
   ensureOrigin(); pushUndo(); const p=PL.plan, letter=secLetter(p.sec); p.sec++; const made=[];
   parts.forEach((P,i)=>{ const pl={id:newId(),code:letter+"-"+String(i+1).padStart(2,"0"),pts:(lArea(P)>0?P:P.slice().reverse()).map(c=>Gc(c[0],c[1]))}; p.plots.push(pl); made.push(pl); });
   srv.forEach(R=>{ const rd={id:newId(),t:"serv",w:12,pts:R.map(c=>Gc(c[0],c[1]))}; p.roads.push(rd); joinRoads(rd); }); GR=null;
   // a tree standing where a new service road runs is taken out
   const n0=p.items.length; p.items=p.items.filter(it=>{ if(!TREES.includes(it.k)) return true; const c=Lc(it.c); return !srv.some(R=>{ for(let k=1;k<R.length;k++) if(projSeg(c,R[k-1],R[k]).d<7) return true; return false; }); }); const felled=n0-p.items.length;
   PL.block={poly:B.poly,t:performance.now()}; changed(srv.length?["roads","plots","items"]:["plots"]); const tot=made.reduce((a,x)=>a+geoArea(x.pts),0);
-  A.flash(`Sector ${letter}: ${made.length} plots · average ${A.fArea(tot/made.length)}${srv.length?` · ${srv.length} service road${srv.length>1?"s":""} added so every plot faces a road`:""}${OB2.length&&(cut||parts.some((P,i)=>P!==S.plots[i]))?" · kept clear of the landscape":""}${felled?` · ${felled} tree${felled>1?"s":""} in the way of the new road taken out`:""} — choose Build to put factories on them`); return made; }
+  fl(`Sector ${letter}: ${made.length} plots · average ${A.fArea(tot/made.length)}${srv.length?` · ${srv.length} service road${srv.length>1?"s":""} added so every plot faces a road`:""}${OB2.length&&(cut||parts.some((P,i)=>P!==S.plots[i]))?" · kept clear of the landscape":""}${felled?` · ${felled} tree${felled>1?"s":""} in the way of the new road taken out`:""} — choose Build to put factories on them`); return made; }
+
+
+/* ---------- V88: history, smart master plan ---------- */
+let HST=null;
+const BUCKETS=[2500,5000,10000,20000];
+function history(){ if(HST) return HST; const out={n:0,med:null,top:[],share:{}}; try{ const seen=new Set(), ar=[];
+    if(S&&S.plots&&S.plots.forEach) S.plots.forEach(info=>{ const r=info&&info.row; if(!r||seen.has(r)) return; seen.add(r); const lb=(info.st&&info.st.label)||""; if(!/sold|contract|reserv/i.test(lb)) return; const a=+r.area; if(a>=300&&a<=200000) ar.push(a); });
+    if(ar.length){ ar.sort((x,y)=>x-y); out.n=ar.length; out.med=ar[ar.length>>1]; const c={}; BUCKETS.forEach(b=>c[b]=0);
+      ar.forEach(a=>{ let b=BUCKETS[0], d=1e9; BUCKETS.forEach(k=>{ const e=Math.abs(Math.log(a/k)); if(e<d){ d=e; b=k; } }); c[b]++; });
+      BUCKETS.forEach(b=>out.share[b]=c[b]/ar.length); out.top=BUCKETS.slice().sort((x,y)=>c[y]-c[x]).filter(b=>c[b]>0); } }catch(e){ console.warn("history",e); }
+  HST=out; return out; }
+const ext=(P,u,v)=>{ let u0=1e18,u1=-1e18,v0=1e18,v1=-1e18; P.forEach(p=>{ const s=p[0]*u[0]+p[1]*u[1], t=p[0]*v[0]+p[1]*v[1]; if(s<u0)u0=s; if(s>u1)u1=s; if(t<v0)v0=t; if(t>v1)v1=t; }); return {u0,u1,v0,v1}; };
+function obbOf(P){ let best=null; for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length], L=lhyp(a,b); if(L<.5) continue; const u=[(b[0]-a[0])/L,(b[1]-a[1])/L], v=[-u[1],u[0]], e=ext(P,u,v), ar=(e.u1-e.u0)*(e.v1-e.v0); if(!best||ar<best.ar) best={ar,u,v,e}; }
+  if(!best) return null; let {u,v,e}=best; if(e.v1-e.v0>e.u1-e.u0){ u=best.v; v=[-best.u[0],-best.u[1]]; e=ext(P,u,v); } return {u,v,e}; }
+const fromST=(u,v,s,t)=>[u[0]*s+v[0]*t,u[1]*s+v[1]*t];
+// the stretches of a line (coordinate k = val, in the (s,t) frame) that run inside the polygon
+function spans(S2,k,val){ const xs=[]; for(let i=0;i<S2.length;i++){ const a=S2[i], b=S2[(i+1)%S2.length]; if((a[k]<=val&&b[k]>val)||(b[k]<=val&&a[k]>val)) xs.push(a[1-k]+(val-a[k])/(b[k]-a[k])*(b[1-k]-a[1-k])); } xs.sort((x,y)=>x-y); const out=[]; for(let i=0;i+1<xs.length;i+=2) out.push([xs[i],xs[i+1]]); return out; }
+function distEdge(p,P){ let d=1e9; for(let i=0;i<P.length;i++){ const x=projSeg(p,P[i],P[(i+1)%P.length]).d; if(x<d) d=x; } return d; }
+function roadDist(p,Rd){ let d=1e9; Rd.forEach(r=>{ for(let k=1;k<r.V.length;k++){ const x=projSeg(p,r.V[k-1],r.V[k]).d-r.w/2; if(x<d) d=x; } }); return d; }
+// a rectangle of about `area` m² inside polygon `P`, clear of the roads, nearest to `near`
+function pocket(P,area,Rd,near,ax){ const o=ax||obbOf(P); if(!o) return null; const {u,v,e}=o; for(let f=1;f>=.4;f-=.2){ const a=area*f, w=Math.sqrt(a*1.5), h=a/w; let best=null, bd=1e18;
+    for(let i=0;i<=10;i++) for(let j=0;j<=8;j++){ const s=e.u0+(e.u1-e.u0)*i/10, t=e.v0+(e.v1-e.v0)*j/8, c=fromST(u,v,s,t), R=[[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]].map(([x,y])=>{ const q=fromST(u,v,x,y); return [c[0]+q[0],c[1]+q[1]]; });
+      const chk=R.concat([c],[0,1,2,3].map(k=>[(R[k][0]+R[(k+1)%4][0])/2,(R[k][1]+R[(k+1)%4][1])/2]));
+      if(!chk.every(p=>lInPoly(p,P)&&distEdge(p,P)>=12&&roadDist(p,Rd)>=6)) continue; const d=lhyp(c,near); if(d<bd){ bd=d; best={R,c,w,h}; } }
+    if(best) return best; } return null; }
+function masterPlan(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land first — then the master plan fills it"); return; }
+  const Land=p.land.pts.map(Lc), ob=obbOf(Land); if(!ob){ A.flash("The land is too small"); return; } const la=Math.abs(lArea(Land)); if(la<20000){ A.flash("The land is too small for a master plan (under 2 ha)"); return; }
+  const H=history(), top=(H.top&&H.top.length?H.top:[PL.target]), T1=PL.target||top[0], T2=top.find(b=>b!==T1&&H.share[b]>=.15)||null;
+  const snap=JSON.stringify(p); QUIET++; const made={roads:0,plots:0,cells:0,sectors:0};
+  try{
+    p.roads=[]; p.plots=[]; p.items=[]; p.green=[]; p.rounds=[]; p.sec=0; GR=null; CG=null; PL.ver++;
+    const {u,v,e}=ob, Lx=e.u1-e.u0, Ly=e.v1-e.v0, S2=Land.map(q=>[q[0]*u[0]+q[1]*u[1],q[0]*v[0]+q[1]*v[1]]), IN=12, dP=Math.sqrt(T1*1.6), cent=lCent(Land);
+    const mkRoad=(t,w,a,b)=>{ const rd={id:newId(),t,w,pts:[Gc(a[0],a[1]),Gc(b[0],b[1])]}; p.roads.push(rd); joinRoads(rd); made.roads++; return rd; };
+    // 1. landscape buffer along the long sides of the land boundary
+    const BW=8, buf=[]; for(let i=0;i<Land.length&&buf.length<24;i++){ const a=Land[i], b=Land[(i+1)%Land.length], L=lhyp(a,b); if(L<45) continue; let n=[-(b[1]-a[1])/L,(b[0]-a[0])/L]; const mid=[(a[0]+b[0])/2,(a[1]+b[1])/2]; if(!lInPoly([mid[0]+n[0]*1.5,mid[1]+n[1]*1.5],Land)) n=[-n[0],-n[1]]; if(!lInPoly([mid[0]+n[0]*1.5,mid[1]+n[1]*1.5],Land)) continue;
+      const Q=[[a[0]+n[0]*.4,a[1]+n[1]*.4],[b[0]+n[0]*.4,b[1]+n[1]*.4],[b[0]+n[0]*BW,b[1]+n[1]*BW],[a[0]+n[0]*BW,a[1]+n[1]*BW]]; if(!Q.every(q2=>lInPoly(q2,Land))) continue; buf.push(Q); p.green.push({id:newId(),k:"buffer",pts:(lArea(Q)>0?Q:Q.slice().reverse()).map(c=>Gc(c[0],c[1]))}); }
+    // 2. the spine along the long axis, ribs across it, and parallel roads when the land is deep
+    const nx=Math.max(1,Math.round(Lx/Math.max(150,Math.min(400,Math.sqrt(T1)*5)))), half=Ly/2, nSide=Math.max(1,Math.round(half/(2*dP+20)));
+    let t0=(e.v0+e.v1)/2, sp=null; for(const dt of [0,.06,-.06,.12,-.12,.2,-.2]){ const tt=t0+dt*Ly, L=spans(S2,1,tt).sort((x,y)=>(y[1]-y[0])-(x[1]-x[0]))[0]; if(L&&L[1]-L[0]>60){ sp=L; t0=tt; break; } }
+    if(!sp){ A.flash("Could not fit a main road in this land shape — draw the roads yourself, then use Smart fill"); throw new Error("spine"); }
+    mkRoad("main",30,fromST(u,v,sp[0]+IN,t0),fromST(u,v,sp[1]-IN,t0));
+    const colS=[]; for(let k=0;k<=nx;k++) colS.push(e.u0+Lx*k/nx);
+    const rowT=[]; for(let k=-nSide;k<=nSide;k++) rowT.push(t0+k*half/nSide);
+    for(let k=1;k<nx;k++) spans(S2,0,colS[k]).forEach(L=>{ if(L[1]-L[0]>60) mkRoad("sec",20,fromST(u,v,colS[k],L[0]+IN),fromST(u,v,colS[k],L[1]-IN)); });
+    for(let k=-nSide+1;k<nSide;k++){ if(k===0) continue; spans(S2,1,rowT[k+nSide]).forEach(L=>{ if(L[1]-L[0]>60) mkRoad("sec",20,fromST(u,v,L[0]+IN,rowT[k+nSide]),fromST(u,v,L[1]-IN,rowT[k+nSide])); }); }
+    changed(["roads"]);
+    // 3. a roundabout where the main road meets the middle rib
+    if(nx>=2&&Lx>300){ const mid=colS[Math.round(nx/2)], c=fromST(u,v,mid,t0); try{ const sv=PL.rdia; PL.rdia=40; placeRound(c,[cvW()/2,cvH()/2]); PL.rdia=sv; }catch(er){ console.warn("round",er); } }
+    // 4. a park (lawn and trees) sized from the green share, in the free middle of the land
+    const Rd=p.roads.map(r=>({V:r.pts.map(Lc),w:r.w})), pk=pocket(Land,la*(PL.mp.green||8)/100,Rd,cent,ob);
+    if(pk) p.green.push({id:newId(),k:"park",pts:pk.R.map(c=>Gc(c[0],c[1]))});
+    // 5. plots block by block, in the sizes that sold best; the blocks next to the main road get the best seller
+    const cells=[]; for(let ci=0;ci<nx;ci++) for(let ri=0;ri<rowT.length-1;ri++){ const s=(colS[ci]+colS[ci+1])/2, t=(rowT[ri]+rowT[ri+1])/2, near=Math.abs(ri-nSide)<=0||Math.abs(ri+1-nSide)<=0;
+      for(const [fs,ft] of [[0,0],[.25,0],[-.25,0],[0,.25],[0,-.25]]){ const c=fromST(u,v,s+fs*(colS[1]-colS[0]),t+ft*(rowT[1]-rowT[0])); if(lInPoly(c,Land)){ cells.push({c,near}); break; } } }
+    const keepT=PL.target; cells.forEach(cl=>{ PL.target=(T2&&!cl.near)?T2:T1; try{ const m=autoPlots(cl.c,true); if(m&&m.length){ made.plots+=m.length; made.sectors++; } }catch(er){ console.warn("cell",er); } }); PL.target=keepT;
+    // 6. trees and street lights: on the road verges, never inside a plot or the landscape; shrubs and trees in the park and the buffer
+    const PLs=p.plots.map(x=>x.pts.map(Lc)), GRs=p.green.map(x=>x.pts.map(Lc)), skip=pt=>PLs.some(P=>lInPoly(pt,P))||GRs.some(P=>lInPoly(pt,P));
+    if(PL.mp.trees!==false){ p.roads.forEach(rd=>alongRoad(rd,rd.t==="main"?"palm":"tree",{off:rd.w/2-1.6,skip})); }
+    if(PL.mp.lights!==false){ p.roads.forEach(rd=>{ if(rd.t!=="serv") alongRoad(rd,"lamp",{off:rd.w/2-.7,skip}); }); }
+    if(PL.mp.trees!==false){ const add=[], K=["tree","palm","shrub","tree"];
+      if(pk){ const o2=obbOf(pk.R); if(o2){ const {u:pu,v:pv,e:pe}=o2; let n=0; for(let s=pe.u0+6;s<pe.u1-4;s+=11) for(let t=pe.v0+6;t<pe.v1-4;t+=11){ const c=fromST(pu,pv,s+(hash(s*7+t)-.5)*4,t+(hash(t*13+s)-.5)*4); if(!lInPoly(c,pk.R)||distEdge(c,pk.R)<3) continue; add.push(placeObject(K[(hash(s+t*3)*4)|0],c,hash(s*t)*360)); if(++n>260) break; } } }
+      buf.forEach(Q=>{ const a=[(Q[0][0]+Q[3][0])/2,(Q[0][1]+Q[3][1])/2], b=[(Q[1][0]+Q[2][0])/2,(Q[1][1]+Q[2][1])/2]; rowPos([a,b],13,6).forEach((sp2,i)=>{ if(add.length<900) add.push(placeObject(i%3===2?"shrub":"tree",sp2.p,0)); }); });
+      p.items.push(...add); }
+    PL.sel=null; PL.undo.push(snap); if(PL.undo.length>80) PL.undo.shift(); PL.redo=[];
+  }catch(er){ if(er&&er.message!=="spine") console.error("master plan",er); QUIET--; if(er&&er.message==="spine"){ PL.plan=JSON.parse(snap); O=null; changed(); return; } PL.plan=JSON.parse(snap); O=null; changed(); A.flash("The master plan could not be made — nothing was changed"); return; }
+  QUIET--; GR=null; CG=null; changed(["all"]);
+  const st=stats(); A.flash(`Master plan: ${made.plots} plots in ${made.sectors} sectors · average ${st.avg!=null?A.fArea(st.avg):"—"} · ${made.roads} roads · ${st.green?A.fArea(st.green)+" landscape":"no landscape"} · ${st.trees} trees, ${st.lamps} lights · sizes from ${H.n?H.n+" sold plots":"your choice"} — Undo brings back what was there`); fitPlan(); }
+function masterAsk(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land first — then the master plan fills it"); return; }
+  if(p.roads.length||p.plots.length||p.items.length||p.green.length) menu(null,"Make the master plan?",[["go","Replace roads, plots, landscape and trees","Only the land boundary stays · Undo brings it all back","#FFD60A"]],()=>{ A.flash("Making the master plan…"); setTimeout(masterPlan,40); });
+  else { A.flash("Making the master plan…"); setTimeout(masterPlan,40); } }
 
 /* ---------- input ---------- */
 let lastTap={t:0,p:[-99,-99]};
@@ -18005,7 +18293,7 @@ function up(pt,e,cx){ const d=PL.drag; PL.drag=null; if(!d) return; const g=grou
   if(cx){ PL.drag=d; cancel(); return; }   // pointer cancelled (iPad system gesture): a move or resize is put back, nothing half-done is kept
   if(d.k==="free"){ if(!d.moved||d.path.length<3){ lastTap={t:performance.now(),p:d.start}; PL.cur={t:d.ct,pts:[atP(d.start,{edges:true})]}; live(); A.need(); return; }   // a tap starts corners
     let S=A.rdp(d.path.concat([d.path[0]]),2.5); S.pop(); const pts=S.map(p=>r9(A.U(p[0],p[1]))); if(pts.length>=3&&Math.abs(lArea(pts.map(Lc)))>4) commitShape(d.ct,pts); else A.flash("Too small — draw a bigger shape"); A.need(); return; }
-  if(d.k==="tap"&&!d.moved){ if(PL.tool==="plot") autoPlots(g); else if(PL.tool==="road") placeRound(g,pt);
+  if(d.k==="tap"&&!d.moved){ if(PL.tool==="plot"){ if(PL.psub==="master") A.flash("Press “Make the plan” in the bar above"); else autoPlots(g); } else if(PL.tool==="road") placeRound(g,pt);
     else if(rowTool()){ const h=roadAt(g,10*mpp(pt)); if(h) alongRoad(h.r,rowKind()); else A.flash("Tap a road — the row goes along both sides of it"); }
     else if(PL.tool==="build"){ const pl=plotAt(g), has=pl&&PL.plan.items.find(i=>isBld(i.k)&&i.plot===pl.id);
       menu(pt,pl?`Plot ${pl.code||""} · ${A.fArea(geoArea(pl.pts))}${has?" · now "+KIND(has.k).l:""}`:"Build here",Object.entries(BK).map(([k,v])=>[k,v.l,pl?"fits the plot":(A.nf(v.len,0)+" × "+A.nf(v.w,0)+" m"),k===PL.bk?"#FFD60A":null]),k=>{ PL.bk=k; persist(); opts(); placeBuilding(k,pl,g); }); }
@@ -18108,19 +18396,19 @@ function obstacles(){ const segs=[], add=V=>{ for(let i=1;i<V.length;i++) segs.p
   const s=obj(PL.sel); if(s&&PL.sel.t==="item"){ const V=iCorners(s).map(gScr); add(V.concat([V[0]])); } return segs; }
 
 /* ---------- on / off ---------- */
-async function activate(api){ A=api; if(PL.on) return; PL.on=true; PL.cur=null; PL.drag=null; PL.sel=null; buildUI(); A.hint();
+async function activate(api){ A=api; if(PL.on) return; PL.on=true; PL.cur=null; PL.drag=null; PL.sel=null; buildUI(); A.hint(); const ip=plansInit().catch(e=>console.warn("plans",e));
   try{ if(!window.THREE) A.flash("Loading 3D…"); T=await loadThree(); }catch(e){ T=null; A.flash("3D could not load — the plan is shown flat"); }
-  if(!PL.on) return; if(T){ addLayer(); map.off("styledata",onStyle); map.on("styledata",onStyle); }   // a quick off/on while 3D loads must not add the listener twice
+  await ip; if(!PL.on) return; if(T){ addLayer(); map.off("styledata",onStyle); map.on("styledata",onStyle); }   // a quick off/on while 3D loads must not add the listener twice
   if(PL.v3&&map.getPitch()<20) map.easeTo({pitch:60,duration:900});
   if(!empty()){ const pts=[]; const p=PL.plan; if(p.land) pts.push(...p.land.pts); p.roads.forEach(r=>pts.push(...r.pts)); p.plots.forEach(x=>pts.push(...x.pts)); p.green.forEach(x=>pts.push(...x.pts)); p.items.forEach(i=>pts.push(i.c)); p.rounds.forEach(r=>pts.push(r.c));
     const b=map.getBounds(); if(!pts.some(c=>b.contains(c))){ let bb=[[1e9,1e9],[-1e9,-1e9]]; pts.forEach(c=>{ bb[0][0]=Math.min(bb[0][0],c[0]); bb[0][1]=Math.min(bb[0][1],c[1]); bb[1][0]=Math.max(bb[1][0],c[0]); bb[1][1]=Math.max(bb[1][1],c[1]); }); map.fitBounds(bb,{padding:120,duration:900,pitch:PL.v3?60:0,bearing:map.getBearing()}); A.flash("Your plan is kept — here it is"); } }
   else A.flash("Build mode — start with Land or Roads, then Plots › Smart fill, then Build and Green"); A.need(); }
-function deactivate(leaving){ if(!PL.on) return; if(PL.cur) finishCur(); PL.on=false; PL.drag=null; closeMenu(); persist(); removeEventListener("resize",placeKpi);
+function deactivate(leaving){ if(!PL.on) return; if(PL.cur) finishCur(); PL.on=false; PL.drag=null; closeMenu(); flush(true); removeEventListener("resize",placeKpi);
   try{ map.off("styledata",onStyle); if(map.getLayer("sid-plan3d")) map.removeLayer("sid-plan3d"); }catch(e){} layer=null; VEH=[];
   if(ui){ ui.remove(); ui=null; } const b3=q("#pl3d"); if(b3) b3.remove(); if(!leaving&&map.getPitch()>.5) map.easeTo({pitch:0,duration:600}); }
 // the building and tree models, shared with the AR table view (sold factories and warehouses)
 window.SID_3D={build(T3,F,L,W,h,k,id,K,opts){ if(!T) T=T3; return buildingAt(F,L,W,h,k,String(id),K,opts); }, tree(T3,K,x,z,sz,c,palm){ if(!T) T=T3; treeAt(K,x,z,sz,c,palm); }};
-window.SID_PLAN={get on(){ return PL.on; },activate,deactivate,down,move,up,hover,cancel,undo,redo,del,esc:escK,enter:enterK,key,hint:hintTxt,draw2d,obstacles,tool:()=>PL.tool,setTool,
+window.SID_PLAN={get on(){ return PL.on; },plotAt:planPlotAt,activate,deactivate,down,move,up,hover,cancel,undo,redo,del,esc:escK,enter:enterK,key,hint:hintTxt,draw2d,obstacles,tool:()=>PL.tool,setTool,
   state:PL,_t:{Lc,Gc,detectBlock,subdivide,stats,iCorners,fitOnPlot,autoPlots,placeBuilding,commitRoad,commitLand,commitPlot,commitGreen,graph,cgraph,rbs,noAccess,lArea,layer:()=>layer,veh:()=>VEH,scr,itemScreen,
     alongRoad,rowAlong,rowPos,placeRound,keepClear,avoid,overlap,segClear,srvRoute,curType,hitAny,opts}};
 })();
