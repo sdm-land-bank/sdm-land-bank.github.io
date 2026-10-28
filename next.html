@@ -2520,7 +2520,7 @@ window.sidSatInfo=async()=>{ try{ const c=await box(), k=await c.keys(), e=navig
       <nav id="nav" aria-label="Views"></nav>
     </div>
     <div class="rail-foot">
-      <button class="railpin sync" id="syncBtn" title="Sync the whole system with the MDS on SharePoint">
+      <button class="railpin sync" id="syncBtn" title="Administrators: replace the MDS register with the online Excel sheet (asks first)">
         <span class="pin-i"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 6.5A5.6 5.6 0 0 0 3.3 4.6"/><path d="M3 1.8v3.1h3.1"/><path d="M2.5 9.5a5.6 5.6 0 0 0 10.2 1.9"/><path d="M13 14.2v-3.1H9.9"/></svg></span>
         <span class="pin-t rail-open-only"><span id="syncLabel">Sync now</span></span></button>
       <button class="railpin present" id="presBtn" title="Presentation mode  [P]">
@@ -3697,18 +3697,12 @@ function hideLB(){ const w=$("#lbwrap"); if(w) w.hidden=true; }
 const fWhen=d=>d?new Date(d).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"";
 function lbStrip(){
   const el=$("#lbStrip"); if(!el) return;
-  const live=LIVE.src==="live"&&LIVE.ok, mod=LIVE.cur&&LIVE.cur.modified;
   let cls="lb-strip", txt;
-  if(LIVE.busy){ cls+=" busy"; txt="Syncing with the MDS on SharePoint…"; }
-  else if(live) txt=`<b>Live</b> — the MDS on SharePoint · synced ${fWhen(LIVE.at)}${mod?" · sheet last saved "+fWhen(mod):""}`;
-  else { cls+=" off";
-    const why=LIVE.lastErr?"Sync failed: "+esc(LIVE.lastErr):"No sync server is set yet, so nothing new can be read.";
-    txt=LIVE.src==="last"?`Showing the <b>last sync</b> (${fWhen(LIVE.at)}). ${why}`
-       :`Showing the <b>built-in copy</b> of the MDS (${esc(document.getElementById("mds-workbook").dataset.date)}). ${why}`; }
+  if(LIVE.busy){ cls+=" busy"; txt="Syncing with the online sheet…"; }
+  else txt=`Data from the <b>MDS register</b> in this system${S.restored?` · last saved ${fWhen(S.restored)}`:""}`;
   el.className=cls;
-  el.innerHTML=`<i></i><span>${txt}</span><button class="lbs" id="lbSync" ${LIVE.busy?"disabled":""}>${LIVE.busy?"Syncing…":"Sync now"}</button>${live||LIVE.busy?"":'<button id="lbToHealth">How to go live →</button>'}`;
-  $("#lbSync").onclick=()=>syncAll({manual:true});
-  const b=$("#lbToHealth"); if(b) b.onclick=()=>go("health");
+  el.innerHTML=`<i></i><span>${txt}</span>${isSyncAdmin()?`<button class="lbs" id="lbSync" ${LIVE.busy?"disabled":""} title="Replace the MDS register with the online Excel sheet (asks first)">${LIVE.busy?"Syncing…":"Sync from online sheet"}</button>`:""}`;
+  const b=$("#lbSync"); if(b) b.onclick=()=>syncAll({manual:true});
 }
 
 
@@ -7414,7 +7408,7 @@ const isXlsx=buf=>{ const b=new Uint8Array(buf,0,2); return b[0]===0x50&&b[1]===
 function builtInWorkbook(){
   const el=document.getElementById("mds-workbook"); if(!el) return null;
   const bin=atob(el.textContent.trim()), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
-  return {buf:u.buffer, date:el.dataset.date, fresh:el.dataset.fresh==="1"};
+  return {buf:u.buffer, date:el.dataset.date, kept:el.dataset.kept||null, fresh:el.dataset.fresh==="1"};
 }
 const rowSig=rs=>hashStr(JSON.stringify(rs.map(r=>[r.park,r.unit,r.status,r.area,r.cash,r.client,r.price,r.cur])));
 function wbRead(buf){
@@ -7431,12 +7425,13 @@ async function openLastSync(){
   const b=builtInWorkbook();
   LIVE.cur={buf:b.buf,src:"builtin",modified:b.fresh?b.date:null,at:b.fresh?new Date(b.date):null};
   let r=null; try{ r=await Promise.race([idb.get(LAST_KEY),new Promise(z=>setTimeout(()=>z(null),1500))]); }catch(e){}
-  const newer=r&&r.buf&&!(b.fresh&&r.at<b.date)&&!(r.modified&&r.modified.slice(0,10)<b.date.slice(0,10));
+  const online=(()=>{ try{ return sbReady(); }catch(e){ return false; } })();
+  const newer=!online&&r&&r.buf&&!(b.fresh&&r.at<b.date)&&!(r.modified&&r.modified.slice(0,10)<b.date.slice(0,10));
   if(newer){
     LIVE.cur={buf:r.buf,src:"last",modified:r.modified,at:new Date(r.at)}; LIVE.src="last"; LIVE.at=LIVE.cur.at; LIVE.sig=r.sig;
     if(S.restored&&S.restored>r.at) return;               // edits made after that sync are already on screen
     try{ adoptOnBoot(r.buf,"SharePoint (last sync)",r.at); }catch(e){ console.warn("last sync:",e); }
-  } else if(b.fresh&&!(S.restored&&S.restored>b.date)){
+  } else if(b.fresh&&!(S.restored&&S.restored>(b.kept||b.date))){
     // a shared copy: its built-in workbook was synced when the copy was made — newer than the register block
     try{ adoptOnBoot(b.buf,"Online MDS ("+b.date.slice(0,10)+")",b.date); }catch(e){ console.warn("built-in:",e); }
   }
@@ -7500,6 +7495,9 @@ function diffRows(a,b){
 }
 /* One sync for the whole system. manual = the person pressed Sync: always repaint and report. */
 function syncAll(o={}){
+  if(!o.manual) return Promise.resolve({ok:false});
+  if(!isSyncAdmin()){ toast("Only an administrator can sync with the online Excel sheet — the MDS register is edited here directly",true); return Promise.resolve({ok:false}); }
+  if(!o.confirmed&&!LIVE.busy){ if(!confirm("Sync with the online Excel sheet (SharePoint)?\n\nThis REPLACES the data in the MDS register for everyone with what is in the online sheet. Every edit made in the register since the last sync will be overwritten.\n\nIf you need the register's current data in the online sheet: first go to MDS register → Export Excel, upload that file to the online Excel sheet, make your edits there, and only then press Sync — so the register always keeps the latest data.\n\nPress OK to replace the MDS register with the online sheet.")) return Promise.resolve({ok:false}); o.confirmed=true; }
   if(LIVE.busy){
     // a press of Sync never settles for a sync that started without it: it runs fresh right after
     if(o.manual&&!LIVE.busyManual){
@@ -7523,7 +7521,7 @@ function syncAll(o={}){
       const hx=await bufHash(w.buf);
       if(hx&&hx===LIVE.hash){ LIVE.at=new Date(); LIVE.src="live"; LIVE.ok=true; LIVE.lastErr="";
         const m=LIVE.cur&&LIVE.cur.modified; liveStatus(`Up to date · checked ${fWhen(LIVE.at)}${m?" · sheet saved "+fWhen(m):""} · no changes`,true);
-        if(o.manual){ toast("Synced · no changes since the last sync"); if(!o.watch) startWatch(); }
+        if(o.manual) toast("Synced · the online sheet has no changes since the last sync");
         return {ok:true,buf:LIVE.cur.buf}; }
       const p=wbRead(w.buf); LIVE.hash=hx;
       const modified=p.modified||(w.modified?new Date(w.modified).toISOString():null);
@@ -7540,7 +7538,7 @@ function syncAll(o={}){
       if(o.from!=="lb"&&(changed||o.manual)) mountLB();
       const what=d.n?[d.chg&&`${fInt(d.chg)} changed`,d.add&&`${fInt(d.add)} added`,d.del&&`${fInt(d.del)} removed`].filter(Boolean).join(", ")+(d.eg.length?" ("+d.eg.join(", ")+(d.n>d.eg.length?", …":"")+")":""):"no changes";
       let msg=`Synced ${fInt(p.out.rows.length)} rows from SharePoint${modified?" · sheet saved "+fWhen(modified):""} · ${what}`;
-      if(o.manual&&!d.n){ startWatch(); msg+=" · re-checking every 30 s for 4 minutes in case your last save is still being published"; }
+      
       if(o.watch&&d.n){ stopWatch(); msg="Your latest save arrived · "+msg; }
       else if(o.watch) msg=`No new edits yet · re-checking (${LIVE.watchN} left) · sheet saved ${modified?fWhen(modified):"—"}`;
       liveStatus(msg,true); if(o.manual||d.n) toast(msg);
@@ -7570,30 +7568,27 @@ async function watchTick(){
 }
 function syncUI(){
   const b=$("#syncBtn"), l=$("#syncLabel"), live=LIVE.src==="live"&&LIVE.ok;
+  if(b) b.hidden=!isSyncAdmin();
   if(b){ b.classList.toggle("busy",!!LIVE.busy); b.classList.toggle("off",!LIVE.busy&&!live); b.disabled=!!LIVE.busy; }
-  if(l) l.textContent=LIVE.busy?"Syncing…":"Sync now";
+  if(l) l.textContent=LIVE.busy?"Syncing…":"Sync sheet";
   syncStamp(); lbStrip();
   try{ const f=document.querySelector("#lbwrap iframe"); if(f&&f.contentWindow) f.contentWindow.dispatchEvent(new Event("sid-sync")); }catch(e){}
 }
 function syncStamp(){
   const el=$("#stampTxt"), st=$("#stamp"); if(!el||!st) return;
-  const live=LIVE.src==="live"&&LIVE.ok, mod=LIVE.cur&&LIVE.cur.modified, hint=canSee("settings")?"sync it in Settings":"syncs automatically";
-  let t, c;
-  if(LIVE.busy){ t="Syncing with SharePoint…"; c="busy"; }
-  else if(live){ t=`<b>Live</b> · synced ${fWhen(LIVE.at)}${mod?`<br>sheet saved ${fWhen(mod)}`:""}`; c=""; }
-  else if(LIVE.src==="last"){ t=`Last sync ${fWhen(LIVE.at)}<br><b>not live</b> — ${hint}`; c="old"; }
-  else { const b=document.getElementById("mds-workbook"); t=`Built-in copy · ${b?(b.dataset.fresh==="1"?fWhen(b.dataset.date):new Date(b.dataset.date+"T12:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})):""}<br><b>not live</b> — ${hint}`; c="old"; }
-  el.innerHTML=t; st.className="stamp"+(c?" "+c:""); st.title=LIVE.state||"";
+  let t, c="";
+  if(LIVE.busy){ t="Syncing with the online sheet…"; c="busy"; }
+  else t=`<b>MDS register</b>${S.restored?` · saved ${fWhen(S.restored)}`:""}${LIVE.src==="live"&&LIVE.at?`<br>sheet synced ${fWhen(LIVE.at)}`:""}`;
+  el.innerHTML=t; st.className="stamp"+(c?" "+c:""); st.title="All data comes from the MDS register in this system";
 }
 /* The land-bank app inside the Sales tab calls this in place of its server's /api/sync-url.
    Its first call after (re)start gets the workbook this system is showing; its own Force Sync runs a full sync. */
 window.SID_LB={
   async fetchWorkbook(){
     const xl={"Content-Type":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"};
-    if(!LB.booted){ LB.booted=true; if(LIVE.busy) await LIVE.busy; return new Response(LIVE.cur.buf.slice(0),{status:200,headers:xl}); }
-    const r=await syncAll({manual:true,from:"lb"});
-    if(r.ok) return new Response(r.buf.slice(0),{status:200,headers:xl});
-    return new Response(JSON.stringify({error:"Connection Failed",details:r.error||"not synced"}),{status:502,headers:{"Content-Type":"application/json"}});
+    LB.booted=true; if(LIVE.busy) await LIVE.busy;
+    try{ return new Response(regWorkbook().slice(0),{status:200,headers:xl}); }
+    catch(e){ return new Response(JSON.stringify({error:"Could not read the MDS register",details:String(e&&e.message||e)}),{status:500,headers:{"Content-Type":"application/json"}}); }
   },
   get aiBase(){ return SBC.url+"/functions/v1/sid-ai"; },
   status(){
@@ -7648,10 +7643,7 @@ function liveCard(){
 }
 function liveStatus(t,ok){ LIVE.state=t; const el=$("#lvSt"); if(el){ el.textContent=t; el.className="live-st "+(ok===true?"ok":ok===false?"bad":""); } syncStamp(); }
 function liveBoot(){
-  syncUI();
-  syncAll({});
-  clearInterval(LIVE.timer); LIVE.timer=setInterval(()=>{ if(!document.hidden) syncAll({}); },5*60*1000);
-  addEventListener("focus",()=>{ if(Date.now()-LIVE.lastFocus>60000){ LIVE.lastFocus=Date.now(); syncAll({fresh:true}); } });
+  syncUI();   // V87: no automatic SharePoint sync — the MDS register is the source; an administrator syncs by hand when needed
 }
 function wireLive(){
   const b=$("#lvGo"); if(!b) return;
@@ -12150,6 +12142,7 @@ async function edSave(){
   edInit(true);
   S.stale=null;
   commitRows();
+  try{ REGWB.sig=null; mountLB(); }catch(e){}
   toast(`Saved — ${c.changed} updated, ${c.added} added, ${c.deleted} removed. Dashboard and map are up to date.`+
         (ok?"":" (This browser blocked storage, so the edits last until the tab is closed — use Download dashboard to keep them.)"),!ok);
 }
@@ -12163,8 +12156,8 @@ async function edRevert(){
   try{ await idb.del(STORE_KEY); }catch(e){}
   S.leaving=true; location.reload();
 }
-function edExport(){
-  const list=(ED.rows||S.rows).filter(r=>!ED.deleted.has(r._id));
+function edExport(rows){
+  const list=Array.isArray(rows)?rows:(ED.rows||S.rows).filter(r=>!ED.deleted.has(r._id));
   const XL_OUT={sold:"SOLD",reserved:"RESERVED",eoi:"EOI",ats:"ATS",hold:"ON HOLD",nfs:"NFS"};
   const D=v=>{ if(!v) return null; const [y,m,dd]=v.split("-").map(Number); return new Date(y,m-1,dd,12); };
   // Headers are the MDS's own, so the file can be dropped back into Data health.
@@ -12181,6 +12174,7 @@ function edExport(){
     ["Cost/SQM","costSqm"],["GP/SQM","gpSqm"],["Total GP","totalGp"],["GP%","gpPct"],["RF Price","rfPrice"],
     ["RF Price USD","rfPriceUsd"],["ROE USD","roeUsd"],["Total plus interest USD","totalUsd"],["Date of cost","dateOfCost"]];
   const aoa=[H.map(h=>h[0])].concat(list.map(r=>H.map(([,f])=>{ const v=typeof f==="function"?f(r):r[f]; return v??null; })));
+  if(Array.isArray(rows)) return aoa;   // V87: the Sales & Land Bank workbook is built from these rows
   const ws=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true,dateNF:"yyyy-mm-dd"});
   ws["!cols"]=H.map(([h])=>({wch:Math.max(10,Math.min(28,h.length+4))}));
   ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:aoa.length-1,c:H.length-1}})};
@@ -12588,7 +12582,7 @@ async function sbGate(){
   put("register-data",reg); put("geometry-data",geo);
   const v=ver.data&&ver.data[0];
   if(v){ gateMsg("Loading the latest MDS…"); const buf=await sbCached(v.path,"v"+v.id,"buf"), el=document.getElementById("mds-workbook");
-    el.textContent=b64buf(buf); el.dataset.date=new Date(v.sheet_saved||v.created_at).toISOString(); el.dataset.fresh="1"; SBV=v; }
+    el.textContent=b64buf(buf); el.dataset.date=new Date(v.sheet_saved||v.created_at).toISOString(); el.dataset.kept=new Date(v.created_at).toISOString(); el.dataset.fresh="1"; SBV=v; }
   const K=Object.fromEntries((kv.data||[]).map(x=>[x.key,x]));
   try{
     if(K.live&&K.live.value) localStorage.setItem("sid.live2",JSON.stringify(K.live.value));
@@ -12609,6 +12603,24 @@ function sbRailOut(){ const pb=$("#presBtn"); if(!pb||$("#sbOutRail")) return; c
   b.title="Sign out ("+SBU.email+")"; b.innerHTML='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5H3.5a1 1 0 00-1 1v9a1 1 0 001 1H6"/><path d="M10.5 11l3-3-3-3M13.5 8H6"/></svg><span class="rail-open-only">Sign out</span>';
   b.onclick=async()=>{ try{ await SB.auth.signOut(); }catch(e){} location.reload(); }; pb.after(b); }
 
+
+
+/* V87: the Sales & Land Bank app reads the MDS register. Its workbook is the register (MDS column names) in place of the
+   main sheet of the last MDS file; the other sheets (Cost and the rest) are kept. Rebuilt only when the register changed. */
+const REGWB={sig:null,buf:null};
+function regWorkbook(){
+  const sig=hashStr(JSON.stringify(regArrays(S.rows)))+"|"+(LIVE.cur&&LIVE.cur.at?String(LIVE.cur.at):"");
+  if(REGWB.sig===sig&&REGWB.buf) return REGWB.buf;
+  const aoa=edExport(S.rows); let wb=null, name="MDS (financial data)";
+  try{ if(LIVE.cur&&LIVE.cur.buf&&LIVE.cur.buf.byteLength){ wb=XLSX.read(new Uint8Array(LIVE.cur.buf),{type:"array",cellDates:true});
+      name=wb.SheetNames.find(n=>n.trim().toLowerCase()==="mds (financial data)")||wb.SheetNames.find(n=>/mds/i.test(n)&&!/cost/i.test(n))||wb.SheetNames[0]||name; } }catch(e){ wb=null; }
+  if(!wb) wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true,dateNF:"yyyy-mm-dd"});
+  if(wb.Sheets[name]) wb.Sheets[name]=ws; else XLSX.utils.book_append_sheet(wb,ws,name);
+  const out=XLSX.write(wb,{type:"array",bookType:"xlsx"});
+  REGWB.sig=sig; REGWB.buf=out instanceof ArrayBuffer?out:out.buffer; return REGWB.buf;
+}
+const isSyncAdmin=()=>{ try{ return !!(SBME&&SBME.is_admin); }catch(e){ return false; } };
 
 /* ---- one sync, through Supabase ---- */
 async function fetchLive(fresh){
@@ -12652,15 +12664,16 @@ function srcStatus(){
 function srcCardHtml(){
   const ai=(liveCfg().bridge||""), d=SBLB||{};
   return `<section class="card wide" id="srcCard"><h3>MDS data source <span class="sub">one link, one sync — for the whole system and every user</span></h3>
-    <p class="note" style="margin:0 0 10px">The dashboard reads the MDS from this SharePoint / OneDrive link — on open, every 5 minutes and when you press Sync now.
-      One sync updates the register, the map, every analysis view and the Sales &amp; Land Bank cockpits, and every change is kept below as a dated version.
+    <p class="note" style="margin:0 0 10px">The <b>MDS register</b> in this system is the source of every page — the teams edit it directly. This link is read
+      <b>only when an administrator presses Sync</b>: that REPLACES the register for everyone with the online sheet (every change is kept as a dated version).
+      To work in the online sheet: MDS register → Export Excel, upload it to the online sheet, edit there, then Sync.
       The link is stored privately: only administrators can see or change it.</p>
     ${!SRC.loaded?`<p class="note">Loading…</p>`:`
     <div class="src-row"><label class="src-l">SharePoint / OneDrive Excel link <span class="sub">shared as “Anyone with the link · can view”</span>
       <span class="set-pw"><input id="srcLink" type="password" value="${esc(SRC.link||"")}" placeholder="https://…sharepoint.com/… (Copy link → Anyone with the link)" autocomplete="off"><button type="button" class="fp-link" id="srcShow">show</button></span></label>
       <button class="applybtn" id="srcSave">Save link</button></div>
     ${SRC.err?`<div class="alarm">${esc(SRC.err)}</div>`:""}
-    <div class="src-act"><button class="applybtn" id="srcSync" ${SRC.link?"":"disabled"}>Sync now</button>
+    <div class="src-act"><button class="applybtn" id="srcSync" ${SRC.link?"":"disabled"}>Sync from online sheet (replaces the register)</button>
       <label class="ebtn">Upload an MDS file (.xlsx)<input type="file" id="srcUp" accept=".xlsx,.xlsm" hidden></label>
       <span class="src-st" id="srcSt">${esc(srcStatus())}</span></div>
     <details class="src-more"><summary>Sales &amp; Land Bank display and the AI assistant</summary>
@@ -17826,7 +17839,8 @@ function ensureOrigin(){ if(empty()){ PL.plan.o=null; O=null; } frame(); }
 function commitLand(pts){ ensureOrigin(); pushUndo(); PL.plan.land={id:newId(),pts:pts.map(r9)}; PL.sel={t:"land",id:PL.plan.land.id}; changed(["land","plots"]); A.flash("Land: "+A.fArea(geoArea(PL.plan.land.pts))+" — now draw the roads"); }
 function commitRoad(pts){ ensureOrigin(); pushUndo(); const t=RT[PL.rt], rd={id:newId(),t:t.k,w:t.w,pts:pts.map(r9)}; PL.plan.roads.push(rd); joinRoads(rd); GR=null; PL.sel={t:"road",id:rd.id}; changed(["roads"]); }
 function commitPlot(pts){ ensureOrigin(); pushUndo(); const pl={id:newId(),code:nextCode(),pts:pts.map(r9)}; PL.plan.plots.push(pl); PL.sel={t:"plot",id:pl.id}; changed(["plots"]); return pl; }
-function nextCode(){ const p=PL.plan, L="ABCDEFGHJKLMNPQRSTUVWXYZ"[p.sec%24]||"Z"; const n=p.plots.filter(x=>String(x.code||"").startsWith(L+"-")).length+1; return L+"-"+String(n).padStart(2,"0"); }
+const SECL="ABCDEFGHJKLMNPQRSTUVWXYZ", secLetter=n=>n<24?SECL[n]:SECL[Math.floor(n/24)-1]+SECL[n%24];   // A…Z, then AA, AB…: a code never repeats
+function nextCode(){ const p=PL.plan, L=secLetter(p.sec); const n=p.plots.filter(x=>String(x.code||"").startsWith(L+"-")).length+1; return L+"-"+String(n).padStart(2,"0"); }
 function fitOnPlot(pl,k){ // the building fills the plot along its longest side, set back from the edges, at most half the plot area (the park rule)
   const P=pl.pts.map(Lc), KD=KIND(k); let bi=0, bl=0; for(let i=0;i<P.length;i++){ const l=lhyp(P[i],P[(i+1)%P.length]); if(l>bl){ bl=l; bi=i; } }
   const a=P[bi], b=P[(bi+1)%P.length]; let u=[(b[0]-a[0])/bl,(b[1]-a[1])/bl], v=[-u[1],u[0]]; let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;
@@ -17889,7 +17903,7 @@ function autoPlots(g){ const B=detectBlock(g); if(B.err){ A.flash(B.err); return
   const fin=PL.plan.roads.map(r=>({V:r.pts.map(Lc),w:r.w})).concat(srv.map(V=>({V,w:12})));
   const parts=avoid(S.plots,OB2.concat(strips),PL.target).filter(P=>S.plots.includes(P)||reach(P,fin)), cut=S.plots.length-parts.length;
   if(!parts.length){ A.flash(S.plots.length?"No room for plots here — the landscape fills this block":"This block is too small for plots of "+A.nf(PL.target,0)+" m²"); return; }
-  ensureOrigin(); pushUndo(); const p=PL.plan, letter="ABCDEFGHJKLMNPQRSTUVWXYZ"[p.sec%24]; p.sec++; const made=[];
+  ensureOrigin(); pushUndo(); const p=PL.plan, letter=secLetter(p.sec); p.sec++; const made=[];
   parts.forEach((P,i)=>{ const pl={id:newId(),code:letter+"-"+String(i+1).padStart(2,"0"),pts:(lArea(P)>0?P:P.slice().reverse()).map(c=>Gc(c[0],c[1]))}; p.plots.push(pl); made.push(pl); });
   srv.forEach(R=>{ const rd={id:newId(),t:"serv",w:12,pts:R.map(c=>Gc(c[0],c[1]))}; p.roads.push(rd); joinRoads(rd); }); GR=null;
   // a tree standing where a new service road runs is taken out
