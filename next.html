@@ -17728,7 +17728,7 @@ function subdivide(B,target){ // B: block polygon (local). Plots face the road a
   if(bi<0) bi=any; const a=B[bi], b=B[(bi+1)%B.length], L=lhyp(a,b), u=[(b[0]-a[0])/L,(b[1]-a[1])/L]; let v=[-u[1],u[0]]; const c=lCent(B); if((c[0]-a[0])*v[0]+(c[1]-a[1])*v[1]<0) v=[-v[0],-v[1]];
   let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9; B.forEach(p=>{ const s=(p[0]-a[0])*u[0]+(p[1]-a[1])*u[1], t=(p[0]-a[0])*v[0]+(p[1]-a[1])*v[1]; u0=Math.min(u0,s); u1=Math.max(u1,s); v0=Math.min(v0,t); v1=Math.max(v1,t); });
   // depth: one row, two rows back to back, or bands of two rows with a 12 m service road between them (so every plot faces a road)
-  const D=v1-v0, ideal=Math.sqrt(target*1.5), SR=12, out=[], srvV=[], rowsOf=[];
+  const D=v1-v0, ideal=Math.sqrt(target*1.5), SR=RT[2].w, out=[], srvV=[], rowsOf=[];
   const nearRoad=m=>roads.some(r=>{ for(let k=1;k<r.V.length;k++) if(projSeg(m,r.V[k-1],r.V[k]).d<=r.w/2+3) return true; return false; });
   let far=false; for(let i=0;i<B.length;i++){ const p=B[i], q=B[(i+1)%B.length], m=[(p[0]+q[0])/2,(p[1]+q[1])/2], tv=(m[0]-a[0])*v[0]+(m[1]-a[1])*v[1]; if(tv>v1-.15*D&&lhyp(p,q)>D*.3&&nearRoad(m)){ far=true; break; } }
   // rows as close to the ideal depth as possible; pairs of rows back to back with a 12 m service road between pairs.
@@ -18164,18 +18164,18 @@ function trimRound(o){ const c=Lc(o.c), R=o.r+3, O=[]; for(let i=0;i<24;i++){ co
 function plotAt(g){ const L=PL.plan.plots; for(let i=L.length-1;i>=0;i--) if(lInPoly(g,L[i].pts.map(Lc))) return L[i]; return null; }
 function autoPlots(g,qt){ const fl=m=>{ if(!qt) A.flash(m); }; const B=detectBlock(g); if(B.err){ fl(B.err); return; } const S=subdivide(B.poly,PL.target), OB2=keepClear(), OBr=keepClear(true);   // service roads do not swerve round single trees
   // a detour is scored by how many plots end up on a road with it
-  const lines=PL.plan.roads.map(r=>({V:r.pts.map(Lc),w:r.w})); S.roads.forEach(R=>segClear(R[0],R[1],OBr).forEach(s=>lines.push({V:s,w:12})));
+  const lines=PL.plan.roads.map(r=>({V:r.pts.map(Lc),w:r.w})); S.roads.forEach(R=>segClear(R[0],R[1],OBr).forEach(s=>lines.push({V:s,w:RT[2].w})));
   const reach=(P,ls)=>{ for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length]; for(let s=0;s<=4;s++){ const m=[a[0]+(b[0]-a[0])*s/4,a[1]+(b[1]-a[1])*s/4]; for(const r of ls) for(let k=1;k<r.V.length;k++) if(projSeg(m,r.V[k-1],r.V[k]).d<=r.w/2+4) return true; } } return false; };
-  const score=path=>{ const ls=lines.concat([{V:path,w:12}]);
+  const score=path=>{ const ls=lines.concat([{V:path,w:RT[2].w}]);
     const Q=avoid(S.plots,OB2.concat(stripsOf(path)),PL.target), n=Q.filter(P=>reach(P,ls)).length; return 2*n-(Q.length-n); };   // a plot left without a road counts against
   const srv=[], strips=[]; S.roads.forEach(R=>{ const o=srvRoute(R[0],R[1],OBr,score); srv.push(...o.roads); strips.push(...o.strips); });
   // a plot cut back by the landscape that is left with no road is dropped (an untouched one without a road stays, and shows orange)
-  const fin=PL.plan.roads.map(r=>({V:r.pts.map(Lc),w:r.w})).concat(srv.map(V=>({V,w:12})));
+  const fin=PL.plan.roads.map(r=>({V:r.pts.map(Lc),w:r.w})).concat(srv.map(V=>({V,w:RT[2].w})));
   const parts=avoid(S.plots,OB2.concat(strips),PL.target).filter(P=>S.plots.includes(P)||reach(P,fin)), cut=S.plots.length-parts.length;
   if(!parts.length){ fl(S.plots.length?"No room for plots here — the landscape fills this block":"This block is too small for plots of "+A.nf(PL.target,0)+" m²"); return; }
   ensureOrigin(); pushUndo(); const p=PL.plan, letter=secLetter(p.sec); p.sec++; const made=[];
   parts.forEach((P,i)=>{ const pl={id:newId(),code:letter+"-"+String(i+1).padStart(2,"0"),pts:(lArea(P)>0?P:P.slice().reverse()).map(c=>Gc(c[0],c[1]))}; p.plots.push(pl); made.push(pl); });
-  srv.forEach(R=>{ const rd={id:newId(),t:"serv",w:12,pts:R.map(c=>Gc(c[0],c[1]))}; p.roads.push(rd); joinRoads(rd); }); GR=null;
+  srv.forEach(R=>{ const rd={id:newId(),t:"serv",w:RT[2].w,pts:R.map(c=>Gc(c[0],c[1]))}; p.roads.push(rd); joinRoads(rd); }); GR=null;
   // a tree standing where a new service road runs is taken out
   const n0=p.items.length; p.items=p.items.filter(it=>{ if(!TREES.includes(it.k)) return true; const c=Lc(it.c); return !srv.some(R=>{ for(let k=1;k<R.length;k++) if(projSeg(c,R[k-1],R[k]).d<7) return true; return false; }); }); const felled=n0-p.items.length;
   PL.block={poly:B.poly,t:performance.now()}; changed(srv.length?["roads","plots","items"]:["plots"]); const tot=made.reduce((a,x)=>a+geoArea(x.pts),0);
