@@ -11821,6 +11821,7 @@ function edColsApply(){
   edCalcW(); const g=$("#edGrid"), h=$("#edHead"), b=$("#edBody"); if(!g||!h||!b) return;
   if(ED.cur&&EDHID.has((EDCOLS[ED.cur.c]||{}).k)) ED.cur={id:ED.cur.id,c:0};
   h.style.width=b.style.width=TOTALW+"px";
+  EDHID.forEach(k=>{ if(ED.cf) delete ED.cf[k]; if(ED.vs) delete ED.vs[k]; if(ED.sort&&ED.sort.k===k) ED.sort=null; });   /* a hidden column never filters or sorts the rows silently */
   edFilter(); h.innerHTML=edHeadHtml(); edPaint(true); edChrome(); edMarkSel();
   const t=$(".ed-title span"); if(t) t.textContent=fInt(ED.rows.length)+" rows · "+EDCOLS.length+" fields"+(EDHID.size?" ("+EDHID.size+" hidden)":"")+" · edit like Excel, then Save";
   const bt=$("#edCols"); if(bt) bt.innerHTML=edColsLabel();
