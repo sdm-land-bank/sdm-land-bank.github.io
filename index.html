@@ -973,6 +973,28 @@ body.no-matchfin #fpOn,body.no-matchfin .fp-panel,body.no-matchfin .fp-sec,body.
 .pl-sel{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line,#d9d9de);border-radius:10px;background:var(--panel,#fff);color:inherit;cursor:pointer;max-width:100%}
 .pdfo-box .pl-pick{display:flex;margin:12px 0 4px;justify-content:space-between}
 
+
+/* ---- V94 register columns + history ---- */
+.ec-n{display:inline-block;margin-left:5px;padding:0 6px;border-radius:99px;background:#fdecee;color:#9b1c2e;font-size:10.5px;font-weight:700}
+.ed-colpop{position:fixed;z-index:2147483000;background:var(--panel,#fff);border:1px solid var(--rule-2,#d9d9de);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.22);padding:12px;display:flex;flex-direction:column;gap:8px;max-height:min(70vh,560px)}
+.ed-colpop .cp-h b{font-size:13.5px;display:block} .ed-colpop .cp-h span{font-size:11.5px;color:var(--mute,#6e6e73);line-height:1.35;display:block;margin-top:2px}
+.ed-colpop input[type=search]{height:32px;border-radius:9px;border:1px solid var(--rule-2,#d9d9de);padding:0 10px;font:500 12.5px Inter,sans-serif;background:var(--panel,#fff);color:var(--ink,#1d1d1f)}
+.ed-colpop .cp-l{overflow:auto;flex:1;min-height:80px;display:flex;flex-direction:column}
+.ed-colpop .cp-l label{display:flex;align-items:center;gap:9px;padding:6px 6px;border-radius:8px;font-size:12.5px;cursor:pointer}
+.ed-colpop .cp-l label:hover{background:var(--n50,#f6f6f8)} .ed-colpop .cp-l label.lock{opacity:.65;cursor:default}
+.ed-colpop .cp-l label span{flex:1} .ed-colpop .cp-l label i{font-style:normal;font-size:10.5px;color:var(--mute,#6e6e73)}
+.ed-colpop .cp-e{padding:14px 6px;color:var(--mute,#6e6e73);font-size:12px}
+.ed-colpop .cp-f{display:flex;justify-content:space-between;gap:8px}
+.edh-ov{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;padding:18px}
+.edh-box{width:min(1180px,100%);max-height:calc(100dvh - 36px);background:var(--panel,#fff);border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.35);padding:18px;display:flex;flex-direction:column;gap:12px}
+.edh-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap} .edh-h b{font-size:16px;display:block} .edh-h span{font-size:12px;color:var(--mute,#6e6e73);display:block;margin-top:2px}
+.edh-bd{overflow:auto;flex:1;min-height:160px;display:flex;flex-direction:column;gap:10px}
+.edh-tbl{min-width:860px} .edh-tbl td em{display:block;font-style:normal;font-size:10.5px;color:var(--mute,#6e6e73);font-weight:500;font-family:Inter,sans-serif}
+.edh-was{color:#8a1f2c;word-break:break-word;max-width:260px} .edh-now{color:#1c7c3a;font-weight:600;word-break:break-word;max-width:260px}
+.aud-tbl.edh-tbl td:nth-child(1)::before{content:"When"}.aud-tbl.edh-tbl td:nth-child(2)::before{content:"User"}.aud-tbl.edh-tbl td:nth-child(3)::before{content:"Plot"}
+.aud-tbl.edh-tbl td:nth-child(4)::before{content:"Field"}.aud-tbl.edh-tbl td:nth-child(5)::before{content:"It was"}.aud-tbl.edh-tbl td:nth-child(6)::before{content:"Changed to"}
+@media (max-width:820px){ .edh-ov{padding:0;align-items:stretch} .edh-box{border-radius:0;max-height:100dvh;height:100dvh} }
+
 #sbGate{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:radial-gradient(1200px 600px at 20% 0%,#3a0d16 0%,#141416 60%);padding:16px}
 .sbg-box{width:min(380px,100%);background:#fff;border-radius:18px;padding:26px 24px 22px;box-shadow:0 40px 90px -30px rgba(0,0,0,.7);display:flex;flex-direction:column;gap:12px;color:#15171b}
 .sbg-box img{height:44px;align-self:flex-start}
@@ -11771,7 +11793,151 @@ function edAFOpen(k,btn){
   setTimeout(()=>document.addEventListener("mousedown",edAFOut,true),0);
 }
 
-const RH=24, SELW=44, TOTALW=SELW+EDCOLS.reduce((a,c)=>a+c.w,0);
+
+const RH=24, SELW=44;
+let TOTALW=SELW+EDCOLS.reduce((a,c)=>a+c.w,0);
+
+/* ============================================================================
+   V94 — hide / show register columns (kept in this browser, per signed-in person)
+   ========================================================================== */
+const EDHID=new Set(); let EDHID_USER=null;
+const edHidKey=()=>"sid.reg.hide.v1."+String((typeof SBME!=="undefined"&&SBME&&SBME.email)||"anon").toLowerCase();
+const edVis=()=>EDCOLS.map((c,i)=>[c,i]).filter(([c])=>!EDHID.has(c.k));
+function edCalcW(){ TOTALW=SELW+edVis().reduce((a,[c])=>a+c.w,0); }
+function edHidLoad(){
+  const key=edHidKey(); if(EDHID_USER===key) return; EDHID_USER=key; EDHID.clear();
+  try{ const a=JSON.parse(localStorage.getItem(key)||"[]"); if(Array.isArray(a)) a.forEach(k=>{ const c=colOf(k); if(c&&c!==EDCOLS[0]) EDHID.add(k); }); }catch(e){}
+  edCalcW();
+}
+function edHidSave(){ try{ if(EDHID.size) localStorage.setItem(edHidKey(),JSON.stringify([...EDHID])); else localStorage.removeItem(edHidKey()); }catch(e){} }
+/* the next visible column in a direction (arrow keys and Tab skip hidden columns) */
+function edStep(c,dc){
+  let n=Math.max(0,Math.min(EDCOLS.length-1,c+dc));
+  if(dc&&EDHID.has(EDCOLS[n].k)){ const s=dc>0?1:-1; while(n>=0&&n<EDCOLS.length&&EDHID.has(EDCOLS[n].k)) n+=s; if(n<0||n>=EDCOLS.length) return c; }
+  return n;
+}
+function edColsLabel(){ return EDHID.size?`Columns <span class="ec-n">${EDHID.size} hidden</span>`:"Columns"; }
+function edColsApply(){
+  edCalcW(); const g=$("#edGrid"), h=$("#edHead"), b=$("#edBody"); if(!g||!h||!b) return;
+  if(ED.cur&&EDHID.has((EDCOLS[ED.cur.c]||{}).k)) ED.cur={id:ED.cur.id,c:0};
+  h.style.width=b.style.width=TOTALW+"px";
+  EDHID.forEach(k=>{ if(ED.cf) delete ED.cf[k]; if(ED.vs) delete ED.vs[k]; if(ED.sort&&ED.sort.k===k) ED.sort=null; });   /* a hidden column never filters or sorts the rows silently */
+  edFilter(); h.innerHTML=edHeadHtml(); edPaint(true); edChrome(); edMarkSel();
+  const t=$(".ed-title span"); if(t) t.textContent=fInt(ED.rows.length)+" rows · "+EDCOLS.length+" fields"+(EDHID.size?" ("+EDHID.size+" hidden)":"")+" · edit like Excel, then Save";
+  const bt=$("#edCols"); if(bt) bt.innerHTML=edColsLabel();
+}
+function edColsClose(){ const p=$("#edColsPop"); if(p) p.remove(); document.removeEventListener("mousedown",edColsOut,true); document.removeEventListener("keydown",edColsKey,true); }
+function edColsOut(e){ const p=$("#edColsPop"); if(p&&!p.contains(e.target)&&!e.target.closest("#edCols")) edColsClose(); }
+function edColsKey(e){ if(e.key==="Escape") edColsClose(); }
+function edColsToggle(){
+  if($("#edColsPop")){ edColsClose(); return; }
+  const b=$("#edCols"); if(!b) return;
+  const p=document.createElement("div"); p.id="edColsPop"; p.className="ed-colpop";
+  p.innerHTML=`<div class="cp-h"><b>Columns</b><span>Tick what you want to see. This is kept on this device for you only — nobody else is affected.</span></div>
+    <input type="search" id="cpQ" placeholder="Find a column…" autocomplete="off"><div class="cp-l" id="cpL"></div>
+    <div class="cp-f"><button class="ebtn" id="cpAll">Show all</button><button class="ebtn pri" id="cpDone">Done</button></div>`;
+  document.body.appendChild(p);
+  const r=b.getBoundingClientRect(), w=Math.min(320,window.innerWidth-16);
+  p.style.width=w+"px"; p.style.left=Math.max(8,Math.min(r.left,window.innerWidth-w-8))+"px"; p.style.top=(r.bottom+6)+"px";
+  const L=$("#cpL"), Q=$("#cpQ");
+  const draw=()=>{ const q=Q.value.trim().toLowerCase();
+    L.innerHTML=EDCOLS.map((c,i)=>({c,i})).filter(({c})=>!q||c.label.toLowerCase().includes(q)).map(({c,i})=>
+      `<label class="${i===0?"lock":""}"><input type="checkbox" data-k="${esc(c.k)}" ${EDHID.has(c.k)?"":"checked"} ${i===0?"disabled":""}><span>${esc(c.label)}</span><i>${i===0?"always shown":colLetter(i)}</i></label>`).join("")||`<div class="cp-e">No column matches.</div>`; };
+  draw(); Q.oninput=draw; Q.focus();
+  L.onchange=e=>{ const i=e.target; if(!i.dataset.k) return; const k=i.dataset.k;
+    if(i.checked) EDHID.delete(k);
+    else { EDHID.add(k); let cleared=false;
+      if(ED.cf&&ED.cf[k]){ delete ED.cf[k]; cleared=true; } if(ED.vs&&ED.vs[k]){ delete ED.vs[k]; cleared=true; } if(ED.sort&&ED.sort.k===k){ ED.sort=null; cleared=true; }
+      if(cleared) toast("The filter / sort on that column was cleared"); }
+    edHidSave(); edColsApply(); };
+  $("#cpAll").onclick=()=>{ EDHID.clear(); edHidSave(); edColsApply(); draw(); };
+  $("#cpDone").onclick=edColsClose;
+  setTimeout(()=>{ document.addEventListener("mousedown",edColsOut,true); document.addEventListener("keydown",edColsKey,true); },0);
+}
+
+/* ============================================================================
+   V94 — register history: who changed what in the MDS register (one line per field)
+   ========================================================================== */
+const EDH={rows:[],more:false,busy:false,loaded:false,err:"",f:{q:"",by:"",kind:"reg",from:"",to:""}};
+const EDH_KIND={reg:["edit","add","remove"],mds:["mds"],both:["edit","add","remove","mds"]};
+function edhParams(extra){ const f=EDH.f, p={limit:50,actions:EDH_KIND[f.kind]||EDH_KIND.reg,...extra};
+  if(f.q) p.q=f.q; if(f.by) p.by=f.by; if(f.from) p.from=f.from; if(f.to) p.to=f.to; return p; }
+/* a log entry → one line per changed field: {a, field, was, now} */
+function edhLines(a){
+  if(a.action==="add") return [{a,field:"New row",was:"—",now:String(a.detail||"").replace(/^Added to the (register|MDS) · ?/,"")||"Added"}];
+  if(a.action==="remove") return [{a,field:"Row removed",was:a.from_status?audSt(a.from_status):"—",now:"—"}];
+  const out=[]; String(a.detail||"").split(" · ").forEach(seg=>{ const m=/^(.+?): (.*) → (.*)$/.exec(seg);
+    if(m) out.push({a,field:m[1],was:m[2],now:m[3]}); else if(seg) out.push({a,field:seg,was:"",now:""}); });
+  return out.length?out:[{a,field:"—",was:"",now:""}];
+}
+function edhBody(){
+  if(AUD.missing) return `<div class="mm-empty"><b>The change log is not switched on yet</b>An administrator runs step 8 (sql_8_audit.sql) in Supabase once.</div>`;
+  if(EDH.err) return `<div class="alarm"><b>Could not load:</b> ${esc(EDH.err)}</div>`;
+  if(!EDH.loaded) return `<div class="mm-empty"><b>Loading…</b></div>`;
+  if(!EDH.rows.length) return `<div class="mm-empty"><b>Nothing found</b>Register edits are logged from the day the change log was switched on. Try fewer filters.</div>`;
+  const lines=EDH.rows.flatMap(edhLines);
+  return `<div class="tablewrap aud-tw edh-tw"><table class="tbl aud-tbl edh-tbl"><thead><tr><th>When (Cairo)</th><th>User</th><th>Plot</th><th>Field</th><th>It was</th><th>Changed to</th></tr></thead><tbody>
+    ${lines.map(({a,field,was,now})=>`<tr class="k-${esc(a.action)}"><td class="aud-w">${audWhen(a.at)}</td><td>${audWho(a)}</td>
+      <td class="mono"><b>${esc(a.unit||"—")}</b><em>${esc(a.sheet||S.reg.parks[a.park]?.name||a.park||"")}${a.client?" · "+esc(a.client):""}</em></td>
+      <td><b>${esc(field)}</b></td><td class="edh-was">${esc(was)}</td><td class="edh-now">${esc(now)}</td></tr>`).join("")}
+  </tbody></table></div>
+  <div class="aud-more"><span>${fInt(EDH.rows.length)} change entr${EDH.rows.length===1?"y":"ies"} · ${fInt(lines.length)} line${lines.length===1?"":"s"}</span>${EDH.more?`<button class="ebtn" id="edhMore" ${EDH.busy?"disabled":""}>${EDH.busy?"Loading…":"Load 50 more"}</button>`:""}</div>`;
+}
+function edhPaint(){ const b=$("#edhBody"); if(!b) return; b.innerHTML=edhBody(); const m=$("#edhMore"); if(m) m.onclick=()=>edhLoad(true); }
+async function edhLoad(more){
+  if(EDH.busy) return; EDH.busy=true; EDH.err=""; if(more) edhPaint();
+  try{ const last=more&&EDH.rows.length?EDH.rows[EDH.rows.length-1].id:null, d=await audFind(edhParams(last?{before:last}:{}));
+    EDH.rows=more?EDH.rows.concat(d):d; EDH.more=d.length===50; EDH.loaded=true; }
+  catch(e){ EDH.err=AUD.missing?"":wfErr(e); EDH.loaded=true; }
+  EDH.busy=false; edhPaint();
+}
+function edhClose(){ const o=$("#edhOv"); if(o) o.remove(); document.removeEventListener("keydown",edhKey,true); }
+function edhKey(e){ if(e.key==="Escape"){ e.stopPropagation(); edhClose(); } }
+async function edhXls(){
+  const b=$("#edhXls"); if(!b||b.disabled) return; b.disabled=true; const lbl=b.textContent; let all=[];
+  try{ for(let i=0;i<10;i++){ b.textContent="Exporting… "+fInt(all.length); const last=all.length?all[all.length-1].id:null;
+      const d=await audFind(edhParams({limit:500,...(last?{before:last}:{})})); all=all.concat(d); if(d.length<500) break; }
+    const rows=all.flatMap(edhLines).map(({a,field,was,now})=>({"When (Cairo)":audWhen(a.at),"User":a.by_name||(a.by_email?"":"System"),"Email":a.by_email||"","Project":a.sheet||S.reg.parks[a.park]?.name||a.park||"",
+      "Plot":a.unit||"","Client":a.client||"","Field":field,"It was":was,"Changed to":now,"Action":AUD_ACT[a.action]||a.action}));
+    const wb=XLSX.utils.book_new(), ws=XLSX.utils.json_to_sheet(rows.length?rows:[{"When (Cairo)":"No entries for these filters"}]);
+    ws["!cols"]=[22,20,26,22,14,24,26,30,30,22].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,ws,"Register history");
+    XLSX.writeFile(wb,"SID_register_history_"+new Date().toISOString().slice(0,10)+".xlsx");
+    toast(fInt(rows.length)+" lines exported");
+  }catch(e){ toast("Could not export: "+wfErr(e),true); }
+  b.disabled=false; b.textContent=lbl;
+}
+function edhOpen(){
+  if($("#edhOv")) return;
+  const f=EDH.f, ppl=AUD.people||[];
+  const o=document.createElement("div"); o.id="edhOv"; o.className="edh-ov";
+  o.innerHTML=`<div class="edh-box" role="dialog" aria-label="MDS register history">
+    <div class="edh-h"><div><b>MDS register history</b><span>Every change made in the register — who, when (Cairo time), what it was and what it became · newest first</span></div>
+      <div class="aud-tb"><button class="ebtn" id="edhRef">Refresh</button><button class="ebtn" id="edhXls">Export to Excel</button><button class="ebtn" id="edhAll" title="The full change log (status requests and approvals too)">Full change log</button><button class="ebtn" id="edhX" aria-label="Close">Close</button></div></div>
+    <form class="aud-f" id="edhF" autocomplete="off" onsubmit="return false">
+      <input name="q" type="search" value="${esc(f.q)}" placeholder="Search plot, client, company, field…">
+      <select name="by"><option value="">All users</option>${ppl.map(u=>`<option value="${esc(u.email)}" ${u.email===f.by?"selected":""}>${esc(u.name||u.email)}</option>`).join("")}</select>
+      <select name="kind"><option value="reg" ${f.kind==="reg"?"selected":""}>Register edits</option><option value="mds" ${f.kind==="mds"?"selected":""}>MDS sheet sync / upload</option><option value="both" ${f.kind==="both"?"selected":""}>Both</option></select>
+      <label>From<input type="date" name="from" value="${esc(f.from)}"></label><label>To<input type="date" name="to" value="${esc(f.to)}"></label>
+      <button class="ebtn" type="button" id="edhClr">Clear</button></form>
+    <div id="edhBody" class="edh-bd">${edhBody()}</div></div>`;
+  document.body.appendChild(o);
+  o.addEventListener("mousedown",e=>{ if(e.target===o) edhClose(); });
+  $("#edhX").onclick=edhClose; document.addEventListener("keydown",edhKey,true);
+  const F=$("#edhF"); let t=null;
+  const read=()=>{ EDH.f={q:F.q.value.trim(),by:F.by.value,kind:F.kind.value,from:F.from.value,to:F.to.value}; };
+  F.q.oninput=()=>{ clearTimeout(t); t=setTimeout(()=>{ read(); edhLoad(false); },450); };
+  F.querySelectorAll("select,input[type=date]").forEach(el=>el.onchange=()=>{ read(); edhLoad(false); });
+  $("#edhClr").onclick=()=>{ EDH.f={q:"",by:"",kind:"reg",from:"",to:""}; F.reset(); F.q.value=""; F.by.value=""; F.kind.value="reg"; F.from.value=""; F.to.value=""; edhLoad(false); };
+  $("#edhRef").onclick=()=>{ AUD.people=null; audPeople().then(edhFillPeople); edhLoad(false); };
+  $("#edhXls").onclick=edhXls;
+  $("#edhAll").onclick=()=>{ edhClose(); AUD.pg.f={}; AUD.pg.loaded=false; try{ go("audit"); }catch(e){} };
+  audPeople().then(edhFillPeople); edhLoad(false);
+}
+function edhFillPeople(){ const s=$("#edhF select[name=by]"); if(!s||!AUD.people) return; const cur=s.value||EDH.f.by;
+  s.innerHTML=`<option value="">All users</option>`+AUD.people.map(u=>`<option value="${esc(u.email)}" ${u.email===cur?"selected":""}>${esc(u.name||u.email)}</option>`).join(""); }
+function edColsWire(){ const c=$("#edCols"); if(c) c.onclick=edColsToggle; const h=$("#edHist"); if(h) h.onclick=edhOpen; }
+
 const ED={rows:null, byId:new Map(), orig:new Map(), added:new Set(), deleted:new Set(), checked:new Set(),
   view:[], idx:new Map(), q:"", cf:{}, show:"all", sort:null, cur:null, undo:[], editing:null,
   scroll:0, scrollL:0, range:null};
@@ -11881,7 +12047,7 @@ function edFilter(){
       if(!String(x??"").toLowerCase().includes(s)) return false;
     }
     if(q){
-      const hay=EDCOLS.filter(c=>!regHide(c.k)).map(c=>c.k==="park"?(S.reg.parks[r.park]?.name||r.park):c.k==="status"?(STATUS[r.status]?.label||r.status):r[c.k])
+      const hay=EDCOLS.filter(c=>!regHide(c.k)&&!EDHID.has(c.k)).map(c=>c.k==="park"?(S.reg.parks[r.park]?.name||r.park):c.k==="status"?(STATUS[r.status]?.label||r.status):r[c.k])
         .filter(v=>v!=null).join(" ").toLowerCase();
       if(!hay.includes(q)) return false;
     }
@@ -11900,17 +12066,20 @@ function edFilter(){
 }
 
 function viewEditor(){
-  edInit();
+  edHidLoad(); edInit();
   const lists=["sheet","sector","landType","phase","soldBy","opsStatus","quarter"];
   return `<div class="ed" id="ed">
     <div class="ed-bar">
-      <div class="ed-title"><b>MDS register</b><span>${fInt(ED.rows.length)} rows · ${EDCOLS.length} fields · edit like Excel, then Save</span></div>
+      <div class="ed-title"><b>MDS register</b><span>${fInt(ED.rows.length)} rows · ${EDCOLS.length} fields${EDHID.size?` (${EDHID.size} hidden)`:""} · edit like Excel, then Save</span></div>
       <span class="spacer"></span>
       <button class="ebtn" id="edAdd"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 1.5v9M1.5 6h9"/></svg>Add row</button>
       <button class="ebtn danger" id="edDel" disabled>Delete</button>
       <button class="ebtn" id="edUndo" title="Undo (Ctrl+Z)">Undo</button>
       <span class="ed-sep"></span>
       <button class="ebtn" id="edLock">${regBtnHtml()}</button><button class="ebtn" id="edLockPw" ${REG_LOCK.open||isSyncAdmin()?"":"hidden"} title="Administrators: set a new cost & GP password">${REG_LOCK.open?"Change password":"Reset password"}</button>
+      <span class="ed-sep"></span>
+      <button class="ebtn" id="edCols" title="Hide or show columns — only for you, on this device">${edColsLabel()}</button>
+      <button class="ebtn" id="edHist" title="Who changed what in the register, and when">History</button>
       <span class="ed-sep"></span>
       <button class="ebtn" id="edXlsx" title="The register as an MDS-format workbook — it can be dropped back into Data health">Export Excel</button>
       <button class="ebtn" id="edHtml" title="A copy of this dashboard file with the saved register built in, to share with the team">Download dashboard</button>
@@ -11941,15 +12110,15 @@ function viewEditor(){
 function edHeadHtml(){
   const sortMark=c=>ED.sort&&ED.sort.k===c.k?(ED.sort.dir>0?"▲":"▼"):"";
   const vis=ED.view.length, allChecked=vis&&ED.view.every(r=>ED.checked.has(r._id));
-  return `<div class="eh-row lt-row"><div class="eh lt corner c0 stick" style="width:${SELW}px"></div>${EDCOLS.map((c,i)=>`<div class="eh lt ${i===0?"c1 stick":""}" data-c="${i}" style="width:${c.w}px">${colLetter(i)}</div>`).join("")}</div>
+  return `<div class="eh-row lt-row"><div class="eh lt corner c0 stick" style="width:${SELW}px"></div>${edVis().map(([c,i])=>`<div class="eh lt ${i===0?"c1 stick":""}" data-c="${i}" style="width:${c.w}px">${colLetter(i)}</div>`).join("")}</div>
   <div class="eh-row">
       <div class="eh c0 stick" style="width:${SELW}px" title="Select all shown rows"><input type="checkbox" id="edAll" ${allChecked?"checked":""}></div>
-      ${EDCOLS.map((c,i)=>`<div class="eh ${i===0?"c1 stick":""} ${ED.sort&&ED.sort.k===c.k?"sorted":""} ${c.type==="num"||c.type==="int"?"r":""}"
+      ${edVis().map(([c,i])=>`<div class="eh ${i===0?"c1 stick":""} ${ED.sort&&ED.sort.k===c.k?"sorted":""} ${c.type==="num"||c.type==="int"?"r":""}"
           data-k="${c.k}" style="width:${c.w}px" title="Sort by ${esc(c.label)}">${esc(c.label)}${c.req?'<span class="rq">*</span>':""}<span class="so">${sortMark(c)}</span><span class="afb ${ED.vs&&ED.vs[c.k]&&ED.vs[c.k].size&&!regHide(c.k)?"on":""}" data-af="${c.k}" title="Filter ${esc(c.label)}">▾</span></div>`).join("")}
     </div>
     <div class="eh-row">
       <div class="ef c0 stick" style="width:${SELW}px">${fInt(vis)}</div>
-      ${EDCOLS.map((c,i)=>{ const v=ED.cf[c.k]??"", on=v!=="";
+      ${edVis().map(([c,i])=>{ const v=ED.cf[c.k]??"", on=v!=="";
         const ctl=c.type==="enum"
           ? `<select data-k="${c.k}"><option value="">All</option>${edOpts(c.k).map(([x,l])=>`<option value="${esc(x)}" ${v===x?"selected":""}>${esc(l)}</option>`).join("")}<option value="__blank" ${v==="__blank"?"selected":""}>(blank)</option></select>`
           : `<input data-k="${c.k}" value="${esc(v)}"${regHide(c.k)?" disabled title=\"Protected — unlock cost and GP first\"":""} placeholder="${c.type==="num"||c.type==="int"?">5000 · 1000-3000":c.type==="date"?"2025-":"Filter…"}">`;
@@ -11962,7 +12131,7 @@ function edRowHtml(r,i){
   let h=`<div class="er${cls}" data-id="${id}" style="top:${i*RH}px;width:${TOTALW}px">
     <div class="ec c0 stick" style="width:${SELW}px" title="${isNew?"New row":edMissing(r)?"Needs park, unit and area":"Double-click to open the full record"}">
       <input type="checkbox" tabindex="-1" ${ED.checked.has(id)?"checked":""}><span>${isNew?"new":edMissing(r)?"!":i+1}</span></div>`;
-  EDCOLS.forEach((c,ci)=>{
+  edVis().forEach(([c,ci])=>{
     const dirty=!isNew&&o&&!edEq(o[c.k],r[c.k]);
     const sel=ED.cur&&ED.cur.id===id&&ED.cur.c===ci;
     h+=`<div class="ec ${c.type}${ci===0?" c1 stick":""}${dirty?" dirty":""}${sel?" sel":""}" data-c="${ci}" style="width:${c.w}px"${
@@ -12003,7 +12172,7 @@ function edEnsureVisible(){
   else if(top+RH>g.scrollTop+g.clientHeight-headH) g.scrollTop=top+RH-(g.clientHeight-headH);
   const ci=ED.cur.c;
   if(ci>0){
-    let left=SELW; for(let j=0;j<ci;j++) left+=EDCOLS[j].w;
+    let left=SELW; for(let j=0;j<ci;j++) left+=EDHID.has(EDCOLS[j].k)?0:EDCOLS[j].w;
     const stick=SELW+EDCOLS[0].w, w=EDCOLS[ci].w;
     if(left-stick<g.scrollLeft) g.scrollLeft=left-stick;
     else if(left+w>g.scrollLeft+g.clientWidth) g.scrollLeft=left+w-g.clientWidth;
@@ -12012,7 +12181,7 @@ function edEnsureVisible(){
 function edMove(dr,dc){
   if(!ED.view.length) return;
   const i=ED.cur?ED.idx.get(ED.cur.id)??0:0, c=ED.cur?ED.cur.c:0;
-  const ni=Math.max(0,Math.min(ED.view.length-1,i+dr)), nc=Math.max(0,Math.min(EDCOLS.length-1,c+dc));
+  const ni=Math.max(0,Math.min(ED.view.length-1,i+dr)), nc=edStep(c,dc);
   ED.cur={id:ED.view[ni]._id,c:nc};
   edEnsureVisible(); edPaint(false); edMarkSel();
 }
@@ -12290,13 +12459,14 @@ function wireEditor(){
     const lines=t.replace(/\r/g,"").replace(/\n$/,"").split("\n").map(l=>l.split("\t"));
     const i0=ED.idx.get(ED.cur.id), c0=ED.cur.c, gr=[]; let bad=0;
     lines.forEach((cells,di)=>{ const r=ED.view[i0+di]; if(!r) return;
-      cells.forEach((raw,dj)=>{ const c=EDCOLS[c0+dj]; if(!c) return;
+      cells.forEach((raw,dj)=>{ const pv=edVis(), vi0=pv.findIndex(([,x])=>x===c0), c=(pv[vi0+dj]||[])[0]; if(!c) return;
         const p=edParse(c,raw); if(p.err||(c.req&&p.v==null)){ bad++; return; } edSetG(r,c.k,p.v,gr); }); });
     if(gr.length) ED.undo.push(gr);
     edPaint(true); edChrome();
     toast(`Pasted into ${fInt(new Set(gr.map(x=>x.id+"|"+x.k)).size)} cell(s)`+(bad?` · ${bad} skipped (not valid for that column)`:""),!!bad&&!gr.length);
   });
   $("#edAdd").onclick=()=>openRowForm(null);
+  edColsWire();
   $("#edDel").onclick=edDeleteToggle;
   $("#edUndo").onclick=edUndo;
   $("#edSave").onclick=edSave;
