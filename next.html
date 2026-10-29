@@ -17321,8 +17321,9 @@ const savePos=()=>{ try{ localStorage.setItem(POSK,JSON.stringify(POS)); }catch(
 const PTITLE={skTools:"Tools",skTop:"Top bar",skCard:"Shape card",plTools:"Tools",plOpt:"Options",plKpi:"Plan numbers",plCard:"Card",plLive:"Drawing",plPlans:"Drawings",plRules:"Park rules"};
 function pinAt(el,l,t,auto){ const w=el.offsetWidth,h=el.offsetHeight; if(!el.style.getPropertyValue("width")&&!el.classList.contains("sk-min")&&w){ el.style.setProperty("width",Math.ceil(w)+"px","important"); el.dataset.fw="1"; } l=Math.max(4,Math.min(innerWidth-w-4,l)); t=Math.max(4,Math.min(innerHeight-Math.min(h,40)-4,t)); const st=el.style;
   st.setProperty("left",l+"px","important"); st.setProperty("top",t+"px","important"); st.setProperty("right","auto","important"); st.setProperty("bottom","auto","important"); st.setProperty("transform","none","important"); st.setProperty("animation","none","important");
+  const top=t; if(!el.classList.contains("sk-min")&&el.scrollHeight+top>innerHeight-8&&el.id!=="skCompass"){ el.style.setProperty("max-height",Math.max(120,innerHeight-top-8)+"px","important"); el.style.setProperty("overflow-y","auto","important"); el.dataset.mh="1"; } else if(el.dataset.mh){ el.style.removeProperty("max-height"); el.style.removeProperty("overflow-y"); delete el.dataset.mh; }
   if(auto){ el.dataset.auto="1"; delete el.dataset.moved; } else { el.dataset.moved="1"; delete el.dataset.auto; } return [l,t]; }
-function unpin(el,keepAnim){ ["left","top","right","bottom","transform"].concat(keepAnim?[]:["animation"]).forEach(p=>el.style.removeProperty(p)); if(el.dataset.fw){ el.style.removeProperty("width"); delete el.dataset.fw; } delete el.dataset.moved; delete el.dataset.auto; }
+function unpin(el,keepAnim){ ["left","top","right","bottom","transform"].concat(keepAnim?[]:["animation"]).forEach(p=>el.style.removeProperty(p)); if(el.dataset.fw){ el.style.removeProperty("width"); delete el.dataset.fw; } if(el.dataset.mh){ el.style.removeProperty("max-height"); el.style.removeProperty("overflow-y"); delete el.dataset.mh; } delete el.dataset.moved; delete el.dataset.auto; }
 function sizeTo(el,w,h){ const st=el.style; if(w) st.setProperty("width",Math.max(120,Math.min(innerWidth-8,w))+"px","important"); if(h){ st.setProperty("height",Math.max(60,Math.min(innerHeight-8,h))+"px","important"); st.setProperty("max-height","none","important"); st.setProperty("overflow","auto","important"); } }
 function unsize(el){ ["width","height","max-height","overflow"].forEach(p=>el.style.removeProperty(p)); }
 const rec=id=>{ let r=POS[id]; if(Array.isArray(r)) r={p:r}; return r||{}; };
@@ -17357,12 +17358,11 @@ function movable(el,id,grip){ if(!el||el.dataset.mv) return; el.dataset.mv=id; e
 function resetLayout(){ POS={}; savePos(); document.querySelectorAll("#skUI .sk-mv").forEach(el=>{ unpin(el); unsize(el); el.classList.remove("sk-min"); const b=el.querySelector(".sk-mn"); if(b) b.textContent="–"; }); arrangeSoon(); flash("Panels are back where they started"); }
 // panels nobody has placed are moved so that none sits on top of another (the top bar and the tool bar stay where they are)
 let arrT=0; function arrangeSoon(){ cancelAnimationFrame(arrT); arrT=requestAnimationFrame(()=>requestAnimationFrame(arrange)); }
-const ORDER=["skTop","skTools","plTools","plOpt","plPlans","plKpi","plRules","plCard","skCard","plLive"];
+const ORDER=["skTop","skTools","plTools","plOpt","plPlans","plKpi","plRules","plCard","skCard","plLive","compass"];
 function arrange(){ const all=[...document.querySelectorAll("#skUI .sk-mv")].filter(el=>el.offsetParent!==null&&!el.hidden);
   all.forEach(el=>{ if(el.dataset.auto) unpin(el,true); else if(!el.dataset.moved) el.style.setProperty("animation","none","important"); });
   const ord=all.slice().sort((a,b)=>{ const i=ORDER.indexOf(a.dataset.mv), j=ORDER.indexOf(b.dataset.mv); return (i<0?99:i)-(j<0?99:j); });
   const placed=[], G=8, ov=(a,b)=>!(a.r+G<=b.l||b.r+G<=a.l||a.b+G<=b.t||b.b+G<=a.t), box=el=>{ const r=el.getBoundingClientRect(); return {l:r.left,t:r.top,r:r.right,b:r.bottom,w:r.width,h:r.height}; };
-  const cmp=document.querySelector("#skCompass"); if(cmp&&cmp.offsetParent) placed.push(box(cmp));
   ord.forEach(el=>{ const b=box(el); if(el.dataset.moved||!placed.some(p=>ov(p,b))){ placed.push(b); return; }
     const C=[]; placed.forEach(p=>{ C.push([b.l,p.b+G],[b.l,p.t-b.h-G],[p.r+G,b.t],[p.l-b.w-G,b.t],[p.l,p.b+G],[p.r-b.w,p.b+G]); });
     let best=null, bd=1e18; C.forEach(([x,y])=>{ if(x<4||y<4||x+b.w>innerWidth-4||y+Math.min(b.h,160)>innerHeight-4) return; const nb={l:x,t:y,r:x+b.w,b:y+b.h}; if(placed.some(p=>ov(p,nb))) return; const d=Math.hypot(x-b.l,y-b.t); if(d<bd){ bd=d; best=[x,y]; } });
