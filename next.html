@@ -17363,7 +17363,8 @@ function arrange(){ const all=[...document.querySelectorAll("#skUI .sk-mv")].fil
   all.forEach(el=>{ if(el.dataset.auto) unpin(el,true); else if(!el.dataset.moved) el.style.setProperty("animation","none","important"); });
   const ord=all.slice().sort((a,b)=>{ const i=ORDER.indexOf(a.dataset.mv), j=ORDER.indexOf(b.dataset.mv); return (i<0?99:i)-(j<0?99:j); });
   const placed=[], G=8, ov=(a,b)=>!(a.r+G<=b.l||b.r+G<=a.l||a.b+G<=b.t||b.b+G<=a.t), box=el=>{ const r=el.getBoundingClientRect(); return {l:r.left,t:r.top,r:r.right,b:r.bottom,w:r.width,h:r.height}; };
-  ord.forEach(el=>{ const b=box(el); if(el.dataset.moved||!placed.some(p=>ov(p,b))){ placed.push(b); return; }
+  ord.filter(el=>el.dataset.moved).forEach(el=>placed.push(box(el)));   // panels placed by hand stay put; the others make room for them
+  ord.filter(el=>!el.dataset.moved).forEach(el=>{ const b=box(el); if(!placed.some(p=>ov(p,b))){ placed.push(b); return; }
     const C=[]; placed.forEach(p=>{ C.push([b.l,p.b+G],[b.l,p.t-b.h-G],[p.r+G,b.t],[p.l-b.w-G,b.t],[p.l,p.b+G],[p.r-b.w,p.b+G]); });
     let best=null, bd=1e18; C.forEach(([x,y])=>{ if(x<4||y<4||x+b.w>innerWidth-4||y+Math.min(b.h,160)>innerHeight-4) return; const nb={l:x,t:y,r:x+b.w,b:y+b.h}; if(placed.some(p=>ov(p,nb))) return; const d=Math.hypot(x-b.l,y-b.t); if(d<bd){ bd=d; best=[x,y]; } });
     if(best){ pinAt(el,best[0],best[1],true); placed.push(box(el)); return; }
@@ -18496,7 +18497,7 @@ function masterPlan(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land firs
       buf.forEach(Q=>{ const a=[(Q[0][0]+Q[3][0])/2,(Q[0][1]+Q[3][1])/2], b=[(Q[1][0]+Q[2][0])/2,(Q[1][1]+Q[2][1])/2]; rowPos([a,b],13,6).forEach((sp2,i)=>{ if(add.length<900) add.push(placeObject(i%3===2?"shrub":"tree",sp2.p,0)); }); });
       p.items.push(...add); }
     // 7. services and utilities: the plots nearest the main entrance until the budget's shares are reached
-    const bud=prof().bud, MGc=MG.c, byD=p.plots.map(x=>({x,d:lhyp(lCent(x.pts.map(Lc)),MGc),a:geoArea(x.pts)})).sort((a2,b2)=>a2.d-b2.d); let sv=0, ut=0;
+    const bud=prof().bud, MGc=MG.c, small=MB.w*MB.d*2.2, byD=p.plots.map(x=>({x,d:lhyp(lCent(x.pts.map(Lc)),MGc),a:geoArea(x.pts)})).sort((a2,b2)=>(a2.a>small)-(b2.a>small)||a2.d-b2.d);   // services take the small plots nearest the main entrance let sv=0, ut=0;
     byD.forEach(o=>{ if(sv<la*(+bud.svc||0)/100*.9){ o.x.use="svc"; o.x.ind="Services"; sv+=o.a; } else if(ut<la*(+bud.util||0)/100*.9){ o.x.use="util"; o.x.ind=undefined; ut+=o.a; } });
     // 8. phases: blocks nearest the main entrance first, half the plot area in Phase 1; blocks coded A1, B1 … then A2, B2 …
     const blks={}; p.plots.forEach(x=>{ const k=x.blk||x.code.split("-")[0]; (blks[k]=blks[k]||[]).push(x); });
