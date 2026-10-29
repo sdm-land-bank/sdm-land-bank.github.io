@@ -18744,13 +18744,14 @@ function masterPlan(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw 
       if(!lInPoly(c,inner)||roadDist(c,Rd2)<4||p.plots.some(x2=>lInPoly(c,x2.pts.map(Lc)))||p.green.some(x2=>lInPoly(c,x2.pts.map(Lc)))||bad.some(q=>lhyp(q,c)<stepS*1.2)) continue;
       if(detectBlock(c).err) continue;   // a point in a gap between plots or on a passage has no block to fill: it must not use up one of the 90 tries (on a tilted land most of them did, and the real blocks were never reached)
       tries++; try{ const m=autoPlots(c,true); if(TR) TR[TR.length-1].res=m&&m.length||0; if(m&&m.length){ made.plots+=m.length; made.sectors++; } else bad.push(c); }catch(er){ console.warn("cell",er); bad.push(c); } }
+    if(TR) window.__mpStage={afterFill:p.plots.length,greens:p.green.length};
     // 5b. the plan check: no plot on a road, on the landscape or on another plot
     const cor1=COR(), Gs=p.green.map(x=>x.pts.map(Lc)); let rm=0;
     p.plots=p.plots.filter(x=>{ if(x.pin) return true; const Q=x.pts.map(Lc); if(cor1.some(K=>overlap(Q,K)>.02)||Gs.some(K=>overlap(Q,K)>.02)){ rm++; return false; } return true; });
     for(let i=0;i<p.plots.length;i++){ const Qi=p.plots[i].pts.map(Lc); for(let j=p.plots.length-1;j>i;j--){ if(overlap(p.plots[j].pts.map(Lc),Qi)>.02){ if(p.plots[j].pin){ if(!p.plots[i].pin){ p.plots.splice(i,1); i--; rm++; break; } continue; } p.plots.splice(j,1); rm++; } } }
-    made.removed=rm;
+    made.removed=rm; if(TR) window.__mpStage.afterOverlap=p.plots.length, window.__mpStage.removedOverlap=rm;
     // a leftover piece with no road becomes open green, as on the approved plans
-    GR=null; PL.ver++; const na=new Set(noAccess()); p.plots=p.plots.filter(x=>{ if(x.pin||!na.has(x.id)) return true; p.green.push({id:newId(),k:"lawn",pts:x.pts}); return false; });
+    GR=null; PL.ver++; const na=new Set(noAccess()); p.plots=p.plots.filter(x=>{ if(x.pin||!na.has(x.id)) return true; p.green.push({id:newId(),k:"lawn",pts:x.pts}); return false; }); if(TR) window.__mpStage.afterNoAccess=p.plots.length;
     // 5c. green pockets: odd corner plots (cut corners, slanted block ends, under-size) become lawn until the green share is reached
     const gTarget=la*(+prof().bud.green||0)/100; let gNow=p.green.reduce((q2,x)=>q2+geoArea(x.pts),0);
     const modArea=x=>x.mod&&MODS[x.mod]?MODS[x.mod].w*MODS[x.mod].d*(x.n||1):null, odd=p.plots.map(x=>{ const ar=geoArea(x.pts), ma=modArea(x); return {x,ar,sc:x.pin?0:(ma&&ar<ma*.6?2:0)}; }).filter(o=>o.sc>0).sort((a2,b2)=>b2.sc-a2.sc||a2.ar-b2.ar);
