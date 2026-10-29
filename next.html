@@ -17319,10 +17319,10 @@ setInterval(()=>{ try{ if(typeof map!=="undefined"&&map&&map.addControl&&map.get
 const POSK="sk.pos.v2"; let POS={}; try{ POS=JSON.parse(localStorage.getItem(POSK)||"{}")||{}; }catch(e){}
 const savePos=()=>{ try{ localStorage.setItem(POSK,JSON.stringify(POS)); }catch(e){} };
 const PTITLE={skTools:"Tools",skTop:"Top bar",skCard:"Shape card",plTools:"Tools",plOpt:"Options",plKpi:"Plan numbers",plCard:"Card",plLive:"Drawing",plPlans:"Drawings",plRules:"Park rules"};
-function pinAt(el,l,t,auto){ const w=el.offsetWidth,h=el.offsetHeight; l=Math.max(4,Math.min(innerWidth-w-4,l)); t=Math.max(4,Math.min(innerHeight-Math.min(h,40)-4,t)); const st=el.style;
+function pinAt(el,l,t,auto){ const w=el.offsetWidth,h=el.offsetHeight; if(!el.style.getPropertyValue("width")&&!el.classList.contains("sk-min")&&w){ el.style.setProperty("width",Math.ceil(w)+"px","important"); el.dataset.fw="1"; } l=Math.max(4,Math.min(innerWidth-w-4,l)); t=Math.max(4,Math.min(innerHeight-Math.min(h,40)-4,t)); const st=el.style;
   st.setProperty("left",l+"px","important"); st.setProperty("top",t+"px","important"); st.setProperty("right","auto","important"); st.setProperty("bottom","auto","important"); st.setProperty("transform","none","important"); st.setProperty("animation","none","important");
   if(auto){ el.dataset.auto="1"; delete el.dataset.moved; } else { el.dataset.moved="1"; delete el.dataset.auto; } return [l,t]; }
-function unpin(el,keepAnim){ ["left","top","right","bottom","transform"].concat(keepAnim?[]:["animation"]).forEach(p=>el.style.removeProperty(p)); delete el.dataset.moved; delete el.dataset.auto; }
+function unpin(el,keepAnim){ ["left","top","right","bottom","transform"].concat(keepAnim?[]:["animation"]).forEach(p=>el.style.removeProperty(p)); if(el.dataset.fw){ el.style.removeProperty("width"); delete el.dataset.fw; } delete el.dataset.moved; delete el.dataset.auto; }
 function sizeTo(el,w,h){ const st=el.style; if(w) st.setProperty("width",Math.max(120,Math.min(innerWidth-8,w))+"px","important"); if(h){ st.setProperty("height",Math.max(60,Math.min(innerHeight-8,h))+"px","important"); st.setProperty("max-height","none","important"); st.setProperty("overflow","auto","important"); } }
 function unsize(el){ ["width","height","max-height","overflow"].forEach(p=>el.style.removeProperty(p)); }
 const rec=id=>{ let r=POS[id]; if(Array.isArray(r)) r={p:r}; return r||{}; };
@@ -17333,7 +17333,7 @@ function movable(el,id,grip){ if(!el||el.dataset.mv) return; el.dataset.mv=id; e
   const rsz=document.createElement("div"); rsz.className="sk-rs"; rsz.title="Drag to resize"; el._rs=rsz;
   chrome(el,id,bar); new MutationObserver(()=>chrome(el,id,bar)).observe(el,{childList:true});
   const R=rec(id); if(R.m) el.classList.add("sk-min");
-  bar.querySelector(".sk-mn").onclick=e=>{ e.stopPropagation(); const m=!el.classList.contains("sk-min"); el.classList.toggle("sk-min",m); bar.querySelector(".sk-mn").textContent=m?"+":"–"; bar.querySelector(".sk-mn").title=m?"Open":"Minimise"; const r=rec(id); r.m=m; POS[id]=r; savePos(); arrangeSoon(); };
+  bar.querySelector(".sk-mn").onclick=e=>{ e.stopPropagation(); const m=!el.classList.contains("sk-min"); el.classList.toggle("sk-min",m); delete el.dataset.amin; bar.querySelector(".sk-mn").textContent=m?"+":"–"; bar.querySelector(".sk-mn").title=m?"Open":"Minimise"; const r=rec(id); r.m=m; POS[id]=r; savePos(); arrangeSoon(); };
   if(R.m){ bar.querySelector(".sk-mn").textContent="+"; bar.querySelector(".sk-mn").title="Open"; }
   let st=null; const interactive=t=>t&&t.closest&&t.closest("button,input,select,textarea,a,label,[contenteditable]");
   el.addEventListener("pointerdown",e=>{ if(e.button>0) return; const onBar=e.target.closest&&e.target.closest(".sk-bar"); if(e.target.closest&&e.target.closest(".sk-mn")) return;
@@ -17350,6 +17350,7 @@ function movable(el,id,grip){ if(!el||el.dataset.mv) return; el.dataset.mv=id; e
   el.addEventListener("pointerup",end); el.addEventListener("pointercancel",end);
   bar.addEventListener("dblclick",e=>{ if(e.target.closest(".sk-mn")) return; unpin(el); unsize(el); el.classList.remove("sk-min"); bar.querySelector(".sk-mn").textContent="–"; delete POS[id]; savePos(); arrangeSoon(); });
   new MutationObserver(()=>arrangeSoon()).observe(el,{attributes:true,attributeFilter:["hidden"]});
+  smallStart(el);
   if(R.s) requestAnimationFrame(()=>{ if(el.isConnected) sizeTo(el,R.s[0],R.s[1]); });
   if(R.p) requestAnimationFrame(()=>{ if(el.isConnected) pinAt(el,R.p[0],R.p[1]); });
   arrangeSoon(); }
@@ -17365,7 +17366,14 @@ function arrange(){ const all=[...document.querySelectorAll("#skUI .sk-mv")].fil
   ord.forEach(el=>{ const b=box(el); if(el.dataset.moved||!placed.some(p=>ov(p,b))){ placed.push(b); return; }
     const C=[]; placed.forEach(p=>{ C.push([b.l,p.b+G],[b.l,p.t-b.h-G],[p.r+G,b.t],[p.l-b.w-G,b.t],[p.l,p.b+G],[p.r-b.w,p.b+G]); });
     let best=null, bd=1e18; C.forEach(([x,y])=>{ if(x<4||y<4||x+b.w>innerWidth-4||y+Math.min(b.h,160)>innerHeight-4) return; const nb={l:x,t:y,r:x+b.w,b:y+b.h}; if(placed.some(p=>ov(p,nb))) return; const d=Math.hypot(x-b.l,y-b.t); if(d<bd){ bd=d; best=[x,y]; } });
-    if(best){ pinAt(el,best[0],best[1],true); placed.push(box(el)); } else placed.push(b); }); }
+    if(best){ pinAt(el,best[0],best[1],true); placed.push(box(el)); return; }
+    // no free room: fold a panel that can wait (plan numbers, then the drawings list) instead of covering another one
+    const fold=["plKpi","plPlans"].map(id=>all.find(x=>x.dataset.mv===id&&!x.dataset.moved&&!x.classList.contains("sk-min"))).find(Boolean);
+    if(fold&&!arrange.depth){ autoMin(fold); arrange.depth=1; arrange(); arrange.depth=0; return; }
+    placed.push(b); }); }
+function autoMin(el){ el.classList.add("sk-min"); el.dataset.amin="1"; const b=el.querySelector(".sk-mn"); if(b){ b.textContent="+"; b.title="Open"; } }
+// small screens: the plan numbers start folded (the Rules panel shows the same budget)
+function smallStart(el){ const r=rec(el.dataset.mv); if(r.m==null&&(innerWidth<1180||innerHeight<760)&&el.dataset.mv==="plKpi") autoMin(el); }
 
 addEventListener("resize",()=>{ document.querySelectorAll("#skUI .sk-mv[data-moved]").forEach(el=>{ const r=el.getBoundingClientRect(); pinAt(el,r.left,r.top); }); arrangeSoon(); });
 
