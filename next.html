@@ -18720,7 +18720,7 @@ function masterPlan(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw 
     const ob2=obbOf(CCW);
     // 4. landscape the SDM way (Industria October / Sadat): a green boulevard on both sides of the main road, green squares at
     //    every gate, the boundary buffer — never a bulk park; small green pockets at block corners come after the plots.
-    const COR=()=>{ const Q=[]; p.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let k=1;k<V.length;k++){ const A2=V[k-1], B2=V[k], L2=lhyp(A2,B2); if(L2<.5) continue; const nx2=-(B2[1]-A2[1])/L2*(r.w/2+1.5), nz2=(B2[0]-A2[0])/L2*(r.w/2+1.5); Q.push([[A2[0]+nx2,A2[1]+nz2],[B2[0]+nx2,B2[1]+nz2],[B2[0]-nx2,B2[1]-nz2],[A2[0]-nx2,A2[1]-nz2]]); } });
+    const COR=(mg)=>{ mg=mg==null?1.5:mg; const Q=[]; p.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let k=1;k<V.length;k++){ const A2=V[k-1], B2=V[k], L2=lhyp(A2,B2); if(L2<.5) continue; const nx2=-(B2[1]-A2[1])/L2*(r.w/2+mg), nz2=(B2[0]-A2[0])/L2*(r.w/2+mg); Q.push([[A2[0]+nx2,A2[1]+nz2],[B2[0]+nx2,B2[1]+nz2],[B2[0]-nx2,B2[1]-nz2],[A2[0]-nx2,A2[1]-nz2]]); } });
       rbs().forEach(o=>{ const R2=[]; for(let i=0;i<24;i++){ const t2=i/24*2*Math.PI; R2.push([o.c[0]+Math.cos(t2)*(o.r+2),o.c[1]+Math.sin(t2)*(o.r+2)]); } Q.push(R2); }); return Q; };
     const offRoads=(Q,cor)=>cor.every(K=>clearOf(Q,K)&&!K.some(q2=>lInPoly(q2,Q)));
     const addGreen=(Q,k,cor)=>{ if(Q.length<3||Math.abs(lArea(Q))<40||!offRoads(Q,cor)||!Q.every(q2=>lInPoly(q2,Land))) return false; p.green.push({id:newId(),k,pts:(lArea(Q)>0?Q:Q.slice().reverse()).map(c=>Gc(c[0],c[1]))}); return true; };
@@ -18738,20 +18738,17 @@ function masterPlan(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw 
     // 5. plots block by block, in the sizes that sold best; the blocks next to the main road get the best seller
     const Rd2=p.roads.map(r=>({V:r.pts.map(Lc),w:r.w})), stepS=Math.max(25,MB.w*1.5); let tries=0; const bad=[];
     let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9; inner.forEach(q=>{ x0=Math.min(x0,q[0]); x1=Math.max(x1,q[0]); z0=Math.min(z0,q[1]); z1=Math.max(z1,q[1]); });
-    const TR=window.__MPDBG?(window.__mpTrace=[]):null;
     for(let z=z0+stepS/2;z<z1&&tries<90;z+=stepS) for(let x=x0+stepS/2;x<x1&&tries<90;x+=stepS){ const c=[x,z];
-      if(TR){ const why=!lInPoly(c,inner)?"outside-inner":roadDist(c,Rd2)<4?"near-road":p.plots.some(x2=>lInPoly(c,x2.pts.map(Lc)))?"in-plot":p.green.some(x2=>lInPoly(c,x2.pts.map(Lc)))?"in-green":bad.some(q=>lhyp(q,c)<stepS*1.2)?"near-bad":""; TR.push({c:[Math.round(x),Math.round(z)],why:why||(detectBlock(c).err?"noblock:"+detectBlock(c).err.slice(0,30):"try")}); }
       if(!lInPoly(c,inner)||roadDist(c,Rd2)<4||p.plots.some(x2=>lInPoly(c,x2.pts.map(Lc)))||p.green.some(x2=>lInPoly(c,x2.pts.map(Lc)))||bad.some(q=>lhyp(q,c)<stepS*1.2)) continue;
       if(detectBlock(c).err) continue;   // a point in a gap between plots or on a passage has no block to fill: it must not use up one of the 90 tries (on a tilted land most of them did, and the real blocks were never reached)
-      tries++; try{ const m=autoPlots(c,true); if(TR) TR[TR.length-1].res=m&&m.length||0; if(m&&m.length){ made.plots+=m.length; made.sectors++; } else bad.push(c); }catch(er){ console.warn("cell",er); bad.push(c); } }
-    if(TR) window.__mpStage={afterFill:p.plots.length,greens:p.green.length};
+      tries++; try{ const m=autoPlots(c,true); if(m&&m.length){ made.plots+=m.length; made.sectors++; } else bad.push(c); }catch(er){ console.warn("cell",er); bad.push(c); } }
     // 5b. the plan check: no plot on a road, on the landscape or on another plot
-    const cor1=COR(), Gs=p.green.map(x=>x.pts.map(Lc)); let rm=0;
-    p.plots=p.plots.filter(x=>{ if(x.pin||window.__MPKEEP) return true; const Q=x.pts.map(Lc); if(cor1.some(K=>overlap(Q,K)>.02)||Gs.some(K=>overlap(Q,K)>.02)){ rm++; return false; } return true; });
-    for(let i=0;i<(window.__MPKEEP?0:p.plots.length);i++){ const Qi=p.plots[i].pts.map(Lc); for(let j=p.plots.length-1;j>i;j--){ if(overlap(p.plots[j].pts.map(Lc),Qi)>.02){ if(p.plots[j].pin){ if(!p.plots[i].pin){ p.plots.splice(i,1); i--; rm++; break; } continue; } p.plots.splice(j,1); rm++; } } }
-    made.removed=rm; if(TR) window.__mpStage.afterOverlap=p.plots.length, window.__mpStage.removedOverlap=rm;
+    const cor1=COR(-.5), Gs=p.green.map(x=>x.pts.map(Lc)); let rm=0;
+    p.plots=p.plots.filter(x=>{ if(x.pin) return true; const Q=x.pts.map(Lc); if(cor1.some(K=>overlap(Q,K)>.02)||Gs.some(K=>overlap(Q,K)>.02)){ rm++; return false; } return true; });
+    for(let i=0;i<p.plots.length;i++){ const Qi=p.plots[i].pts.map(Lc); for(let j=p.plots.length-1;j>i;j--){ if(overlap(p.plots[j].pts.map(Lc),Qi)>.02){ if(p.plots[j].pin){ if(!p.plots[i].pin){ p.plots.splice(i,1); i--; rm++; break; } continue; } p.plots.splice(j,1); rm++; } } }
+    made.removed=rm;
     // a leftover piece with no road becomes open green, as on the approved plans
-    GR=null; PL.ver++; const na=new Set(noAccess()); p.plots=p.plots.filter(x=>{ if(x.pin||!na.has(x.id)||window.__MPKEEP) return true; p.green.push({id:newId(),k:"lawn",pts:x.pts}); return false; }); if(TR) window.__mpStage.afterNoAccess=p.plots.length;
+    GR=null; PL.ver++; const na=new Set(noAccess()); p.plots=p.plots.filter(x=>{ if(x.pin||!na.has(x.id)) return true; p.green.push({id:newId(),k:"lawn",pts:x.pts}); return false; });
     // 5c. green pockets: odd corner plots (cut corners, slanted block ends, under-size) become lawn until the green share is reached
     const gTarget=la*(+prof().bud.green||0)/100; let gNow=p.green.reduce((q2,x)=>q2+geoArea(x.pts),0);
     const modArea=x=>x.mod&&MODS[x.mod]?MODS[x.mod].w*MODS[x.mod].d*(x.n||1):null, odd=p.plots.map(x=>{ const ar=geoArea(x.pts), ma=modArea(x); return {x,ar,sc:x.pin?0:(ma&&ar<ma*.6?2:0)}; }).filter(o=>o.sc>0).sort((a2,b2)=>b2.sc-a2.sc||a2.ar-b2.ar);
