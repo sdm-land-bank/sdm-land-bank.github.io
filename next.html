@@ -18503,7 +18503,8 @@ function masterPlan(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw 
     let tMax=-1e9, tMin=1e9; RS.forEach(q=>{ tMax=Math.max(tMax,q[1]); tMin=Math.min(tMin,q[1]); });
     G.forEach(gt=>{ const gi=edgeAt(CCW,gt.c), ga=CCW[gi], gb=CCW[(gi+1)%CCW.length], gl=lhyp(ga,gb)||1, gn=[-(gb[1]-ga[1])/gl,(gb[0]-ga[0])/gl], tf=rayFar(gt.c,gn,ring);
       if(tf) mkRoad(gt===MG?"main":"sec",gt===MG?RT[0].w:RT[1].w,gt.c,[gt.c[0]+gn[0]*tf,gt.c[1]+gn[1]*tf]); });
-    const locT=[]; for(let t3=tMin+ringW/2+pairD+RT[2].w/2;t3<tMax-ringW/2-pairD*.6;t3+=pairD+RT[2].w) locT.push(t3);
+    // local roads spread evenly, so every block is about two module rows + the passage deep (no deep leftover block at the far side)
+    const span=(tMax-ringW/2)-(tMin+ringW/2), lw=RT[2].w, nbk=Math.max(1,Math.round((span+lw)/(pairD+lw))), stepT=(span+lw)/nbk, locT=[]; for(let k=1;k<nbk;k++) locT.push(tMin+ringW/2+k*stepT-lw/2);
     locT.forEach(t3=>spans(RS,1,t3).forEach(L=>{ if(L[1]-L[0]>80) mkRoad("serv",RT[2].w,fromE(L[0],t3),fromE(L[1],t3)); }));
     GR=null; CG=null; PL.ver++; changed(["roads"]);
     // 3. a roundabout on the main road at the middle local road
