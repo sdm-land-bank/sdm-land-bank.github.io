@@ -18280,22 +18280,34 @@ function modFill(B){ const P=prof(), M=P.mix.filter(e=>(+e.s||0)>0&&MODS[e.m]); 
       else rows[rows.length-1].vb=v1+1; } }
   // which sizes to place: the mix, counting what the plan already has (so the whole park follows it)
   const MA=mixActual(), cnt=P.mix.map((e,i)=>MA.cnt[i]||0); let tot=cnt.reduce((x,y)=>x+y,0); const shareT=P.mix.map(e=>(+e.s||0)), sT=shareT.reduce((x,y)=>x+y,0)||1;
-  const pick=rem=>{ let bi2=-1, bs=-1e9; P.mix.forEach((e,i)=>{ if(!(+e.s>0)||!MODS[e.m]) return; const w=MODS[e.m].w*(e.n||1); if(w>rem+wB*.35) return; const def=shareT[i]/sT*(tot+1)-cnt[i]; if(def>bs){ bs=def; bi2=i; } }); return bi2; };
+  const NMAX=4;   // at most 4 modules side by side in one row; a bigger plot takes both rows of a pair (about square, like the West plots)
+  const wOf=(e,pair)=>{ const n=e.n||1; return MODS[e.m].w*(n>NMAX&&pair?Math.ceil(n/2):n); };
+  const pick=(rem,pair)=>{ let bi2=-1, bs=-1e9; P.mix.forEach((e,i)=>{ if(!(+e.s>0)||!MODS[e.m]) return; if((e.n||1)>NMAX&&!pair) return; if(wOf(e,pair)>rem+wB*.35) return; const def=shareT[i]/sT*(tot+1)-cnt[i]; if(def>bs){ bs=def; bi2=i; } });
+    if(bi2<0){ let bw=-1; P.mix.forEach((e,i)=>{ if(!MODS[e.m]||(e.n||1)>NMAX) return; const w=wOf(e,false); if(w<=rem+wB*.35&&w>bw){ bw=w; bi2=i; } }); } return bi2; };
   const out=[], meta=[], C=8;   // 45° corner cut, legs of 8 m
-  rows.forEach(rw=>{ const band=cleanPoly(clipHalf(clipHalf(B,at(0,rw.va),v),at(0,rw.vb),[-v[0],-v[1]])); if(band.length<3) return;
-    let ra=1e9, rb=-1e9; band.forEach(p=>{ const s2=(p[0]-a[0])*u[0]+(p[1]-a[1])*u[1]; ra=Math.min(ra,s2); rb=Math.max(rb,s2); });
-    // the row's usable length is measured on its front line (slanted block ends lose the triangle)
-    const ft=rw.f<0?rw.va+.5:rw.vb-.5; let fa=1e9, fb=-1e9; for(let i=0;i<band.length;i++){ const p=band[i], q2=band[(i+1)%band.length], tp=(p[0]-a[0])*v[0]+(p[1]-a[1])*v[1], tq=(q2[0]-a[0])*v[0]+(q2[1]-a[1])*v[1]; if((tp-ft)*(tq-ft)<=0&&tp!==tq){ const k=(ft-tp)/(tq-tp), x=[p[0]+k*(q2[0]-p[0]),p[1]+k*(q2[1]-p[1])], s2=(x[0]-a[0])*u[0]+(x[1]-a[1])*u[1]; fa=Math.min(fa,s2); fb=Math.max(fb,s2); } }
-    if(!(fb>fa)){ fa=ra; fb=rb; } const cuts=[]; let x=fa, items=[];
-    while(fb-x>wB*.55){ const i=pick(fb-x); if(i<0) break; const w=MODS[P.mix[i].m].w*(P.mix[i].n||1); items.push(i); cnt[i]++; tot++; x+=w; cuts.push(x); }
-    if(!items.length) return; cuts[cuts.length-1]=rb+1; const edges=[ra-1].concat(cuts);
-    const endRoad=[nearRoad(at(ra-4,ft),4),nearRoad(at(rb+4,ft),4)];
-    for(let k=0;k+1<edges.length;k++){ let Q=clipHalf(band,at(edges[k],0),u); Q=clipHalf(Q,at(edges[k+1],0),[-u[0],-u[1]]);
-      // corner plot: cut the corner where the front road meets the road at the block end
-      const fv=rw.f<0?rw.va:rw.vb, sv=rw.f<0?1:-1;
-      if(k===0&&endRoad[0]){ const cn=at(ra,fv), g=[(u[0]+v[0]*sv)/Math.SQRT2,(u[1]+v[1]*sv)/Math.SQRT2]; Q=clipHalf(Q,[cn[0]+g[0]*C/Math.SQRT2,cn[1]+g[1]*C/Math.SQRT2],g); }
-      if(k===edges.length-2&&endRoad[1]){ const cn=at(rb,fv), g=[(-u[0]+v[0]*sv)/Math.SQRT2,(-u[1]+v[1]*sv)/Math.SQRT2]; Q=clipHalf(Q,[cn[0]+g[0]*C/Math.SQRT2,cn[1]+g[1]*C/Math.SQRT2],g); }
-      Q=cleanPoly(Q); if(Q.length>=3&&Math.abs(lArea(Q))>50){ out.push(Q); meta.push({m:P.mix[items[k]].m,n:P.mix[items[k]].n||1}); } } });
+  const bandOf=(va,vb)=>cleanPoly(clipHalf(clipHalf(B,at(0,va),v),at(0,vb),[-v[0],-v[1]]));
+  const sOf=p=>(p[0]-a[0])*u[0]+(p[1]-a[1])*u[1], tOf=p=>(p[0]-a[0])*v[0]+(p[1]-a[1])*v[1];
+  const extOf=band=>{ let ra=1e9, rb=-1e9; band.forEach(p=>{ const s2=sOf(p); ra=Math.min(ra,s2); rb=Math.max(rb,s2); }); return [ra,rb]; };
+  const frontOf=(band,ft)=>{ let fa=1e9, fb=-1e9; for(let i=0;i<band.length;i++){ const p=band[i], q2=band[(i+1)%band.length], tp=tOf(p), tq=tOf(q2); if((tp-ft)*(tq-ft)<=0&&tp!==tq){ const k=(ft-tp)/(tq-tp), s2=sOf([p[0]+k*(q2[0]-p[0]),p[1]+k*(q2[1]-p[1])]); fa=Math.min(fa,s2); fb=Math.max(fb,s2); } } if(!(fb>fa)){ const e=extOf(band); return e; } return [fa,fb]; };
+  const piece=(band,x0,x1)=>clipHalf(clipHalf(band,at(x0,0),u),at(x1,0),[-u[0],-u[1]]);
+  const cham=(Q,sEnd,fv,sv,left)=>{ const cn=at(sEnd,fv), du=left?1:-1, g=[(u[0]*du+v[0]*sv)/Math.SQRT2,(u[1]*du+v[1]*sv)/Math.SQRT2]; return clipHalf(Q,[cn[0]+g[0]*C/Math.SQRT2,cn[1]+g[1]*C/Math.SQRT2],g); };
+  const emit=(Q,i,deep)=>{ Q=cleanPoly(Q); if(Q.length>=3&&Math.abs(lArea(Q))>50){ out.push(Q); const e=i>=0?P.mix[i]:{m:top.m,n:1}; meta.push({m:e.m,n:e.n||1,deep:!!deep}); } };
+  const units=[]; for(let i=0;i<rows.length;i++){ const r=rows[i], n=rows[i+1]; if(n&&r.f<0&&n.f>0&&Math.abs(n.va-r.vb-pas)<.05){ units.push({pair:[r,n]}); i++; } else units.push({row:r}); }
+  const single=rw=>{ const band=bandOf(rw.va,rw.vb); if(band.length<3) return; const [ra,rb]=extOf(band), ft=rw.f<0?rw.va+.5:rw.vb-.5, [fa,fb]=frontOf(band,ft), fv=rw.f<0?rw.va:rw.vb, sv=rw.f<0?1:-1;
+    const items=[], cuts=[]; let x=fa; while(fb-x>wB*.55){ const i=pick(fb-x,false); if(i<0) break; items.push(i); cnt[i]++; tot++; x+=wOf(P.mix[i],false); cuts.push(x); }
+    if(!items.length) return; cuts[cuts.length-1]=rb+1; const edges=[ra-1].concat(cuts), endRoad=[nearRoad(at(fa-4,ft),4),nearRoad(at(fb+4,ft),4)];
+    for(let k=0;k+1<edges.length;k++){ let Q=piece(band,edges[k],edges[k+1]); if(k===0&&endRoad[0]) Q=cham(Q,fa,fv,sv,true); if(k===edges.length-2&&endRoad[1]) Q=cham(Q,fb,fv,sv,false); emit(Q,items[k],false); } };
+  units.forEach(U=>{ if(U.row){ single(U.row); return; }
+    const [R1,R2]=U.pair, b1=bandOf(R1.va,R1.vb), b2=bandOf(R2.va,R2.vb), bAll=bandOf(R1.va,R2.vb); if(b1.length<3||b2.length<3||bAll.length<3){ single(R1); single(R2); return; }
+    const f1=frontOf(b1,R1.va+.5), f2=frontOf(b2,R2.vb-.5), lo=Math.max(f1[0],f2[0]), hi=Math.min(f1[1],f2[1]), e1=extOf(b1), e2=extOf(b2);
+    if(!(hi-lo>wB*.55)){ single(R1); single(R2); return; }
+    const cols=[]; let x=lo; while(hi-x>wB*.55){ const i=pick(hi-x,true); if(i<0) break; const deep=(P.mix[i].n||1)>NMAX; cols.push({i,deep,x0:x,x1:x+wOf(P.mix[i],true)}); cnt[i]+=deep?1:2; tot+=deep?1:2; x=cols[cols.length-1].x1; }
+    if(!cols.length) return; cols[0].x0=Math.min(e1[0],e2[0])-1; cols[cols.length-1].x1=Math.max(e1[1],e2[1])+1;
+    const end1=[nearRoad(at(f1[0]-4,R1.va+.5),4),nearRoad(at(f1[1]+4,R1.va+.5),4)], end2=[nearRoad(at(f2[0]-4,R2.vb-.5),4),nearRoad(at(f2[1]+4,R2.vb-.5),4)];
+    cols.forEach((c,k)=>{ const first=k===0, last=k===cols.length-1;
+      const fix=(Q,f,fv,sv,en)=>{ if(first&&en[0]) Q=cham(Q,f[0],fv,sv,true); if(last&&en[1]) Q=cham(Q,f[1],fv,sv,false); return Q; };
+      if(c.deep){ let Q=piece(bAll,c.x0,c.x1); Q=fix(Q,f1,R1.va,1,end1); Q=fix(Q,f2,R2.vb,-1,end2); emit(Q,c.i,true); }
+      else { emit(fix(piece(b1,c.x0,c.x1),f1,R1.va,1,end1),c.i,false); emit(fix(piece(b2,c.x0,c.x1),f2,R2.vb,-1,end2),c.i,false); } }); });
   // service roads across the block between the row pairs, carried on to the roads they meet
   const RS=PL.plan.roads.map(r=>r.pts.map(Lc)), srv=[];
   srvV.forEach(vc=>{ const o=at(0,vc); let e0=1e9, e1=-1e9;
@@ -18336,7 +18348,13 @@ function budget(){ const p=PL.plan, land=p.land?geoArea(p.land.pts):null, a={ind
   p.plots.forEach(x=>{ const u=x.use||"ind", ar=geoArea(x.pts); if(u==="svc") a.svc+=ar; else if(u==="util") a.util+=ar; else a.ind+=ar; });
   a.green=p.green.reduce((s2,x)=>s2+geoArea(x.pts),0); if(land!=null) a.road=Math.max(0,land-a.ind-a.svc-a.util-a.green); return {land,a}; }
 function mixActual(){ const M=prof().mix, cnt=M.map(()=>0); let n=0; PL.plan.plots.forEach(x=>{ if((x.use||"ind")==="svc"||x.use==="util") return; const ar=geoArea(x.pts); let bi=0, bd=1e9; M.forEach((e,i)=>{ const d=Math.abs(Math.log(ar/modA(e))); if(d<bd){ bd=d; bi=i; } }); cnt[bi]++; n++; }); return {cnt,n}; }
-let rulesOn=false;
+let rulesOn=false, AUD=null;
+// the plan check: plots on a road, on the landscape or on each other, landscape on a road, badly shaped plots (cached per change)
+function planAudit(){ if(AUD&&AUD.v===PL.ver) return AUD; const p=PL.plan, cor=[]; p.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let k=1;k<V.length;k++){ const A2=V[k-1], B2=V[k], L2=lhyp(A2,B2); if(L2<.5) continue; const nx2=-(B2[1]-A2[1])/L2*(r.w/2-.5), nz2=(B2[0]-A2[0])/L2*(r.w/2-.5); cor.push([[A2[0]+nx2,A2[1]+nz2],[B2[0]+nx2,B2[1]+nz2],[B2[0]-nx2,B2[1]-nz2],[A2[0]-nx2,A2[1]-nz2]]); } });
+  const PQ=p.plots.map(x=>x.pts.map(Lc)), GQ=p.green.map(x=>x.pts.map(Lc)); let onRoad=0, onGreen=0, pp=0, gRoad=0, odd=0;
+  PQ.forEach((Q,i)=>{ if(cor.some(K=>overlap(Q,K)>.02)) onRoad++; if(GQ.some(K=>overlap(Q,K)>.02)) onGreen++; for(let j=i+1;j<PQ.length;j++) if(overlap(PQ[j],Q)>.02) pp++; const o=obbOf(Q); if(o){ const L1=o.e.u1-o.e.u0, L2=o.e.v1-o.e.v0; if(Math.max(L1,L2)/Math.max(1,Math.min(L1,L2))>3.5) odd++; } });
+  GQ.forEach((Q,i)=>{ if(p.green[i].k!=="buffer"&&cor.some(K=>overlap(Q,K)>.05)) gRoad++; });
+  AUD={v:PL.ver,onRoad,onGreen,pp,gRoad,odd}; return AUD; }
 function rulesUI(soft){ const el=q("#plRules"); if(!el) return; el.hidden=!rulesOn; if(!rulesOn) return; const P=prof();
   const B=budget(), tot=P.mix.reduce((x,e)=>x+(+e.s||0),0), MA=mixActual(), st=stats();
   const pc=v=>B.land?(v/B.land*100):null, dot=c=>`<i class="dot" style="background:${c}"></i>`;
@@ -18346,6 +18364,8 @@ function rulesUI(soft){ const el=q("#plRules"); if(!el) return; el.hidden=!rules
   const ck=[[st.warn?"#FF453A":(st.nPlots?"#34C759":"#8E8E93"),st.nPlots?(st.warn?`${st.warn} plot${st.warn>1?"s":""} without a road`:"Every plot reaches a road"):"No plots yet"],
     [st.cover==null?"#8E8E93":st.cover<=.5?"#34C759":"#FF453A",st.cover==null?"Building coverage: no buildings yet":`Building coverage ${Math.round(st.cover*100)}% (limit 50%)`],
     [mixOk==null?"#8E8E93":mixOk<=10?"#34C759":mixOk<=20?"#FF9F0A":"#FF453A",mixOk==null?"Plot mix: no plots yet":`Plot mix ${mixOk<=10?"on target":"off target by up to "+Math.round(mixOk)+" points"}`],
+    (()=>{ const au=planAudit(), n=au.onRoad+au.onGreen+au.pp+au.gRoad; return [n?"#FF453A":"#34C759",n?`Overlaps: ${au.onRoad} plot(s) on a road, ${au.onGreen} on the landscape, ${au.pp} pair(s) of plots, ${au.gRoad} green area(s) on a road`:"Nothing overlaps: no plot or green area on a road or on each other"]; })(),
+    (()=>{ const au=planAudit(); return [au.odd?"#FF9F0A":"#34C759",au.odd?`${au.odd} plot(s) longer than 3.5 × their width`:"Plot shapes: all within 3.5 : 1"]; })(),
     [Math.abs(tot-100)<.5?"#34C759":"#FF9F0A",Math.abs(tot-100)<.5?"Mix shares add up to 100%":`Mix shares add up to ${Math.round(tot)}% — they are scaled to 100%`]];
   const budH=`<table><tr><th>Use</th><th>Target</th><th>Plan</th><th>Area</th></tr>${bud}<tr><td><b>Total land</b></td><td></td><td></td><td><b>${B.land!=null?A.fArea(B.land):"—"}</b></td></tr></table>`;
   const ckH=ck.map(([c,t])=>`<div class="ck">${dot(c)}<span>${esc(t)}</span></div>`).join("");
@@ -18432,21 +18452,47 @@ function masterPlan(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land firs
       const sA=(m0[0]-EA[0])*u[0]+(m0[1]-EA[1])*u[1], tA=(m0[0]-EA[0])*v[0]+(m0[1]-EA[1])*v[1], sB=(m1[0]-EA[0])*u[0]+(m1[1]-EA[1])*u[1], tB=(m1[0]-EA[0])*v[0]+(m1[1]-EA[1])*v[1];
       if((tA-tm)*(tB-tm)<0){ const f=(tm-tA)/(tB-tA), c=fromE(sA+(sB-sA)*f,tm); try{ const sv=PL.rdia; PL.rdia=40; placeRound(c,[cvW()/2,cvH()/2]); PL.rdia=sv; }catch(er){ console.warn("round",er); } } } }
     const ob2=obbOf(CCW);
-    // 4. a park (lawn and trees) sized from the green share, in the free middle of the land
-    const Rd=p.roads.map(r=>({V:r.pts.map(Lc),w:r.w})), pk=pocket(inner,la*(PL.mp.green||8)/100,Rd,cent,ob2);
-    if(pk) p.green.push({id:newId(),k:"park",pts:pk.R.map(c=>Gc(c[0],c[1]))});
+    // 4. landscape the SDM way (Industria October / Sadat): a green boulevard on both sides of the main road, green squares at
+    //    every gate, the boundary buffer — never a bulk park; small green pockets at block corners come after the plots.
+    const COR=()=>{ const Q=[]; p.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let k=1;k<V.length;k++){ const A2=V[k-1], B2=V[k], L2=lhyp(A2,B2); if(L2<.5) continue; const nx2=-(B2[1]-A2[1])/L2*(r.w/2+1.5), nz2=(B2[0]-A2[0])/L2*(r.w/2+1.5); Q.push([[A2[0]+nx2,A2[1]+nz2],[B2[0]+nx2,B2[1]+nz2],[B2[0]-nx2,B2[1]-nz2],[A2[0]-nx2,A2[1]-nz2]]); } });
+      rbs().forEach(o=>{ const R2=[]; for(let i=0;i<24;i++){ const t2=i/24*2*Math.PI; R2.push([o.c[0]+Math.cos(t2)*(o.r+2),o.c[1]+Math.sin(t2)*(o.r+2)]); } Q.push(R2); }); return Q; };
+    const offRoads=(Q,cor)=>cor.every(K=>clearOf(Q,K)&&!K.some(q2=>lInPoly(q2,Q)));
+    const addGreen=(Q,k,cor)=>{ if(Q.length<3||Math.abs(lArea(Q))<40||!offRoads(Q,cor)||!Q.every(q2=>lInPoly(q2,Land))) return false; p.green.push({id:newId(),k,pts:(lArea(Q)>0?Q:Q.slice().reverse()).map(c=>Gc(c[0],c[1]))}); return true; };
+    const cor0=COR(), GW=10, gst={boul:0,gate:0,pocket:0};
+    p.roads.filter(r=>r.t==="main").forEach(mr=>{ const A2=Lc(mr.pts[0]), B2=Lc(mr.pts[mr.pts.length-1]), L2=lhyp(A2,B2); if(L2<60) return; const du=[(B2[0]-A2[0])/L2,(B2[1]-A2[1])/L2], dn=[-du[1],du[0]];
+      // where other roads and roundabouts cross the main road, the strips stop
+      const cuts=[]; p.roads.forEach(r=>{ if(r===mr) return; const V=r.pts.map(Lc); for(let k=1;k<V.length;k++){ const c2=V[k-1], d2=V[k], ex=d2[0]-c2[0], ez=d2[1]-c2[1], den=du[0]*ez-du[1]*ex; if(Math.abs(den)<1e-9) continue; const t2=((c2[0]-A2[0])*ez-(c2[1]-A2[1])*ex)/den, s3=((c2[0]-A2[0])*du[1]-(c2[1]-A2[1])*du[0])/den; if(s3>=0&&s3<=1&&t2>-5&&t2<L2+5) cuts.push([t2-r.w/2-6,t2+r.w/2+6]); } });
+      rbs().forEach(o=>{ const t2=(o.c[0]-A2[0])*du[0]+(o.c[1]-A2[1])*du[1], dd=Math.abs((o.c[0]-A2[0])*dn[0]+(o.c[1]-A2[1])*dn[1]); if(dd<o.r+mr.w) cuts.push([t2-o.r-8,t2+o.r+8]); });
+      cuts.sort((x,y)=>x[0]-y[0]); let t2=0; const free=[]; cuts.forEach(cu=>{ if(cu[0]>t2) free.push([t2,cu[0]]); t2=Math.max(t2,cu[1]); }); if(t2<L2) free.push([t2,L2]);
+      free.forEach(([f0,f1])=>{ if(f1-f0<25) return; [1,-1].forEach(sd=>{ const o0=mr.w/2+1.6, o1=o0+GW, P2=(t3,o)=>[A2[0]+du[0]*t3+dn[0]*o*sd,A2[1]+du[1]*t3+dn[1]*o*sd];
+        if(addGreen([P2(f0,o0),P2(f1,o0),P2(f1,o1),P2(f0,o1)],"park",cor0)) gst.boul++; }); }); });
+    // green squares at each gate, just inside the ring road, on both sides of the gate road
+    p.roads.filter(r=>r.t==="main"||(r.t==="sec"&&r!==ringRd)).forEach(gr=>{ const A2=Lc(gr.pts[0]); if(!G.some(g2=>lhyp(g2.c,A2)<3)) return; const B2=Lc(gr.pts[gr.pts.length-1]), L2=lhyp(A2,B2); if(L2<120) return; const du=[(B2[0]-A2[0])/L2,(B2[1]-A2[1])/L2], dn=[-du[1],du[0]];
+      const t0=BW+ringW+3; [1,-1].forEach(sd=>{ const o0=gr.w/2+1.6+(gr.t==="main"?GW:0), P2=(t3,o)=>[A2[0]+du[0]*t3+dn[0]*o*sd,A2[1]+du[1]*t3+dn[1]*o*sd]; if(addGreen([P2(t0,o0),P2(t0+35,o0),P2(t0+35,o0+28),P2(t0,o0+28)],"lawn",cor0)) gst.gate++; }); });
     // 5. plots block by block, in the sizes that sold best; the blocks next to the main road get the best seller
     const Rd2=p.roads.map(r=>({V:r.pts.map(Lc),w:r.w})), stepS=Math.max(25,MB.w*1.5); let tries=0; const bad=[];
     let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9; inner.forEach(q=>{ x0=Math.min(x0,q[0]); x1=Math.max(x1,q[0]); z0=Math.min(z0,q[1]); z1=Math.max(z1,q[1]); });
     for(let z=z0+stepS/2;z<z1&&tries<90;z+=stepS) for(let x=x0+stepS/2;x<x1&&tries<90;x+=stepS){ const c=[x,z];
       if(!lInPoly(c,inner)||roadDist(c,Rd2)<4||p.plots.some(x2=>lInPoly(c,x2.pts.map(Lc)))||p.green.some(x2=>lInPoly(c,x2.pts.map(Lc)))||bad.some(q=>lhyp(q,c)<stepS*1.2)) continue;
       tries++; try{ const m=autoPlots(c,true); if(m&&m.length){ made.plots+=m.length; made.sectors++; } else bad.push(c); }catch(er){ console.warn("cell",er); bad.push(c); } }
+    // 5b. the plan check: no plot on a road, on the landscape or on another plot
+    const cor1=COR(), Gs=p.green.map(x=>x.pts.map(Lc)); let rm=0;
+    p.plots=p.plots.filter(x=>{ const Q=x.pts.map(Lc); if(cor1.some(K=>overlap(Q,K)>.02)||Gs.some(K=>overlap(Q,K)>.02)){ rm++; return false; } return true; });
+    for(let i=0;i<p.plots.length;i++){ const Qi=p.plots[i].pts.map(Lc); for(let j=p.plots.length-1;j>i;j--){ if(overlap(p.plots[j].pts.map(Lc),Qi)>.02){ p.plots.splice(j,1); rm++; } } }
+    made.removed=rm;
+    // 5c. green pockets: odd corner plots (cut corners, slanted block ends, under-size) become lawn until the green share is reached
+    const gTarget=la*Math.max(+prof().bud.green||0,PL.mp.green||0)/100; let gNow=p.green.reduce((q2,x)=>q2+geoArea(x.pts),0);
+    const modArea=x=>x.mod&&MODS[x.mod]?MODS[x.mod].w*MODS[x.mod].d*(x.n||1):null, odd=p.plots.map(x=>{ const ar=geoArea(x.pts), ma=modArea(x); return {x,ar,sc:(x.pts.length>4?1:0)+(ma&&ar<ma*.85?1:0)}; }).filter(o=>o.sc>0).sort((a2,b2)=>b2.sc-a2.sc||a2.ar-b2.ar);
+    for(const o of odd){ if(gNow>=gTarget) break; p.plots=p.plots.filter(x=>x!==o.x); p.green.push({id:newId(),k:"lawn",pts:o.x.pts}); gNow+=o.ar; gst.pocket++; }
+    made.green=gst;
     // 6. trees and street lights: on the road verges, never inside a plot or the landscape; shrubs and trees in the park and the buffer
     const PLs=p.plots.map(x=>x.pts.map(Lc)), GRs=p.green.map(x=>x.pts.map(Lc)), skip=pt=>PLs.some(P=>lInPoly(pt,P))||GRs.some(P=>lInPoly(pt,P));
     if(PL.mp.trees!==false){ p.roads.forEach(rd=>alongRoad(rd,rd.t==="main"?"palm":"tree",{off:rd.w/2-1.6,skip})); }
     if(PL.mp.lights!==false){ p.roads.forEach(rd=>{ if(rd.t!=="serv") alongRoad(rd,"lamp",{off:rd.w/2-.7,skip}); }); }
     if(PL.mp.trees!==false){ const add=[], K=["tree","palm","shrub","tree"];
-      if(pk){ const o2=obbOf(pk.R); if(o2){ const {u:pu,v:pv,e:pe}=o2; let n=0; for(let s=pe.u0+6;s<pe.u1-4;s+=11) for(let t=pe.v0+6;t<pe.v1-4;t+=11){ const c=fromST(pu,pv,s+(hash(s*7+t)-.5)*4,t+(hash(t*13+s)-.5)*4); if(!lInPoly(c,pk.R)||distEdge(c,pk.R)<3) continue; add.push(placeObject(K[(hash(s+t*3)*4)|0],c,hash(s*t)*360)); if(++n>260) break; } } }
+      p.green.forEach(gq=>{ if(gq.k==="buffer") return; const R2=gq.pts.map(Lc), o2=obbOf(R2); if(!o2) return; const {u:pu,v:pv,e:pe}=o2, narrow=(pe.v1-pe.v0)<16;
+        if(narrow){ const mid=(pe.v0+pe.v1)/2; for(let s=pe.u0+5;s<pe.u1-3;s+=9){ const c=fromST(pu,pv,s,mid); if(lInPoly(c,R2)&&add.length<1400) add.push(placeObject("palm",c,0)); } return; }
+        let n=0; for(let s=pe.u0+5;s<pe.u1-3;s+=10) for(let t=pe.v0+5;t<pe.v1-3;t+=10){ const c=fromST(pu,pv,s+(hash(s*7+t)-.5)*3,t+(hash(t*13+s)-.5)*3); if(!lInPoly(c,R2)||distEdge(c,R2)<2.5) continue; if(add.length<1400) add.push(placeObject(K[(hash(s+t*3)*4)|0],c,hash(s*t)*360)); if(++n>120) break; } });
       buf.forEach(Q=>{ const a=[(Q[0][0]+Q[3][0])/2,(Q[0][1]+Q[3][1])/2], b=[(Q[1][0]+Q[2][0])/2,(Q[1][1]+Q[2][1])/2]; rowPos([a,b],13,6).forEach((sp2,i)=>{ if(add.length<900) add.push(placeObject(i%3===2?"shrub":"tree",sp2.p,0)); }); });
       p.items.push(...add); }
     // 7. services and utilities: the plots nearest the main entrance until the budget's shares are reached
@@ -18461,7 +18507,7 @@ function masterPlan(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land firs
     PL.sel=null; PL.undo.push(snap); if(PL.undo.length>80) PL.undo.shift(); PL.redo=[];
   }catch(er){ if(er&&er.message!=="spine") console.error("master plan",er); QUIET--; if(er&&er.message==="spine"){ PL.plan=JSON.parse(snap); O=null; changed(); return; } PL.plan=JSON.parse(snap); O=null; changed(); A.flash("The master plan could not be made — nothing was changed"); return; }
   QUIET--; GR=null; CG=null; changed(["all"]);
-  const st=stats(); A.flash(`Master plan: ${made.plots} plots in ${made.sectors} blocks (Phase 1 and 2) · ${(p.gates||[]).length} gates, ring road · average ${st.avg!=null?A.fArea(st.avg):"—"} · ${made.roads} roads · ${st.green?A.fArea(st.green)+" landscape":"no landscape"} · ${st.trees} trees, ${st.lamps} lights · sizes from ${H.n?H.n+" sold plots":"your choice"} — Undo brings back what was there`); fitPlan(); }
+  const st=stats(); A.flash(`Master plan: ${p.plots.length} plots in ${made.sectors} blocks (Phase 1 and 2) · ${(p.gates||[]).length} gates, ring road · green: ${made.green.boul} boulevard strips, ${made.green.gate} gate squares, ${made.green.pocket} corner pockets${made.removed?` · ${made.removed} overlapping plots removed`:} · average ${st.avg!=null?A.fArea(st.avg):"—"} · ${made.roads} roads · ${st.green?A.fArea(st.green)+" landscape":"no landscape"} · ${st.trees} trees, ${st.lamps} lights · sizes from ${H.n?H.n+" sold plots":"your choice"} — Undo brings back what was there`); fitPlan(); }
 function masterAsk(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land first — then the master plan fills it"); return; }
   if(p.roads.length||p.plots.length||p.items.length||p.green.length) menu(null,"Make the master plan?",[["go","Replace roads, plots, landscape and trees","Only the land boundary stays · Undo brings it all back","#FFD60A"]],()=>{ A.flash("Making the master plan…"); setTimeout(masterPlan,40); });
   else { A.flash("Making the master plan…"); setTimeout(masterPlan,40); } }
