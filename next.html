@@ -17193,6 +17193,7 @@ function onDown(e){
       if(!SK.drag){ gestStart(); need(); return; } } }
   if(SK.drag) return;
   if(e.button===1||spaceDown||(isHand()&&e.pointerType!=="touch")){ if(SK.frozen){ flash("The map is frozen — tap <em>Frozen</em> to move it"); return; } SK.drag={k:"pan",pid:e.pointerId,last:pt,ptype:e.pointerType}; cv.classList.add("grab"); capture(e); return; }
+  if(e.button===2&&e.pointerType==="mouse"){ SK.drag={k:"rot",pid:e.pointerId,at:pt,x0:pt[0],b0:map.getBearing(),ptype:"mouse"}; cv.classList.add("grab"); capture(e); return; }   // right button: drag sideways to turn the map (even when frozen)
   if(e.button>1) return;
   if(PLAN()){ capture(e); SK.drag={k:"plan",pid:e.pointerId,ptype:e.pointerType}; PLAN().down(pt,e); if(SK.drag) SK.drag.ptype=e.pointerType; need(); return; }
   capture(e); toolDown(pt,e); if(SK.drag) SK.drag.ptype=e.pointerType; need(); }
@@ -17232,7 +17233,8 @@ function onMove(e){
   if(!d&&PLAN()){ PLAN().hover(pt,e); return; }
   if(!d){ if(SK.cur&&SK.cur.path&&e.pointerType!=="touch"){ SK.cur.hv=at(pt); need(); } else if(SK.snapAt){ SK.snapAt=null; need(); } hoverCur(pt); return; }
   if(d.pid!=null&&d.pid!==e.pointerId) return;
-  if(d.k==="pan"){ panPx(pt[0]-d.last[0],pt[1]-d.last[1]); d.last=pt; }
+  if(d.k==="rot"){ const ll=map.unproject(d.at); map.jumpTo({bearing:d.b0-(pt[0]-d.x0)*.4}); const p0=map.project(ll); panPx(d.at[0]-p0.x,d.at[1]-p0.y); }
+  else if(d.k==="pan"){ panPx(pt[0]-d.last[0],pt[1]-d.last[1]); d.last=pt; }
   else if(d.k==="plan"){ if(PLAN()) PLAN().move(pt,e); }
   else if(d.k==="draw"){ const evs=(e.getCoalescedEvents&&e.getCoalescedEvents())||[]; const list=evs.length?evs:[e];
     for(const ev of list){ const p=xy(ev); if(hyp(p,d.last)<1.2) continue; d.last=p; const ll=U(p[0],p[1]); SK.cur.pts.push([ll[0],ll[1],ev.pointerType==="pen"?(ev.pressure||.5):.5]); }
@@ -17918,6 +17920,11 @@ function detectBlock(ptLocal){ const p=PL.plan, land=p.land&&p.land.pts.map(Lc);
   else for(let i=0;i<W;i++){ blk[i]=1; blk[(H-1)*W+i]=1; }
   p.roads.forEach(r=>{ const V=r.pts.map(Lc), rr=r.w/2; for(let k=1;k<V.length;k++){ const a=V[k-1], b=V[k]; const i0=Math.max(0,Math.floor((Math.min(a[0],b[0])-rr-bx)/res)), i1=Math.min(W-1,Math.ceil((Math.max(a[0],b[0])+rr-bx)/res)), j0=Math.max(0,Math.floor((Math.min(a[1],b[1])-rr-bz)/res)), j1=Math.min(H-1,Math.ceil((Math.max(a[1],b[1])+rr-bz)/res));
       for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){ if(projSeg([cx(i),cz(j)],a,b).d<=rr) blk[j*W+i]=1; } } });
+  // a hand-drawn ring: a road end that stops short of another road (gap under 16 m) is joined to it, so the block still counts as closed
+  { const ends=[]; p.roads.forEach(r=>{ const V=r.pts.map(Lc); if(V.length<2) return; ends.push({e:V[0],r}); ends.push({e:V[V.length-1],r}); });
+    ends.forEach(({e,r})=>{ let best=null, bd=16; p.roads.forEach(r2=>{ const V2=r2.pts.map(Lc); for(let k=1;k<V2.length;k++){ const pr=projSeg(e,V2[k-1],V2[k]); if(pr.d>Math.max(.5,r2.w/2)&&pr.d<bd){ bd=pr.d; best=pr.p; } } });
+      if(best){ const L=lhyp(e,best), n=Math.max(2,Math.ceil(L/res)), rb=Math.max(2,Math.min(r.w/2,5)); for(let s=0;s<=n;s++){ const t=s/n, x=e[0]+(best[0]-e[0])*t, z=e[1]+(best[1]-e[1])*t, i=Math.round((x-bx)/res-.5), j=Math.round((z-bz)/res-.5), rc=Math.ceil(rb/res);
+          for(let di=-rc;di<=rc;di++) for(let dj=-rc;dj<=rc;dj++){ const a=i+di, b=j+dj; if(a>=0&&b>=0&&a<W&&b<H&&Math.hypot(di,dj)*res<=rb) blk[b*W+a]=1; } } } }); }
   // plots, landscape, roundabouts and buildings standing on open land are not free land
   const mark=(P,inside)=>{ let a0=1e9,a1=-1e9,b0=1e9,b1=-1e9; P.forEach(v=>{ a0=Math.min(a0,v[0]); a1=Math.max(a1,v[0]); b0=Math.min(b0,v[1]); b1=Math.max(b1,v[1]); });
     for(let j=Math.max(0,Math.floor((b0-bz)/res));j<=Math.min(H-1,Math.ceil((b1-bz)/res));j++) for(let i=Math.max(0,Math.floor((a0-bx)/res));i<=Math.min(W-1,Math.ceil((a1-bx)/res));i++) if((inside||lInPoly)([cx(i),cz(j)],P)) blk[j*W+i]=1; };
@@ -17927,7 +17934,7 @@ function detectBlock(ptLocal){ const p=PL.plan, land=p.land&&p.land.pts.map(Lc);
   const comp=new Uint8Array(N), st=[sj*W+si]; comp[st[0]]=1; let n=0, open=false;
   while(st.length){ const c=st.pop(); n++; const i=c%W, j=(c/W)|0; if(i===0||j===0||i===W-1||j===H-1) open=true;
     for(const [di,dj] of [[1,0],[-1,0],[0,1],[0,-1]]){ const a=i+di, b=j+dj; if(a<0||b<0||a>=W||b>=H) continue; const k=b*W+a; if(!comp[k]&&!blk[k]){ comp[k]=1; st.push(k); } } }
-  if(open) return {err:"This area is not closed — draw the land boundary first"};
+  if(open) return {err:"This area is not closed — make the road ring close (the road ends must meet) or draw the land boundary first"};
   // outline of the cells (each boundary edge once, the block on its left), then the largest loop, simplified to straight sides
   const E=new Map(), ek=(x,y)=>x+","+y, edge=(a,b)=>{ const k=ek(a[0],a[1]); if(!E.has(k)) E.set(k,[]); E.get(k).push(b); };
   for(let j=0;j<H;j++) for(let i=0;i<W;i++){ if(!comp[j*W+i]) continue; const C=(x,y)=>comp[y*W+x]===1;
@@ -17985,7 +17992,12 @@ function subdivide(B,target){ // B: block polygon (local). Plots face the road a
 function keepClear(noTrees){ const p=PL.plan, O=p.green.map(g=>g.pts.map(Lc)); p.items.forEach(it=>{ if(isBld(it.k)&&!it.plot) O.push(iCorners(it)); });
   // trees standing in open land (not the street trees on a pavement): 4 m round each
   if(!noTrees){ const R=p.roads.map(r=>({V:r.pts.map(Lc),w:r.w})), street=q=>R.some(r=>{ for(let k=1;k<r.V.length;k++) if(projSeg(q,r.V[k-1],r.V[k]).d<r.w/2+6) return true; return false; });
-  p.items.forEach(it=>{ if(!TREES.includes(it.k)||it.plot) return; const c=Lc(it.c); if(street(c)) return; O.push([[c[0]-2,c[1]-2],[c[0]+2,c[1]-2],[c[0]+2,c[1]+2],[c[0]-2,c[1]+2]]); }); }
+  const nG=O.length, T=[]; p.items.forEach(it=>{ if(!TREES.includes(it.k)||it.plot) return; const c=Lc(it.c); if(street(c)) return; for(let g=0;g<nG;g++) if(lInPoly(c,O[g])) return; T.push(c); });   // trees inside a landscape area are covered by it
+  // trees less than 15 m apart are ONE belt (a row, a group): its outline is kept clear as a whole, so no plot is made in the gaps between its trees
+  const par=T.map((_,i)=>i), fd=i=>{ while(par[i]!==i){ par[i]=par[par[i]]; i=par[i]; } return i; }, cell=new Map();
+  T.forEach((c,i)=>{ const gx=Math.floor(c[0]/15), gz=Math.floor(c[1]/15); for(let dx=-1;dx<=1;dx++) for(let dz=-1;dz<=1;dz++){ const l=cell.get((gx+dx)+","+(gz+dz)); if(l) l.forEach(j=>{ if(lhyp(T[j],c)<=15) par[fd(i)]=fd(j); }); } const k=gx+","+gz; if(!cell.has(k)) cell.set(k,[]); cell.get(k).push(i); });
+  const grp=new Map(); T.forEach((c,i)=>{ const r=fd(i); if(!grp.has(r)) grp.set(r,[]); grp.get(r).push(c); });
+  grp.forEach(Gp=>{ const pts=[]; Gp.forEach(c=>pts.push([c[0]-3,c[1]-3],[c[0]+3,c[1]-3],[c[0]+3,c[1]+3],[c[0]-3,c[1]+3])); const H=Gp.length>1?hull(pts):pts; if(H.length>=3) O.push(H); }); }
   rbs().forEach(b=>{ const P=[]; for(let i=0;i<24;i++){ const a=i/24*2*Math.PI; P.push([b.c[0]+Math.cos(a)*(b.r+3),b.c[1]+Math.sin(a)*(b.r+3)]); } O.push(P); }); return O; }
 const bbOf=P=>{ let a0=1e9,a1=-1e9,b0=1e9,b1=-1e9; P.forEach(v=>{ a0=Math.min(a0,v[0]); a1=Math.max(a1,v[0]); b0=Math.min(b0,v[1]); b1=Math.max(b1,v[1]); }); return [a0,b0,a1,b1]; };
 function overlap(P,O){ const b=bbOf(P), o=bbOf(O); if(b[2]<o[0]||o[2]<b[0]||b[3]<o[1]||o[3]<b[1]) return 0; const n=16; let inP=0, both=0;
@@ -18258,7 +18270,7 @@ const isOpen=t=>t==="road"||t==="row";
 function hintTxt(){ const t=PL.tool;
   if(t==="land") return shpHint("land"); if(t==="road"&&PL.rsub==="gate") return "Tap the land boundary where a gate from the outer road comes in · the first gate is the main entrance (services go next to it) · tap a gate again to remove it";
   if(t==="road") return PL.rsub==="round"?"Tap a junction (or a road) to put a roundabout there · cars drive round it":"Tap points along the road · tap the last point (or double-tap) to finish · cars start driving at once";
-  if(t==="plot"&&PL.psub==="master") return "Master plan: choose the plot size and landscape share, then press Make the plan — roads, roundabout, service roads, plots, park, trees and lights are made for the whole land";
+  if(t==="plot"&&PL.psub==="master") return "Master plan: choose the plot size and landscape share, then press Make the plan — roads, roundabout, service roads, plots, park, trees and lights are made for the whole land · no land? draw a closed ring of road and tap inside it";
   if(t==="plot") return PL.psub==="auto"?"Smart fill: tap an empty block between the roads — plots keep clear of the landscape · choose the plot size above":shpHint("plot")+" — it lines up with the nearest road";
   if(t==="green"&&PL.gsub==="area") return shpHint((GK[PL.gk]||GK.lawn).l.toLowerCase())+" · smart fill keeps clear of it";
   if(rowTool()){ const h=howOf(), l=KIND(rowKind()).l.toLowerCase(); return h==="line"?`Tap the start and end of the ${l} row (more taps bend it) · tap the last point to finish`:h==="road"?`Tap a road — ${l}s go on both sides, every ${gapOf(rowKind())} m, clear of the junctions`:h==="free"?`Drag along your finger to place a row of ${l}s · tap for one`:`Tap to place one ${l}`; }
@@ -18333,7 +18345,7 @@ function menu(pt,title,items,on){ closeMenu(); const host=A.ui(); if(!host) retu
 /* ---------- making things ---------- */
 function newId(){ return PL.nid++; }
 function ensureOrigin(){ if(empty()){ PL.plan.o=null; O=null; } frame(); }
-function commitLand(pts){ ensureOrigin(); pushUndo(); PL.plan.gates=[]; PL.plan.mpMade=false; PL.plan.land={id:newId(),pts:pts.map(r9)}; PL.sel={t:"land",id:PL.plan.land.id}; changed(["land","plots"]); A.flash("Land: "+A.fArea(geoArea(PL.plan.land.pts))+" — now draw the roads"); }
+function commitLand(pts){ ensureOrigin(); pushUndo(); PL.plan.gates=[]; PL.plan.mpMade=false; PL.plan.ringLand=false; PL.plan.land={id:newId(),pts:pts.map(r9)}; PL.sel={t:"land",id:PL.plan.land.id}; changed(["land","plots"]); A.flash("Land: "+A.fArea(geoArea(PL.plan.land.pts))+" — now draw the roads"); }
 function commitRoad(pts){ ensureOrigin(); pushUndo(); const t=RT[PL.rt], rd={id:newId(),t:t.k,w:t.w,pts:pts.map(r9)}; PL.plan.roads.push(rd); joinRoads(rd); GR=null; PL.sel={t:"road",id:rd.id}; changed(["roads"]); }
 function commitPlot(pts){ ensureOrigin(); pushUndo(); const pl={id:newId(),code:nextCode(),pts:pts.map(r9)}; PL.plan.plots.push(pl); PL.sel={t:"plot",id:pl.id}; changed(["plots"]); return pl; }
 const SECL="ABCDEFGHJKLMNPQRSTUVWXYZ", secLetter=n=>n<24?SECL[n]:SECL[Math.floor(n/24)-1]+SECL[n%24];   // A…Z, then AA, AB…: a code never repeats
@@ -18413,7 +18425,7 @@ function autoPlots(g,qt,o){ const fl=m=>{ if(!qt) A.flash(m); }; const B=detectB
   const fin=PL.plan.roads.map(r=>({V:r.pts.map(Lc),w:r.w})).concat(srv.map(V=>({V,w:RT[2].w})));
   const parts=avoid(S.plots,OB2.concat(strips),PL.target).filter(P=>S.plots.includes(P)||reach(P,fin)), cut=S.plots.length-parts.length;
   // slivers left by a cut (e.g. beside the boulevard green) are not plots: under half a module wide they join the green
-  { const wMin=Math.max(15,((MODS[(prof().mix.slice().sort((x,y)=>y.s-x.s)[0]||{}).m]||{w:36}).w)*.45); for(let i=parts.length-1;i>=0;i--){ const o2=obbOf(parts[i]); if(!o2) continue; const sd=Math.min(o2.e.u1-o2.e.u0,o2.e.v1-o2.e.v0); if(sd<wMin){ const Q=parts.splice(i,1)[0]; if(Math.abs(lArea(Q))>40) (S.greens=S.greens||[]).push(Q); } } }
+  { const wMin=Math.max(15,((MODS[(prof().mix.slice().sort((x,y)=>y.s-x.s)[0]||{}).m]||{w:36}).w)*.45); for(let i=parts.length-1;i>=0;i--){ const o2=obbOf(parts[i]); if(!o2) continue; const sd=Math.min(o2.e.u1-o2.e.u0,o2.e.v1-o2.e.v0); if(sd<wMin||!shapeOK(parts[i],o2)){ const Q=parts.splice(i,1)[0]; if(Math.abs(lArea(Q))>40) (S.greens=S.greens||[]).push(Q); } } }
   if(!parts.length){ fl(S.plots.length?"No room for plots here — the landscape fills this block":"This block is too small for plots of "+A.nf(PL.target,0)+" m²"); return; }
   ensureOrigin(); pushUndo(); const p=PL.plan, ph=o&&o.phase?o.phase:Math.max(1,+PL.phase||1); if(!p.secs||typeof p.secs!=="object") p.secs={}; let letter; if(o&&o.letter) letter=o.letter; else { const si=p.secs[ph]||0; letter=secLetter(si)+ph; p.secs[ph]=si+1; p.sec++; } const made=[], nB=p.plots.filter(x=>(x.blk||"")===letter).length;
   parts.forEach((P,i)=>{ const mi=S.plots.indexOf(P), mt=S.meta&&mi>=0?S.meta[mi]:null, pl={id:newId(),code:letter+"-"+(nB+i+1),blk:letter,phase:ph,pts:(lArea(P)>0?P:P.slice().reverse()).map(c=>Gc(c[0],c[1]))}; if(mt){ pl.mod=mt.m; pl.n=mt.n; } else { const P0=prof(), t0=P0.mix.filter(e=>MODS[e.m]).sort((x,y)=>y.s-x.s)[0]; if(t0){ const M0=MODS[t0.m]; pl.mod=t0.m; pl.n=Math.max(1,Math.round(Math.abs(lArea(P))/(M0.w*M0.d))); } } p.plots.push(pl); made.push(pl); });
@@ -18638,6 +18650,11 @@ const ext=(P,u,v)=>{ let u0=1e18,u1=-1e18,v0=1e18,v1=-1e18; P.forEach(p=>{ const
 function obbOf(P){ let best=null; for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length], L=lhyp(a,b); if(L<.5) continue; const u=[(b[0]-a[0])/L,(b[1]-a[1])/L], v=[-u[1],u[0]], e=ext(P,u,v), ar=(e.u1-e.u0)*(e.v1-e.v0); if(!best||ar<best.ar) best={ar,u,v,e}; }
   if(!best) return null; let {u,v,e}=best; if(e.v1-e.v0>e.u1-e.u0){ u=best.v; v=[-best.u[0],-best.u[1]]; e=ext(P,u,v); } return {u,v,e}; }
 const fromST=(u,v,s,t)=>[u[0]*s+v[0]*t,u[1]*s+v[1]*t];
+// a plot is a rectangle (its corners may be cut): not a sliver, not a long strip, not a leaning or pinched shape
+function shapeOK(P,o){ o=o||obbOf(P); if(!o) return false; const a=o.e.u1-o.e.u0, b=o.e.v1-o.e.v0, L=Math.max(a,b), Wd=Math.min(a,b); if(Wd<1||L/Wd>3.2) return false; if(Math.abs(lArea(P))<.78*a*b) return false;
+  for(let i=0;i<P.length;i++){ const p0=P[(i+P.length-1)%P.length], p1=P[i], p2=P[(i+1)%P.length], v1=[p0[0]-p1[0],p0[1]-p1[1]], v2=[p2[0]-p1[0],p2[1]-p1[1]], l1=Math.hypot(v1[0],v1[1]), l2=Math.hypot(v2[0],v2[1]); if(l1<.5||l2<.5) continue;
+    if(Math.acos(Math.max(-1,Math.min(1,(v1[0]*v2[0]+v1[1]*v2[1])/(l1*l2))))*57.2958<58) return false; }
+  return true; }
 // the stretches of a line (coordinate k = val, in the (s,t) frame) that run inside the polygon
 function spans(S2,k,val){ const xs=[]; for(let i=0;i<S2.length;i++){ const a=S2[i], b=S2[(i+1)%S2.length]; if((a[k]<=val&&b[k]>val)||(b[k]<=val&&a[k]>val)) xs.push(a[1-k]+(val-a[k])/(b[k]-a[k])*(b[1-k]-a[1-k])); } xs.sort((x,y)=>x-y); const out=[]; for(let i=0;i+1<xs.length;i+=2) out.push([xs[i],xs[i+1]]); return out; }
 function distEdge(p,P){ let d=1e9; for(let i=0;i<P.length;i++){ const x=projSeg(p,P[i],P[(i+1)%P.length]).d; if(x<d) d=x; } return d; }
@@ -18653,7 +18670,7 @@ function masterPlan(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw 
   const H=history(), MT=mixTop(), T1=PL.target||MT[0], T2=MT.find(b=>Math.abs(b-T1)>1)||null;
   const snap=JSON.stringify(p); QUIET++; const made={roads:0,plots:0,cells:0,sectors:0};
   try{
-    const pinned=p.plots.filter(x=>x.pin), pinIds=new Set(pinned.map(x=>x.id)); p.roads=[]; p.plots=pinned; p.items=p.items.filter(it=>it.plot&&pinIds.has(it.plot)); p.green=[]; p.rounds=[]; p.sec=0; p.secs={}; GR=null; CG=null; PL.ver++;
+    const pinned=p.plots.filter(x=>x.pin), pinIds=new Set(pinned.map(x=>x.id)); p.roads=(mo.keepRoads!=null?mo.keepRoads:!!p.ringLand)?p.roads.filter(r=>r.pts.filter(c=>lInPoly(Lc(c),Land)).length<r.pts.length*.5):[]; p.plots=pinned; p.items=p.items.filter(it=>it.plot&&pinIds.has(it.plot)); p.green=[]; p.rounds=[]; p.sec=0; p.secs={}; GR=null; CG=null; PL.ver++;
     const IN=6, dP=Math.sqrt(T1*1.6), cent=lCent(Land);
     const mkRoad=(t,w,a,b)=>{ const rd={id:newId(),t,w,pts:[Gc(a[0],a[1]),Gc(b[0],b[1])]}; p.roads.push(rd); joinRoads(rd); made.roads++; return rd; };
     // 1. landscape buffer along the long sides of the land boundary
@@ -18662,7 +18679,7 @@ function masterPlan(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw 
     // 2. gates (placed by hand, or one every ~500 m along the longest side), a ring road inside the boundary,
     //    a main road in from every gate, and local roads at the depth of two module rows + the passage (as in Industria October)
     const P0=prof(), MB=(()=>{ const t2=P0.mix.filter(x=>MODS[x.m]).sort((x,y)=>y.s-x.s)[0]; return t2?MODS[t2.m]:{w:36,d:70}; })(), pairD=2*MB.d+(+P0.passage||0);
-    const ringMode=prof().ring||"gate", CCW=lArea(Land)<0?Land.slice().reverse():Land.slice(), ringW=RT[1].w, ring=offsetPoly(CCW,BW+ringW/2), inner=offsetPoly(CCW,BW+ringW), IN0=offsetPoly(CCW,BW);
+    const ringMode=mo.ring||(p.ringLand?"none":null)||prof().ring||"gate", CCW=lArea(Land)<0?Land.slice().reverse():Land.slice(), ringW=RT[1].w, ring=offsetPoly(CCW,BW+ringW/2), inner=offsetPoly(CCW,BW+ringW), IN0=offsetPoly(CCW,BW);
     if(!(Math.abs(lArea(ring))>la*.3)){ A.flash("The land shape is too irregular for the ring road — draw the roads yourself, then use Smart fill"); throw new Error("spine"); }
     // gates sit on the boundary: each one is moved onto the nearest side; one left far from this land (an older land) is dropped
     p.gates=(p.gates||[]).filter(x=>{ const c=Lc(x.c); let best=null, bd=1e9; for(let i=0;i<CCW.length;i++){ const pr=projSeg(c,CCW[i],CCW[(i+1)%CCW.length]); if(pr.d<bd){ bd=pr.d; best=pr.p; } } if(!best||bd>60) return false; x.c=Gc(best[0],best[1]); return true; });
@@ -18751,7 +18768,15 @@ function masterPlan(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw 
   }catch(er){ if(er&&er.message!=="spine") console.error("master plan",er); QUIET--; if(er&&er.message==="spine"){ PL.plan=JSON.parse(snap); O=null; changed(); return; } PL.plan=JSON.parse(snap); O=null; changed(); A.flash("The master plan could not be made — nothing was changed"); return; }
   QUIET--; GR=null; CG=null; changed(["all"]);
   const st=stats(); A.flash(`Master plan: ${p.plots.length} plots in ${made.sectors} blocks (Phase 1 and 2) · ${(p.gates||[]).length} gates, ring road · green: ${made.green.boul} boulevard strips, ${made.green.gate} gate squares, ${made.green.pocket} corner pockets${made.removed?` · ${made.removed} overlapping plots removed`:""} · average ${st.avg!=null?A.fArea(st.avg):"—"} · ${made.roads} roads · ${st.green?A.fArea(st.green)+" landscape":"no landscape"} · ${st.trees} trees, ${st.lamps} lights · sizes from ${H.n?H.n+" sold plots":"your choice"} — Undo brings back what was there`); fitPlan(); }
-function masterAsk(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land first — then the master plan fills it"); return; }
+// no land drawn: a closed ring of road is enough — tap inside it and its inner area becomes the land; the ring stays as the perimeter road
+function masterFromRing(g){ const p=PL.plan; if(p.land){ A.flash("Press “Make the plan” in the bar above"); return; }
+  if(!p.roads.length){ A.flash("Draw the land, or draw a closed ring of road and tap inside it"); return; }
+  const B=detectBlock(g); if(B.err){ A.flash(B.err); return; }
+  if(Math.abs(lArea(B.poly))<20000){ A.flash("This ring is too small for a master plan (under 2 ha)"); return; }
+  const pre=JSON.stringify(p); ensureOrigin(); p.gates=[]; p.mpMade=false; p.ringLand=true; p.land={id:newId(),pts:B.poly.map(c=>Gc(c[0],c[1])).map(r9)}; PL.sel=null; PL.ver++; changed(["land"]);
+  A.flash("Making the master plan inside the road ring…");
+  setTimeout(()=>{ masterPlan({keepRoads:true,ring:"none",noUndo:true}); if(PL.plan.mpMade){ PL.undo.push(pre); if(PL.undo.length>80) PL.undo.shift(); PL.redo=[]; } else { PL.plan=JSON.parse(pre); O=null; changed(["all"]); } },40); }
+function masterAsk(){ const p=PL.plan; if(!p.land){ A.flash(p.roads.length?"No land drawn: tap inside the closed ring of road — it is used as the land":"Draw the land first — or a closed ring of road, then tap inside it"); return; }
   if(p.roads.length||p.plots.length||p.items.length||p.green.length) menu(null,"Make the master plan?",[["go","Replace roads, plots, landscape and trees","Only the land boundary stays · Undo brings it all back","#FFD60A"]],()=>{ A.flash("Making the master plan…"); setTimeout(masterPlan,40); });
   else { A.flash("Making the master plan…"); setTimeout(masterPlan,40); } }
 
@@ -18817,7 +18842,7 @@ function up(pt,e,cx){ const d=PL.drag; PL.drag=null; if(!d) return; const g=grou
   if(cx){ PL.drag=d; cancel(); return; }   // pointer cancelled (iPad system gesture): a move or resize is put back, nothing half-done is kept
   if(d.k==="free"){ if(!d.moved||d.path.length<3){ lastTap={t:performance.now(),p:d.start}; PL.cur={t:d.ct,pts:[atP(d.start,{edges:true})]}; live(); A.need(); return; }   // a tap starts corners
     let S=A.rdp(d.path.concat([d.path[0]]),2.5); S.pop(); const pts=S.map(p=>r9(A.U(p[0],p[1]))); if(pts.length>=3&&Math.abs(lArea(pts.map(Lc)))>4) commitShape(d.ct,pts); else A.flash("Too small — draw a bigger shape"); A.need(); return; }
-  if(d.k==="tap"&&!d.moved){ if(PL.tool==="plot"){ if(PL.psub==="master") A.flash("Press “Make the plan” in the bar above"); else autoPlots(g); } else if(PL.tool==="road"){ if(PL.rsub==="gate") placeGate(g,pt); else placeRound(g,pt); }
+  if(d.k==="tap"&&!d.moved){ if(PL.tool==="plot"){ if(PL.psub==="master"){ if(!PL.plan.land) masterFromRing(g); else A.flash("Press “Make the plan” in the bar above"); } else autoPlots(g); } else if(PL.tool==="road"){ if(PL.rsub==="gate") placeGate(g,pt); else placeRound(g,pt); }
     else if(rowTool()){ const h=roadAt(g,10*mpp(pt)); if(h) alongRoad(h.r,rowKind()); else A.flash("Tap a road — the row goes along both sides of it"); }
     else if(PL.tool==="build"){ const pl=plotAt(g), has=pl&&PL.plan.items.find(i=>isBld(i.k)&&i.plot===pl.id);
       menu(pt,pl?`Plot ${pl.code||""} · ${A.fArea(geoArea(pl.pts))}${has?" · now "+KIND(has.k).l:""}`:"Build here",Object.entries(BK).map(([k,v])=>[k,v.l,pl?"fits the plot":(A.nf(v.len,0)+" × "+A.nf(v.w,0)+" m"),k===PL.bk?"#FFD60A":null]),k=>{ PL.bk=k; persist(); opts(); placeBuilding(k,pl,g); }); }
@@ -18943,7 +18968,7 @@ function deactivate(leaving){ if(!PL.on) return; if(PL.cur) finishCur(); PL.on=f
 window.SID_3D={build(T3,F,L,W,h,k,id,K,opts){ if(!T) T=T3; return buildingAt(F,L,W,h,k,String(id),K,opts); }, tree(T3,K,x,z,sz,c,palm){ if(!T) T=T3; treeAt(K,x,z,sz,c,palm); }};
 window.SID_PLAN={get on(){ return PL.on; },plotAt:planPlotAt,activate,deactivate,down,move,up,hover,cancel,undo,redo,del,esc:escK,enter:enterK,key,hint:hintTxt,draw2d,obstacles,tool:()=>PL.tool,setTool,
   state:PL,_t:{Lc,Gc,detectBlock,subdivide,stats,iCorners,fitOnPlot,autoPlots,placeBuilding,commitRoad,commitLand,commitPlot,commitGreen,graph,cgraph,rbs,noAccess,lArea,layer:()=>layer,veh:()=>VEH,scr,itemScreen,
-    alongRoad,rowAlong,rowPos,placeRound,keepClear,avoid,overlap,segClear,srvRoute,curType,hitAny,opts}};
+    alongRoad,rowAlong,rowPos,placeRound,keepClear,avoid,overlap,segClear,srvRoute,curType,hitAny,opts,masterPlan,masterFromRing,shapeOK,obbOf,planAudit}};
 })();
 </script>
 </body>
