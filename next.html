@@ -18499,7 +18499,7 @@ function masterPlan(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land firs
       buf.forEach(Q=>{ const a=[(Q[0][0]+Q[3][0])/2,(Q[0][1]+Q[3][1])/2], b=[(Q[1][0]+Q[2][0])/2,(Q[1][1]+Q[2][1])/2]; rowPos([a,b],13,6).forEach((sp2,i)=>{ if(add.length<900) add.push(placeObject(i%3===2?"shrub":"tree",sp2.p,0)); }); });
       p.items.push(...add); }
     // 7. services and utilities: the plots nearest the main entrance until the budget's shares are reached
-    const bud=prof().bud, MGc=MG.c, small=MB.w*MB.d*2.2, byD=p.plots.map(x=>({x,d:lhyp(lCent(x.pts.map(Lc)),MGc),a:geoArea(x.pts)})).sort((a2,b2)=>(a2.a>small)-(b2.a>small)||a2.d-b2.d);   // services take the small plots nearest the main entrance let sv=0, ut=0;
+    const bud=prof().bud, MGc=MG.c, small=MB.w*MB.d*2.2, byD=p.plots.map(x=>({x,d:lhyp(lCent(x.pts.map(Lc)),MGc),a:geoArea(x.pts)})).sort((a2,b2)=>(a2.a>small)-(b2.a>small)||a2.d-b2.d); let sv=0, ut=0;   // services take the small plots nearest the main entrance
     byD.forEach(o=>{ if(sv<la*(+bud.svc||0)/100*.9){ o.x.use="svc"; o.x.ind="Services"; sv+=o.a; } else if(ut<la*(+bud.util||0)/100*.9){ o.x.use="util"; o.x.ind=undefined; ut+=o.a; } });
     // 8. phases: blocks nearest the main entrance first, half the plot area in Phase 1; blocks coded A1, B1 … then A2, B2 …
     const blks={}; p.plots.forEach(x=>{ const k=x.blk||x.code.split("-")[0]; (blks[k]=blks[k]||[]).push(x); });
