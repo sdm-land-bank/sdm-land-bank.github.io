@@ -18270,6 +18270,8 @@ function reflow(kind,oldO,newO){ const p=PL.plan, {MB,pairD}=modBase(), shapes=[
   const land=p.land?p.land.pts.map(Lc):null, hit=new Set();
   if(kind==="block") hit.add(oldO.blk);
   else p.plots.forEach(x=>{ if(x.pin) return; const Q=x.pts.map(Lc), c=lCent(Q); if(shapes.some(S=>polyD(c,S.V,S.closed)<S.r)||(land&&!Q.every(q=>lInPoly(q,land)))) hit.add(blkOf(x)); });
+  // service roads that ran through the moved area are planned again with their blocks (else they would dangle inside the new plots)
+  if(kind!=="block") p.roads.forEach(r=>{ if(!r.blk) return; const V=r.pts.map(Lc), m=[(V[0][0]+V[V.length-1][0])/2,(V[0][1]+V[V.length-1][1])/2]; if(shapes.some(S=>polyD(m,S.V,S.closed)<S.r)) hit.add(r.blk); });
   if(!hit.size) return {blocks:[],before:0,after:0};
   const meta={}, seeds=[]; let before=0;
   p.plots.forEach(x=>{ const b=blkOf(x); if(!hit.has(b)||x.pin) return; before++; if(!meta[b]) meta[b]={phase:x.phase||1,use:x.use,ind:x.ind}; seeds.push({b,c:lCent(x.pts.map(Lc))}); });
@@ -18279,10 +18281,15 @@ function reflow(kind,oldO,newO){ const p=PL.plan, {MB,pairD}=modBase(), shapes=[
   if(kind==="road") along(newO.pts.map(Lc),false,(newO.w||20)/2+MB.d*.5); if(kind==="land") along(newO.pts.map(Lc),true,MB.d*.6+RT[1].w);
   const ids=new Set(p.plots.filter(x=>hit.has(blkOf(x))&&!x.pin).map(x=>x.id));
   p.plots=p.plots.filter(x=>!ids.has(x.id)); p.items=p.items.filter(it=>!(it.plot&&ids.has(it.plot))); p.roads=p.roads.filter(r=>!(r.blk&&hit.has(r.blk))); GR=null; CG=null; PL.ver++;
-  QUIET++; let after=0; try{ const RD=()=>p.roads.map(r=>({V:r.pts.map(Lc),w:r.w}));
+  const made=new Set(); QUIET++; let after=0; try{ const RD=()=>p.roads.map(r=>({V:r.pts.map(Lc),w:r.w}));
     seeds.forEach(sd=>{ if(land&&!lInPoly(sd.c,land)) return; if(p.plots.some(x=>lInPoly(sd.c,x.pts.map(Lc)))||p.green.some(x=>lInPoly(sd.c,x.pts.map(Lc)))||roadDist(sd.c,RD())<2) return;
-      const m=autoPlots(sd.c,true,{letter:sd.b,phase:meta[sd.b]?meta[sd.b].phase:1}); if(m&&m.length){ after+=m.length; const mt=meta[sd.b]; if(mt) m.forEach(x=>{ if(mt.use&&mt.use!=="ind") x.use=mt.use; if(mt.ind) x.ind=mt.ind; }); } }); } finally{ QUIET--; }
-  return {blocks:[...hit],before,after}; }
+      const m=autoPlots(sd.c,true,{letter:sd.b,phase:meta[sd.b]?meta[sd.b].phase:1}); if(m&&m.length){ m.forEach(x=>made.add(x.id)); after+=m.length; const mt=meta[sd.b]; if(mt) m.forEach(x=>{ if(mt.use&&mt.use!=="ind") x.use=mt.use; if(mt.ind) x.ind=mt.ind; }); } }); } finally{ QUIET--; }
+  after-=tidy(made); return {blocks:[...hit],before,after}; }
+// the same tidy-up as the master plan, for the plots just made: none on a road, on the landscape or on another plot; a piece with no road becomes green
+function tidy(ids){ const p=PL.plan; if(!ids.size) return 0; const cor=[]; p.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let k=1;k<V.length;k++){ const A2=V[k-1], B2=V[k], L2=lhyp(A2,B2); if(L2<.5) continue; const nx2=-(B2[1]-A2[1])/L2*(r.w/2-.5), nz2=(B2[0]-A2[0])/L2*(r.w/2-.5); cor.push([[A2[0]+nx2,A2[1]+nz2],[B2[0]+nx2,B2[1]+nz2],[B2[0]-nx2,B2[1]-nz2],[A2[0]-nx2,A2[1]-nz2]]); } });
+  const GQ=p.green.map(x=>x.pts.map(Lc)); let n=0; const keep=[];
+  p.plots.forEach(x=>{ if(!ids.has(x.id)){ keep.push(x); return; } const Q=x.pts.map(Lc); if(cor.some(K=>overlap(Q,K)>.02)||GQ.some(K=>overlap(Q,K)>.02)||keep.some(y=>overlap(Q,y.pts.map(Lc))>.02)){ n++; return; } keep.push(x); });
+  p.plots=keep; GR=null; PL.ver++; const na=new Set(noAccess()); p.plots=p.plots.filter(x=>{ if(!ids.has(x.id)||!na.has(x.id)) return true; p.green.push({id:newId(),k:"lawn",pts:x.pts}); n++; return false; }); return n; }
 // while dragging: start again from the plan as it was when the drag began, with the moved thing where it is now
 let rfT=0;
 function reflowKind(){ const t=PL.sel&&PL.sel.t; return t==="road"||t==="land"||t==="green"||t==="round"?t:null; }
