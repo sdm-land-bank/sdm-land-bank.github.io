@@ -18348,7 +18348,7 @@ function mixTop(){ const m=prof().mix.slice().sort((a,b)=>b.s-a.s); return m.map
 function budget(){ const p=PL.plan, land=p.land?geoArea(p.land.pts):null, a={ind:0,svc:0,green:0,road:0,util:0};
   p.plots.forEach(x=>{ const u=x.use||"ind", ar=geoArea(x.pts); if(u==="svc") a.svc+=ar; else if(u==="util") a.util+=ar; else a.ind+=ar; });
   a.green=p.green.reduce((s2,x)=>s2+geoArea(x.pts),0); if(land!=null) a.road=Math.max(0,land-a.ind-a.svc-a.util-a.green); return {land,a}; }
-function mixActual(){ const M=prof().mix, cnt=M.map(()=>0); let n=0; PL.plan.plots.forEach(x=>{ if((x.use||"ind")==="svc"||x.use==="util") return; const ar=geoArea(x.pts); let bi=0, bd=1e9; M.forEach((e,i)=>{ const d=Math.abs(Math.log(ar/modA(e))); if(d<bd){ bd=d; bi=i; } }); cnt[bi]++; n++; }); return {cnt,n}; }
+function mixActual(){ const M=prof().mix, cnt=M.map(()=>0); let n=0; PL.plan.plots.forEach(x=>{ const ar=geoArea(x.pts); let bi=0, bd=1e9; M.forEach((e,i)=>{ const d=Math.abs(Math.log(ar/modA(e))); if(d<bd){ bd=d; bi=i; } }); cnt[bi]++; n++; }); return {cnt,n}; }
 let rulesOn=false, AUD=null;
 // the plan check: plots on a road, on the landscape or on each other, landscape on a road, badly shaped plots (cached per change)
 function planAudit(){ if(AUD&&AUD.v===PL.ver) return AUD; const p=PL.plan, cor=[]; p.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let k=1;k<V.length;k++){ const A2=V[k-1], B2=V[k], L2=lhyp(A2,B2); if(L2<.5) continue; const nx2=-(B2[1]-A2[1])/L2*(r.w/2-.5), nz2=(B2[0]-A2[0])/L2*(r.w/2-.5); cor.push([[A2[0]+nx2,A2[1]+nz2],[B2[0]+nx2,B2[1]+nz2],[B2[0]-nx2,B2[1]-nz2],[A2[0]-nx2,A2[1]-nz2]]); } });
