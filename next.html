@@ -18738,10 +18738,12 @@ function masterPlan(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw 
     // 5. plots block by block, in the sizes that sold best; the blocks next to the main road get the best seller
     const Rd2=p.roads.map(r=>({V:r.pts.map(Lc),w:r.w})), stepS=Math.max(25,MB.w*1.5); let tries=0; const bad=[];
     let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9; inner.forEach(q=>{ x0=Math.min(x0,q[0]); x1=Math.max(x1,q[0]); z0=Math.min(z0,q[1]); z1=Math.max(z1,q[1]); });
+    const TR=window.__MPDBG?(window.__mpTrace=[]):null;
     for(let z=z0+stepS/2;z<z1&&tries<90;z+=stepS) for(let x=x0+stepS/2;x<x1&&tries<90;x+=stepS){ const c=[x,z];
+      if(TR){ const why=!lInPoly(c,inner)?"outside-inner":roadDist(c,Rd2)<4?"near-road":p.plots.some(x2=>lInPoly(c,x2.pts.map(Lc)))?"in-plot":p.green.some(x2=>lInPoly(c,x2.pts.map(Lc)))?"in-green":bad.some(q=>lhyp(q,c)<stepS*1.2)?"near-bad":""; TR.push({c:[Math.round(x),Math.round(z)],why:why||(detectBlock(c).err?"noblock:"+detectBlock(c).err.slice(0,30):"try")}); }
       if(!lInPoly(c,inner)||roadDist(c,Rd2)<4||p.plots.some(x2=>lInPoly(c,x2.pts.map(Lc)))||p.green.some(x2=>lInPoly(c,x2.pts.map(Lc)))||bad.some(q=>lhyp(q,c)<stepS*1.2)) continue;
       if(detectBlock(c).err) continue;   // a point in a gap between plots or on a passage has no block to fill: it must not use up one of the 90 tries (on a tilted land most of them did, and the real blocks were never reached)
-      tries++; try{ const m=autoPlots(c,true); if(m&&m.length){ made.plots+=m.length; made.sectors++; } else bad.push(c); }catch(er){ console.warn("cell",er); bad.push(c); } }
+      tries++; try{ const m=autoPlots(c,true); if(TR) TR[TR.length-1].res=m&&m.length||0; if(m&&m.length){ made.plots+=m.length; made.sectors++; } else bad.push(c); }catch(er){ console.warn("cell",er); bad.push(c); } }
     // 5b. the plan check: no plot on a road, on the landscape or on another plot
     const cor1=COR(), Gs=p.green.map(x=>x.pts.map(Lc)); let rm=0;
     p.plots=p.plots.filter(x=>{ if(x.pin) return true; const Q=x.pts.map(Lc); if(cor1.some(K=>overlap(Q,K)>.02)||Gs.some(K=>overlap(Q,K)>.02)){ rm++; return false; } return true; });
