@@ -18163,7 +18163,7 @@ function menu(pt,title,items,on){ closeMenu(); const host=A.ui(); if(!host) retu
 /* ---------- making things ---------- */
 function newId(){ return PL.nid++; }
 function ensureOrigin(){ if(empty()){ PL.plan.o=null; O=null; } frame(); }
-function commitLand(pts){ ensureOrigin(); pushUndo(); PL.plan.land={id:newId(),pts:pts.map(r9)}; PL.sel={t:"land",id:PL.plan.land.id}; changed(["land","plots"]); A.flash("Land: "+A.fArea(geoArea(PL.plan.land.pts))+" — now draw the roads"); }
+function commitLand(pts){ ensureOrigin(); pushUndo(); PL.plan.gates=[]; PL.plan.mpMade=false; PL.plan.land={id:newId(),pts:pts.map(r9)}; PL.sel={t:"land",id:PL.plan.land.id}; changed(["land","plots"]); A.flash("Land: "+A.fArea(geoArea(PL.plan.land.pts))+" — now draw the roads"); }
 function commitRoad(pts){ ensureOrigin(); pushUndo(); const t=RT[PL.rt], rd={id:newId(),t:t.k,w:t.w,pts:pts.map(r9)}; PL.plan.roads.push(rd); joinRoads(rd); GR=null; PL.sel={t:"road",id:rd.id}; changed(["roads"]); }
 function commitPlot(pts){ ensureOrigin(); pushUndo(); const pl={id:newId(),code:nextCode(),pts:pts.map(r9)}; PL.plan.plots.push(pl); PL.sel={t:"plot",id:pl.id}; changed(["plots"]); return pl; }
 const SECL="ABCDEFGHJKLMNPQRSTUVWXYZ", secLetter=n=>n<24?SECL[n]:SECL[Math.floor(n/24)-1]+SECL[n%24];   // A…Z, then AA, AB…: a code never repeats
@@ -18490,7 +18490,9 @@ function masterPlan(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw 
     const P0=prof(), MB=(()=>{ const t2=P0.mix.filter(x=>MODS[x.m]).sort((x,y)=>y.s-x.s)[0]; return t2?MODS[t2.m]:{w:36,d:70}; })(), pairD=2*MB.d+(+P0.passage||0);
     const CCW=lArea(Land)<0?Land.slice().reverse():Land.slice(), ringW=RT[1].w, ring=offsetPoly(CCW,BW+ringW/2), inner=offsetPoly(CCW,BW+ringW);
     if(!(Math.abs(lArea(ring))>la*.3)){ A.flash("The land shape is too irregular for the ring road — draw the roads yourself, then use Smart fill"); throw new Error("spine"); }
-    let G=(p.gates||[]).map(x=>({c:Lc(x.c),main:!!x.main})); if(!G.some(x=>x.main)&&G.length) G[0].main=true;
+    // gates sit on the boundary: each one is moved onto the nearest side; one left far from this land (an older land) is dropped
+    p.gates=(p.gates||[]).filter(x=>{ const c=Lc(x.c); let best=null, bd=1e9; for(let i=0;i<CCW.length;i++){ const pr=projSeg(c,CCW[i],CCW[(i+1)%CCW.length]); if(pr.d<bd){ bd=pr.d; best=pr.p; } } if(!best||bd>60) return false; x.c=Gc(best[0],best[1]); return true; });
+    let G=p.gates.map(x=>({c:Lc(x.c),main:!!x.main})); if(!G.some(x=>x.main)&&G.length) G[0].main=true;
     if(!G.length){ let li=0, ll=0; for(let i=0;i<CCW.length;i++){ const l=lhyp(CCW[i],CCW[(i+1)%CCW.length]); if(l>ll){ ll=l; li=i; } } const A0=CCW[li], B0=CCW[(li+1)%CCW.length], n=Math.max(1,Math.round(ll/500));
       for(let k=0;k<n;k++){ const f=(k+.5)/n; G.push({c:[A0[0]+(B0[0]-A0[0])*f,A0[1]+(B0[1]-A0[1])*f],main:false}); } G[Math.floor((n-1)/2)].main=true;
       p.gates=G.map(x=>({id:newId(),c:Gc(x.c[0],x.c[1]),main:x.main})); }
