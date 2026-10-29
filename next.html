@@ -18287,8 +18287,9 @@ function reflow(kind,oldO,newO){ const p=PL.plan, {MB,pairD}=modBase(), shapes=[
   after-=tidy(made); return {blocks:[...hit],before,after}; }
 // the same tidy-up as the master plan, for the plots just made: none on a road, on the landscape or on another plot; a piece with no road becomes green
 function tidy(ids){ const p=PL.plan; if(!ids.size) return 0; const cor=[]; p.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let k=1;k<V.length;k++){ const A2=V[k-1], B2=V[k], L2=lhyp(A2,B2); if(L2<.5) continue; const nx2=-(B2[1]-A2[1])/L2*(r.w/2-.5), nz2=(B2[0]-A2[0])/L2*(r.w/2-.5); cor.push([[A2[0]+nx2,A2[1]+nz2],[B2[0]+nx2,B2[1]+nz2],[B2[0]-nx2,B2[1]-nz2],[A2[0]-nx2,A2[1]-nz2]]); } });
-  const GQ=p.green.map(x=>x.pts.map(Lc)); let n=0; const keep=[];
-  p.plots.forEach(x=>{ if(!ids.has(x.id)){ keep.push(x); return; } const Q=x.pts.map(Lc); if(cor.some(K=>overlap(Q,K)>.02)||GQ.some(K=>overlap(Q,K)>.02)||keep.some(y=>overlap(Q,y.pts.map(Lc))>.02)){ n++; return; } keep.push(x); });
+  p.green=p.green.filter(x=>x.k!=="lawn"||!cor.some(K=>overlap(x.pts.map(Lc),K)>.05));
+  const GQ=p.green.map(x=>x.pts.map(Lc)), LD=p.land?p.land.pts.map(Lc):null; let n=0; const keep=[];
+  p.plots.forEach(x=>{ if(!ids.has(x.id)){ keep.push(x); return; } const Q=x.pts.map(Lc); if((LD&&!Q.every(q2=>lInPoly(q2,LD)))||cor.some(K=>overlap(Q,K)>.02)||GQ.some(K=>overlap(Q,K)>.02)||keep.some(y=>overlap(Q,y.pts.map(Lc))>.02)){ n++; return; } keep.push(x); });
   p.plots=keep; GR=null; PL.ver++; const na=new Set(noAccess()); p.plots=p.plots.filter(x=>{ if(!ids.has(x.id)||!na.has(x.id)) return true; p.green.push({id:newId(),k:"lawn",pts:x.pts}); n++; return false; }); return n; }
 // while dragging: start again from the plan as it was when the drag began, with the moved thing where it is now
 let rfT=0;
@@ -18296,6 +18297,9 @@ function reflowKind(){ const t=PL.sel&&PL.sel.t; return t==="road"||t==="land"||
 function reflowBase(d){ if(d.base||PL.mp.live===false||!reflowKind()) return; const p=PL.plan; if(!p.plots.length&&reflowKind()!=="land") return; d.base=JSON.stringify({plots:p.plots,items:p.items,roads:p.roads,green:p.green,secs:p.secs}); }
 function reflowSoon(){ const d=PL.drag; if(!d||!d.base) return; clearTimeout(rfT); rfT=setTimeout(()=>{ const d2=PL.drag; if(d2&&d2.base) liveReflow(d2,false); },240); }
 function liveReflow(d,final){ const s=obj(PL.sel), kind=reflowKind(); if(!s||!kind||!d.base) return null; const p=PL.plan, B=JSON.parse(d.base);
+  if(kind==="land"&&p.mpMade){ if(!final) return null;   // the whole park follows its land: gates move onto the new boundary, then the master plan runs again
+    const L2=s.pts.map(Lc); (p.gates||[]).forEach(gt=>{ const c=Lc(gt.c); let best=null, bd=1e9; for(let i=0;i<L2.length;i++){ const pr=projSeg(c,L2[i],L2[(i+1)%L2.length]); if(pr.d<bd){ bd=pr.d; best=pr.p; } } if(best) gt.c=Gc(best[0],best[1]); });
+    const n0=B.plots.length; A.flash("Planning the park again for the new land…"); setTimeout(()=>{ masterPlan({noUndo:true}); },30); return {blocks:["whole park"],before:n0,after:null,all:true}; }
   p.plots=B.plots; p.items=B.items; p.secs=B.secs; p.green=kind==="green"?B.green.map(x=>x.id===s.id?s:x):B.green; p.roads=kind==="road"?B.roads.map(x=>x.id===s.id?s:x):B.roads;
   if(kind==="road"){ joinRoads(s); const V=s.pts.map(Lc), on=c=>{ for(let k=1;k<V.length;k++) if(projSeg(c,V[k-1],V[k]).d<s.w/2+.6) return true; return false; };
     p.items=p.items.filter(it=>isBld(it.k)||!on(Lc(it.c))); const cor=[]; for(let k=1;k<V.length;k++){ const A2=V[k-1], B2=V[k], L2=lhyp(A2,B2); if(L2<.5) continue; const nx2=-(B2[1]-A2[1])/L2*(s.w/2+1), nz2=(B2[0]-A2[0])/L2*(s.w/2+1); cor.push([[A2[0]+nx2,A2[1]+nz2],[B2[0]+nx2,B2[1]+nz2],[B2[0]-nx2,B2[1]-nz2],[A2[0]-nx2,A2[1]-nz2]]); }
@@ -18470,12 +18474,12 @@ function pocket(P,area,Rd,near,ax){ const o=ax||obbOf(P); if(!o) return null; co
       const chk=R.concat([c],[0,1,2,3].map(k=>[(R[k][0]+R[(k+1)%4][0])/2,(R[k][1]+R[(k+1)%4][1])/2]));
       if(!chk.every(p=>lInPoly(p,P)&&distEdge(p,P)>=12&&roadDist(p,Rd)>=6)) continue; const d=lhyp(c,near); if(d<bd){ bd=d; best={R,c,w,h}; } }
     if(best) return best; } return null; }
-function masterPlan(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land first — then the master plan fills it"); return; }
+function masterPlan(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw the land first — then the master plan fills it"); return; }
   const Land=p.land.pts.map(Lc), ob=obbOf(Land); if(!ob){ A.flash("The land is too small"); return; } const la=Math.abs(lArea(Land)); if(la<20000){ A.flash("The land is too small for a master plan (under 2 ha)"); return; }
   const H=history(), MT=mixTop(), T1=PL.target||MT[0], T2=MT.find(b=>Math.abs(b-T1)>1)||null;
   const snap=JSON.stringify(p); QUIET++; const made={roads:0,plots:0,cells:0,sectors:0};
   try{
-    p.roads=[]; p.plots=[]; p.items=[]; p.green=[]; p.rounds=[]; p.sec=0; p.secs={}; GR=null; CG=null; PL.ver++;
+    const pinned=p.plots.filter(x=>x.pin), pinIds=new Set(pinned.map(x=>x.id)); p.roads=[]; p.plots=pinned; p.items=p.items.filter(it=>it.plot&&pinIds.has(it.plot)); p.green=[]; p.rounds=[]; p.sec=0; p.secs={}; GR=null; CG=null; PL.ver++;
     const IN=6, dP=Math.sqrt(T1*1.6), cent=lCent(Land);
     const mkRoad=(t,w,a,b)=>{ const rd={id:newId(),t,w,pts:[Gc(a[0],a[1]),Gc(b[0],b[1])]}; p.roads.push(rd); joinRoads(rd); made.roads++; return rd; };
     // 1. landscape buffer along the long sides of the land boundary
@@ -18559,7 +18563,7 @@ function masterPlan(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land firs
     const totA=BL.reduce((q2,b2)=>q2+b2.a,0); let acc=0; const nP={1:0,2:0};
     BL.forEach(b2=>{ const ph=acc<totA*.5?1:2; acc+=b2.a; const L3=secLetter(nP[ph]++)+ph; b2.L.forEach((x,i)=>{ x.blk=L3; x.phase=ph; x.code=L3+"-"+(i+1); }); });
     p.secs={1:nP[1],2:nP[2]};
-    PL.sel=null; PL.undo.push(snap); if(PL.undo.length>80) PL.undo.shift(); PL.redo=[];
+    p.mpMade=true; PL.sel=null; if(!mo.noUndo) PL.undo.push(snap); if(PL.undo.length>80) PL.undo.shift(); PL.redo=[];
   }catch(er){ if(er&&er.message!=="spine") console.error("master plan",er); QUIET--; if(er&&er.message==="spine"){ PL.plan=JSON.parse(snap); O=null; changed(); return; } PL.plan=JSON.parse(snap); O=null; changed(); A.flash("The master plan could not be made — nothing was changed"); return; }
   QUIET--; GR=null; CG=null; changed(["all"]);
   const st=stats(); A.flash(`Master plan: ${p.plots.length} plots in ${made.sectors} blocks (Phase 1 and 2) · ${(p.gates||[]).length} gates, ring road · green: ${made.green.boul} boulevard strips, ${made.green.gate} gate squares, ${made.green.pocket} corner pockets${made.removed?` · ${made.removed} overlapping plots removed`:""} · average ${st.avg!=null?A.fArea(st.avg):"—"} · ${made.roads} roads · ${st.green?A.fArea(st.green)+" landscape":"no landscape"} · ${st.trees} trees, ${st.lamps} lights · sizes from ${H.n?H.n+" sold plots":"your choice"} — Undo brings back what was there`); fitPlan(); }
@@ -18638,7 +18642,7 @@ function up(pt,e,cx){ const d=PL.drag; PL.drag=null; if(!d) return; const g=grou
     if(!d.moved||path.length<2||howOf()==="one"){ ensureOrigin(); pushUndo(); PL.plan.items.push(placeObject(kind,g)); changed(["items"]); A.flash(KIND(kind).l+" placed"); }
     else rowAlong(path,kind); return; }
   if(d.k==="move"||d.k==="handle"){ if(d.changed){ PL.liveId=null; if(layer&&layer.g) clearG(layer.g.live); clearTimeout(rfT); const s=obj(PL.sel); let rf=null; if(d.base) rf=liveReflow(d,true); else if(s&&PL.sel.t==="road") joinRoads(s); GR=null; changed(PL.sel.t==="item"?["items"]:["all"]);
-      if(rf&&rf.blocks.length) A.flash(`Re-planned ${rf.blocks.length} block${rf.blocks.length>1?"s":""} (${rf.blocks.slice(0,6).join(", ")}${rf.blocks.length>6?"…":""}): ${rf.before} → ${rf.after} plots · pinned plots kept · Undo puts it back`); } else if(d.k==="move"&&PL.sel&&!d.moved){ card(); } return; } }
+      if(rf&&rf.all){} else if(rf&&rf.blocks.length) A.flash(`Re-planned ${rf.blocks.length} block${rf.blocks.length>1?"s":""} (${rf.blocks.slice(0,6).join(", ")}${rf.blocks.length>6?"…":""}): ${rf.before} → ${rf.after} plots · pinned plots kept · Undo puts it back`); } else if(d.k==="move"&&PL.sel&&!d.moved){ card(); } return; } }
 function hover(pt){ const c=PL.cur; if(c&&c.pts&&!c.box){ c.hv=atP(pt,{edges:c.t!=="road"}); live(); A.need(); return; }
   if(A.SK.snapAt){ A.SK.snapAt=null; A.need(); } const cv=A.cv(); if(!cv) return;
   if(PL.tool==="select"){ const s=obj(PL.sel); let over=false; if(s) for(const h of handles()) if(A.hyp(pt,h.p)<18){ over=true; break; } cv.style.cursor=over?"pointer":hitAny(pt)?"move":""; } else cv.style.cursor=""; }
