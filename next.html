@@ -18534,14 +18534,14 @@ function masterPlan(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw 
       tries++; try{ const m=autoPlots(c,true); if(m&&m.length){ made.plots+=m.length; made.sectors++; } else bad.push(c); }catch(er){ console.warn("cell",er); bad.push(c); } }
     // 5b. the plan check: no plot on a road, on the landscape or on another plot
     const cor1=COR(), Gs=p.green.map(x=>x.pts.map(Lc)); let rm=0;
-    p.plots=p.plots.filter(x=>{ const Q=x.pts.map(Lc); if(cor1.some(K=>overlap(Q,K)>.02)||Gs.some(K=>overlap(Q,K)>.02)){ rm++; return false; } return true; });
-    for(let i=0;i<p.plots.length;i++){ const Qi=p.plots[i].pts.map(Lc); for(let j=p.plots.length-1;j>i;j--){ if(overlap(p.plots[j].pts.map(Lc),Qi)>.02){ p.plots.splice(j,1); rm++; } } }
+    p.plots=p.plots.filter(x=>{ if(x.pin) return true; const Q=x.pts.map(Lc); if(cor1.some(K=>overlap(Q,K)>.02)||Gs.some(K=>overlap(Q,K)>.02)){ rm++; return false; } return true; });
+    for(let i=0;i<p.plots.length;i++){ const Qi=p.plots[i].pts.map(Lc); for(let j=p.plots.length-1;j>i;j--){ if(overlap(p.plots[j].pts.map(Lc),Qi)>.02){ if(p.plots[j].pin){ if(!p.plots[i].pin){ p.plots.splice(i,1); i--; rm++; break; } continue; } p.plots.splice(j,1); rm++; } } }
     made.removed=rm;
     // a leftover piece with no road becomes open green, as on the approved plans
-    GR=null; PL.ver++; const na=new Set(noAccess()); p.plots=p.plots.filter(x=>{ if(!na.has(x.id)) return true; p.green.push({id:newId(),k:"lawn",pts:x.pts}); return false; });
+    GR=null; PL.ver++; const na=new Set(noAccess()); p.plots=p.plots.filter(x=>{ if(x.pin||!na.has(x.id)) return true; p.green.push({id:newId(),k:"lawn",pts:x.pts}); return false; });
     // 5c. green pockets: odd corner plots (cut corners, slanted block ends, under-size) become lawn until the green share is reached
     const gTarget=la*Math.max(+prof().bud.green||0,PL.mp.green||0)/100; let gNow=p.green.reduce((q2,x)=>q2+geoArea(x.pts),0);
-    const modArea=x=>x.mod&&MODS[x.mod]?MODS[x.mod].w*MODS[x.mod].d*(x.n||1):null, odd=p.plots.map(x=>{ const ar=geoArea(x.pts), ma=modArea(x); return {x,ar,sc:(x.pts.length>4?1:0)+(ma&&ar<ma*.85?1:0)}; }).filter(o=>o.sc>0).sort((a2,b2)=>b2.sc-a2.sc||a2.ar-b2.ar);
+    const modArea=x=>x.mod&&MODS[x.mod]?MODS[x.mod].w*MODS[x.mod].d*(x.n||1):null, odd=p.plots.map(x=>{ const ar=geoArea(x.pts), ma=modArea(x); return {x,ar,sc:x.pin?0:(x.pts.length>4?1:0)+(ma&&ar<ma*.85?1:0)}; }).filter(o=>o.sc>0).sort((a2,b2)=>b2.sc-a2.sc||a2.ar-b2.ar);
     for(const o of odd){ if(gNow>=gTarget) break; p.plots=p.plots.filter(x=>x!==o.x); p.green.push({id:newId(),k:"lawn",pts:o.x.pts}); gNow+=o.ar; gst.pocket++; }
     made.green=gst;
     // 6. trees and street lights: on the road verges, never inside a plot or the landscape; shrubs and trees in the park and the buffer
@@ -18556,12 +18556,12 @@ function masterPlan(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw 
       p.items.push(...add); }
     // 7. services and utilities: the plots nearest the main entrance until the budget's shares are reached
     const bud=prof().bud, MGc=MG.c, small=MB.w*MB.d*2.2, byD=p.plots.map(x=>({x,d:lhyp(lCent(x.pts.map(Lc)),MGc),a:geoArea(x.pts)})).sort((a2,b2)=>(a2.a>small)-(b2.a>small)||a2.d-b2.d); let sv=0, ut=0;   // services take the small plots nearest the main entrance
-    byD.forEach(o=>{ if(sv<la*(+bud.svc||0)/100*.9){ o.x.use="svc"; o.x.ind="Services"; sv+=o.a; } else if(ut<la*(+bud.util||0)/100*.9){ o.x.use="util"; o.x.ind=undefined; ut+=o.a; } });
+    byD.forEach(o=>{ if(o.x.pin) return; if(sv<la*(+bud.svc||0)/100*.9){ o.x.use="svc"; o.x.ind="Services"; sv+=o.a; } else if(ut<la*(+bud.util||0)/100*.9){ o.x.use="util"; o.x.ind=undefined; ut+=o.a; } });
     // 8. phases: blocks nearest the main entrance first, half the plot area in Phase 1; blocks coded A1, B1 … then A2, B2 …
     const blks={}; p.plots.forEach(x=>{ const k=x.blk||x.code.split("-")[0]; (blks[k]=blks[k]||[]).push(x); });
     const BL=Object.values(blks).map(L2=>({L:L2,d:Math.min(...L2.map(x=>lhyp(lCent(x.pts.map(Lc)),MGc))),a:L2.reduce((q2,x)=>q2+geoArea(x.pts),0)})).sort((a2,b2)=>a2.d-b2.d);
     const totA=BL.reduce((q2,b2)=>q2+b2.a,0); let acc=0; const nP={1:0,2:0};
-    BL.forEach(b2=>{ const ph=acc<totA*.5?1:2; acc+=b2.a; const L3=secLetter(nP[ph]++)+ph; b2.L.forEach((x,i)=>{ x.blk=L3; x.phase=ph; x.code=L3+"-"+(i+1); }); });
+    BL.forEach(b2=>{ const ph=acc<totA*.5?1:2; acc+=b2.a; const L3=secLetter(nP[ph]++)+ph; b2.L.forEach((x,i)=>{ if(x.pin) return; x.blk=L3; x.phase=ph; x.code=L3+"-"+(i+1); }); });
     p.secs={1:nP[1],2:nP[2]};
     p.mpMade=true; PL.sel=null; if(!mo.noUndo) PL.undo.push(snap); if(PL.undo.length>80) PL.undo.shift(); PL.redo=[];
   }catch(er){ if(er&&er.message!=="spine") console.error("master plan",er); QUIET--; if(er&&er.message==="spine"){ PL.plan=JSON.parse(snap); O=null; changed(); return; } PL.plan=JSON.parse(snap); O=null; changed(); A.flash("The master plan could not be made — nothing was changed"); return; }
