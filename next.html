@@ -991,6 +991,8 @@ body.no-matchfin #fpOn,body.no-matchfin .fp-panel,body.no-matchfin .fp-sec,body.
 .edh-bd{overflow:auto;flex:1;min-height:160px;display:flex;flex-direction:column;gap:10px}
 .edh-tbl{min-width:860px} .edh-tbl td em{display:block;font-style:normal;font-size:10.5px;color:var(--mute,#6e6e73);font-weight:500;font-family:Inter,sans-serif}
 .edh-was{color:#8a1f2c;word-break:break-word;max-width:260px} .edh-now{color:#1c7c3a;font-weight:600;word-break:break-word;max-width:260px}
+.aud-tbl.edh-tbl td:nth-child(1)::before{content:"When"}.aud-tbl.edh-tbl td:nth-child(2)::before{content:"User"}.aud-tbl.edh-tbl td:nth-child(3)::before{content:"Plot"}
+.aud-tbl.edh-tbl td:nth-child(4)::before{content:"Field"}.aud-tbl.edh-tbl td:nth-child(5)::before{content:"It was"}.aud-tbl.edh-tbl td:nth-child(6)::before{content:"Changed to"}
 @media (max-width:820px){ .edh-ov{padding:0;align-items:stretch} .edh-box{border-radius:0;max-height:100dvh;height:100dvh} }
 
 #sbGate{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:radial-gradient(1200px 600px at 20% 0%,#3a0d16 0%,#141416 60%);padding:16px}
