@@ -18481,6 +18481,8 @@ function masterPlan(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land firs
     p.plots=p.plots.filter(x=>{ const Q=x.pts.map(Lc); if(cor1.some(K=>overlap(Q,K)>.02)||Gs.some(K=>overlap(Q,K)>.02)){ rm++; return false; } return true; });
     for(let i=0;i<p.plots.length;i++){ const Qi=p.plots[i].pts.map(Lc); for(let j=p.plots.length-1;j>i;j--){ if(overlap(p.plots[j].pts.map(Lc),Qi)>.02){ p.plots.splice(j,1); rm++; } } }
     made.removed=rm;
+    // a leftover piece with no road becomes open green, as on the approved plans
+    GR=null; PL.ver++; const na=new Set(noAccess()); p.plots=p.plots.filter(x=>{ if(!na.has(x.id)) return true; p.green.push({id:newId(),k:"lawn",pts:x.pts}); return false; });
     // 5c. green pockets: odd corner plots (cut corners, slanted block ends, under-size) become lawn until the green share is reached
     const gTarget=la*Math.max(+prof().bud.green||0,PL.mp.green||0)/100; let gNow=p.green.reduce((q2,x)=>q2+geoArea(x.pts),0);
     const modArea=x=>x.mod&&MODS[x.mod]?MODS[x.mod].w*MODS[x.mod].d*(x.n||1):null, odd=p.plots.map(x=>{ const ar=geoArea(x.pts), ma=modArea(x); return {x,ar,sc:(x.pts.length>4?1:0)+(ma&&ar<ma*.85?1:0)}; }).filter(o=>o.sc>0).sort((a2,b2)=>b2.sc-a2.sc||a2.ar-b2.ar);
