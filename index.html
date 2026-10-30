@@ -10884,6 +10884,7 @@ function soPdf0(){
   y+=3; const p=soPlan();
   if(f.mode==="plan"&&!f.listEach&&f.instNote&&p&&p.n){ const y0=y+6.2; tx("*",L-4,y0); rich(`The Amount of installment ${p.pt.l}`,L+3,y0); tx(fInt(p.inst),C2-10,y0,{b:true,i:true,a:"right"}); tx("EGP",C2-5,y0,{i:true}); y+=12.3; }
   String(f.notes||"").split("\n").map(s=>s.trim()).filter(Boolean).forEach(note);
+  try{ ((window.SID_TOPO&&SID_TOPO.offerNote&&SID_TOPO.offerNote(SO,f))||[]).forEach(note); }catch(e){}
   // fees
   const E=f.fee, sec=()=>{ y+=4; };
   if(E.ins.on){ sec(); row4(["Item","Percentage","Amount","Notes"],11,{fill:GR,b:true});
@@ -11754,6 +11755,7 @@ const EDCOLS=[
 
 { const SO=[["sheet", "Project Name"], ["phase", "Phase"], ["year", "Year of Sale"], ["clientId", "Client ID"], ["unit", "Unit Code"], ["area", "Area"], ["areaRange", "Area range"], ["price", "SqM Cash Price (A)"], ["cash", "Cash Value (A)"], ["costSqm", "Cost/SQM"], ["gpSqm", "GP/SQM"], ["totalGp", "Total GP"], ["gpPct", "GP%"], ["rfPrice", "RF Price"], ["withInterest", "Total plus Interest"], ["cur", "Currency"], ["rfPriceUsd", "RF Price USD"], ["roeUsd", "ROE USD"], ["totalUsd", "Total plus interest USD"], ["landType", "Land Type"], ["status", "Status"], ["sector", "Sector"], ["contractDate", "Sales contract date"], ["eoiDate", "EOI Date"], ["reserveDate", "Reservation form Date"], ["handoverDate", "Handover Date"], ["client", "Client Name"], ["company", "Company Name"], ["quarter", "Quarter of sale"], ["soldBy", "SOLD BY"], ["dateOfCost", "Date of cost"], ["mva", "Electricity (MVA)"], ["sewage", "Sewage (m3/day)"], ["water", "Water (m3/day)"], ["soldArea", "Sold Area"], ["plannedPrice", "SqM Price planned"], ["plannedValue", "Cash Value planned"], ["collected", "Collection Amount"], ["opsStatus", "OPS Status"]], EX={"park": "Park (dashboard)", "code": "MDS code", "approvedBy": "Approved by", "actualSales": "Actual sales", "src": "Source sheet"}, pos=new Map(SO.map((x,i)=>[x[0],i])), lab=new Map(SO), have=new Set(EDCOLS.map(c=>c.k));
   if(!have.has("dateOfCost")) EDCOLS.push({k:"dateOfCost",label:"Date of cost",type:"int",w:92});
+  [["lvMin","Level min (m)","num",96],["lvMax","Level max (m)","num",96],["lvMean","Level mean (m)","num",100],["lvSlope","Mean slope (%)","num",96],["lvFall","Falls toward","text",96],["lvSrc","Level source","text",168]].forEach(([k,l,t,w])=>{ if(!have.has(k)) EDCOLS.push({k,label:l,type:t,w,calc:true}); });
   EDCOLS.sort((a,b)=>(pos.has(a.k)?pos.get(a.k):1000)-(pos.has(b.k)?pos.get(b.k):1000));
   EDCOLS.forEach(c=>{ if(lab.has(c.k)) c.label=lab.get(c.k); else if(EX[c.k]) c.label=EX[c.k]; c.w=Math.max(c.w,Math.ceil(c.label.length*7.6)+30); }); }
 const colLetter=n=>{ let s=""; n++; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; };
@@ -17411,7 +17413,7 @@ function photo(){ pops(null); const mc=map.getCanvas(); let done=false;
   const make=()=>{ if(done) return; done=true; try{
     const W=mc.width, H=mc.height, o=document.createElement("canvas"); o.width=W; o.height=H; const g=o.getContext("2d");
     g.drawImage(mc,0,0); g.drawImage(cv,0,0,cv.width,cv.height,0,0,W,H);
-    const k=W/cv.clientWidth, d=new Date(), txt=`SID · Elsewedy Industrial Development · ${d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})} ${d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}`;
+    const k=W/cv.clientWidth, d=new Date(), txt=`SID · Elsewedy Industrial Development · ${d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})} ${d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}${(window.SID_TOPO2&&window.SID_TOPO2.planCaption()?" · "+window.SID_TOPO2.planCaption():"")}`;
     g.font=`700 ${13*k}px ${FONT}`; const tw=g.measureText(txt).width; g.fillStyle="rgba(20,20,22,.8)"; g.beginPath(); const x=12*k,y=H-44*k,w=tw+28*k,h=30*k,r=8*k;
     g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.fill();
     g.fillStyle="#B3263D"; g.fillRect(x+8*k,y+7*k,3*k,16*k); g.fillStyle="#fff"; g.textBaseline="middle"; g.fillText(txt,x+18*k,y+h/2);
@@ -17716,7 +17718,7 @@ const KIND=k=>BK[k]||OB[k]||{l:k,w:10,len:10,h:5,c:"#ccc"};
 const isBld=k=>!!BK[k];
 const PL={on:false,tool:"road",rt:1,bk:"factory",tk:"palm",ok:"lamp",target:5000,v3:false,shp:"box",rsub:"road",psub:"draw",gsub:"area",gk:"lawn",how:"line",gaps:{},rdia:40,mp:{green:8,trees:true,lights:true},prof:null,phase:1,
   plan:null,undo:[],redo:[],sel:null,cur:null,nid:1,ver:0,dirty:new Set(["all"]),pm:null,block:null,menu:null};
-const KEYS=["tool","rt","bk","tk","ok","target","v3","shp","rsub","psub","gsub","gk","how","gaps","rdia","mp","prof","phase"];
+const KEYS=["tool","rt","bk","tk","ok","target","v3","shp","rsub","psub","gsub","gk","how","gaps","rdia","mp","prof","phase","tz"];
 const blank=()=>({o:null,land:null,roads:[],plots:[],items:[],green:[],rounds:[],sec:0,gates:[]});
 function migrate(){ if(PL.tool==="auto"){ PL.tool="plot"; PL.psub="auto"; } else if(PL.tool==="tree"){ PL.tool="green"; PL.gsub="trees"; } else if(PL.tool==="obj") PL.tool="street"; if(!PL.gaps||typeof PL.gaps!=="object") PL.gaps={}; if(!PL.mp||typeof PL.mp!=="object") PL.mp={green:8,trees:true,lights:true}; }
 function load(o){ PL.plan=Object.assign(blank(),o.plan); if(!Array.isArray(PL.plan.gates)) PL.plan.gates=[]; KEYS.forEach(k=>{ if(o[k]!=null) PL[k]=o[k]; }); migrate(); }
@@ -18320,6 +18322,10 @@ function buildUI(){ const host=A.ui(); if(!host) return; ui=document.createEleme
 function set3d(on){ PL.v3=on; persist(); btns(); map.easeTo({pitch:on?60:0,bearing:on&&Math.abs(map.getBearing())<1?-20:map.getBearing(),duration:900}); A.flash(on?"3D view — twist two fingers to turn, Move tool to look around":"Flat view"); }
 function btns(){ if(!ui) return; ui.querySelectorAll("[data-pt]").forEach(b=>{ const on=b.dataset.pt===PL.tool; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on); });
   q("#plUndo").disabled=!PL.undo.length&&!PL.cur; q("#plRedo").disabled=!PL.redo.length; const b3=q("#pl3d"); if(b3) b3.classList.toggle("on",!!PL.v3); const rb=q("#plRB"); if(rb) rb.classList.toggle("on",rulesOn); }
+const tzOf=()=>PL.tz||(PL.tz={avoid:false,max:6,low:false,lowDepth:1});
+function tzBtns(){ const z=tzOf(); return `<i class="sep"></i><b title="Heights: 30 m satellite model or your uploaded survey">Terrain</b><button type="button" data-tz="avoid" class="${z.avoid?"on":""}" title="Leave out plots steeper than this">Avoid slopes ></button><input type="number" id="plTzM" min="1" max="30" step="1" value="${z.max}" inputmode="numeric" aria-label="Steepest slope in percent"> %<button type="button" data-tz="low" class="${z.low?"on":""}" title="Mark plots on a low spot where water would collect (▼)">Flag low spots</button>`; }
+function tzCb(){ return {flash:m=>A.flash(m), apply:(rm)=>{ if(rm&&rm.length){ pushUndo(); const set=new Set(rm); PL.plan.plots=PL.plan.plots.filter(x=>!set.has(x.id)); PL.plan.items=PL.plan.items.filter(i=>!(i.plot&&set.has(i.plot))); GR=null; CG=null; } changed(["all"]); } }; }
+function tzAfter(){ try{ const z=PL.tz; if(z&&(z.avoid||z.low)&&window.SID_TOPO2) setTimeout(()=>window.SID_TOPO2.planPass(PL,tzCb()),30); }catch(e){} }
 function opts(){ const el=q("#plOpt"); if(!el) return; let h=""; const t=PL.tool, SEP=`<i class="sep"></i>`;
   const seg=(o,list,cur,num)=>list.map(([v,l])=>`<button type="button" data-o="${o}" data-v="${v}"${num?' data-n="1"':""} class="${String(v)===String(cur)?"on":""}">${l}</button>`).join("");
   const shape=()=>`<b>Shape</b>`+seg("shp",SHAPES,PL.shp);
@@ -18328,16 +18334,18 @@ function opts(){ const el=q("#plOpt"); if(!el) return; let h=""; const t=PL.tool
   else if(t==="road") h=seg("rsub",[["road","Road"],["round","Roundabout"],["gate","Gate"]],PL.rsub)+SEP+(PL.rsub==="gate"?`<b>Gates</b><span class="hi">${(PL.plan.gates||[]).length?(PL.plan.gates.length+" placed · the first is the main entrance"):"none yet — Master plan places them itself"}</span>`:PL.rsub==="round"?`<b>Across</b>`+seg("rdia",RDIA.map(d=>[d,d+" m"]),PL.rdia,1):seg("rt",RT.map((r,i)=>[i,`${r.l} · ${r.w} m`]),PL.rt,1));
   else if(t==="plot"){ const H=history(), sz=()=>`<b>Plot size</b>`+seg("target",[2500,5000,10000,20000].map(v=>[v,A.nf(v,0)+" m²"]),PL.target,1)+`<input type="number" id="plTg" min="300" step="100" value="${PL.target}" inputmode="numeric" aria-label="Plot size in m²">`+(H.n>=20?`<button type="button" id="plHist" title="The size that sold best: ${H.n} sold plots, middle size ${A.nf(H.med,0)} m²">From sales history</button>`:"");
     const phs=SEP+`<b>Phase</b>`+seg("phase",[[1,"1"],[2,"2"],[3,"3"]],PL.phase||1,1);
-    h=seg("psub",[["draw","Draw"],["auto","Smart fill"],["master","Master plan"]],PL.psub)+SEP+(PL.psub==="auto"?sz()+phs:PL.psub==="master"?sz()+SEP+`<b>Green</b>`+seg("mpg",[4.3,5,8].map(v=>[v,v+"%"]),+prof().bud.green,1)+`<button type="button" data-tg="trees" class="${PL.mp.trees!==false?"on":""}">Trees</button><button type="button" data-tg="lights" class="${PL.mp.lights!==false?"on":""}">Lights</button><button type="button" id="plMk" class="mk">Make the plan</button>`+phs:shape()); }
+    h=seg("psub",[["draw","Draw"],["auto","Smart fill"],["master","Master plan"]],PL.psub)+SEP+(PL.psub==="auto"?sz()+phs+tzBtns():PL.psub==="master"?sz()+SEP+`<b>Green</b>`+seg("mpg",[4.3,5,8].map(v=>[v,v+"%"]),+prof().bud.green,1)+`<button type="button" data-tg="trees" class="${PL.mp.trees!==false?"on":""}">Trees</button><button type="button" data-tg="lights" class="${PL.mp.lights!==false?"on":""}">Lights</button><button type="button" id="plMk" class="mk">Make the plan</button>`+phs+tzBtns():shape()); }
   else if(t==="build") h=`<b>Build</b>`+seg("bk",Object.entries(BK).map(([k,v])=>[k,v.l]),PL.bk);
   else if(t==="green") h=seg("gsub",[["area","Landscape"],["trees","Trees"]],PL.gsub)+SEP+(PL.gsub==="area"?seg("gk",Object.entries(GK).map(([k,v])=>[k,v.l]),PL.gk)+SEP+shape():seg("tk",TREES.map(k=>[k,OB[k].l]),PL.tk)+SEP+rows());
   else if(t==="street") h=seg("ok",OBJS.map(k=>[k,OB[k].l]),PL.ok)+SEP+rows();
   el.innerHTML=h; el.hidden=!h; placeKpi(); if(A&&A.arrange) A.arrange();
-  el.onclick=e=>{ const tg2=e.target.closest("button[data-tg]"); if(tg2){ const k=tg2.dataset.tg==="trees"?"trees":"lights"; PL.mp[k]=PL.mp[k]===false; persist(); opts(); return; }
+  el.onclick=e=>{ const tzb=e.target.closest("button[data-tz]"); if(tzb){ const k=tzb.dataset.tz, z=tzOf(); z[k]=!z[k]; persist(); opts(); if(z[k]&&PL.plan.plots.length&&window.SID_TOPO2) window.SID_TOPO2.planPass(PL,tzCb()); return; }
+    const tg2=e.target.closest("button[data-tg]"); if(tg2){ const k=tg2.dataset.tg==="trees"?"trees":"lights"; PL.mp[k]=PL.mp[k]===false; persist(); opts(); return; }
     const mk=e.target.closest("#plMk"); if(mk){ masterAsk(); return; } const hb=e.target.closest("#plHist"); if(hb){ const H=history(); const t=Math.max(300,Math.round(H.med/250)*250); PL.target=t; persist(); opts(); A.flash("Plot size set to "+A.nf(t,0)+" m² — the middle size of "+H.n+" sold plots"+(H.top[0]?" · most sales were near "+A.nf(H.top[0],0)+" m²":"")); return; }
     const mg=e.target.closest('button[data-o="mpg"]'); if(mg){ PL.mp.green=+mg.dataset.v; prof().bud.green=+mg.dataset.v; persist(); opts(); if(rulesOn) rulesUI(); return; }
     const b=e.target.closest("button[data-o]"); if(!b) return; const o=b.dataset.o, v=b.dataset.n?+b.dataset.v:b.dataset.v; if(PL[o]===v) return; PL[o]=v;
     if(PL.cur&&PL.cur.t!==curType()) finishCur(); closeMenu(); persist(); opts(); live(); A.hint(); A.need(); };
+  const tzm=q("#plTzM"); if(tzm){ tzm.onkeydown=e=>e.stopPropagation(); tzm.onchange=()=>{ const v=+tzm.value; if(v>=1&&v<=30){ tzOf().max=v; persist(); if(tzOf().avoid&&PL.plan.plots.length&&window.SID_TOPO2) window.SID_TOPO2.planPass(PL,tzCb()); } else { A.flash("Steepest slope between 1 and 30 %"); tzm.value=tzOf().max; } }; }
   const tg=q("#plTg"); if(tg){ tg.onkeydown=e=>e.stopPropagation(); tg.onchange=()=>{ const v=+tg.value; if(v>=300&&v<=1e6){ PL.target=Math.round(v); persist(); opts(); } else { A.flash("Plot size between 300 and 1,000,000 m²"); tg.value=PL.target; } }; }
   const gp=q("#plGap"); if(gp){ gp.onkeydown=e=>e.stopPropagation(); gp.onchange=()=>{ const v=+gp.value, k=rowKind(); if(v>=1&&v<=500){ PL.gaps[k]=Math.round(v*10)/10; persist(); A.hint(); live(); A.need(); } else { A.flash("Spacing between 1 and 500 m"); gp.value=gapOf(k); } }; } }
 // on narrower screens (iPad upright) the choices bar would run under the plan numbers: the numbers move down below it
@@ -18681,7 +18689,8 @@ function pocket(P,area,Rd,near,ax){ const o=ax||obbOf(P); if(!o) return null; co
       const chk=R.concat([c],[0,1,2,3].map(k=>[(R[k][0]+R[(k+1)%4][0])/2,(R[k][1]+R[(k+1)%4][1])/2]));
       if(!chk.every(p=>lInPoly(p,P)&&distEdge(p,P)>=12&&roadDist(p,Rd)>=6)) continue; const d=lhyp(c,near); if(d<bd){ bd=d; best={R,c,w,h}; } }
     if(best) return best; } return null; }
-function masterPlan(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw the land first — then the master plan fills it"); return; }
+function masterPlan(mo){ const r0=masterPlan0(mo); tzAfter(); return r0; }
+function masterPlan0(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw the land first — then the master plan fills it"); return; }
   const Land=p.land.pts.map(Lc), ob=obbOf(Land); if(!ob){ A.flash("The land is too small"); return; } const la=Math.abs(lArea(Land)); if(la<20000){ A.flash("The land is too small for a master plan (under 2 ha)"); return; }
   const H=history(), MT=mixTop(), T1=PL.target||MT[0], T2=MT.find(b=>Math.abs(b-T1)>1)||null;
   const snap=JSON.stringify(p); QUIET++; const made={roads:0,plots:0,cells:0,sectors:0};
@@ -18897,7 +18906,7 @@ function card(soft){ const el=q("#plCard"); if(!el) return; const s=obj(PL.sel);
     acts=`<select id="plCK" aria-label="Type">${keys.map(k=>`<option value="${k}" ${k===s.k?"selected":""}>${esc(list[k].l)}</option>`).join("")}</select><button type="button" id="plCS">Exact sizes</button><button type="button" id="plCDup">Duplicate</button>`; }
   else if(t==="plot"){ const a=geoArea(s.pts), b=PL.plan.items.find(i=>isBld(i.k)&&i.plot===s.id); hd="Plot "+(s.code||""); big=A.fArea(a); sub=`${A.fArea2(a)?A.fArea2(a)+" · ":""}perimeter ${A.fLen(A.pathLen(s.pts.concat([s.pts[0]])))}${b?" · "+KIND(b.k).l+" on it":" · empty"}`;
     if(noAccess().includes(s.id)) w="This plot does not touch a road";
-    sub+=` · ${USES[s.use||"ind"]}${s.ind?" · "+s.ind:""}${s.mod&&MODS[s.mod]?" · module "+MODS[s.mod].l+(s.n>1?" × "+s.n:""):""}${s.phase?" · phase "+s.phase:""}`;
+    sub+=` · ${USES[s.use||"ind"]}${s.ind?" · "+s.ind:""}${s.mod&&MODS[s.mod]?" · module "+MODS[s.mod].l+(s.n>1?" × "+s.n:""):""}${s.phase?" · phase "+s.phase:""}${window.SID_TOPO2?window.SID_TOPO2.planTxt(s):""}`;
     acts=`<select id="plCU" class="u" aria-label="Plot use">${Object.entries(USES).map(([k,v])=>`<option value="${k}" ${(s.use||"ind")===k?"selected":""}>${v}</option>`).join("")}</select><select id="plCI" class="u" aria-label="Industry"><option value="">Industry…</option>${INDS.map(v=>`<option ${s.ind===v?"selected":""}>${v}</option>`).join("")}</select>${String(s.code||"").includes("-")?`<button type="button" id="plCIs" title="Give every plot of this sector the same use and industry">Whole sector ${esc(String(s.code).split("-")[0])}</button>`:""}<button type="button" id="plCPin" title="A pinned plot never changes when roads or the land move">${s.pin?"📌 Pinned":"Pin"}</button>${s.blk?`<select id="plCRp" class="u" aria-label="Plan this block again"><option value="">Re-plan block ${esc(s.blk)}…</option><option value="mix">with the profile mix</option>${prof().mix.map((e,i)=>`<option value="${i}">all ${esc(mixTxt(e))}</option>`).join("")}</select>`:""}<select id="plCB" aria-label="Build on this plot"><option value="">${b?"Change building…":"Build…"}</option>${Object.entries(BK).map(([k,v])=>`<option value="${k}">${esc(v.l)}</option>`).join("")}</select>`; }
   else if(t==="road"){ let L=0; for(let i=1;i<s.pts.length;i++) L+=A.dist(s.pts[i-1],s.pts[i]); hd="Road"; big=A.fLen(L); sub=`${s.w} m wide · about ${A.fArea(L*s.w)} of road`;
     acts=`<select id="plCR" aria-label="Road type">${RT.map((r,i)=>`<option value="${i}" ${r.k===s.t?"selected":""}>${esc(r.l)} · ${r.w} m</option>`).join("")}</select>`; }
@@ -18976,7 +18985,8 @@ function refillAt(g,hit){ const f=filledBlockAt(g,hit); if(!f){ A.flash("This bl
     m=autoPlots(f.g,false,{letter:f.blk,phase:f.phase}); } finally { QUIET--; }
   if(!m||!m.length){ PL.plan=JSON.parse(keep); PL.undo.pop(); O=null; GR=null; CG=null; changed(["all"]); A.flash("No better plan for this block — it was left as it was"); return null; }
   A.flash(`Block ${f.blk} planned again: ${m.length} plots · Undo puts the old ones back`); return m; }
-function smartTap(g){ const hit=plotAt(g); PL.hov=null;
+function smartTap(g){ const r0=smartTap0(g); tzAfter(); return r0; }
+function smartTap0(g){ const hit=plotAt(g); PL.hov=null;
   if(hit){ if(hit.pin){ A.flash("That plot is pinned — unpin it to plan its block again"); return; } refillAt(g,hit); return; }
   const r=blockAt(g); if(!r.err){ autoPlots(r.g); return; }
   const np=nearPlot(g,25); if(np){ refillAt(g,np); return; } A.flash(r.err); }
@@ -19029,7 +19039,8 @@ function shapeLoose(P,o){ o=o||obbOf(P); if(!o) return false; const a=o.e.u1-o.e
   for(let i=0;i<P.length;i++){ const p0=P[(i+P.length-1)%P.length], p1=P[i], p2=P[(i+1)%P.length], v1=[p0[0]-p1[0],p0[1]-p1[1]], v2=[p2[0]-p1[0],p2[1]-p1[1]], l1=Math.hypot(v1[0],v1[1]), l2=Math.hypot(v2[0],v2[1]); if(l1<.5||l2<.5) continue;
     if(Math.acos(Math.max(-1,Math.min(1,(v1[0]*v2[0]+v1[1]*v2[1])/(l1*l2))))*57.2958<30) return false; } return true; }
 /* ---------- V97: roads only — Make the plan fills every block the roads close (no land needed) ---------- */
-function fillAll(){ const R=detectBlock(null), S=(R&&R.seeds)||[]; if(!S.length){ A.flash(R&&R.err?R.err:"No closed area between your roads — make the road ends meet round each area"); return; }
+function fillAll(){ const r0=fillAll0(); tzAfter(); return r0; }
+function fillAll0(){ const R=detectBlock(null), S=(R&&R.seeds)||[]; if(!S.length){ A.flash(R&&R.err?R.err:"No closed area between your roads — make the road ends meet round each area"); return; }
   ensureOrigin(); pushUndo(); QUIET++; let n=0, b=0; try{ S.forEach(sd=>{ if(plotAt(sd.p)) return; const m=autoPlots(sd.p,true); if(m&&m.length){ n+=m.length; b++; } }); } finally { QUIET--; }
   GR=null; CG=null; changed(["all"]); if(!n){ PL.undo.pop(); A.flash("The blocks between your roads are too small or already full"); return; }
   A.flash(`Filled ${b} block${b>1?"s":""} between your roads: ${n} plots · Undo puts it back`); }
@@ -19048,7 +19059,7 @@ function draw2d(ctx,labels,now){ const p=PL.plan, sel=obj(PL.sel), Pp=A.P;
   const mp=mpp([cvW()/2,cvH()/2]); ctx.textAlign="center"; ctx.textBaseline="middle";
   p.green.forEach(x=>{ const a=geoArea(x.pts); if(Math.sqrt(a)/mp<70) return; const s=gScr(lCent(x.pts.map(Lc))), t=(GK[x.k]||GK.lawn).l+" · "+A.fArea(a); ctx.font=`700 11px ${A.FONT}`; ctx.lineWidth=3; ctx.strokeStyle="rgba(0,0,0,.5)"; ctx.strokeText(t,s[0],s[1]); ctx.fillStyle="#EFFFE6"; ctx.fillText(t,s[0],s[1]); });
   const LBX=[]; const bOn=new Set(p.items.filter(i=>isBld(i.k)&&i.plot).map(i=>i.plot));
-  p.plots.forEach(x=>{ const a=geoArea(x.pts); if(Math.sqrt(a)/mp<46) return; const c=lCent(x.pts.map(Lc)), s=gScr(c); ctx.font=`800 12px ${A.FONT}`; ctx.lineWidth=3; ctx.strokeStyle="rgba(0,0,0,.55)"; const lb=(x.pin?"📌 ":"")+(x.code||""); { const wl=ctx.measureText(lb).width+6, hb=Math.sqrt(a)/mp>80?30:16, bx=[s[0]-wl/2,s[1]-15,s[0]+wl/2,s[1]-15+hb]; if(LBX.some(o=>bx[0]<o[2]&&o[0]<bx[2]&&bx[1]<o[3]&&o[1]<bx[3])) return; LBX.push(bx); } ctx.strokeText(lb,s[0],s[1]-7); ctx.fillStyle="#fff"; ctx.fillText(lb,s[0],s[1]-7);
+  p.plots.forEach(x=>{ const a=geoArea(x.pts); if(Math.sqrt(a)/mp<46) return; const c=lCent(x.pts.map(Lc)), s=gScr(c); ctx.font=`800 12px ${A.FONT}`; ctx.lineWidth=3; ctx.strokeStyle="rgba(0,0,0,.55)"; const lb=(x.pin?"📌 ":"")+(x.code||"")+(x.tz&&x.tz.low?" ▼":""); { const wl=ctx.measureText(lb).width+6, hb=Math.sqrt(a)/mp>80?30:16, bx=[s[0]-wl/2,s[1]-15,s[0]+wl/2,s[1]-15+hb]; if(LBX.some(o=>bx[0]<o[2]&&o[0]<bx[2]&&bx[1]<o[3]&&o[1]<bx[3])) return; LBX.push(bx); } ctx.strokeText(lb,s[0],s[1]-7); ctx.fillStyle="#fff"; ctx.fillText(lb,s[0],s[1]-7);
     if(Math.sqrt(a)/mp>80&&!bOn.has(x.id)){ ctx.font=`600 10.5px ${A.FONT}`; const t=A.fArea(a); ctx.strokeText(t,s[0],s[1]+8); ctx.fillStyle="rgba(255,255,255,.9)"; ctx.fillText(t,s[0],s[1]+8); } });
   if(PL.tool==="select"&&PL.sel&&/^(land|plot|green)$/.test(PL.sel.t)){ const hr=handles().find(h=>h.k==="prot"); if(hr){ ctx.beginPath(); ctx.moveTo(hr.base[0],hr.base[1]); ctx.lineTo(hr.p[0],hr.p[1]); ctx.lineWidth=2; ctx.strokeStyle="#0A84FF"; ctx.stroke(); ctx.beginPath(); ctx.arc(hr.p[0],hr.p[1],8,0,2*Math.PI); ctx.fillStyle="#0A84FF"; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle="#fff"; ctx.stroke(); } }
   if(PL.hov&&PL.hov.poly&&PL.tool==="plot"&&!PL.cur){ const H=PL.hov, rf=H.k==="refill", c1=rf?"#FF9F0A":"#34C759", V=H.poly.map(gScr);
@@ -19093,7 +19104,7 @@ function deactivate(leaving){ if(!PL.on) return; if(PL.cur) finishCur(); PL.on=f
   if(ui){ ui.remove(); ui=null; } const b3=q("#pl3d"); if(b3) b3.remove(); const rb=q("#plRB"); if(rb) rb.remove(); if(!leaving&&map.getPitch()>.5) map.easeTo({pitch:0,duration:600}); }
 // the building and tree models, shared with the AR table view (sold factories and warehouses)
 window.SID_3D={build(T3,F,L,W,h,k,id,K,opts){ if(!T) T=T3; return buildingAt(F,L,W,h,k,String(id),K,opts); }, tree(T3,K,x,z,sz,c,palm){ if(!T) T=T3; treeAt(K,x,z,sz,c,palm); }};
-window.SID_PLAN={get on(){ return PL.on; },plotAt:planPlotAt,activate,deactivate,down,move,up,hover,cancel,undo,redo,del,esc:escK,enter:enterK,key,hint:hintTxt,draw2d,obstacles,tool:()=>PL.tool,setTool,
+window.SID_PLAN={get on(){ return PL.on; },get pl(){ return PL; },plotAt:planPlotAt,activate,deactivate,down,move,up,hover,cancel,undo,redo,del,esc:escK,enter:enterK,key,hint:hintTxt,draw2d,obstacles,tool:()=>PL.tool,setTool,
   state:PL,_t:{Lc,Gc,detectBlock,smartTap,stripFill,fillAll,shapeLoose,handles,refillAt,blockAt,hoverPreview,snapOutline,newDrawing,deleteDrawing,subdivide,stats,iCorners,fitOnPlot,autoPlots,placeBuilding,commitRoad,commitLand,commitPlot,commitGreen,graph,cgraph,rbs,noAccess,lArea,layer:()=>layer,veh:()=>VEH,scr,itemScreen,
     alongRoad,rowAlong,rowPos,placeRound,keepClear,avoid,overlap,segClear,srvRoute,curType,hitAny,opts,masterPlan,masterFromRing,shapeOK,obbOf,planAudit}};
 })();
@@ -19205,6 +19216,8 @@ const SLP=[[2,"#1a9850","0–2 %"],[5,"#91cf60","2–5 %"],[8,"#fee08b","5–8 %
 const CTH={9:[50,250],10:[20,100],11:[10,50],12:[10,50],13:[5,25],14:[5,25],15:[2,10],16:[2,10],17:[1,5]};
 /* the same font stack as the page's own street labels: the glyph server only knows that exact combination */
 const FONT=["Montserrat Medium","Open Sans Regular","Noto Sans Regular","Noto Sans CJK JP Regular"];
+/* phase 4-7 plug in here (web_topo2.py): survey override, extra panel sections, ready-to-open promise */
+const HK={at:null,src:null,merge:null,has:null,ui:null,ready:null,sync:null};
 const TP={on:false,tool:null,pts:[],range:null,lib:null,ctl:null,terr:false,res:null,bound:false};
 const prefKey=()=>"sid.topo.v1."+String((typeof SBME!=="undefined"&&SBME&&SBME.email)||"anon").toLowerCase();
 let PREF={L:{},ter:[0,1.5],min:0};
@@ -19216,7 +19229,7 @@ const cvs=(w,h)=>{ if(typeof OffscreenCanvas!=="undefined") return new Offscreen
 const hexRGB=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
 
 /* ---------- the source of every number (phase 6 adds "Survey <date>") ---------- */
-const sourceOf=(lon,lat)=>({kind:"est",txt:"30 m estimate ±"+ERR+" m",err:ERR});
+const sourceOf=(lon,lat)=>{ const s=HK.src&&lon!=null?HK.src(lon,lat):null; return s||{kind:"est",txt:"30 m estimate ±"+ERR+" m",err:ERR}; };
 const badge=(lon,lat)=>{ const s=sourceOf(lon,lat); return `<span class="tp-src${s.kind==="sv"?" sv":""}" style="margin:0 0 0 6px">${esc(s.txt)}</span>`; };
 
 /* ---------- elevation tiles (decoded once, kept in memory, straight from the public bucket) ---------- */
@@ -19225,7 +19238,7 @@ function demTile(z,x,y){ const k=z+"/"+x+"/"+y; let p=TC.get(k); if(p){ TC.delet
   p=fetch(DEM_URL.replace("{z}",z).replace("{x}",x).replace("{y}",y)).then(r=>{ if(!r.ok) throw new Error("tile "+r.status); return r.blob(); })
    .then(b=>createImageBitmap(b,{premultiplyAlpha:"none",colorSpaceConversion:"none"})).then(bm=>{
      const c=cvs(256,256), g=c.getContext("2d",{willReadFrequently:true}); g.drawImage(bm,0,0); const d=g.getImageData(0,0,256,256).data, H=new Float32Array(65536);
-     for(let i=0;i<65536;i++){ const v=d[i*4]*256+d[i*4+1]+d[i*4+2]/256-32768; H[i]=v<SENTINEL?NaN:v; } TR.set(k,H); return H; })
+     for(let i=0;i<65536;i++){ const v=d[i*4]*256+d[i*4+1]+d[i*4+2]/256-32768; H[i]=v<SENTINEL?NaN:v; } if(HK.merge){ try{ HK.merge(z,x,y,H); }catch(e){ console.error("survey merge",e); } } TR.set(k,H); return H; })
    .catch(()=>{ TC.delete(k); return null; });
   TC.set(k,p); if(TC.size>90){ const o=TC.keys().next().value; TC.delete(o); TR.delete(o); } return p; }
 const gpx=(lon,lat,z)=>{ const n=Math.pow(2,z)*256, s=Math.sin(lat*Math.PI/180); return [(lon+180)/360*n, (0.5-Math.log((1+s)/(1-s))/(4*Math.PI))*n]; };
@@ -19234,10 +19247,10 @@ function pxAt(gx,gy,z,sync){ const n=Math.pow(2,z), tx=Math.floor(gx/256), ty=Ma
   if(sync){ const H=TR.get(k); if(!H){ demTile(z,X,ty); return undefined; } return H[iy*256+ix]; }
   return demTile(z,X,ty).then(H=>H?H[iy*256+ix]:NaN); }
 /* bilinear between the four nearest height cells; null = no data here */
-async function elevAt(lon,lat){ const g=gpx(lon,lat,MAXZ), gx=g[0]-.5, gy=g[1]-.5, x0=Math.floor(gx), y0=Math.floor(gy), fx=gx-x0, fy=gy-y0;
+async function elevAt(lon,lat){ if(HK.at){ const s=HK.at(lon,lat); if(s) return s.h; } const g=gpx(lon,lat,MAXZ), gx=g[0]-.5, gy=g[1]-.5, x0=Math.floor(gx), y0=Math.floor(gy), fx=gx-x0, fy=gy-y0;
   const v=await Promise.all([pxAt(x0,y0,MAXZ),pxAt(x0+1,y0,MAXZ),pxAt(x0,y0+1,MAXZ),pxAt(x0+1,y0+1,MAXZ)]);
   if(v.some(a=>!(a===a))) return null; return (v[0]*(1-fx)+v[1]*fx)*(1-fy)+(v[2]*(1-fx)+v[3]*fx)*fy; }
-function elevSync(lon,lat){ const g=gpx(lon,lat,MAXZ), gx=g[0]-.5, gy=g[1]-.5, x0=Math.floor(gx), y0=Math.floor(gy), fx=gx-x0, fy=gy-y0;
+function elevSync(lon,lat){ if(HK.at){ const s=HK.at(lon,lat); if(s) return s.h; } const g=gpx(lon,lat,MAXZ), gx=g[0]-.5, gy=g[1]-.5, x0=Math.floor(gx), y0=Math.floor(gy), fx=gx-x0, fy=gy-y0;
   const v=[pxAt(x0,y0,MAXZ,1),pxAt(x0+1,y0,MAXZ,1),pxAt(x0,y0+1,MAXZ,1),pxAt(x0+1,y0+1,MAXZ,1)]; if(v.some(a=>a===undefined)) return undefined; if(v.some(a=>!(a===a))) return null;
   return (v[0]*(1-fx)+v[1]*fx)*(1-fy)+(v[2]*(1-fx)+v[3]*fx)*fy; }
 
@@ -19252,11 +19265,16 @@ async function tileImage(kind,z,x,y,lo,hi){ const H=await demTile(z,x,y), c=cvs(
         const dx=((cc+2*ff+ii)-(a+2*dd+gg))/(8*cell*(i1-i0)/2), dy=((gg+2*hh+ii)-(a+2*b+cc))/(8*cell*(j1-j0)/2), sl=100*Math.hypot(dx,dy); let k=0; while(k<SLP.length-1&&sl>=SLP[k][0]) k++;
         d[p*4]=SLC[k][0]; d[p*4+1]=SLC[k][1]; d[p*4+2]=SLC[k][2]; d[p*4+3]=255; } } } }
   g.putImageData(im,0,0); const blob=c.convertToBlob?await c.convertToBlob({type:"image/png"}):await new Promise(r=>c.toBlob(r,"image/png")); return blob.arrayBuffer(); }
+/* a terrarium tile with the survey burnt in (only used while a survey exists) */
+async function mergedPng(z,x,y){ const H=await demTile(z,x,y); const c=cvs(256,256), g=c.getContext("2d"), im=g.createImageData(256,256), d=im.data;
+  for(let i=0;i<65536;i++){ const v=H&&H[i]===H[i]?H[i]:-32768; const w=Math.max(0,Math.min(65535.99,v+32768)), r=Math.floor(w/256), gg=Math.floor(w)%256, b=Math.floor((w-Math.floor(w))*256); d[i*4]=r; d[i*4+1]=gg; d[i*4+2]=b; d[i*4+3]=255; }
+  g.putImageData(im,0,0); const blob=c.convertToBlob?await c.convertToBlob({type:"image/png"}):await new Promise(r=>c.toBlob(r,"image/png")); return blob.arrayBuffer(); }
 /* maplibre-contour 0.1.0 hands back its whole write buffer (zero padded): cut the tile at its last layer so MapLibre can read it */
 function trimPbf(buf){ const u=new Uint8Array(buf); let p=0; while(p<u.length&&u[p]===26){ p++; let l=0,sh=0,b; do{ b=u[p++]; l+=(b&127)*Math.pow(2,sh); sh+=7; }while(b&128); p+=l; } return p>0&&p<=u.length?buf.slice(0,p):buf; }
 let protoOn=false;
 function addProto(){ if(protoOn) return; protoOn=true; maplibregl.addProtocol("sidtopo",async(p)=>{ const m=/sidtopo:\/\/([hs])\/(\d+)\/(\d+)\/(\d+)(?:\?r=(-?[\d.]+),(-?[\d.]+))?/.exec(p.url); if(!m) throw new Error("bad tile url");
   return {data:await tileImage(m[1],+m[2],+m[3],+m[4],+m[5],+m[6])}; });
+  maplibregl.addProtocol("sidtopodem",async(p)=>{ const m=/sidtopodem:\/\/(\d+)\/(\d+)\/(\d+)/.exec(p.url); if(!m) throw new Error("bad tile url"); return {data:await mergedPng(+m[1],+m[2],+m[3])}; });
   maplibregl.addProtocol("sidct",async(p,ac)=>{ const r=await TP.lib.contourProtocolV4({url:p.url.replace(/^sidct:/,"dem-contour:")},ac); return {data:trimPbf(r.data)}; }); }
 
 /* ---------- height range for the colour ramp: fitted to what is on the screen ---------- */
@@ -19278,7 +19296,7 @@ const setVis=(id,on)=>{ if(hasL(id)) map.setLayoutProperty(id,"visibility",on?"v
 function ctStep(){ const z=Math.max(9,Math.min(17,Math.floor(map.getZoom()))); return CTH[z]; }
 function build(){ if(!TP.on||!ok()) return; if(!map.isStyleLoaded()){ map.once("idle",build); return; } addProto();
   try{
-   if(!hasS(ID.dem)) map.addSource(ID.dem,{type:"raster-dem",tiles:[DEM_URL],tileSize:256,maxzoom:MAXZ,encoding:"terrarium",attribution:ATTR});
+   if(!hasS(ID.dem)) map.addSource(ID.dem,{type:"raster-dem",tiles:[HK.has&&HK.has()?"sidtopodem://{z}/{x}/{y}":DEM_URL],tileSize:256,maxzoom:MAXZ,encoding:"terrarium",attribution:ATTR});
    const below=firstId(isPlot)||firstId(isLb), above=firstId(isLb);
    if(!hasL("sidtopo-hs")) map.addLayer({id:"sidtopo-hs",type:"hillshade",source:ID.dem,layout:{visibility:"none"},paint:{"hillshade-exaggeration":.6,"hillshade-shadow-color":"#000000","hillshade-highlight-color":"#ffffff","hillshade-accent-color":"#202020"}},below);
    if(TP.range&&!hasS(ID.col)) map.addSource(ID.col,{type:"raster",tiles:["sidtopo://h/{z}/{x}/{y}?r="+TP.range[0]+","+TP.range[1]],tileSize:256,minzoom:6,maxzoom:MAXZ,attribution:ATTR});
@@ -19348,6 +19366,7 @@ function ui(){ if(panel) return; panel=document.createElement("div"); panel.id="
    <div class="tp-sec">Tools</div><div class="tp-bts"><button class="tp-bt" data-t="pt">Point height</button><button class="tp-bt" data-t="prof">Profile</button><button class="tp-bt" data-t="slope">Slope A→B</button><button class="tp-bt" id="tpClr">Clear</button></div>
    <div class="tp-res" id="tpRes"></div>
    <div class="tp-note">Heights are a 30 m satellite model (SRTM), a surface model that includes buildings and trees. Use them for planning only, not for earthworks levels: those need a survey.</div></div>`;
+  if(HK.ui){ try{ HK.ui(panel); }catch(e){ console.error("panel extras",e); } }
   document.body.appendChild(panel); tag=document.createElement("div"); tag.id="tpTag"; tag.hidden=true; document.body.appendChild(tag);
   const ly=panel.querySelector("#tpLy"); ly.innerHTML=LY.map(([k,n])=>`<label class="tp-row" data-k="${k}"><input type="checkbox" data-c="${k}" aria-label="${n}"><span>${n}</span><input type="range" min="0" max="100" data-o="${k}" aria-label="${n} opacity"></label><div class="tp-lg" data-lg="${k}" hidden></div>`).join("");
   panel.addEventListener("input",e=>{ const t=e.target; if(t.dataset.c){ const k=t.dataset.c; setLv(k,t.checked); if(k==="col"&&t.checked) colOn(); if(k==="ct"&&t.checked) ctRebuild(); applyAll(); legend(); }
@@ -19450,11 +19469,13 @@ function bind(on){ if(on===TP.bound) return; TP.bound=on; const f=on?"addEventLi
 /* ---------- switch the mode on / off ---------- */
 function loadScript(src,sri){ return new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src; s.integrity=sri; s.crossOrigin="anonymous"; s.onload=res; s.onerror=()=>rej(new Error("could not load "+src)); document.head.appendChild(s); }); }
 async function loadLib(){ if(TP.lib) return true; try{ if(typeof mlcontour==="undefined") await loadScript(CT_JS,CT_SRI);
-    TP.lib=new mlcontour.DemSource({url:DEM_URL,encoding:"terrarium",maxzoom:MAXZ,worker:false,cacheSize:40,timeoutMs:15000}); TP.lib.setupMaplibre(maplibregl); return true; }
+    TP.lib=new mlcontour.DemSource({url:DEM_URL,encoding:"terrarium",maxzoom:MAXZ,worker:false,cacheSize:40,timeoutMs:15000}); TP.lib.setupMaplibre(maplibregl);
+    TP.lib.manager.getTile=async(url,ac)=>{ const m=/\/(\d+)\/(\d+)\/(\d+)\.png/.exec(url); if(m&&HK.has&&HK.has()) return {data:new Blob([await mergedPng(+m[1],+m[2],+m[3])],{type:"image/png"})};
+      const r=await fetch(url,{signal:ac&&ac.signal}); if(!r.ok) throw new Error("tile "+r.status); return {data:await r.blob()}; }; return true; }
   catch(e){ console.error("contour library",e); say("Contours are not available (the contour library did not load); the other layers work",true); return false; } }
 async function setOn(v){ if(v===TP.on) return; if(!ok()){ say("The map is still loading",true); return; }
   if(v){ loadPref(); TP.on=true; ui(); syncUi(); panel.hidden=false; btnState(); bind(true); if(typeof SID_PLAN!=="undefined"&&SID_PLAN&&SID_PLAN.on&&map.getTerrain&&PREF.ter[0]) PREF.ter[0]=0;
-    await loadLib(); if(!TP.on) return; if(lv("col").on&&!TP.range){ TP.range=await fitRange(); } build(); onCentre(); legend(); }
+    await loadLib(); if(HK.ready){ try{ await HK.ready(); }catch(e){ console.error(e); } } if(!TP.on) return; if(lv("col").on&&!TP.range){ TP.range=await fitRange(); } build(); onCentre(); legend(); }
   else { TP.on=false; setTool(null); bind(false); teardown(); TP.range=null; if(panel) panel.hidden=true; if(tag) tag.hidden=true; document.body.classList.remove("tp-pick"); btnState(); } }
 function btnState(){ document.querySelectorAll(".tp-ctl button,#tpSkBtn").forEach(b=>b.classList.toggle("on",TP.on)); }
 
@@ -19465,7 +19486,402 @@ class TpCtl{ onAdd(){ const d=document.createElement("div"); d.className="maplib
 setInterval(()=>{ try{ if(ok()&&map.addControl&&!map.getContainer().querySelector(".tp-ctl")&&!document.querySelector(".tp-ctl")) map.addControl(new TpCtl(),"bottom-right");
     const top=document.querySelector("#skUI .sk-top"); if(top&&!document.getElementById("tpSkBtn")){ const b=document.createElement("button"); b.type="button"; b.id="tpSkBtn"; b.className="sk-tb"; b.title="Land Levels — heights, hillshade, contours, slope and profile";
       b.innerHTML=TOPO_ICON.replace("<svg","<svg width='19' height='19'")+"<span>Land Levels</span>"; b.addEventListener("click",e=>{ e.stopPropagation(); setOn(!TP.on); }); const done=document.getElementById("skDone"); top.insertBefore(b,done||null); btnState(); } }catch(e){} },1500);
-window.SID_TOPO={get on(){ return TP.on; },setOn,elevAt,sourceOf,_t:{TP,fitRange,tileImage,demTile,lv,PREF,ctStep}};
+/* the survey changed: forget decoded tiles, rebuild the layers that read heights */
+async function refresh(){ TC.clear(); TR.clear(); if(!TP.on){ TP.lib=null; return; } teardown(); TP.lib=null; TP.range=null; await loadLib(); if(lv("col").on) TP.range=await fitRange(); build(); legend(); }
+window.SID_TOPO={get on(){ return TP.on; },setOn,elevAt,elevSync,sourceOf,refresh,
+  api:{demTile,elevSync,elevAt,gpx,hav,MAXZ,ERR,TP,HK,loadScript,sourceOf,fmtD,esc,say,ok:ok},
+  _t:{TP,fitRange,tileImage,demTile,lv,PREF,ctStep}};
+})();
+</script>
+
+<style id="tpCss2">
+/* ---- V99 Land Levels: plot levels, survey ---- */
+.tp-lv{margin:8px 0 4px;padding:8px 10px;border-radius:12px;background:rgba(10,132,255,.07);border:1px solid rgba(10,132,255,.22);font-size:12px;line-height:1.45}
+.tp-lv h4{margin:0 0 4px;font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tp-lv .tp-b{font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;background:rgba(255,159,10,.2);color:#9a5b00}
+.tp-lv .tp-b.sv{background:rgba(52,199,89,.2);color:#17743a}
+.tp-lv .kv{display:grid;grid-template-columns:auto 1fr;gap:1px 12px}
+.tp-lv .kv span:nth-child(odd){opacity:.65}
+.tp-lv .kv span:nth-child(even){font-weight:700;text-align:right}
+.tp-lv .btn,.tp-lv button{font:inherit;font-weight:600;font-size:12px;padding:4px 10px;border-radius:9px;border:1px solid rgba(0,0,0,.18);background:#fff;cursor:pointer}
+.tp-lv input[type=number]{width:84px;font:inherit;padding:3px 6px;border-radius:8px;border:1px solid rgba(0,0,0,.25)}
+.tp-lv .note{font-size:10.5px;opacity:.65;margin-top:4px}
+.tp-lv .cf{margin-top:6px;padding-top:6px;border-top:1px dashed rgba(0,0,0,.2)}
+#tpPanel .tp-sv select,#tpPanel .tp-sv input[type=text],#tpPanel .tp-sv input[type=date],#tpPanel .tp-sv input[type=number]{width:100%;box-sizing:border-box;font:inherit;font-size:12px;padding:4px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff}
+#tpPanel .tp-sv option{color:#111}
+#tpPanel .tp-sv label{display:block;font-size:10.5px;opacity:.75;margin:5px 0 1px}
+#tpPanel .tp-sv .tp-vl{margin-top:4px;font-size:11px}
+#tpPanel .tp-sv .tp-vl div{display:flex;gap:6px;align-items:center;padding:2px 0;border-top:1px solid rgba(255,255,255,.1)}
+#tpPanel .tp-sv .tp-vl div span{flex:1}
+#tpPanel .tp-sv .tp-vl .arch{opacity:.5}
+#tpPanel .tp-sv .warn{color:#ffcf7a}
+#tpPanel .tp-sv .bad{color:#ff8a80}
+#tpPanel .tp-meter{height:6px;border-radius:4px;background:rgba(255,255,255,.15);margin-top:3px;overflow:hidden}
+#tpPanel .tp-meter i{display:block;height:100%;background:#34c759}
+</style>
+
+<script id="tpJs2">
+/* V99 - Land Levels: plot levels, cut / fill, survey, planner */
+(function(){
+"use strict";
+const T=window.SID_TOPO; if(!T||!T.api) return;
+const A=T.api, HK=A.HK, say=A.say, esc=A.esc, ERR=A.ERR, MAXZ=A.MAXZ, loadScript=A.loadScript, hav=A.hav, fmtD=A.fmtD;
+const q=s=>document.querySelector(s);
+const SBC=()=>{ try{ return typeof SB!=="undefined"&&SB&&typeof SBU!=="undefined"&&SBU?SB:null; }catch(e){ return null; } };
+const emailKey=()=>String((typeof SBME!=="undefined"&&SBME&&SBME.email)||(typeof SBU!=="undefined"&&SBU&&SBU.email)||"anon").toLowerCase();
+const KV=()=>window.SID_KV;
+const kvGet=async k=>{ try{ return KV()?await KV().get(k):undefined; }catch(e){ return undefined; } };
+const kvSet=async(k,v)=>{ try{ return KV()?await KV().set(k,v):false; }catch(e){ return false; } };
+const fmtDate=d=>{ if(!d) return "—"; const x=new Date(String(d).length<=10?d+"T12:00:00":d); return isNaN(x)?String(d):x.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}); };
+const nf=(v,d)=>v==null||!isFinite(v)?"—":Number(v).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+
+/* ============ survey: list, grids, override ============ */
+const SV={list:[],grids:new Map(),loaded:false,failed:false,err:"",usage:null,busy:null};
+async function svList(force){ const c=SBC(); if(!c) return []; if(SV.loaded&&!force) return SV.list;
+  try{ const r=await c.from("sid_topo_surveys").select("*").order("park").order("version",{ascending:false}); if(r.error){ SV.failed=true; SV.err=r.error.message||String(r.error); SV.list=[]; } else { SV.failed=false; SV.err=""; SV.list=r.data||[]; } }
+  catch(e){ SV.failed=true; SV.err=String(e&&e.message||e); SV.list=[]; } SV.loaded=true; return SV.list; }
+const activeRow=park=>SV.list.find(r=>r.park===park&&r.status==="active");
+async function svGrid(row){ if(SV.grids.has(row.id)) return SV.grids.get(row.id); let buf=await kvGet("topo.grid."+row.id);
+  if(!buf){ const c=SBC(); const r=await c.storage.from("sid").download(row.grid_path); if(r.error) throw r.error; buf=await r.data.arrayBuffer(); kvSet("topo.grid."+row.id,buf); }
+  const G=await unpackGrid(buf); G.id=row.id; G.park=row.park; G.date=row.survey_date; G.version=row.version; G.box=gridBox(G); SV.grids.set(row.id,G); return G; }
+const boxHit=(a,b)=>a[0]<=b[2]&&a[2]>=b[0]&&a[1]<=b[3]&&a[3]>=b[1];
+let svChanged=false;
+/* load the active surveys that touch a lon/lat box ([w,s,e,n]); drop grids that are no longer active */
+async function svEnsure(box){ await svList(); const act=new Set(SV.list.filter(r=>r.status==="active").map(r=>r.id));
+  [...SV.grids.keys()].forEach(id=>{ if(!act.has(id)){ SV.grids.delete(id); svChanged=true; } });
+  for(const r of SV.list){ if(r.status!=="active"||SV.grids.has(r.id)) continue; const b=r.bbox; if(box&&Array.isArray(b)&&!boxHit(b,box)) continue;
+    try{ await svGrid(r); svChanged=true; }catch(e){ console.error("survey grid",r.park,e); } }
+  if(svChanged){ svChanged=false; ST.clear(); try{ await T.refresh(); }catch(e){} svUi(); } }
+const mapBox=()=>{ const b=A.ok()?map.getBounds():null; return b?[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()]:null; };
+const grids=()=>[...SV.grids.values()];
+HK.has=()=>SV.grids.size>0;
+HK.at=(lon,lat)=>{ let best=null; for(const G of SV.grids.values()){ const b=G.box; if(lon<b[0]||lon>b[2]||lat<b[1]||lat>b[3]) continue; const v=gridAt(G,lon,lat); if(v!=null&&(!best||String(G.date)>String(best.date))) best={h:v,date:G.date,id:G.id}; } return best; };
+HK.src=(lon,lat)=>{ const s=HK.at(lon,lat); return s?{kind:"sv",txt:"Survey "+fmtDate(s.date),err:null,date:s.date}:null; };
+HK.merge=(z,x,y,H)=>{ if(!SV.grids.size) return; const n=Math.pow(2,z)*256, w=(x*256)/n*360-180, e=((x+1)*256)/n*360-180;
+  const tlat=py=>Math.atan(Math.sinh(Math.PI*(1-2*((y*256+py+.5)/n))))*180/Math.PI, nl=tlat(0), sl=tlat(255); const hit=grids().filter(G=>boxHit(G.box,[w,Math.min(nl,sl),e,Math.max(nl,sl)])); if(!hit.length) return;
+  const lons=new Float64Array(256); for(let i=0;i<256;i++) lons[i]=((x*256+i+.5)/n)*360-180;
+  for(let py=0;py<256;py++){ const la=tlat(py); for(let px=0;px<256;px++){ for(const G of hit){ const b=G.box; if(lons[px]<b[0]||lons[px]>b[2]||la<b[1]||la>b[3]) continue; const v=gridAt(G,lons[px],la); if(v!=null){ H[py*256+px]=v; break; } } } } };
+HK.ready=async()=>{ await svEnsure(mapBox()); svUi(); };
+let mvT=null; function onMoveEnd(){ if(!T.on) return; clearTimeout(mvT); mvT=setTimeout(()=>{ if(SV.loaded&&!SV.failed) svEnsure(mapBox()); },700); }
+let mvBound=false; setInterval(()=>{ if(T.on&&!mvBound&&A.ok()){ mvBound=true; map.on("moveend",onMoveEnd); } else if(!T.on&&mvBound&&A.ok()){ mvBound=false; map.off("moveend",onMoveEnd); } },1500);
+
+/* ============ plot levels ============ */
+const ST=new Map();            /* key -> stats */
+const FEAT=new Map();
+function featOf(k){ if(!FEAT.size&&typeof S!=="undefined"&&S.geo) S.geo.features.forEach(f=>FEAT.set(f.properties.k,f)); return FEAT.get(k); }
+const ringsOf=g=>!g?[]:g.type==="Polygon"?[g.coordinates[0]]:g.type==="MultiPolygon"?g.coordinates.map(p=>p[0]):[];
+const pip=(P,x,y)=>{ let c=false; for(let i=0,j=P.length-1;i<P.length;j=i++){ if(((P[i][1]>y)!==(P[j][1]>y))&&(x<(P[j][0]-P[i][0])*(y-P[i][1])/(P[j][1]-P[i][1])+P[i][0])) c=!c; } return c; };
+const areaL=P=>{ let s=0; for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length]; s+=a[0]*b[1]-b[0]*a[1]; } return Math.abs(s)/2; };
+const COMP=["N","NE","E","SE","S","SW","W","NW"];
+async function preload(box){ const z=MAXZ, a=A.gpx(box[0],box[3],z), b=A.gpx(box[2],box[1],z), n=Math.pow(2,z), P=[];
+  for(let tx=Math.floor((a[0]-3)/256);tx<=Math.floor((b[0]+3)/256);tx++) for(let ty=Math.floor((a[1]-3)/256);ty<=Math.floor((b[1]+3)/256);ty++) if(ty>=0&&ty<n) P.push(A.demTile(z,((tx%n)+n)%n,ty)); await Promise.all(P); }
+/* the levels of one or more rings (lon/lat), sampled on a grid inside them; a survey wins where it covers the point */
+async function levels(rings,opt){ opt=opt||{}; const all=[]; rings.forEach(r=>{ if(r&&r.length>2) all.push(r); }); if(!all.length) return null;
+  let lo0=0,la0=0,nv=0; all.forEach(r=>r.forEach(p=>{ lo0+=p[0]; la0+=p[1]; nv++; })); lo0/=nv; la0/=nv; const kx=111320*Math.cos(la0*Math.PI/180), ky=110574;
+  const Ps=all.map(r=>r.map(p=>[(p[0]-lo0)*kx,(p[1]-la0)*ky])); const area=Ps.reduce((t,P)=>t+areaL(P),0); if(!(area>1)) return null;
+  let w=1e9,s=1e9,e=-1e9,nn=-1e9; all.forEach(r=>r.forEach(p=>{ if(p[0]<w)w=p[0]; if(p[0]>e)e=p[0]; if(p[1]<s)s=p[1]; if(p[1]>nn)nn=p[1]; }));
+  const box=[w,s,e,nn]; if(!opt.noload){ await svEnsure(box).catch(()=>{}); await preload(box); }
+  let sp=Math.min(15,Math.max(4,Math.sqrt(area/120))); const S3=[];
+  const gen=step=>{ const out=[]; Ps.forEach(P=>{ let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9; P.forEach(p=>{ if(p[0]<x0)x0=p[0]; if(p[0]>x1)x1=p[0]; if(p[1]<y0)y0=p[1]; if(p[1]>y1)y1=p[1]; });
+      for(let y=y0+step/2;y<y1;y+=step) for(let x=x0+step/2;x<x1;x+=step) if(pip(P,x,y)) out.push([x,y]); }); return out; };
+  let pts=gen(sp); while(pts.length>900){ sp*=1.3; pts=gen(sp); }
+  if(pts.length<3){ pts=[]; Ps.forEach(P=>{ P.forEach(p=>pts.push([p[0],p[1]])); let cx=0,cy=0; P.forEach(p=>{ cx+=p[0]; cy+=p[1]; }); pts.push([cx/P.length,cy/P.length]); }); }
+  const X=[],Y=[],Z=[]; let nsv=0, svDate=null, miss=0;
+  for(const p of pts){ const lon=lo0+p[0]/kx, lat=la0+p[1]/ky; const sv=HK.at(lon,lat); let h; if(sv){ h=sv.h; nsv++; if(!svDate||String(sv.date)>String(svDate)) svDate=sv.date; } else { h=A.elevSync(lon,lat); if(h===undefined||h===null){ miss++; continue; } }
+    X.push(p[0]); Y.push(p[1]); Z.push(h); }
+  const n=Z.length; if(n<1) return null; let mn=1e9,mx=-1e9,sum=0; for(let i=0;i<n;i++){ if(Z[i]<mn)mn=Z[i]; if(Z[i]>mx)mx=Z[i]; sum+=Z[i]; } const mean=sum/n;
+  /* the plane through the plot: z = a*x + b*y + c (x east, y north, metres) */
+  let a=null,b=null; if(n>=3){ let sx=0,sy=0,sxx=0,syy=0,sxy=0,sxz=0,syz=0; const mx0=X.reduce((t,v)=>t+v,0)/n, my0=Y.reduce((t,v)=>t+v,0)/n;
+    for(let i=0;i<n;i++){ const x=X[i]-mx0, y=Y[i]-my0, z=Z[i]-mean; sxx+=x*x; syy+=y*y; sxy+=x*y; sxz+=x*z; syz+=y*z; } const det=sxx*syy-sxy*sxy; if(det>1e-6){ a=(sxz*syy-syz*sxy)/det; b=(syz*sxx-sxz*sxy)/det; } }
+  const slope=a==null?null:Math.hypot(a,b)*100; let dir=null,dirName=null; if(slope!=null){ if(slope<0.3){ dirName="flat"; } else { dir=(Math.atan2(-a,-b)*180/Math.PI+360)%360; dirName=COMP[Math.round(dir/45)%8]; } }
+  const src=nsv===0?"est":nsv===n?"sv":"mix"; const cells=area/900;
+  return {n,min:mn,max:mx,mean,slope,dir,dirName,area,cells,src,svDate,relief:mx-mn,cellA:area/n,z:Float32Array.from(Z),miss,spacing:+sp.toFixed(1)}; }
+function srcText(st){ if(!st) return "—"; if(st.src==="sv") return "Survey "+fmtDate(st.svDate); if(st.src==="mix") return "Survey "+fmtDate(st.svDate)+" + 30 m estimate"; return "30 m estimate ±"+ERR+" m"; }
+const slim=st=>st?{n:st.n,min:st.min,max:st.max,mean:st.mean,slope:st.slope,dir:st.dir,dirName:st.dirName,area:st.area,src:st.src,svDate:st.svDate}:null;
+async function plotLevels(k){ if(ST.has(k)) return ST.get(k); const f=featOf(k); if(!f) return null; const p=levels(ringsOf(f.geometry)).then(st=>{ if(st) ST.set(k,st); return st; }).catch(e=>{ console.error("levels",e); return null; }); const st=await p; return st; }
+const cutFill=(st,Tl)=>{ let cut=0,fill=0; for(let i=0;i<st.z.length;i++){ const d=st.z[i]-Tl; if(d>0) cut+=d; else fill-=d; } cut*=st.cellA; fill*=st.cellA; return {cut,fill,net:cut-fill}; };
+
+/* ============ the plot card (normal map) ============ */
+let LV_ON=false; try{ LV_ON=localStorage.getItem("sid.topo.card."+emailKey())==="1"; }catch(e){}
+let PLAT={}; try{ PLAT=JSON.parse(localStorage.getItem("sid.topo.plat."+emailKey())||"{}")||{}; }catch(e){}
+const savePlat=()=>{ try{ localStorage.setItem("sid.topo.plat."+emailKey(),JSON.stringify(PLAT)); }catch(e){} };
+const badgeHtml=st=>`<span class="tp-b${st&&st.src==="sv"?" sv":""}">${esc(srcText(st))}</span>`;
+function lvHtml(st,key,title){ if(!st) return `<h4>${title}</h4><div>Levels —<span class="note"> (no height data for this plot)</span></div>`;
+  const small=st.src==="est"&&st.cells<4;
+  return `<h4>${title} ${badgeHtml(st)}</h4><div class="kv"><span>Lowest</span><span>${nf(st.min,1)} m</span><span>Highest</span><span>${nf(st.max,1)} m</span><span>Mean level</span><span>${nf(st.mean,1)} m</span><span>Relief</span><span>${nf(st.relief,1)} m</span>
+   <span>Mean slope</span><span>${st.slope==null?"—":nf(st.slope,1)+" %"}</span><span>Falls toward</span><span>${st.dirName||"—"}${st.dir!=null?" ("+Math.round(st.dir)+"°)":""}</span></div>
+   ${small?`<div class="note">This plot covers only about ${nf(st.cells,1)} cells of the 30 m data: read the numbers as an indication.</div>`:""}
+   <div class="cf"><b>Cut &amp; fill to a platform level</b> <span class="tp-b">estimate</span><div style="margin-top:4px"><input type="number" step="0.1" data-plat="${esc(key)}" placeholder="${nf(st.mean,1)}" value="${PLAT[key]!=null?PLAT[key]:""}" aria-label="Platform level in metres"> m <button type="button" data-cf="${esc(key)}">Estimate</button> <button type="button" data-cfm="${esc(key)}" title="Use the mean level: cut and fill are then about equal">Use mean</button></div><div class="cfr" data-cfr="${esc(key)}"></div></div>`; }
+function cfFill(box,key,st){ const el=box.querySelector(`[data-cfr="${CSS.escape(key)}"]`), inp=box.querySelector(`[data-plat="${CSS.escape(key)}"]`); if(!el||!inp) return; const v=parseFloat(inp.value);
+  if(!isFinite(v)){ el.innerHTML=""; return; } PLAT[key]=v; savePlat(); const r=cutFill(st,v); const bias=ERR*st.area;
+  el.innerHTML=`<div class="kv" style="margin-top:4px"><span>Cut</span><span>${nf(r.cut,0)} m³</span><span>Fill</span><span>${nf(r.fill,0)} m³</span><span>Net (cut − fill)</span><span>${r.net>=0?"+":"−"}${nf(Math.abs(r.net),0)} m³</span></div>
+   <div class="note">Estimate on ${st.n} height points${st.src==="est"?`. The 30 m model can be off by ±${ERR} m in absolute height, which is about ±${nf(bias,0)} m³ on this plot: an order of magnitude only, a survey is needed for earthworks`:""}.</div>`; }
+async function renderLv(box,items){ const keys=items.map(x=>x.k); const single=keys.length===1; box.innerHTML=`<h4>Levels …</h4>`;
+  let st; if(single) st=await plotLevels(keys[0]); else { const rings=[]; keys.forEach(k=>{ const f=featOf(k); if(f) ringsOf(f.geometry).forEach(r=>rings.push(r)); }); st=await levels(rings).catch(()=>null); }
+  if(box.dataset.keys!==keys.join("|")||!box.isConnected) return; const key=single?keys[0]:keys.join("|"); box.innerHTML=lvHtml(st,key,single?"Levels":"Levels · "+keys.length+" plots together");
+  if(st&&single&&PLAT[key]!=null) cfFill(box,key,st); box._st=st; }
+function cardLevels(){ const el=q("#selpanel"); if(!el||el.hidden||typeof selRows!=="function") return; const old=el.querySelector(".tp-lv"); if(old) old.remove(); const items=selRows(); if(!items.length) return;
+  const body=el.querySelector(".sp-body")||el, box=document.createElement("div"); box.className="tp-lv"; box.dataset.keys=items.map(x=>x.k).join("|"); body.appendChild(box);
+  if(!LV_ON&&!T.on){ box.innerHTML=`<h4>Levels</h4><div>Heights, slope and cut / fill for ${items.length>1?"these plots":"this plot"} from the 30 m satellite model. <button type="button" data-lvon="1">Show levels</button></div><div class="note">Loads about 100 KB of height tiles, straight from the public source.</div>`; return; }
+  renderLv(box,items); }
+document.addEventListener("click",e=>{ const t=e.target; if(!t||!t.closest) return; const b=t.closest("[data-lvon]"); if(b){ LV_ON=true; try{ localStorage.setItem("sid.topo.card."+emailKey(),"1"); }catch(x){} cardLevels(); return; }
+  const c=t.closest("[data-cf]"), m=t.closest("[data-cfm]"); if(!c&&!m) return; const box=t.closest(".tp-lv"); if(!box||!box._st) return; const key=(c||m).dataset.cf||(c||m).dataset.cfm; const inp=box.querySelector(`[data-plat="${CSS.escape(key)}"]`);
+  if(m){ inp.value=box._st.mean.toFixed(1); } cfFill(box,key,box._st); },true);
+document.addEventListener("keydown",e=>{ if(e.target&&e.target.matches&&e.target.matches("[data-plat]")){ e.stopPropagation(); if(e.key==="Enter"){ const box=e.target.closest(".tp-lv"); if(box&&box._st) cfFill(box,e.target.dataset.plat,box._st); } } },true);
+if(typeof showSelection==="function"){ const ss0=showSelection; window.showSelection=function(){ const r=ss0.apply(this,arguments); try{ cardLevels(); }catch(e){ console.error(e); } return r; }; }
+
+/* ============ MDS register: columns, binding, Excel ============ */
+const LVCOLS=["lvMin","lvMax","lvMean","lvSlope","lvFall","lvSrc"];
+let ROWKEY=null; function rowKey(){ if(ROWKEY) return ROWKEY; ROWKEY=new Map(); if(typeof S!=="undefined"&&S.plots) S.plots.forEach((info,k)=>{ (info.rows||[]).forEach(r=>{ ROWKEY.set(r.park+"|"+String(r.unit),k); }); }); return ROWKEY; }
+const SUM=new Map();          /* plot key -> slim stats (all parks computed so far) */
+const PARKDONE=new Set();
+const sigOf=park=>{ const r=activeRow(park); return r?("sv"+r.id):"est"; };
+async function parkStats(park,prog){ const sig=sigOf(park), ck="topo.stats.v1."+park+"."+sig; const hit=await kvGet(ck); if(hit&&hit.o){ Object.keys(hit.o).forEach(k=>SUM.set(k,hit.o[k])); PARKDONE.add(park+"|"+sig); return; }
+  const feats=[]; featOf("x"); FEAT.forEach(f=>{ if(f.properties.park===park) feats.push(f); }); if(!feats.length){ PARKDONE.add(park+"|"+sig); return; }
+  let w=1e9,s=1e9,e=-1e9,n=-1e9; feats.forEach(f=>ringsOf(f.geometry).forEach(r=>r.forEach(p=>{ if(p[0]<w)w=p[0]; if(p[0]>e)e=p[0]; if(p[1]<s)s=p[1]; if(p[1]>n)n=p[1]; }))); const box=[w,s,e,n];
+  await svEnsure(box).catch(()=>{}); await preload(box); const o={};
+  for(const f of feats){ const st=await levels(ringsOf(f.geometry),{noload:true}).catch(()=>null); if(st){ o[f.properties.k]=slim(st); SUM.set(f.properties.k,o[f.properties.k]); } }
+  PARKDONE.add(park+"|"+sig); kvSet(ck,{o,t:Date.now()}); }
+async function ensureParks(list,label){ const todo=list.filter(p=>!PARKDONE.has(p+"|"+sigOf(p))); if(!todo.length) return false; let i=0; for(const p of todo){ i++; if(label&&todo.length>1) say(label+" "+i+"/"+todo.length+" parks…"); await parkStats(p); } return true; }
+function bindRows(){ if(typeof ED==="undefined"||!ED) return; const rows=ED.rows||S.rows||[], rk=rowKey(); const def=(o,k,v)=>{ try{ Object.defineProperty(o,k,{value:v,enumerable:false,writable:true,configurable:true}); }catch(e){} };
+  rows.forEach(r=>{ const st=SUM.get(rk.get(r.park+"|"+String(r.unit))); const o=ED.orig&&ED.orig.get?ED.orig.get(r._id):null; const vals=!st?[undefined,undefined,undefined,undefined,undefined,undefined]:[+st.min.toFixed(2),+st.max.toFixed(2),+st.mean.toFixed(2),st.slope==null?undefined:+st.slope.toFixed(2),st.dirName||undefined,srcText(st)];
+    LVCOLS.forEach((k,i)=>{ def(r,k,vals[i]); if(o) def(o,k,vals[i]); }); }); }
+/* the level columns start hidden for everybody; once a person shows them, that stays their choice */
+const shownKey=()=>"sid.topo.cols."+emailKey();
+if(typeof edHidLoad==="function"){ const hl0=edHidLoad; window.edHidLoad=function(){ const k0=EDHID_USER, r=hl0.apply(this,arguments); try{ if(k0!==EDHID_USER){ let seen=false; try{ seen=localStorage.getItem(shownKey())==="1"; }catch(e){} if(!seen){ LVCOLS.forEach(k=>EDHID.add(k)); edCalcW(); } } }catch(e){} return r; }; }
+if(typeof edHidSave==="function"){ const hs0=edHidSave; window.edHidSave=function(){ try{ if(LVCOLS.some(k=>!EDHID.has(k))) localStorage.setItem(shownKey(),"1"); }catch(e){} return hs0.apply(this,arguments); }; }
+const lvVisible=()=>typeof EDHID!=="undefined"&&LVCOLS.some(k=>!EDHID.has(k));
+let ensuring=false;
+async function ensureRegister(){ if(ensuring||!lvVisible()||typeof ED==="undefined"||!ED) return; ensuring=true; try{ const rows=ED.rows||S.rows||[]; const parks=[...new Set(rows.map(r=>r.park))]; const did=await ensureParks(parks,"Levels:"); bindRows(); if(did&&typeof edPaint==="function") edPaint(true); }catch(e){ console.error("register levels",e); } ensuring=false; }
+if(typeof edPaint==="function"){ const ep0=edPaint; window.edPaint=function(){ const r=ep0.apply(this,arguments); try{ if(lvVisible()){ bindRows(); ensureRegister(); } }catch(e){} return r; }; }
+if(typeof edShow==="function"){ const es0=edShow; window.edShow=function(c,v){ if(c&&c.calc&&(v==null||v==="")) return "—"; return es0.apply(this,arguments); }; }
+if(typeof edExport==="function"){ const ex0=edExport; window.edExport=function(rows){ if(Array.isArray(rows)||typeof XLSX==="undefined") return ex0.apply(this,arguments); const self=this, args=arguments;
+    const run=()=>{ const w0=XLSX.writeFile; XLSX.writeFile=function(wb,name,o){ XLSX.writeFile=w0; try{ addXlsxCols(wb); }catch(e){ console.error("excel levels",e); } return w0.call(XLSX,wb,name,o); }; try{ ex0.apply(self,args); } finally{ XLSX.writeFile=w0; } };
+    const list=[...new Set((ED.rows||S.rows||[]).map(r=>r.park))]; say("Adding levels to the export…"); ensureParks(list,"Levels:").then(()=>{ bindRows(); run(); }).catch(()=>run()); }; }
+function addXlsxCols(wb){ const sh=wb.Sheets[wb.SheetNames[0]]; if(!sh||!sh["!ref"]) return; const R=XLSX.utils.decode_range(sh["!ref"]); const hv=c=>{ const x=sh[XLSX.utils.encode_cell({r:R.s.r,c})]; return x?String(x.v):""; };
+  let cp=-1,cu=-1; for(let c=R.s.c;c<=R.e.c;c++){ const h=hv(c); if(h==="Park") cp=c; else if(h==="Unit Code") cu=c; } if(cp<0||cu<0) return; const nameToId={}; Object.entries(S.reg.parks).forEach(([id,p])=>{ nameToId[p.name||id]=id; }); const rk=rowKey();
+  const H=["Level min (m)","Level max (m)","Level mean (m)","Mean slope (%)","Falls toward","Level source"]; const c0=R.e.c+1; H.forEach((h,i)=>{ sh[XLSX.utils.encode_cell({r:R.s.r,c:c0+i})]={t:"s",v:h}; });
+  for(let r=R.s.r+1;r<=R.e.r;r++){ const pc=sh[XLSX.utils.encode_cell({r,c:cp})], uc=sh[XLSX.utils.encode_cell({r,c:cu})]; const id=pc?(nameToId[pc.v]||pc.v):null; const st=id&&uc?SUM.get(rk.get(id+"|"+String(uc.v))):null;
+    const vals=!st?["—","—","—","—","—","—"]:[+st.min.toFixed(2),+st.max.toFixed(2),+st.mean.toFixed(2),st.slope==null?"—":+st.slope.toFixed(2),st.dirName||"—",srcText(st)];
+    vals.forEach((v,i)=>{ sh[XLSX.utils.encode_cell({r,c:c0+i})]=typeof v==="number"?{t:"n",v}:{t:"s",v}; }); }
+  R.e.c=c0+H.length-1; sh["!ref"]=XLSX.utils.encode_range(R); if(sh["!cols"]) for(let i=0;i<H.length;i++) sh["!cols"][c0+i]={wch:i===5?24:14}; }
+
+/* ============ offer PDF: an indicative levels note when the plots' levels are known ============ */
+let OFFER_ON=true; try{ OFFER_ON=localStorage.getItem("sid.topo.offer."+emailKey())!=="0"; }catch(e){}
+function offerStats(SO){ if(!SO||!SO.units||!SO.units.length) return null; const rk=rowKey(), seen=new Set(), L=[]; for(const u of SO.units){ const row=(S.rows||[]).find(r=>r.park===SO.park&&String(r.unit)===String(u)); const k=row?rk.get(row.park+"|"+String(row.unit)):null; if(!k) return null; if(seen.has(k)) continue; seen.add(k); const st=SUM.get(k)||ST.get(k); if(!st) return null; L.push(st); } return L.length?L:null; }
+T.offerNote=function(SO,f){ try{ if(!OFFER_ON) return []; const L=offerStats(SO); if(!L) return []; let a=0,mn=1e9,mx=-1e9,sm=0,ss=0,sa=0; L.forEach(st=>{ a+=st.area; sm+=st.mean*st.area; if(st.min<mn)mn=st.min; if(st.max>mx)mx=st.max; if(st.slope!=null){ ss+=st.slope*st.area; sa+=st.area; } });
+    const src=L.every(s=>s.src==="sv")?"survey "+fmtDate(L[0].svDate):L.every(s=>s.src==="est")?"30 m satellite model, ±"+ERR+" m":"survey and 30 m satellite model";
+    return ["Indicative ground levels "+nf(mn,1)+" to "+nf(mx,1)+" m (mean "+nf(sm/a,1)+" m)"+(sa?", mean slope "+nf(ss/sa,1)+" %":"")+". Source: "+src+". Not a survey: for orientation only."]; }catch(e){ return []; } };
+async function offerPrefetch(){ try{ if(!OFFER_ON||typeof SO==="undefined"||!SO||!SO.units||!SO.park||offerStats(SO)) return false; const rk=rowKey(); const keys=new Set(); SO.units.forEach(u=>{ const row=(S.rows||[]).find(r=>r.park===SO.park&&String(r.unit)===String(u)); const k=row?rk.get(row.park+"|"+String(row.unit)):null; if(k) keys.add(k); }); if(!keys.size||keys.size>40) return false; for(const k of keys) await plotLevels(k); return !!offerStats(SO); }catch(e){ return false; } }
+if(typeof soPreview==="function"){ const sp0=soPreview; window.soPreview=function(now){ const r=sp0.apply(this,arguments); offerPrefetch().then(ch=>{ if(ch) sp0(true); }); return r; }; }
+if(typeof openPdfOpts==="function"){ const po0=openPdfOpts; window.openPdfOpts=function(){ offerPrefetch(); return po0.apply(this,arguments); }; }
+
+/* ---------- survey engine ---------- */
+const PROJ4_JS="https://cdn.jsdelivr.net/npm/proj4@2.12.1/dist/proj4.js", PROJ4_SRI="sha384-eCfO4pOi+VsP6z/nsQni5JF69AVBgkaI2kwPfFh+J64UMLNVDIBVvowHHM9Q62TF";
+const TIFF_JS="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js", TIFF_SRI="sha384-m5adk5PRgt3JjiYbYoG8oXxc3EgRFKc1aCBgKzyxqxnbYpdiAMlHkR0gVDp03Q/H";
+/* coordinate systems offered for a survey file (Egypt 1907 belts use the Helmert 1906 ellipsoid and the published shift to WGS84) */
+const EG="+ellps=helmert +towgs84=-130,110,-13 +units=m +no_defs";
+const CRS=[
+  {k:"wgs",n:"WGS84 longitude / latitude (degrees)",def:"+proj=longlat +datum=WGS84 +no_defs"},
+  {k:"22992",n:"Egypt 1907 / Red Belt (EPSG:22992)",def:"+proj=tmerc +lat_0=30 +lon_0=31 +k=1 +x_0=615000 +y_0=810000 "+EG},
+  {k:"22993",n:"Egypt 1907 / Purple Belt (EPSG:22993)",def:"+proj=tmerc +lat_0=30 +lon_0=27 +k=1 +x_0=700000 +y_0=200000 "+EG},
+  {k:"22991",n:"Egypt 1907 / Blue Belt (EPSG:22991)",def:"+proj=tmerc +lat_0=30 +lon_0=35 +k=1 +x_0=300000 +y_0=1100000 "+EG},
+  {k:"22994",n:"Egypt 1907 / Extended Purple Belt (EPSG:22994)",def:"+proj=tmerc +lat_0=30 +lon_0=27 +k=1 +x_0=700000 +y_0=200000 "+EG},
+  {k:"32636",n:"WGS84 / UTM zone 36N (EPSG:32636)",def:"+proj=utm +zone=36 +datum=WGS84 +units=m +no_defs"},
+  {k:"32635",n:"WGS84 / UTM zone 35N (EPSG:32635)",def:"+proj=utm +zone=35 +datum=WGS84 +units=m +no_defs"},
+  {k:"32637",n:"WGS84 / UTM zone 37N (EPSG:32637)",def:"+proj=utm +zone=37 +datum=WGS84 +units=m +no_defs"}];
+const crsOf=k=>CRS.find(c=>c.k===k)||CRS[0];
+let p4P=null; function needProj4(){ if(typeof proj4!=="undefined") return Promise.resolve(); return p4P||(p4P=loadScript(PROJ4_JS,PROJ4_SRI)); }
+let tfP=null; function needTiff(){ if(typeof GeoTIFF!=="undefined") return Promise.resolve(); return tfP||(tfP=loadScript(TIFF_JS,TIFF_SRI)); }
+/* a converter from the file's system to lon/lat */
+function toLL(k){ if(k==="wgs") return (x,y)=>[x,y]; const f=proj4(crsOf(k).def,crsOf("wgs").def); return (x,y)=>f.forward([x,y]); }
+const inEgypt=(lo,la)=>lo>24&&lo<37.5&&la>21.5&&la<32.5;
+
+/* ----- readers: each returns {pts:[[x,y,z]...], kind, note} in the FILE's own coordinates ----- */
+function readCSV(text){ const L=text.split(/\r?\n/); let del=null, pts=[], hdr=null, skipped=0;
+  for(const raw of L){ const s=raw.trim(); if(!s||s[0]==="#"||s.startsWith("//")) continue; if(!del) del=s.indexOf("\t")>=0?"\t":s.indexOf(";")>=0?";":s.indexOf(",")>=0?",":/\s+/;
+    const c=s.split(del).map(v=>v.trim().replace(/^"|"$/g,"")); const nums=c.map(Number);
+    if(!pts.length&&!hdr&&c.some(v=>v!==""&&isNaN(+v))){ hdr=c.map(v=>v.toLowerCase()); continue; }
+    let ix=0,iy=1,iz=2; if(hdr){ const f=n=>hdr.findIndex(h=>n.test(h)); const a=f(/^(x|east|easting|lon|lng|longitude)$/), b=f(/^(y|north|northing|lat|latitude)$/), d=f(/^(z|h|elev|elevation|level|height|rl|alt)$/); if(a>=0&&b>=0&&d>=0){ ix=a; iy=b; iz=d; } else if(c.length>=4&&hdr.length>=4){ ix=1; iy=2; iz=3; } }
+    else if(c.length>=4&&!isNaN(nums[3])&&!isNaN(nums[0])&&String(c[0]).length<12&&nums[0]%1===0&&Math.abs(nums[0])<1e6&&Math.abs(nums[1])>1000){ ix=1; iy=2; iz=3; }   /* point number, X, Y, Z */
+    const x=nums[ix], y=nums[iy], z=nums[iz]; if(isFinite(x)&&isFinite(y)&&isFinite(z)) pts.push([x,y,z]); else skipped++; }
+  return {pts,kind:"points",note:skipped?skipped+" lines skipped (not numbers)":""}; }
+/* ASCII DXF: contours are POLYLINE / LWPOLYLINE with an elevation, spot heights are POINT, 3DFACE / LINE carry their own Z */
+function readDXF(text){ const L=text.split(/\r?\n/); const pairs=[]; for(let i=0;i+1<L.length;i+=2){ pairs.push([parseInt(L[i].trim(),10),L[i+1].trim()]); }
+  let i=0; while(i<pairs.length&&!(pairs[i][0]===2&&pairs[i][1]==="ENTITIES")) i++; const pts=[]; let n=0, lines=0;
+  const dens=(a,b)=>{ const d=Math.hypot(b[0]-a[0],b[1]-a[1]); return d; };
+  const addLine=(v,closed)=>{ for(let k=0;k<v.length;k++){ pts.push(v[k]); if(k+1<v.length||closed){ const a=v[k], b=v[(k+1)%v.length]; const d=dens(a,b); const steps=Math.min(400,Math.floor(d/STEP_FILE)); for(let s=1;s<steps;s++){ const t=s/steps; pts.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]); } } } lines++; };
+  const STEP_FILE=4;   /* contour lines are filled in every 4 file units (metres) */
+  for(i=i+1;i<pairs.length;i++){ const [c,v]=pairs[i]; if(c===0&&v==="ENDSEC") break; if(c!==0) continue;
+    if(v==="LWPOLYLINE"){ let el=0,vx=[],cur=null,closed=false; for(i=i+1;i<pairs.length&&pairs[i][0]!==0;i++){ const [g,val]=pairs[i]; if(g===38) el=+val; else if(g===70) closed=(+val&1)===1; else if(g===10){ cur=[+val,0,el]; vx.push(cur); } else if(g===20&&cur) cur[1]=+val; else if(g===30&&cur) cur[2]=+val; } i--; vx.forEach(p=>{ if(!isFinite(p[2])) p[2]=el; }); if(vx.length) addLine(vx.map(p=>[p[0],p[1],p[2]||el]),closed); n++; }
+    else if(v==="POLYLINE"){ let el=0, closed=false, vx=[]; for(i=i+1;i<pairs.length;i++){ const [g,val]=pairs[i]; if(g===0&&val==="VERTEX"){ const p=[0,0,el]; for(i=i+1;i<pairs.length&&pairs[i][0]!==0;i++){ const [g2,v2]=pairs[i]; if(g2===10) p[0]=+v2; else if(g2===20) p[1]=+v2; else if(g2===30) p[2]=+v2; } i--; vx.push(p); continue; } if(g===0&&(val==="SEQEND")) break; if(g===0) { i--; break; } if(g===30) el=+val; else if(g===70) closed=(+val&1)===1; } if(vx.length) addLine(vx,closed); n++; }
+    else if(v==="POINT"||v==="3DFACE"||v==="LINE"){ const P=[[0,0,0],[0,0,0],[0,0,0],[0,0,0]]; for(i=i+1;i<pairs.length&&pairs[i][0]!==0;i++){ const [g,val]=pairs[i]; const k=Math.floor((g%100)/10), ax=Math.floor(g/10); if(g>=10&&g<=13) P[g-10][0]=+val; else if(g>=20&&g<=23) P[g-20][1]=+val; else if(g>=30&&g<=33) P[g-30][2]=+val; } i--; const m=v==="POINT"?1:v==="LINE"?2:4; for(let k=0;k<m;k++) pts.push(P[k].slice()); n++; } }
+  const clean=pts.filter(p=>isFinite(p[0])&&isFinite(p[1])&&isFinite(p[2])&&Math.abs(p[2])>1e-9);
+  return {pts:clean,kind:"contours",note:n+" entities, "+lines+" lines"+(pts.length-clean.length?(", "+(pts.length-clean.length)+" points without a height skipped"):"")}; }
+async function readTiff(buf,crsK){ await needTiff(); const tiff=await GeoTIFF.fromArrayBuffer(buf), img=await tiff.getImage(); const W=img.getWidth(), H=img.getHeight(); const org=img.getOrigin(), res=img.getResolution(); const bb=img.getBoundingBox();
+  const nd=img.getGDALNoData(); let geo={}; try{ geo=img.getGeoKeys()||{}; }catch(e){}
+  const epsg=geo.ProjectedCSTypeGeoKey||geo.GeographicTypeGeoKey||null; const stride=Math.max(1,Math.ceil(Math.max(W,H)/1800)); const w2=Math.ceil(W/stride), h2=Math.ceil(H/stride);
+  const r=await img.readRasters({interleave:false,samples:[0],width:w2,height:h2,resampleMethod:"nearest"}); return {grid:{data:r[0],w:w2,h:h2,x0:bb[0],y1:bb[3],dx:(bb[2]-bb[0])/w2,dy:(bb[3]-bb[1])/h2,nd},epsg,kind:"raster",note:W+"×"+H+" cells"+(stride>1?" (read every "+stride+"th)":"")+(epsg?", EPSG:"+epsg:"")}; }
+
+/* ----- choose the coordinate system: the one whose result lands inside Egypt and (if given) near the park ----- */
+function suggestCrs(pts,near){ const s=pts.slice(0,200); const a=s.map(p=>p[0]), b=s.map(p=>p[1]); if(!s.length) return "wgs";
+  if(a.every(v=>v>24&&v<37.5)&&b.every(v=>v>21.5&&v<32.5)) return "wgs"; let best=null;
+  for(const c of CRS){ if(c.k==="wgs") continue; try{ const f=toLL(c.k); const ll=s.map(p=>f(p[0],p[1])); if(!ll.every(q=>inEgypt(q[0],q[1]))) continue; let d=0; if(near){ const m=[ll.reduce((t,q)=>t+q[0],0)/ll.length,ll.reduce((t,q)=>t+q[1],0)/ll.length]; d=hav(m,near); if(d>60000) continue; } if(!best||d<best.d) best={k:c.k,d}; }catch(e){} }
+  return best?best.k:"22992"; }
+
+/* ----- the surface: a grid in metres around the survey, filled by inverse-distance weighting only where points really are ----- */
+function makeGrid(ll,opt){ /* ll = [[lon,lat,z]...] */ const N=ll.length; if(N<3) throw new Error("fewer than 3 points with a height");
+  let lo0=0,la0=0; ll.forEach(p=>{ lo0+=p[0]; la0+=p[1]; }); lo0/=N; la0/=N; const kx=111320*Math.cos(la0*Math.PI/180), ky=110574;
+  const P=ll.map(p=>[(p[0]-lo0)*kx,(p[1]-la0)*ky,p[2]]); let x0=1e18,x1=-1e18,y0=1e18,y1=-1e18; P.forEach(p=>{ if(p[0]<x0)x0=p[0]; if(p[0]>x1)x1=p[0]; if(p[1]<y0)y0=p[1]; if(p[1]>y1)y1=p[1]; });
+  const W0=x1-x0, H0=y1-y0; if(W0<5||H0<5) throw new Error("the points cover less than 5 m");
+  let cell=opt&&opt.cell||Math.max(1,Math.sqrt(W0*H0/N)*.8); cell=Math.max(cell,Math.sqrt(W0*H0/1.4e6)); cell=Math.round(cell*2)/2||1;
+  const w=Math.ceil(W0/cell)+1, h=Math.ceil(H0/cell)+1, ox=x0, oy=y0;
+  /* spatial hash */ const hs=cell*6, hw=Math.ceil(W0/hs)+1, hh=Math.ceil(H0/hs)+1, B=new Array(hw*hh); P.forEach((p,i)=>{ const k=Math.floor((p[1]-oy)/hs)*hw+Math.floor((p[0]-ox)/hs); (B[k]||(B[k]=[])).push(i); });
+  const nn=[]; const step=Math.max(1,Math.floor(N/400)); for(let i=0;i<N;i+=step){ const p=P[i], gx=Math.floor((p[0]-ox)/hs), gy=Math.floor((p[1]-oy)/hs); let md=1e18; for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){ const q=B[(gy+b)*hw+gx+a]; if(q) for(const j of q){ if(j===i) continue; const d=Math.hypot(P[j][0]-p[0],P[j][1]-p[1]); if(d<md) md=d; } } if(md<1e17) nn.push(md); }
+  nn.sort((a,b)=>a-b); const med=nn.length?nn[Math.floor(nn.length/2)]:cell; const R=Math.max(cell*2,Math.min(opt&&opt.maxGap||60,med*(opt&&opt.kind==="contours"?6:3)));
+  const data=new Float32Array(w*h).fill(NaN); const rg=Math.ceil(R/hs);
+  for(let j=0;j<h;j++){ const y=oy+j*cell, gy=Math.floor((y-oy)/hs); for(let i=0;i<w;i++){ const x=ox+i*cell, gx=Math.floor((x-ox)/hs); let sw=0,sz=0,cnt=0,ex=null,near=1e18; const W2=[],Z2=[];
+      for(let b=-rg;b<=rg;b++){ const yy=gy+b; if(yy<0||yy>=hh) continue; for(let a=-rg;a<=rg;a++){ const xx=gx+a; if(xx<0||xx>=hw) continue; const q=B[yy*hw+xx]; if(!q) continue; for(const id of q){ const p=P[id], d=Math.hypot(p[0]-x,p[1]-y); if(d>R) continue; cnt++; if(d<near) near=d; const w3=1/(d*d+cell*cell*.25); sw+=w3; sz+=w3*p[2]; } } }
+      if(cnt>=2||(cnt===1&&near<cell)) data[j*w+i]=sz/sw; } }
+  let valid=0,mn=1e18,mx=-1e18; for(let i=0;i<data.length;i++){ const v=data[i]; if(v===v){ valid++; if(v<mn)mn=v; if(v>mx)mx=v; } }
+  return {lon0:lo0,lat0:la0,kx,ky,ox,oy,cell,w,h,data,valid,min:mn,max:mx,n:N,gap:+med.toFixed(1)}; }
+/* a GeoTIFF becomes the same kind of grid (every cell centre is sent back to the file's own system) */
+function gridFromRaster(r,toFile,zOff,cell){ const g=r.grid, nodata=g.nd; const lonlat=[]; /* corners to get the area */ const f=toFile; const cs=[[g.x0,g.y1],[g.x0+g.dx*g.w,g.y1],[g.x0,g.y1-g.dy*g.h],[g.x0+g.dx*g.w,g.y1-g.dy*g.h]].map(c=>f.fwd(c[0],c[1]));
+  const lo0=(Math.min(...cs.map(c=>c[0]))+Math.max(...cs.map(c=>c[0])))/2, la0=(Math.min(...cs.map(c=>c[1]))+Math.max(...cs.map(c=>c[1])))/2, kx=111320*Math.cos(la0*Math.PI/180), ky=110574;
+  const xs=cs.map(c=>(c[0]-lo0)*kx), ys=cs.map(c=>(c[1]-la0)*ky); const x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys); const nat=Math.max(1,Math.sqrt((x1-x0)*(y1-y0)/(g.w*g.h)));
+  let cl=cell||Math.max(nat,Math.sqrt((x1-x0)*(y1-y0)/1.4e6)); cl=Math.round(cl*2)/2||1; const w=Math.ceil((x1-x0)/cl)+1, h=Math.ceil((y1-y0)/cl)+1, data=new Float32Array(w*h).fill(NaN); let valid=0,mn=1e18,mx=-1e18;
+  for(let j=0;j<h;j++) for(let i=0;i<w;i++){ const lon=lo0+(x0+i*cl)/kx, lat=la0+(y0+j*cl)/ky; const q=f.inv(lon,lat); const cx=(q[0]-g.x0)/g.dx-.5, cy=(g.y1-q[1])/g.dy-.5; if(cx<-.5||cy<-.5||cx>g.w-.5||cy>g.h-.5) continue; const v=g.data[Math.min(g.h-1,Math.max(0,Math.round(cy)))*g.w+Math.min(g.w-1,Math.max(0,Math.round(cx)))]; if(!isFinite(v)||(nodata!=null&&v===nodata)||v<-9000||v>9000) continue; data[j*w+i]=v+zOff; valid++; if(v+zOff<mn)mn=v+zOff; if(v+zOff>mx)mx=v+zOff; }
+  return {lon0:lo0,lat0:la0,kx,ky,ox:x0,oy:y0,cell:cl,w,h,data,valid,min:mn,max:mx,n:g.w*g.h,gap:+nat.toFixed(1)}; }
+/* height from a grid (null outside the surveyed area or on a hole) */
+function gridAt(G,lon,lat){ const x=((lon-G.lon0)*G.kx-G.ox)/G.cell, y=((lat-G.lat0)*G.ky-G.oy)/G.cell; if(x<0||y<0||x>G.w-1||y>G.h-1) return null; const i=Math.floor(x), j=Math.floor(y), fx=x-i, fy=y-j, i1=Math.min(G.w-1,i+1), j1=Math.min(G.h-1,j+1);
+  const a=G.data[j*G.w+i], b=G.data[j*G.w+i1], c=G.data[j1*G.w+i], d=G.data[j1*G.w+i1]; if(!(a===a&&b===b&&c===c&&d===d)) return null; return (a*(1-fx)+b*fx)*(1-fy)+(c*(1-fx)+d*fx)*fy; }
+const gridBox=G=>{ const lo=[G.lon0+G.ox/G.kx, G.lat0+G.oy/G.ky], hi=[G.lon0+(G.ox+(G.w-1)*G.cell)/G.kx, G.lat0+(G.oy+(G.h-1)*G.cell)/G.ky]; return [lo[0],lo[1],hi[0],hi[1]]; };
+/* packed for storage: int16 centimetres, gzip */
+async function packGrid(G){ const n=G.w*G.h, q=new Int16Array(n); for(let i=0;i<n;i++){ const v=G.data[i]; q[i]=v===v?Math.max(-32767,Math.min(32767,Math.round(v*100))):-32768; }
+  const hdr=new TextEncoder().encode(JSON.stringify({v:1,lon0:G.lon0,lat0:G.lat0,kx:G.kx,ky:G.ky,ox:G.ox,oy:G.oy,cell:G.cell,w:G.w,h:G.h,min:G.min,max:G.max,n:G.n,gap:G.gap,valid:G.valid})); const out=new Uint8Array(4+hdr.length+q.byteLength); new DataView(out.buffer).setUint32(0,hdr.length); out.set(hdr,4); out.set(new Uint8Array(q.buffer),4+hdr.length);
+  if(typeof CompressionStream==="undefined") return {blob:new Blob([out]),gz:false}; const cs=new Blob([out]).stream().pipeThrough(new CompressionStream("gzip")); return {blob:await new Response(cs).blob(),gz:true}; }
+async function unpackGrid(buf,gz){ let u8=new Uint8Array(buf); if(gz!==false&&u8[0]===0x1f&&u8[1]===0x8b){ if(typeof DecompressionStream==="undefined") throw new Error("this browser cannot open the survey (no gzip)"); u8=new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer()); }
+  const dv=new DataView(u8.buffer,u8.byteOffset), hl=dv.getUint32(0), H=JSON.parse(new TextDecoder().decode(u8.subarray(4,4+hl))); const q=new Int16Array(u8.buffer.slice(u8.byteOffset+4+hl,u8.byteOffset+4+hl+H.w*H.h*2)); const data=new Float32Array(H.w*H.h); for(let i=0;i<data.length;i++) data[i]=q[i]===-32768?NaN:q[i]/100; return Object.assign(H,{data}); }
+
+/* ============ survey: panel section, upload, versions ============ */
+const CAN_EDIT=()=>{ try{ return !!(typeof SBME!=="undefined"&&SBME&&SBME.can_edit); }catch(e){ return false; } };
+const parkName=id=>{ try{ return (S.reg.parks[id]&&S.reg.parks[id].name)||id; }catch(e){ return id; } };
+const GB=1073741824;
+let svPark=null, svSec=null, UP=null;
+function parkList(){ try{ return Object.keys(S.reg.parks).sort((a,b)=>parkName(a).localeCompare(parkName(b))); }catch(e){ return []; } }
+function nearestPark(){ try{ const c=map.getCenter(); const cen={}; featOf("x"); FEAT.forEach(f=>{ const p=f.properties.park, ll=f.properties.c; if(!ll) return; const o=cen[p]||(cen[p]={x:0,y:0,n:0}); o.x+=ll[0]; o.y+=ll[1]; o.n++; });
+    let best=null,bd=1e18; Object.entries(cen).forEach(([p,o])=>{ const d=hav([o.x/o.n,o.y/o.n],[c.lng,c.lat]); if(d<bd){ bd=d; best=p; } }); return best; }catch(e){ return null; } }
+function parkBoxLL(park){ let w=1e9,s=1e9,e=-1e9,n=-1e9,c=0; featOf("x"); FEAT.forEach(f=>{ if(f.properties.park!==park) return; ringsOf(f.geometry).forEach(r=>r.forEach(p=>{ if(p[0]<w)w=p[0]; if(p[0]>e)e=p[0]; if(p[1]<s)s=p[1]; if(p[1]>n)n=p[1]; c++; })); }); return c?[w,s,e,n]:null; }
+async function usage(){ const c=SBC(); if(!c) return null; try{ const r=await c.rpc("sid_topo_usage"); return r.error?null:r.data; }catch(e){ return null; } }
+function sizeTxt(b){ return b==null?"—":b>=1048576?nf(b/1048576,1)+" MB":nf(b/1024,0)+" KB"; }
+function svUi(){ if(!svSec||!svSec.isConnected) return; const c=SBC(), box=svSec; const parks=parkList(); if(!svPark||!parks.includes(svPark)) svPark=nearestPark()||parks[0];
+  let h=""; if(!c){ box.innerHTML='<div class="tp-note">Sign in to see or add surveys.</div>'; return; }
+  if(SV.failed){ box.innerHTML=`<div class="tp-note">Survey storage is not set up yet: the owner has to run <b>sql_15_topo.sql</b> once in the Supabase SQL editor. Until then everything uses the 30 m estimate.${SV.err?"<br><span style=\"opacity:.7\">"+esc(SV.err)+"</span>":""}</div>`; return; }
+  const act=activeRow(svPark), vers=SV.list.filter(r=>r.park===svPark);
+  h+=`<label for="tpSvPark">Park</label><select id="tpSvPark">${parks.map(p=>`<option value="${esc(p)}"${p===svPark?" selected":""}>${esc(parkName(p))}</option>`).join("")}</select>`;
+  h+=`<div class="tp-note" style="opacity:.9;margin-top:5px">${act?`<b>Survey v${act.version}</b> · ${esc(fmtDate(act.survey_date))} · ${act.stats&&act.stats.areaM2?nf(act.stats.areaM2,0)+" m² · ":""}${sizeTxt(act.grid_bytes)} — replaces the 30 m heights inside its area.`:"No survey for this park: heights are the 30 m estimate."}</div>`;
+  h+=`<div class="tp-bts" style="margin-top:5px">${CAN_EDIT()?`<button class="tp-bt" id="tpSvUp">Upload survey…</button>`:`<span class="tp-note" style="margin:0">Your role cannot upload surveys.</span>`}<button class="tp-bt" id="tpSvZoom"${act?"":" disabled"}>Go to survey</button></div>`;
+  h+=`<div id="tpSvUpBox"></div>`;
+  if(vers.length){ h+=`<div class="tp-vl">${vers.map(r=>`<div class="${r.status==="archived"?"arch":""}"><span>v${r.version} · ${esc(fmtDate(r.survey_date))} · ${esc(r.name||"")} · ${sizeTxt(r.grid_bytes)} · ${r.status}</span>${CAN_EDIT()?(r.status==="active"?`<button class="tp-bt sm" data-svarch="${r.id}">Archive</button>`:`<button class="tp-bt sm" data-svact="${r.id}">Make active</button>`):""}</div>`).join("")}</div>`; }
+  h+=`<div class="tp-note" id="tpSvMeter">Storage …</div>`; box.innerHTML=h; if(UP) renderUp();
+  usage().then(u=>{ SV.usage=u; const m=q("#tpSvMeter"); if(!m) return; if(!u){ m.textContent="Storage use: —"; return; } const pct=Math.min(100,u.bucket_bytes/GB*100); m.innerHTML=`Storage: surveys ${sizeTxt(u.topo_bytes)} · all files ${sizeTxt(u.bucket_bytes)} of 1,024 MB (Supabase Free)<div class="tp-meter"><i style="width:${pct.toFixed(1)}%"></i></div>`; }); }
+HK.ui=panel=>{ const secs=[...panel.querySelectorAll(".tp-sec")], tools=secs.find(s=>/tools/i.test(s.textContent)); const hd=document.createElement("div"); hd.className="tp-sec"; hd.textContent="Survey (per park)"; const bx=document.createElement("div"); bx.className="tp-sv"; bx.id="tpSv"; svSec=bx;
+  tools.parentNode.insertBefore(hd,tools); tools.parentNode.insertBefore(bx,tools);
+  const opt=document.createElement("div"); opt.className="tp-row"; opt.style.gridTemplateColumns="18px 1fr"; opt.innerHTML=`<input type="checkbox" id="tpOffer" aria-label="Levels in printed offers"><span>Add the plot levels to printed offers (when known)</span>`; tools.parentNode.insertBefore(opt,tools); const ck=opt.querySelector("input"); ck.checked=OFFER_ON; ck.onchange=()=>{ OFFER_ON=ck.checked; try{ localStorage.setItem("sid.topo.offer."+emailKey(),OFFER_ON?"1":"0"); }catch(e){} };
+  bx.addEventListener("change",e=>{ if(e.target.id==="tpSvPark"){ svPark=e.target.value; UP=null; svUi(); } else if(UP) upChange(e); });
+  bx.addEventListener("input",e=>{ if(UP&&e.target.dataset&&e.target.dataset.up) upInput(e); });
+  bx.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; if(b.id==="tpSvUp") startUp(); else if(b.id==="tpSvZoom") zoomSurvey(); else if(b.dataset.svarch) svSetStatus(b.dataset.svarch,"archived"); else if(b.dataset.svact) svSetStatus(b.dataset.svact,"active"); else if(b.dataset.up) upClick(b.dataset.up); });
+  svList().then(svUi); svUi(); };
+function zoomSurvey(){ const r=activeRow(svPark); if(r&&r.bbox){ const b=r.bbox; map.fitBounds([[b[0],b[1]],[b[2],b[3]]],{padding:40,duration:800,maxZoom:18}); } }
+async function svSetStatus(id,status){ const c=SBC(); if(!c) return; const row=SV.list.find(r=>r.id===id); if(!row) return; const me=emailKey(); const now=new Date().toISOString();
+  try{ if(status==="active"){ const cur=activeRow(row.park); if(cur&&cur.id!==id){ const a=await c.from("sid_topo_surveys").update({status:"archived",archived_at:now,archived_by:me}).eq("id",cur.id); if(a.error) throw a.error; } const u=await c.from("sid_topo_surveys").update({status:"active",archived_at:null,archived_by:null}).eq("id",id); if(u.error) throw u.error; }
+    else { const u=await c.from("sid_topo_surveys").update({status:"archived",archived_at:now,archived_by:me}).eq("id",id); if(u.error) throw u.error; }
+    await svList(true); await svEnsure(mapBox()); ST.clear(); SUM.clear(); PARKDONE.clear(); say(status==="active"?"Survey version made active":"Survey archived — the 30 m estimate is used again (the file is kept)"); svUi(); }
+  catch(e){ say("Could not change the survey: "+(e.message||e),true); } }
+
+/* ----- upload: choose a file, check it, save as a new version ----- */
+function startUp(){ UP={park:svPark,step:"pick"}; renderUp(); }
+function renderUp(){ const bx=q("#tpSvUpBox"); if(!bx||!UP) return; const u=UP;
+  if(u.step==="pick"){ bx.innerHTML=`<div class="tp-card"><label>Survey file for ${esc(parkName(u.park))}</label><input type="file" id="tpSvFile" accept=".csv,.txt,.xyz,.pts,.dxf,.tif,.tiff"><div class="tp-note">CSV / XYZ (X, Y, Z), DXF contours or points, or a GeoTIFF. Heights in metres above sea level.</div><div class="tp-bts" style="margin-top:5px"><button class="tp-bt sm" data-up="cancel">Cancel</button></div></div>`; q("#tpSvFile").onchange=e=>{ const f=e.target.files&&e.target.files[0]; if(f) upRead(f); }; return; }
+  if(u.step==="busy"){ bx.innerHTML=`<div class="tp-card">${esc(u.msg||"Working…")}</div>`; return; }
+  if(u.step==="error"){ bx.innerHTML=`<div class="tp-card bad">${esc(u.msg)}</div><div class="tp-bts" style="margin-top:5px"><button class="tp-bt sm" data-up="cancel">Close</button></div>`; return; }
+  if(u.step==="review"){ const cs=CRS.map(c=>`<option value="${c.k}"${c.k===u.crs?" selected":""}>${esc(c.n)}</option>`).join(""); const p=u.prev;
+    bx.innerHTML=`<div class="tp-card"><b>${esc(u.file.name)}</b><div class="tp-note">${esc(u.note||"")}</div>
+      <label>Coordinate system of the file</label><select id="tpUpCrs" data-up="crs">${cs}</select><div class="tp-note">${u.sug?"Suggested from where the points land":""}</div>
+      <label>Height offset (m) added to every Z</label><input type="number" step="0.01" data-up="zoff" value="${u.zoff}"><div class="tp-note">Leave 0 when Z is already metres above sea level (Egyptian datum). Enter the shift if your survey uses a local datum.</div>
+      <label>Survey date</label><input type="date" data-up="date" value="${esc(u.date)}">
+      <div id="tpUpPrev" style="margin-top:6px">${p?upPrevHtml(p):"Checking…"}</div>
+      <div class="tp-bts" style="margin-top:6px"><button class="tp-bt" data-up="save"${p&&p.ok?"":" disabled"}>Save as new version</button><button class="tp-bt" data-up="cancel">Cancel</button></div></div>`; }
+}
+function upPrevHtml(p){ if(!p.ok) return `<span class="bad">${esc(p.err)}</span>`; const w=p.warn.map(x=>`<div class="warn">⚠ ${esc(x)}</div>`).join("");
+  return `<div class="kv" style="display:grid;grid-template-columns:auto auto;gap:1px 12px;justify-content:start"><span style="opacity:.7">Area covered</span><span>${nf(p.areaM2,0)} m²</span><span style="opacity:.7">Heights</span><span>${nf(p.min,2)} to ${nf(p.max,2)} m</span><span style="opacity:.7">Source points</span><span>${nf(p.n,0)}</span><span style="opacity:.7">Grid cell</span><span>${nf(p.cell,1)} m</span>${p.cmp?`<span style="opacity:.7">vs 30 m model</span><span>mean ${p.cmp.mean>=0?"+":"−"}${nf(Math.abs(p.cmp.mean),2)} m · spread ±${nf(p.cmp.sd,2)} m (${p.cmp.n} pts)</span>`:""}</div>${w}`; }
+async function upRead(file){ const u=UP; u.file=file; u.step="busy"; u.msg="Reading "+file.name+"…"; renderUp();
+  try{ await needProj4(); const ext=(file.name.split(".").pop()||"").toLowerCase(); let r;
+    if(ext==="tif"||ext==="tiff"){ r=await readTiff(await file.arrayBuffer()); u.kind="raster"; u.raster=r; u.note=r.note; }
+    else { const txt=await file.text(); r=ext==="dxf"?readDXF(txt):readCSV(txt); u.kind=r.kind; u.pts=r.pts; u.note=(r.pts.length+" points · "+r.note).replace(/ · $/,""); if(r.pts.length<3) throw new Error("No usable points found (need X, Y and Z numbers"+(ext==="dxf"?", or contour lines with a height":"")+")."); }
+    const near=parkCentre(u.park); let crs; if(u.kind==="raster"){ const e=u.raster.epsg; crs=e&&CRS.find(c=>c.k===String(e))?String(e):(e===4326?"wgs":suggestCrsRaster(u.raster,near)); } else crs=suggestCrs(u.pts,near);
+    u.sug=true; u.crs=crs; u.zoff=0; u.date=new Date(file.lastModified||Date.now()).toISOString().slice(0,10); u.step="review"; renderUp(); upPreview(); }
+  catch(e){ u.step="error"; u.msg=String(e&&e.message||e); renderUp(); } }
+function parkCentre(park){ const b=parkBoxLL(park); return b?[(b[0]+b[2])/2,(b[1]+b[3])/2]:null; }
+function suggestCrsRaster(r,near){ const g=r.grid, pts=[[g.x0,g.y1],[g.x0+g.dx*g.w,g.y1-g.dy*g.h]]; return suggestCrs(pts.map(p=>[p[0],p[1],0]),near); }
+function upChange(e){ const t=e.target; if(t.id==="tpUpCrs"){ UP.crs=t.value; UP.sug=false; UP.prev=null; upPreviewDeb(); } }
+function upInput(e){ const t=e.target, k=t.dataset.up; if(k==="zoff"){ UP.zoff=parseFloat(t.value)||0; UP.prev=null; upPreviewDeb(); } else if(k==="date") UP.date=t.value; }
+let pvT=null; function upPreviewDeb(){ clearTimeout(pvT); const p=q("#tpUpPrev"); if(p) p.textContent="Checking…"; const sv=q('[data-up="save"]'); if(sv) sv.disabled=true; pvT=setTimeout(upPreview,350); }
+function upBuild(){ const u=UP; const f=toLL(u.crs); const near=parkCentre(u.park); let G;
+  if(u.kind==="raster"){ const fwd=(x,y)=>f(x,y), inv=(lon,lat)=>{ const g=proj4(crsOf(u.crs).def,crsOf("wgs").def); return u.crs==="wgs"?[lon,lat]:g.inverse([lon,lat]); }; G=gridFromRaster(u.raster,{fwd,inv},u.zoff); }
+  else { const ll=[]; for(const p of u.pts){ const q2=f(p[0],p[1]); if(!isFinite(q2[0])||!isFinite(q2[1])) continue; ll.push([q2[0],q2[1],p[2]+u.zoff]); } if(ll.length<3) throw new Error("Fewer than 3 points could be placed: try another coordinate system."); G=makeGrid(ll,{kind:u.kind}); }
+  G.box=gridBox(G); return G; }
+async function upPreview(){ const u=UP; if(!u||u.step!=="review") return; let prev;
+  try{ await needProj4(); const G=upBuild(); u.grid=G; const warn=[]; const c=[(G.box[0]+G.box[2])/2,(G.box[1]+G.box[3])/2];
+    if(!inEgypt(c[0],c[1])) throw new Error("The survey lands outside Egypt with this coordinate system: choose another one."); const near=parkCentre(u.park); if(near&&hav(c,near)>30000) throw new Error("The survey lands "+nf(hav(c,near)/1000,0)+" km from "+parkName(u.park)+": wrong coordinate system or wrong park?");
+    if(G.valid<9) warn.push("Very few surveyed cells ("+G.valid+")."); if(G.gap>30) warn.push("Points are about "+nf(G.gap,0)+" m apart on average: the surface between them is interpolated.");
+    /* compare with the 30 m model at up to 60 surveyed cells */
+    const d=[]; const step=Math.max(1,Math.floor(G.valid/60)); let k=0; const pts=[]; for(let j=0;j<G.h;j++) for(let i=0;i<G.w;i++){ const v=G.data[j*G.w+i]; if(v===v){ if((k++%step)===0) pts.push([G.lon0+(G.ox+i*G.cell)/G.kx,G.lat0+(G.oy+j*G.cell)/G.ky,v]); } }
+    const bb=[G.box[0],G.box[1],G.box[2],G.box[3]]; const saveHK=HK.at; HK.at=null; try{ await preloadFor(bb); for(const p of pts.slice(0,80)){ const h=A.elevSync(p[0],p[1]); if(typeof h==="number") d.push(p[2]-h); } } finally{ HK.at=saveHK; }
+    let cmp=null; if(d.length>=5){ const m=d.reduce((t,v)=>t+v,0)/d.length, sd=Math.sqrt(d.reduce((t,v)=>t+(v-m)*(v-m),0)/d.length); cmp={mean:m,sd,n:d.length}; if(Math.abs(m)>25) warn.push("The survey is "+nf(Math.abs(m),1)+" m "+(m>0?"above":"below")+" the 30 m model on average: check the height offset / datum."); }
+    prev={ok:true,areaM2:G.valid*G.cell*G.cell,min:G.min,max:G.max,n:G.n,cell:G.cell,cmp,warn}; }
+  catch(e){ prev={ok:false,err:String(e&&e.message||e)}; }
+  if(UP!==u) return; u.prev=prev; const p=q("#tpUpPrev"); if(p) p.innerHTML=upPrevHtml(prev); const sv=q('[data-up="save"]'); if(sv) sv.disabled=!prev.ok; }
+async function preloadFor(box){ await preload(box); }
+function upClick(a){ if(a==="cancel"){ UP=null; svUi(); } else if(a==="save") upSave(); }
+async function upSave(){ const u=UP, c=SBC(); if(!u||!c||!u.grid||!u.prev||!u.prev.ok) return; const G=u.grid; u.step="busy"; u.msg="Saving…"; renderUp();
+  try{ const park=u.park; const mx=SV.list.filter(r=>r.park===park).reduce((m,r)=>Math.max(m,r.version),0), ver=mx+1; const stamp=new Date().toISOString().replace(/[-:T]/g,"").slice(0,12); const safe=u.file.name.replace(/[^\w.\-]+/g,"_").slice(-60);
+    const pk=await packGrid(G); const gp=`topo/${park}/v${ver}-${stamp}.grid.gz`; let up=await c.storage.from("sid").upload(gp,pk.blob,{contentType:"application/gzip",upsert:false}); if(up.error) throw up.error;
+    let rp=null,rb=null; if(u.file.size<=25*1048576){ rp=`topo/${park}/v${ver}-${stamp}-${safe}`; const r2=await c.storage.from("sid").upload(rp,u.file,{upsert:false}); if(r2.error){ rp=null; } else rb=u.file.size; }
+    const stats={areaM2:Math.round(u.prev.areaM2),cells:G.valid,points:G.n,min:+G.min.toFixed(2),max:+G.max.toFixed(2),cell:G.cell,gap:G.gap,cmp:u.prev.cmp||null,crs:u.crs,zOffset:u.zoff};
+    const ins=await c.from("sid_topo_surveys").insert({park,version:ver,name:u.file.name,kind:u.kind,crs:u.crs,z_offset:u.zoff,survey_date:u.date||null,status:"active",bbox:G.box,stats,grid_path:gp,raw_path:rp,grid_bytes:pk.blob.size,raw_bytes:rb}).select().single(); if(ins.error) throw ins.error;
+    const prev=SV.list.filter(r=>r.park===park&&r.status==="active"&&r.id!==ins.data.id); for(const r of prev){ await c.from("sid_topo_surveys").update({status:"archived",archived_at:new Date().toISOString(),archived_by:emailKey()}).eq("id",r.id); }
+    kvSet("topo.grid."+ins.data.id,await pk.blob.arrayBuffer()); UP=null; await svList(true); ST.clear(); SUM.clear(); PARKDONE.clear(); await svEnsure(null); say("Survey saved as version "+ver+" for "+parkName(park)+" ("+sizeTxt(pk.blob.size)+")"); svUi(); zoomSurvey(); }
+  catch(e){ u.step="error"; u.msg="Could not save: "+(e&&e.message||e)+(/row-level|policy|permission/i.test(String(e&&e.message||e))?" — your role may not be allowed to add surveys.":""); renderUp(); } }
+
+/* ============ planner: slopes to avoid, low spots ============ */
+let lastPlan=null;
+/* a plot's levels without the page: used by the planner on its own plots (rings are lon/lat) */
+async function planLevels(rings){ return levels(rings); }
+/* depressions on a coarse grid over the plan: priority flood; depth = filled level - ground level */
+async function depressions(box){ const lat0=(box[1]+box[3])/2, kx=111320*Math.cos(lat0*Math.PI/180), ky=110574; const mar=120; const W=(box[2]-box[0])*kx+2*mar, H=(box[3]-box[1])*ky+2*mar; let cell=Math.max(10,Math.sqrt(W*H/22000)); const w=Math.ceil(W/cell)+1, h=Math.ceil(H/cell)+1;
+  const bx=[box[0]-mar/kx,box[1]-mar/ky,box[2]+mar/kx,box[3]+mar/ky]; await svEnsure(bx).catch(()=>{}); await preload(bx);
+  const z=new Float32Array(w*h); let miss=0; for(let j=0;j<h;j++) for(let i=0;i<w;i++){ const lon=bx[0]+i*cell/kx, lat=bx[1]+j*cell/ky; const sv=HK.at(lon,lat); let v=sv?sv.h:A.elevSync(lon,lat); if(typeof v!=="number"){ v=NaN; miss++; } z[j*w+i]=v; }
+  if(miss>w*h*.2) return null; for(let i=0;i<z.length;i++) if(z[i]!==z[i]) z[i]=Infinity;
+  const fill=new Float32Array(z), done=new Uint8Array(w*h), heap=[]; const push=(c)=>{ heap.push(c); let i=heap.length-1; while(i>0){ const p=(i-1)>>1; if(fill[heap[p]]<=fill[heap[i]]) break; [heap[p],heap[i]]=[heap[i],heap[p]]; i=p; } };
+  const pop=()=>{ const t=heap[0], l=heap.pop(); if(heap.length){ heap[0]=l; let i=0; for(;;){ let a=2*i+1,b=a+1,m=i; if(a<heap.length&&fill[heap[a]]<fill[heap[m]]) m=a; if(b<heap.length&&fill[heap[b]]<fill[heap[m]]) m=b; if(m===i) break; [heap[m],heap[i]]=[heap[i],heap[m]]; i=m; } } return t; };
+  for(let j=0;j<h;j++) for(let i=0;i<w;i++) if(i===0||j===0||i===w-1||j===h-1){ done[j*w+i]=1; push(j*w+i); }
+  while(heap.length){ const c=pop(), i=c%w, j=(c/w)|0; for(const [di,dj] of [[1,0],[-1,0],[0,1],[0,-1]]){ const a=i+di,b=j+dj; if(a<0||b<0||a>=w||b>=h) continue; const n=b*w+a; if(done[n]) continue; done[n]=1; if(fill[n]<fill[c]) fill[n]=fill[c]; push(n); } }
+  return {w,h,cell,bx,kx,ky,depth:(lon,lat)=>{ const i=Math.round((lon-bx[0])*kx/cell), j=Math.round((lat-bx[1])*ky/cell); if(i<0||j<0||i>=w||j>=h) return 0; const c=j*w+i; return isFinite(z[c])?fill[c]-z[c]:0; }}; }
+const planKey=p=>JSON.stringify(p.pts.slice(0,3));
+async function planPass(PL,cb,force){ const tz=PL&&PL.tz; if(!tz||!(tz.avoid||tz.low)) return; const plots=(PL.plan&&PL.plan.plots)||[]; if(!plots.length) return; const maxS=Math.max(1,+tz.max||6), lowD=Math.max(.2,+tz.lowDepth||1);
+  try{ cb.flash("Checking the terrain under "+plots.length+" plots…"); let w=1e9,s=1e9,e=-1e9,n=-1e9; plots.forEach(p=>p.pts.forEach(c=>{ if(c[0]<w)w=c[0]; if(c[0]>e)e=c[0]; if(c[1]<s)s=c[1]; if(c[1]>n)n=c[1]; }));
+    const box=[w,s,e,n]; await svEnsure(box).catch(()=>{}); await preload(box); const dep=tz.low?await depressions(box):null; if(tz.low&&!dep) cb.flash("Not enough height data here to look for low spots");
+    const out=[], stats=[], kept=[]; let nSteep=0, nLow=0, mn=1e9, mx=-1e9, kmn=1e9, kmx=-1e9;
+    for(const p of plots){ const st=await levels([p.pts],{noload:true}).catch(()=>null); if(!st){ p.tz=null; continue; } stats.push(st); if(st.min<mn)mn=st.min; if(st.max>mx)mx=st.max;
+      let low=false,depth=0; if(dep){ const ring=p.pts, lon0=ring.reduce((t,c)=>t+c[0],0)/ring.length, lat0=ring.reduce((t,c)=>t+c[1],0)/ring.length; depth=Math.max(dep.depth(lon0,lat0),ring.reduce((t,c)=>t+dep.depth(c[0],c[1]),0)/ring.length); low=depth>=lowD; }
+      const steep=!!(tz.avoid&&st.slope!=null&&st.slope>maxS&&!p.pin); p.tz={slope:st.slope==null?null:+st.slope.toFixed(1),mean:+st.mean.toFixed(1),min:+st.min.toFixed(1),max:+st.max.toFixed(1),low:!!low,depth:+depth.toFixed(1),src:st.src}; if(steep){ nSteep++; out.push(p.id); } else { kept.push(st); if(low) nLow++; if(st.min<kmn) kmn=st.min; if(st.max>kmx) kmx=st.max; } }
+    lastPlan={n:kept.length,min:kept.length?kmn:mn,max:kept.length?kmx:mx,maxSlope:tz.avoid?maxS:null,steep:nSteep,low:nLow,src:stats.every(x=>x.src==="sv")?"survey":stats.every(x=>x.src==="est")?"30 m estimate ±"+ERR+" m":"survey + 30 m estimate"};
+    cb.apply(tz.avoid?out:[]); const msg=[]; if(tz.avoid) msg.push(nSteep?("removed "+nSteep+" plot"+(nSteep>1?"s":"")+" steeper than "+maxS+"% (Undo brings them back)"):("no plot steeper than "+maxS+"%")); if(tz.low) msg.push(nLow?(nLow+" plot"+(nLow>1?"s":"")+" on a low spot ▼ (ponding ≥ "+lowD+" m, indicative)"):"no low spots found"); cb.flash("Terrain: "+msg.join(" · ")+" — "+lastPlan.src); }
+  catch(e){ console.error("planner terrain",e); cb.flash("Terrain check failed: "+(e&&e.message||e)); } }
+const planTxt=p=>{ try{ if(!p||!p.tz) return ""; const t=p.tz; return " · slope "+(t.slope==null?"—":t.slope+" %")+" · level "+t.min+"–"+t.max+" m"+(t.low?" · ▼ low spot":""); }catch(e){ return ""; } };
+const planCaption=()=>lastPlan?("Levels "+nf(lastPlan.min,1)+"–"+nf(lastPlan.max,1)+" m"+(lastPlan.maxSlope?" · slopes ≤ "+lastPlan.maxSlope+" %":"")+(lastPlan.low?" · "+lastPlan.low+" low spot(s)":"")+" · "+lastPlan.src):"";
+window.SID_TOPO2={startUp:()=>startUp(),upRead:f=>upRead(f),get UP(){ return UP; },svUi,planPass,planTxt,planCaption,stats:levels,plotLevels,svList,svEnsure,SV,_t:{levels,cutFill,readCSV,readDXF,makeGrid,gridAt,packGrid,unpackGrid,suggestCrs,toLL,needProj4,CRS,depressions,SUM,ST,bindRows,rowKey,ensureParks,addXlsxCols,gridFromRaster,parkStats,sigOf,offerStats}};
 })();
 </script>
 </body>
