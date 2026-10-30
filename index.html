@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' data: blob: https://ihjlvxmttvjcciafruya.supabase.co wss://ihjlvxmttvjcciafruya.supabase.co https://iyubegbevtjcvtuubpaq.supabase.co https://*.cartocdn.com https://*.arcgisonline.com https://router.project-osrm.org https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' blob: data: https://www.teleport.eco https://teleport.eco; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' data: blob: https://ihjlvxmttvjcciafruya.supabase.co wss://ihjlvxmttvjcciafruya.supabase.co https://iyubegbevtjcvtuubpaq.supabase.co https://*.cartocdn.com https://*.arcgisonline.com https://router.project-osrm.org https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com https://s3.amazonaws.com; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' blob: data: https://www.teleport.eco https://teleport.eco; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <script>window.__cspV=[];addEventListener("securitypolicyviolation",function(e){if(__cspV.length<60)__cspV.push(e.violatedDirective+" "+(e.blockedURI||""));});
 if(window.top!==window.self){document.documentElement.style.display="none";try{window.top.location.replace(window.location.href);}catch(e){}}</script>
@@ -19131,5 +19131,342 @@ window.SID_PLAN={get on(){ return PL.on; },plotAt:planPlotAt,activate,deactivate
 .pl-menu{min-width:190px;padding:4px} .pl-menu button{height:34px;font-size:12.5px}
 .pl-dims{width:250px;padding:10px} .pl-dims input,.pl-dims select{height:30px;font-size:13px}
 </style>
+
+<style id="tpCss">
+/* ---- V98 Land Levels ---- */
+.tp-ctl button{width:36px!important;height:36px!important;display:grid!important;place-items:center;color:#fff!important;background:linear-gradient(160deg,#d23a55,#9e1f35)!important;border-radius:4px}
+.tp-ctl button.on{background:#fff!important;color:#9e1f35!important}
+.tp-ctl button svg{width:20px;height:20px}
+.tp-ctl{box-shadow:0 4px 14px rgba(158,31,53,.45)!important}
+#tpPanel{position:fixed;left:12px;bottom:12px;width:min(330px,calc(100vw - 24px));max-height:min(78vh,calc(100dvh - 24px));display:flex;flex-direction:column;z-index:2147483000;
+  font:12px -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;
+  background:rgba(28,28,30,.8);-webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 34px rgba(0,0,0,.38);border-radius:16px}
+body.sk-on #tpPanel{left:90px;width:min(330px,calc(100vw - 102px))}
+#tpPanel[hidden]{display:none!important}
+#tpPanel button{font-family:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+#tpPanel .tp-hd{display:flex;align-items:center;gap:6px;padding:8px 8px 6px 12px;flex:none}
+#tpPanel .tp-hd b{font-size:13px;letter-spacing:.01em}
+#tpPanel .tp-src{margin-left:auto;font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(255,159,10,.2);color:#ffcf7a;white-space:nowrap}
+#tpPanel .tp-src.sv{background:rgba(52,199,89,.2);color:#8be6a6}
+#tpPanel .tp-ib{width:26px;height:26px;border:0;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;font-size:15px;line-height:1;cursor:pointer;flex:none}
+#tpPanel .tp-ib:hover{background:rgba(255,255,255,.2)}
+#tpPanel .tp-body{overflow-y:auto;padding:0 12px 10px;scrollbar-width:thin}
+#tpPanel.min .tp-body{display:none}
+#tpPanel .tp-rd{font-size:15px;font-weight:700;padding:6px 9px;border-radius:10px;background:rgba(255,255,255,.08);margin-bottom:6px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+#tpPanel .tp-rd small{font-size:10px;font-weight:600;opacity:.65}
+#tpPanel .tp-sec{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.6;margin:8px 0 3px}
+#tpPanel .tp-row{display:grid;grid-template-columns:18px 1fr 84px;align-items:center;gap:7px;padding:3px 0;cursor:pointer}
+#tpPanel .tp-row.off{opacity:.4}
+#tpPanel .tp-row input[type=checkbox]{accent-color:#d23a55;width:15px;height:15px;margin:0}
+#tpPanel .tp-row input[type=range]{width:100%;accent-color:#d23a55;height:16px;margin:0}
+#tpPanel .tp-lg{margin:2px 0 4px 25px;font-size:10px;opacity:.9}
+#tpPanel .tp-grad{height:9px;border-radius:5px;margin:2px 0}
+#tpPanel .tp-grad+div{display:flex;justify-content:space-between}
+#tpPanel .tp-cls{display:flex;gap:3px;flex-wrap:wrap}
+#tpPanel .tp-cls i{display:inline-flex;align-items:center;gap:3px;font-style:normal;padding:1px 6px 1px 3px;border-radius:99px;background:rgba(255,255,255,.08)}
+#tpPanel .tp-cls i:before{content:"";width:9px;height:9px;border-radius:50%;background:var(--c)}
+#tpPanel .tp-bt{height:30px;padding:0 10px;border:0;border-radius:9px;background:rgba(255,255,255,.1);color:#fff;font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap}
+#tpPanel .tp-bt:hover{background:rgba(255,255,255,.2)}
+#tpPanel .tp-bt.on{background:#fff;color:#111}
+#tpPanel .tp-bt.sm{height:22px;padding:0 8px;font-size:10px}
+#tpPanel .tp-bts{display:flex;gap:4px;flex-wrap:wrap}
+#tpPanel .tp-res{margin-top:6px;font-size:12px;line-height:1.45}
+#tpPanel .tp-card{background:rgba(255,255,255,.08);border-radius:10px;padding:7px 9px;margin-top:5px}
+#tpPanel .tp-card b{font-size:14px}
+#tpPanel .tp-kv{display:grid;grid-template-columns:auto auto;gap:1px 12px;justify-content:start;margin-top:3px}
+#tpPanel .tp-kv span:nth-child(odd){opacity:.65}
+#tpPanel canvas{width:100%;height:118px;display:block;margin-top:5px;touch-action:none}
+#tpPanel .tp-note{font-size:10px;opacity:.6;margin-top:6px;line-height:1.35}
+#tpTag{position:fixed;z-index:2147483001;pointer-events:none;padding:2px 7px;border-radius:7px;background:rgba(20,20,22,.85);color:#fff;font:700 12px -apple-system,BlinkMacSystemFont,Inter,sans-serif;white-space:nowrap}
+#tpTag[hidden]{display:none!important}
+body.tp-pick .maplibregl-canvas,body.tp-pick #skCv{cursor:crosshair!important}
+@media (max-width:560px){
+ #tpPanel,body.sk-on #tpPanel{left:8px;right:8px;width:auto;bottom:8px;max-height:56vh;max-height:56dvh}
+ #tpPanel .tp-row{grid-template-columns:20px 1fr 96px;padding:5px 0}
+ #tpPanel .tp-bt{height:34px}
+}
+</style>
+
+<script id="tpJs">
+/* V98 - Land Levels */
+(function(){
+"use strict";
+const q=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const say=(m,bad)=>{ try{ toast(m,bad); }catch(e){} };
+const ok=()=>typeof map!=="undefined"&&map&&map.getContainer&&map.getStyle&&map.isStyleLoaded!==undefined;
+const DEM_URL="https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png", MAXZ=14, ERR=6, SENTINEL=-500;
+const CT_JS="https://cdn.jsdelivr.net/npm/maplibre-contour@0.1.0/dist/index.min.js", CT_SRI="sha384-rKd9nNV3F43xwxeA6WNNsPH+cMYQl6SEM+/HDoU/sgeuK+faXwhqXYA0Pwp0COXT";
+const ATTR='Elevation: AWS Terrain Tiles (NASA SRTM ~30 m, EU-DEM) · contours: maplibre-contour';
+const LY=[["img","Imagery"],["str","Streets"],["hs","Hillshade"],["col","Colour by height"],["ct","Contours"],["slp","Slope %"],["plt","Plots"],["rd","Roads"]];
+const DEF={img:[1,1],str:[1,1],hs:[1,.85],col:[0,.6],ct:[1,.9],slp:[0,.6],plt:[1,1],rd:[1,1]};
+const RAMP=["#440154","#3b528b","#21908d","#5dc863","#fde725"];
+const SLP=[[2,"#1a9850","0–2 %"],[5,"#91cf60","2–5 %"],[8,"#fee08b","5–8 %"],[12,"#fc8d59","8–12 %"],[1e9,"#d73027","> 12 %"]];
+const CTH={9:[50,250],10:[20,100],11:[10,50],12:[10,50],13:[5,25],14:[5,25],15:[2,10],16:[2,10],17:[1,5]};
+/* the same font stack as the page's own street labels: the glyph server only knows that exact combination */
+const FONT=["Montserrat Medium","Open Sans Regular","Noto Sans Regular","Noto Sans CJK JP Regular"];
+const TP={on:false,tool:null,pts:[],range:null,lib:null,ctl:null,terr:false,res:null,bound:false};
+const prefKey=()=>"sid.topo.v1."+String((typeof SBME!=="undefined"&&SBME&&SBME.email)||"anon").toLowerCase();
+let PREF={L:{},ter:[0,1.5],min:0};
+function loadPref(){ try{ const o=JSON.parse(localStorage.getItem(prefKey())||"null"); if(o&&typeof o==="object"){ PREF.L=o.L||{}; if(Array.isArray(o.ter)) PREF.ter=o.ter; PREF.min=o.min?1:0; } }catch(e){} }
+let svT=null; function savePref(){ clearTimeout(svT); svT=setTimeout(()=>{ try{ localStorage.setItem(prefKey(),JSON.stringify(PREF)); }catch(e){} },250); }
+const lv=k=>{ const d=DEF[k], p=PREF.L[k]; return {on:p?!!p[0]:!!d[0], op:p?Math.max(0,Math.min(1,+p[1])):d[1]}; };
+const setLv=(k,on,op)=>{ const c=lv(k); PREF.L[k]=[on==null?c.on:on?1:0, op==null?c.op:op]; savePref(); };
+const cvs=(w,h)=>{ if(typeof OffscreenCanvas!=="undefined") return new OffscreenCanvas(w,h); const c=document.createElement("canvas"); c.width=w; c.height=h; return c; };
+const hexRGB=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+
+/* ---------- the source of every number (phase 6 adds "Survey <date>") ---------- */
+const sourceOf=(lon,lat)=>({kind:"est",txt:"30 m estimate ±"+ERR+" m",err:ERR});
+const badge=(lon,lat)=>{ const s=sourceOf(lon,lat); return `<span class="tp-src${s.kind==="sv"?" sv":""}" style="margin:0 0 0 6px">${esc(s.txt)}</span>`; };
+
+/* ---------- elevation tiles (decoded once, kept in memory, straight from the public bucket) ---------- */
+const TC=new Map(), TR=new Map();
+function demTile(z,x,y){ const k=z+"/"+x+"/"+y; let p=TC.get(k); if(p){ TC.delete(k); TC.set(k,p); return p; }
+  p=fetch(DEM_URL.replace("{z}",z).replace("{x}",x).replace("{y}",y)).then(r=>{ if(!r.ok) throw new Error("tile "+r.status); return r.blob(); })
+   .then(b=>createImageBitmap(b,{premultiplyAlpha:"none",colorSpaceConversion:"none"})).then(bm=>{
+     const c=cvs(256,256), g=c.getContext("2d",{willReadFrequently:true}); g.drawImage(bm,0,0); const d=g.getImageData(0,0,256,256).data, H=new Float32Array(65536);
+     for(let i=0;i<65536;i++){ const v=d[i*4]*256+d[i*4+1]+d[i*4+2]/256-32768; H[i]=v<SENTINEL?NaN:v; } TR.set(k,H); return H; })
+   .catch(()=>{ TC.delete(k); return null; });
+  TC.set(k,p); if(TC.size>90){ const o=TC.keys().next().value; TC.delete(o); TR.delete(o); } return p; }
+const gpx=(lon,lat,z)=>{ const n=Math.pow(2,z)*256, s=Math.sin(lat*Math.PI/180); return [(lon+180)/360*n, (0.5-Math.log((1+s)/(1-s))/(4*Math.PI))*n]; };
+function pxAt(gx,gy,z,sync){ const n=Math.pow(2,z), tx=Math.floor(gx/256), ty=Math.floor(gy/256); if(ty<0||ty>=n) return sync?NaN:Promise.resolve(NaN);
+  const X=((tx%n)+n)%n, k=z+"/"+X+"/"+ty, ix=((gx%256)+256)%256|0, iy=((gy%256)+256)%256|0;
+  if(sync){ const H=TR.get(k); if(!H){ demTile(z,X,ty); return undefined; } return H[iy*256+ix]; }
+  return demTile(z,X,ty).then(H=>H?H[iy*256+ix]:NaN); }
+/* bilinear between the four nearest height cells; null = no data here */
+async function elevAt(lon,lat){ const g=gpx(lon,lat,MAXZ), gx=g[0]-.5, gy=g[1]-.5, x0=Math.floor(gx), y0=Math.floor(gy), fx=gx-x0, fy=gy-y0;
+  const v=await Promise.all([pxAt(x0,y0,MAXZ),pxAt(x0+1,y0,MAXZ),pxAt(x0,y0+1,MAXZ),pxAt(x0+1,y0+1,MAXZ)]);
+  if(v.some(a=>!(a===a))) return null; return (v[0]*(1-fx)+v[1]*fx)*(1-fy)+(v[2]*(1-fx)+v[3]*fx)*fy; }
+function elevSync(lon,lat){ const g=gpx(lon,lat,MAXZ), gx=g[0]-.5, gy=g[1]-.5, x0=Math.floor(gx), y0=Math.floor(gy), fx=gx-x0, fy=gy-y0;
+  const v=[pxAt(x0,y0,MAXZ,1),pxAt(x0+1,y0,MAXZ,1),pxAt(x0,y0+1,MAXZ,1),pxAt(x0+1,y0+1,MAXZ,1)]; if(v.some(a=>a===undefined)) return undefined; if(v.some(a=>!(a===a))) return null;
+  return (v[0]*(1-fx)+v[1]*fx)*(1-fy)+(v[2]*(1-fx)+v[3]*fx)*fy; }
+
+/* ---------- own coloured tiles: height ramp and slope classes, made from the same heights ---------- */
+const LUT=(()=>{ const a=RAMP.map(hexRGB), o=new Uint8Array(256*3); for(let i=0;i<256;i++){ const t=i/255*(a.length-1), j=Math.min(a.length-2,Math.floor(t)), f=t-j; for(let c=0;c<3;c++) o[i*3+c]=Math.round(a[j][c]*(1-f)+a[j+1][c]*f); } return o; })();
+const SLC=SLP.map(s=>hexRGB(s[1]));
+async function tileImage(kind,z,x,y,lo,hi){ const H=await demTile(z,x,y), c=cvs(256,256), g=c.getContext("2d"), im=g.createImageData(256,256), d=im.data;
+  if(H){ if(kind==="h"){ const sp=Math.max(1e-6,hi-lo); for(let i=0;i<65536;i++){ const v=H[i]; if(!(v===v)) continue; const t=Math.max(0,Math.min(255,Math.round((v-lo)/sp*255))); d[i*4]=LUT[t*3]; d[i*4+1]=LUT[t*3+1]; d[i*4+2]=LUT[t*3+2]; d[i*4+3]=255; } }
+    else { const n=Math.pow(2,z), lat=Math.atan(Math.sinh(Math.PI*(1-2*(y+.5)/n)))*180/Math.PI, cell=40075016.686*Math.cos(lat*Math.PI/180)/(256*n);
+      for(let j=0;j<256;j++){ const j0=Math.max(0,j-1), j1=Math.min(255,j+1); for(let i=0;i<256;i++){ const i0=Math.max(0,i-1), i1=Math.min(255,i+1), r0=j0*256, r1=j*256, r2=j1*256;
+        const a=H[r0+i0], b=H[r0+i], cc=H[r0+i1], dd=H[r1+i0], ff=H[r1+i1], gg=H[r2+i0], hh=H[r2+i], ii=H[r2+i1]; const p=r1+i; if(!(H[p]===H[p])||!(a===a&&b===b&&cc===cc&&dd===dd&&ff===ff&&gg===gg&&hh===hh&&ii===ii)) continue;
+        const dx=((cc+2*ff+ii)-(a+2*dd+gg))/(8*cell*(i1-i0)/2), dy=((gg+2*hh+ii)-(a+2*b+cc))/(8*cell*(j1-j0)/2), sl=100*Math.hypot(dx,dy); let k=0; while(k<SLP.length-1&&sl>=SLP[k][0]) k++;
+        d[p*4]=SLC[k][0]; d[p*4+1]=SLC[k][1]; d[p*4+2]=SLC[k][2]; d[p*4+3]=255; } } } }
+  g.putImageData(im,0,0); const blob=c.convertToBlob?await c.convertToBlob({type:"image/png"}):await new Promise(r=>c.toBlob(r,"image/png")); return blob.arrayBuffer(); }
+/* maplibre-contour 0.1.0 hands back its whole write buffer (zero padded): cut the tile at its last layer so MapLibre can read it */
+function trimPbf(buf){ const u=new Uint8Array(buf); let p=0; while(p<u.length&&u[p]===26){ p++; let l=0,sh=0,b; do{ b=u[p++]; l+=(b&127)*Math.pow(2,sh); sh+=7; }while(b&128); p+=l; } return p>0&&p<=u.length?buf.slice(0,p):buf; }
+let protoOn=false;
+function addProto(){ if(protoOn) return; protoOn=true; maplibregl.addProtocol("sidtopo",async(p)=>{ const m=/sidtopo:\/\/([hs])\/(\d+)\/(\d+)\/(\d+)(?:\?r=(-?[\d.]+),(-?[\d.]+))?/.exec(p.url); if(!m) throw new Error("bad tile url");
+  return {data:await tileImage(m[1],+m[2],+m[3],+m[4],+m[5],+m[6])}; });
+  maplibregl.addProtocol("sidct",async(p,ac)=>{ const r=await TP.lib.contourProtocolV4({url:p.url.replace(/^sidct:/,"dem-contour:")},ac); return {data:trimPbf(r.data)}; }); }
+
+/* ---------- height range for the colour ramp: fitted to what is on the screen ---------- */
+async function fitRange(){ const b=map.getBounds(); let z=MAXZ; const tl=gpx(b.getWest(),b.getNorth(),z), br=gpx(b.getEast(),b.getSouth(),z);
+  while(z>8&&(Math.floor(br[0]/256)-Math.floor(tl[0]/256)+1)*(Math.floor(br[1]/256)-Math.floor(tl[1]/256)+1)>6){ z--; const a=gpx(b.getWest(),b.getNorth(),z), c=gpx(b.getEast(),b.getSouth(),z); tl[0]=a[0]; tl[1]=a[1]; br[0]=c[0]; br[1]=c[1]; }
+  const n=Math.pow(2,z), vals=[], P=[];
+  for(let tx=Math.floor(tl[0]/256);tx<=Math.floor(br[0]/256);tx++) for(let ty=Math.floor(tl[1]/256);ty<=Math.floor(br[1]/256);ty++) if(ty>=0&&ty<n) P.push(demTile(z,((tx%n)+n)%n,ty).then(H=>{ if(!H) return; for(let i=0;i<65536;i+=3){ const v=H[i]; if(v===v) vals.push(v); } }));
+  await Promise.all(P); if(vals.length<50) return null; vals.sort((a,c)=>a-c); let lo=Math.floor(vals[Math.floor(vals.length*.02)]), hi=Math.ceil(vals[Math.floor(vals.length*.98)]);
+  if(hi-lo<4){ const m=(lo+hi)/2; lo=Math.floor(m-2); hi=lo+4; } return [lo,hi]; }
+
+/* ---------- map layers (each added only while the mode is on; hidden layers load no tiles) ---------- */
+const ID={dem:"sidtopo-dem",col:"sidtopo-col",slp:"sidtopo-slp",ct:"sidtopo-ct",pts:"sidtopo-pts"};
+const hasL=id=>{ try{ return !!map.getLayer(id); }catch(e){ return false; } };
+const hasS=id=>{ try{ return !!map.getSource(id); }catch(e){ return false; } };
+const layersAll=()=>{ try{ return map.getStyle().layers||[]; }catch(e){ return []; } };
+const firstId=f=>{ const l=layersAll().find(f); return l?l.id:undefined; };
+const isPlot=l=>l.source==="plots", isLb=l=>/^lb-/.test(l.id), isMine=l=>/^sidtopo-/.test(l.id);
+const setVis=(id,on)=>{ if(hasL(id)) map.setLayoutProperty(id,"visibility",on?"visible":"none"); };
+function ctStep(){ const z=Math.max(9,Math.min(17,Math.floor(map.getZoom()))); return CTH[z]; }
+function build(){ if(!TP.on||!ok()) return; if(!map.isStyleLoaded()){ map.once("idle",build); return; } addProto();
+  try{
+   if(!hasS(ID.dem)) map.addSource(ID.dem,{type:"raster-dem",tiles:[DEM_URL],tileSize:256,maxzoom:MAXZ,encoding:"terrarium",attribution:ATTR});
+   const below=firstId(isPlot)||firstId(isLb), above=firstId(isLb);
+   if(!hasL("sidtopo-hs")) map.addLayer({id:"sidtopo-hs",type:"hillshade",source:ID.dem,layout:{visibility:"none"},paint:{"hillshade-exaggeration":.6,"hillshade-shadow-color":"#000000","hillshade-highlight-color":"#ffffff","hillshade-accent-color":"#202020"}},below);
+   if(TP.range&&!hasS(ID.col)) map.addSource(ID.col,{type:"raster",tiles:["sidtopo://h/{z}/{x}/{y}?r="+TP.range[0]+","+TP.range[1]],tileSize:256,minzoom:6,maxzoom:MAXZ,attribution:ATTR});
+   if(hasS(ID.col)&&!hasL(ID.col)) map.addLayer({id:ID.col,type:"raster",source:ID.col,layout:{visibility:"none"},paint:{"raster-fade-duration":0,"raster-resampling":"linear"}},below);
+   if(!hasS(ID.slp)) map.addSource(ID.slp,{type:"raster",tiles:["sidtopo://s/{z}/{x}/{y}"],tileSize:256,minzoom:6,maxzoom:MAXZ,attribution:ATTR});
+   if(!hasL(ID.slp)) map.addLayer({id:ID.slp,type:"raster",source:ID.slp,layout:{visibility:"none"},paint:{"raster-fade-duration":0,"raster-resampling":"linear"}},below);
+   const vc=lv("ct").on?"visible":"none";
+   if(TP.lib){ if(!hasS(ID.ct)){ map.addSource(ID.ct,{type:"vector",tiles:[TP.lib.contourProtocolUrl({thresholds:CTH,contourLayer:"contours",elevationKey:"ele",levelKey:"level",extent:4096,buffer:1}).replace(/^dem-contour:/,"sidct:")],maxzoom:17,attribution:ATTR}); }
+     if(!hasL("sidtopo-ct-minor")) map.addLayer({id:"sidtopo-ct-minor",type:"line",source:ID.ct,"source-layer":"contours",filter:["==",["get","level"],0],layout:{visibility:vc},paint:{"line-color":"#ffe9b0","line-width":.7,"line-opacity":.8}},above);
+     if(!hasL("sidtopo-ct-major")) map.addLayer({id:"sidtopo-ct-major",type:"line",source:ID.ct,"source-layer":"contours",filter:["==",["get","level"],1],layout:{visibility:vc},paint:{"line-color":"#ffd25a","line-width":1.4,"line-opacity":.95}},above);
+     if(!hasL("sidtopo-ct-lbl")) map.addLayer({id:"sidtopo-ct-lbl",type:"symbol",source:ID.ct,"source-layer":"contours",filter:["==",["get","level"],1],layout:{visibility:vc,"symbol-placement":"line","text-field":["concat",["to-string",["get","ele"]]," m"],"text-font":FONT,"text-size":11,"text-max-angle":35},paint:{"text-color":"#fff4cf","text-halo-color":"rgba(20,16,0,.85)","text-halo-width":1.6}},above); }
+   if(!hasS(ID.pts)) map.addSource(ID.pts,{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+   if(!hasL("sidtopo-pl")) map.addLayer({id:"sidtopo-pl",type:"line",source:ID.pts,filter:["==",["geometry-type"],"LineString"],paint:{"line-color":"#ff2d55","line-width":3,"line-dasharray":[2,1]}});
+   if(!hasL("sidtopo-pp")) map.addLayer({id:"sidtopo-pp",type:"circle",source:ID.pts,filter:["==",["geometry-type"],"Point"],paint:{"circle-radius":["case",["==",["get","hov"],1],8,5.5],"circle-color":["case",["==",["get","hov"],1],"#ffd60a","#ff2d55"],"circle-stroke-color":"#fff","circle-stroke-width":2}});
+   if(!hasL("sidtopo-pt")) map.addLayer({id:"sidtopo-pt",type:"symbol",source:ID.pts,filter:["==",["geometry-type"],"Point"],layout:{"text-field":["get","t"],"text-font":FONT,"text-size":12,"text-offset":[0,-1.5],"text-allow-overlap":true},paint:{"text-color":"#fff","text-halo-color":"rgba(20,20,22,.9)","text-halo-width":2}});
+  }catch(e){ console.error("land levels build",e); say("Land Levels: "+(e&&e.message||e),true); }
+  applyAll(); drawPts(); terrain(); legend(); }
+function applyAll(){ if(!TP.on) return;
+  const L=k=>lv(k);
+  setVis("sidtopo-hs",L("hs").on); if(hasL("sidtopo-hs")) map.setPaintProperty("sidtopo-hs","hillshade-exaggeration",L("hs").op);
+  setVis(ID.col,L("col").on&&hasL(ID.col)); if(hasL(ID.col)) map.setPaintProperty(ID.col,"raster-opacity",L("col").op);
+  setVis(ID.slp,L("slp").on); if(hasL(ID.slp)) map.setPaintProperty(ID.slp,"raster-opacity",L("slp").op);
+  ["sidtopo-ct-minor","sidtopo-ct-major","sidtopo-ct-lbl"].forEach(id=>setVis(id,L("ct").on)); const co=L("ct").op;
+  if(hasL("sidtopo-ct-minor")){ map.setPaintProperty("sidtopo-ct-minor","line-opacity",.8*co); map.setPaintProperty("sidtopo-ct-major","line-opacity",.95*co); map.setPaintProperty("sidtopo-ct-lbl","text-opacity",co); }
+  baseLayers(); }
+
+/* base-map layers belong to the page: hide / dim them and put them back exactly when the mode closes */
+const WR=new Map();
+function wrap(id,prop,f){ if(!hasL(id)) return; const k=id+"|"+prop, cur=map.getPaintProperty(id,prop); let r=WR.get(k);
+  const mine=!!r&&r.wrapped!==null&&JSON.stringify(cur)===r.wrapped; if(!mine){ r={orig:cur,wrapped:null}; WR.set(k,r); }
+  if(f>=.999){ if(mine){ map.setPaintProperty(id,prop,r.orig===undefined?null:r.orig); r.wrapped=null; } return; }
+  const o=(r.orig===undefined||r.orig===null)?1:r.orig, nv=scaleExpr(o,f); if(!nv) return; r.wrapped=JSON.stringify(nv); map.setPaintProperty(id,prop,nv); }
+/* multiply an opacity by f: a number, a zoom curve (every output of the curve) or a plain expression */
+function scaleExpr(e,f){ const m=v=>typeof v==="number"?+(v*f).toFixed(4):["*",f,v];
+  if(typeof e==="number") return m(e);
+  if(Array.isArray(e)&&e[0]==="interpolate"&&Array.isArray(e[2])&&e[2][0]==="zoom"){ const c=e.slice(0,3); for(let i=3;i+1<e.length;i+=2){ c.push(e[i]); c.push(m(e[i+1])); } return c; }
+  if(Array.isArray(e)&&e[0]==="step"&&Array.isArray(e[1])&&e[1][0]==="zoom"){ const c=[e[0],e[1],m(e[2])]; for(let i=3;i+1<e.length;i+=2){ c.push(e[i]); c.push(m(e[i+1])); } return c; }
+  if(JSON.stringify(e).indexOf('"zoom"')>=0) return null;
+  return ["*",f,e]; }
+function unwrapAll(){ WR.forEach((r,k)=>{ if(r.wrapped===null) return; const [id,prop]=k.split("|"); try{ if(hasL(id)) map.setPaintProperty(id,prop,r.orig===undefined?null:r.orig); }catch(e){} }); WR.clear(); }
+const roadLike=l=>!isLb(l)&&!isMine(l)&&!isPlot(l)&&/road|street|highway|bridge|tunnel|motorway|trunk|transport/i.test(l.id)&&l.type==="line";
+function baseLayers(){ const sat=hasL("e"), ls=layersAll(), I=lv("img"), S1=lv("str"), P=lv("plt"), R=lv("rd");
+  try{
+   if(sat){ setVis("e",I.on); map.setPaintProperty("e","raster-opacity",I.op); }
+   ls.filter(isLb).forEach(l=>{ setVis(l.id,S1.on&&(typeof LBL_ON==="undefined"||LBL_ON)); if(l.type==="symbol") wrap(l.id,"text-opacity",S1.op); });
+   ls.filter(isPlot).forEach(l=>{ setVis(l.id,P.on); const pr=l.type==="fill"?"fill-opacity":l.type==="line"?"line-opacity":null; if(pr) wrap(l.id,pr,P.op); });
+   if(!sat) ls.filter(roadLike).forEach(l=>{ setVis(l.id,R.on); wrap(l.id,"line-opacity",R.op); });
+  }catch(e){ console.error("land levels base",e); } }
+function restoreBase(){ try{ unwrapAll(); if(hasL("e")){ setVis("e",true); map.setPaintProperty("e","raster-opacity",1); }
+  layersAll().filter(l=>isLb(l)||isPlot(l)||roadLike(l)).forEach(l=>{ if(isLb(l)) setVis(l.id,typeof LBL_ON==="undefined"||LBL_ON); else setVis(l.id,true); }); }catch(e){} }
+function teardown(){ restoreBase(); try{ if(map.getTerrain&&map.getTerrain()) map.setTerrain(null); }catch(e){} pitchBack();
+  ["sidtopo-pt","sidtopo-pp","sidtopo-pl","sidtopo-ct-lbl","sidtopo-ct-major","sidtopo-ct-minor",ID.slp,ID.col,"sidtopo-hs"].forEach(id=>{ try{ if(hasL(id)) map.removeLayer(id); }catch(e){} });
+  [ID.pts,ID.ct,ID.slp,ID.col,ID.dem].forEach(id=>{ try{ if(hasS(id)) map.removeSource(id); }catch(e){} }); }
+
+/* ---------- 3D terrain (preview) ---------- */
+function pitchBack(){ if(TP.pitch0!=null){ try{ map.easeTo({pitch:TP.pitch0,duration:500}); }catch(e){} TP.pitch0=null; } }
+function terrain(){ if(!TP.on||!hasS(ID.dem)) return; try{ if(PREF.ter[0]){ map.setTerrain({source:ID.dem,exaggeration:+PREF.ter[1]||1}); if(map.getPitch()<20&&TP.pitch0==null){ TP.pitch0=map.getPitch(); map.easeTo({pitch:55,duration:700}); } } else { if(map.getTerrain()) map.setTerrain(null); pitchBack(); } }catch(e){ console.error("terrain",e); } }
+
+/* ---------- the panel ---------- */
+const TOPO_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M2.5 19.5l6.2-10.6 3.6 6 2.7-3.8 6.5 8.4z"/><path d="M9.5 6.6l1.5-2.6"/></svg>';
+let panel=null, tag=null;
+function ui(){ if(panel) return; panel=document.createElement("div"); panel.id="tpPanel"; panel.hidden=true; panel.setAttribute("role","dialog"); panel.setAttribute("aria-label","Land Levels");
+  panel.innerHTML=`<div class="tp-hd"><b>Land Levels</b><span class="tp-src" id="tpSrc"></span><button class="tp-ib" id="tpMin" title="Minimise" aria-label="Minimise">–</button><button class="tp-ib" id="tpX" title="Close Land Levels" aria-label="Close">×</button></div>
+  <div class="tp-body"><div class="tp-rd" id="tpRd"><span>Height —</span></div>
+   <div class="tp-sec">Layers</div><div id="tpLy"></div>
+   <div class="tp-sec">3D terrain (preview)</div><div class="tp-row" id="tpTerr"><input type="checkbox" id="tpTerrOn" aria-label="3D terrain"><span>Show in 3D · exaggeration <b id="tpExV"></b>×</span><input type="range" id="tpEx" min="1" max="3" step=".5" aria-label="Exaggeration"></div>
+   <div class="tp-sec">Tools</div><div class="tp-bts"><button class="tp-bt" data-t="pt">Point height</button><button class="tp-bt" data-t="prof">Profile</button><button class="tp-bt" data-t="slope">Slope A→B</button><button class="tp-bt" id="tpClr">Clear</button></div>
+   <div class="tp-res" id="tpRes"></div>
+   <div class="tp-note">Heights are a 30 m satellite model (SRTM), a surface model that includes buildings and trees. Use them for planning only, not for earthworks levels: those need a survey.</div></div>`;
+  document.body.appendChild(panel); tag=document.createElement("div"); tag.id="tpTag"; tag.hidden=true; document.body.appendChild(tag);
+  const ly=panel.querySelector("#tpLy"); ly.innerHTML=LY.map(([k,n])=>`<label class="tp-row" data-k="${k}"><input type="checkbox" data-c="${k}" aria-label="${n}"><span>${n}</span><input type="range" min="0" max="100" data-o="${k}" aria-label="${n} opacity"></label><div class="tp-lg" data-lg="${k}" hidden></div>`).join("");
+  panel.addEventListener("input",e=>{ const t=e.target; if(t.dataset.c){ const k=t.dataset.c; setLv(k,t.checked); if(k==="col"&&t.checked) colOn(); if(k==="ct"&&t.checked) ctRebuild(); applyAll(); legend(); }
+    else if(t.dataset.o){ setLv(t.dataset.o,null,t.value/100); applyAll(); }
+    else if(t.id==="tpTerrOn"){ PREF.ter[0]=t.checked?1:0; savePref(); terrain(); }
+    else if(t.id==="tpEx"){ PREF.ter[1]=+t.value; q("#tpExV").textContent=t.value; savePref(); if(PREF.ter[0]) terrain(); } });
+  panel.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+    if(b.id==="tpX") setOn(false); else if(b.id==="tpMin"){ panel.classList.toggle("min"); PREF.min=panel.classList.contains("min")?1:0; savePref(); }
+    else if(b.dataset.t) setTool(TP.tool===b.dataset.t?null:b.dataset.t); else if(b.id==="tpClr"){ TP.pts=[]; TP.res=null; q("#tpRes").innerHTML=""; drawPts(); }
+    else if(b.id==="tpFit"){ colRefit(); } else if(b.id==="tpDone"){ profDone(); } else if(b.id==="tpUndo"){ TP.pts.pop(); toolUpd(); } });
+  const hd=panel.querySelector(".tp-hd"); let dg=null; hd.style.cursor="grab"; hd.style.touchAction="none";
+  hd.addEventListener("pointerdown",e=>{ if(e.target.closest("button")||innerWidth<=560) return; const r=panel.getBoundingClientRect(); dg={dx:e.clientX-r.left,dy:e.clientY-r.top}; hd.setPointerCapture(e.pointerId); });
+  hd.addEventListener("pointermove",e=>{ if(!dg) return; panel.style.left=Math.max(0,Math.min(innerWidth-120,e.clientX-dg.dx))+"px"; panel.style.top=Math.max(0,Math.min(innerHeight-60,e.clientY-dg.dy))+"px"; panel.style.bottom="auto"; });
+  hd.addEventListener("pointerup",()=>{ dg=null; });
+  panel.addEventListener("pointerdown",e=>e.stopPropagation()); panel.addEventListener("wheel",e=>e.stopPropagation(),{passive:true}); panel.addEventListener("dblclick",e=>e.stopPropagation()); }
+function syncUi(){ if(!panel) return; LY.forEach(([k])=>{ const c=lv(k), row=panel.querySelector(`.tp-row[data-k="${k}"]`); row.querySelector("input[type=checkbox]").checked=c.on; row.querySelector("input[type=range]").value=Math.round(c.op*100);
+    let na=false; if((k==="img")&&!hasL("e")) na=true; if(k==="rd"&&hasL("e")) na=true; if(k==="ct"&&!TP.lib) na=true; row.classList.toggle("off",na); row.title=na?(k==="ct"?"Contour library not loaded":k==="rd"?"The satellite picture already shows the roads":"Only on the satellite map"):""; });
+  q("#tpTerrOn").checked=!!PREF.ter[0]; q("#tpEx").value=PREF.ter[1]; q("#tpExV").textContent=PREF.ter[1]; panel.classList.toggle("min",!!PREF.min); q("#tpSrc").textContent=sourceOf().txt; }
+function legend(){ if(!panel) return; const set=(k,h)=>{ const d=panel.querySelector(`[data-lg="${k}"]`); if(!d) return; d.hidden=!h; d.innerHTML=h||""; };
+  const c=lv("col"); set("col",c.on&&TP.range?`<div class="tp-grad" style="background:linear-gradient(90deg,${RAMP.join(",")})"></div><div><span>${TP.range[0]} m</span><span>${Math.round((TP.range[0]+TP.range[1])/2)} m</span><span>${TP.range[1]} m</span> <button class="tp-bt sm" id="tpFit" title="Fit the colours to the heights on screen">Fit to view</button></div>`:"");
+  set("slp",lv("slp").on?`<div class="tp-cls">${SLP.map(s=>`<i style="--c:${s[1]}">${s[2]}</i>`).join("")}</div>`:"");
+  const st=ctStep(); set("ct",lv("ct").on&&TP.lib?`Every <b>${st[0]} m</b>, labelled every <b>${st[1]} m</b> (changes with zoom)`:"");
+  syncUi(); }
+function ctRebuild(){ try{ ["sidtopo-ct-lbl","sidtopo-ct-major","sidtopo-ct-minor"].forEach(id=>{ if(hasL(id)) map.removeLayer(id); }); if(hasS(ID.ct)) map.removeSource(ID.ct); }catch(e){} build(); }
+async function colOn(){ if(TP.range&&hasS(ID.col)) return; const r=await fitRange(); if(!r){ say("No height data for this view",true); return; } TP.range=r; if(hasS(ID.col)){ try{ map.removeLayer(ID.col); map.removeSource(ID.col); }catch(e){} } build(); }
+async function colRefit(){ const r=await fitRange(); if(!r) return; TP.range=r; try{ if(hasL(ID.col)) map.removeLayer(ID.col); if(hasS(ID.col)) map.removeSource(ID.col); }catch(e){} build(); }
+
+/* ---------- height under the pointer ---------- */
+let hovRaf=0, hovE=null;
+function pointLL(e){ const r=map.getContainer().getBoundingClientRect(); const ll=map.unproject([e.clientX-r.left,e.clientY-r.top]); return [ll.lng,ll.lat]; }
+function showRd(ll,x,y){ const rd=q("#tpRd"); if(!rd) return; const h=elevSync(ll[0],ll[1]);
+  if(h===undefined){ rd.innerHTML="<span>Height …</span>"; if(tag) tag.hidden=true; return; }
+  if(h===null){ rd.innerHTML="<span>Height —</span><small>no data here</small>"; if(tag) tag.hidden=true; return; }
+  rd.innerHTML=`<span>${h.toFixed(1)} m</span><small>${esc(sourceOf(ll[0],ll[1]).txt)}</small>`;
+  if(tag&&x!=null&&matchMedia("(hover:hover)").matches&&!panel.contains(document.elementFromPoint(x,y)||panel)){ tag.hidden=false; tag.textContent=h.toFixed(1)+" m"; tag.style.left=(x+14)+"px"; tag.style.top=(y+14)+"px"; } else if(tag) tag.hidden=true; }
+const onMove=e=>{ if(!TP.on||(e.target&&e.target.closest&&e.target.closest("#tpPanel"))){ if(tag) tag.hidden=true; return; } hovE=e; if(hovRaf) return; hovRaf=requestAnimationFrame(()=>{ hovRaf=0; if(!hovE) return; try{ const ll=pointLL(hovE); showRd(ll,hovE.clientX,hovE.clientY); if(elevSync(ll[0],ll[1])===undefined) setTimeout(()=>{ if(TP.on&&hovE) showRd(pointLL(hovE),hovE.clientX,hovE.clientY); },350); }catch(x){} }); };
+const onCentre=()=>{ if(!TP.on||matchMedia("(hover:hover)").matches) return; const c=map.getCenter(); showRd([c.lng,c.lat]); };
+const onZoomEnd=()=>{ if(TP.on) legend(); };
+let styleT=0; const onStyle=()=>{ if(!TP.on) return; clearTimeout(styleT); styleT=setTimeout(()=>{ if(!TP.on||!map.isStyleLoaded()) return; if(!hasS(ID.dem)){ WR.clear(); build(); } },80); };
+
+/* ---------- tools: point, profile, slope A to B ---------- */
+const R6=6371008.8, rad=d=>d*Math.PI/180;
+const hav=(a,b)=>{ const dp=rad(b[1]-a[1]), dl=rad(b[0]-a[0]); const h=Math.sin(dp/2)**2+Math.cos(rad(a[1]))*Math.cos(rad(b[1]))*Math.sin(dl/2)**2; return 2*R6*Math.asin(Math.min(1,Math.sqrt(h))); };
+const fmtD=m=>m>=1000?(m/1000).toFixed(2)+" km":Math.round(m)+" m";
+const sgn=v=>(v>0?"+":v<0?"−":"")+Math.abs(v).toFixed(1)+" m";
+function setTool(t){ TP.tool=t; TP.pts=[]; TP.res=null; q("#tpRes").innerHTML=""; panel.querySelectorAll("[data-t]").forEach(b=>b.classList.toggle("on",b.dataset.t===t)); document.body.classList.toggle("tp-pick",!!t); drawPts();
+  const h={pt:"Tap the map to read heights.",prof:"Tap points along the line, then press Done (or double-tap).",slope:"Tap point A, then point B."}[t]; if(t) q("#tpRes").innerHTML=`<div class="tp-note" style="margin:0">${h}</div>`; }
+function drawPts(extra){ if(!hasS(ID.pts)) return; const F=[]; const n=TP.pts.length;
+  if((TP.tool==="prof"||TP.tool==="slope")&&n>1) F.push({type:"Feature",properties:{},geometry:{type:"LineString",coordinates:TP.pts.map(p=>[p[0],p[1]])}});
+  TP.pts.forEach((p,i)=>F.push({type:"Feature",properties:{t:p[2]||(TP.tool==="slope"?(i?"B":"A"):""),hov:0},geometry:{type:"Point",coordinates:[p[0],p[1]]}}));
+  if(extra) F.push({type:"Feature",properties:{hov:1,t:extra.t||""},geometry:{type:"Point",coordinates:extra.c}}); try{ map.getSource(ID.pts).setData({type:"FeatureCollection",features:F}); }catch(e){} }
+async function onPick(ll){ if(TP.tool==="pt"){ const h=await elevAt(ll[0],ll[1]); if(TP.pts.length>=8) TP.pts.shift(); TP.pts.push([ll[0],ll[1],h==null?"—":h.toFixed(1)+" m",h]); drawPts();
+    q("#tpRes").innerHTML=TP.pts.slice().reverse().map(p=>`<div class="tp-card"><b>${p[3]==null?"—":p[3].toFixed(1)+" m"}</b>${badge(p[0],p[1])}<div class="tp-kv"><span>Position</span><span>${p[1].toFixed(5)}, ${p[0].toFixed(5)}</span></div></div>`).join(""); return; }
+  if(TP.tool==="slope"){ if(TP.pts.length>=2) TP.pts=[]; TP.pts.push([ll[0],ll[1]]); drawPts(); if(TP.pts.length===2) await slopeRes(); else q("#tpRes").innerHTML='<div class="tp-note" style="margin:0">Now tap point B.</div>'; return; }
+  if(TP.tool==="prof"){ TP.pts.push([ll[0],ll[1]]); drawPts(); toolUpd(); } }
+function toolUpd(){ drawPts(); if(TP.tool==="prof"){ if(TP.pts.length>1) profDone(true); else q("#tpRes").innerHTML=`<div class="tp-note" style="margin:0">Tap the next point.</div>`; } }
+async function slopeRes(){ const [a,b]=TP.pts, ha=await elevAt(a[0],a[1]), hb=await elevAt(b[0],b[1]), d=hav(a,b); if(ha==null||hb==null){ q("#tpRes").innerHTML='<div class="tp-card">No height data here (—)</div>'; return; }
+  a[2]="A "+ha.toFixed(1); b[2]="B "+hb.toFixed(1); drawPts(); const dh=hb-ha, sl=d>0?dh/d*100:0, small=Math.abs(dh)<ERR;
+  q("#tpRes").innerHTML=`<div class="tp-card"><b>${Math.abs(sl).toFixed(2)} %</b> ${sl>0?"up":sl<0?"down":"flat"} A→B ${badge(a[0],a[1])}<div class="tp-kv"><span>Distance</span><span>${fmtD(d)}</span><span>Level A</span><span>${ha.toFixed(1)} m</span><span>Level B</span><span>${hb.toFixed(1)} m</span><span>Difference</span><span>${sgn(dh)}</span><span>Angle</span><span>${(Math.atan(Math.abs(dh)/Math.max(d,1e-6))*180/Math.PI).toFixed(2)}°</span></div>${small?`<div class="tp-note">The height difference is smaller than the ±${ERR} m accuracy: treat this slope as an indication only.</div>`:""}</div>`; }
+let profData=null;
+async function profDone(live){ const P=TP.pts; if(P.length<2){ q("#tpRes").innerHTML='<div class="tp-note" style="margin:0">Tap at least two points.</div>'; return; }
+  const seg=[0]; for(let i=1;i<P.length;i++) seg.push(seg[i-1]+hav(P[i-1],P[i])); const L=seg[seg.length-1]; if(L<1){ return; }
+  const step=Math.max(15,L/240), N=Math.max(2,Math.ceil(L/step)+1), S=[];
+  for(let i=0;i<N;i++){ const d=L*i/(N-1); let j=1; while(j<seg.length-1&&seg[j]<d) j++; const f=(d-seg[j-1])/Math.max(1e-9,seg[j]-seg[j-1]); S.push({d,c:[P[j-1][0]+(P[j][0]-P[j-1][0])*f,P[j-1][1]+(P[j][1]-P[j-1][1])*f]}); }
+  const H=await Promise.all(S.map(s=>elevAt(s.c[0],s.c[1]))); if(TP.tool!=="prof"&&!live) return; S.forEach((s,i)=>s.h=H[i]);
+  const V=S.filter(s=>s.h!=null); if(V.length<2){ q("#tpRes").innerHTML='<div class="tp-card">No height data along this line (—)</div>'; return; }
+  let mn=V[0],mx=V[0],rise=0,fall=0; for(let i=0;i<V.length;i++){ if(V[i].h<mn.h) mn=V[i]; if(V[i].h>mx.h) mx=V[i]; if(i){ const dh=V[i].h-V[i-1].h; if(dh>0) rise+=dh; else fall-=dh; } }
+  const net=V[V.length-1].h-V[0].h; profData={S,V,mn,mx,L};
+  q("#tpRes").innerHTML=`<div class="tp-card"><b>Profile ${fmtD(L)}</b>${badge(P[0][0],P[0][1])}<canvas id="tpCv" aria-label="Profile chart"></canvas><div class="tp-kv"><span>Lowest</span><span>${mn.h.toFixed(1)} m at ${fmtD(mn.d)}</span><span>Highest</span><span>${mx.h.toFixed(1)} m at ${fmtD(mx.d)}</span><span>Start → end</span><span>${V[0].h.toFixed(1)} → ${V[V.length-1].h.toFixed(1)} m (${sgn(net)})</span><span>Total rise</span><span>${rise.toFixed(1)} m</span><span>Total fall</span><span>${fall.toFixed(1)} m</span></div>
+   <div class="tp-bts" style="margin-top:6px">${live?'<button class="tp-bt sm" id="tpDone">Done</button>':''}<button class="tp-bt sm" id="tpUndo">Undo last point</button></div><div class="tp-note">Sampled every ${Math.round(step)} m. Rise and fall add up small model noise: read them as an indication.</div></div>`;
+  chart(); }
+function chart(hoverX){ const c=q("#tpCv"); if(!c||!profData) return; const dpr=Math.min(2,window.devicePixelRatio||1), W=c.clientWidth||290, Hh=118; c.width=W*dpr; c.height=Hh*dpr; const g=c.getContext("2d"); g.scale(dpr,dpr);
+  const {V,mn,mx,L}=profData, padL=36, padR=6, padT=8, padB=16; let lo=mn.h, hi=mx.h; if(hi-lo<2){ lo-=1; hi+=1; } const m=(hi-lo)*.08; lo-=m; hi+=m;
+  const X=d=>padL+(d/L)*(W-padL-padR), Y=h=>padT+(1-(h-lo)/(hi-lo))*(Hh-padT-padB);
+  g.fillStyle="rgba(255,255,255,.05)"; g.fillRect(padL,padT,W-padL-padR,Hh-padT-padB); g.font="10px -apple-system,Inter,sans-serif"; g.fillStyle="rgba(255,255,255,.7)"; g.strokeStyle="rgba(255,255,255,.12)"; g.lineWidth=1;
+  for(let i=0;i<=3;i++){ const h=lo+(hi-lo)*i/3, y=Y(h); g.beginPath(); g.moveTo(padL,y); g.lineTo(W-padR,y); g.stroke(); g.textAlign="right"; g.fillText(h.toFixed(1),padL-4,y+3); }
+  g.textAlign="center"; for(let i=0;i<=4;i++){ const d=L*i/4; g.fillText(fmtD(d),Math.min(W-22,Math.max(padL+10,X(d))),Hh-3); }
+  g.beginPath(); V.forEach((s,i)=>{ i?g.lineTo(X(s.d),Y(s.h)):g.moveTo(X(s.d),Y(s.h)); }); g.strokeStyle="#ffd25a"; g.lineWidth=2; g.stroke(); g.lineTo(X(V[V.length-1].d),Hh-padB); g.lineTo(X(V[0].d),Hh-padB); g.closePath(); g.fillStyle="rgba(255,210,90,.16)"; g.fill();
+  [[mn,"#5ac8fa"],[mx,"#ff453a"]].forEach(([p,col])=>{ g.beginPath(); g.arc(X(p.d),Y(p.h),3.5,0,7); g.fillStyle=col; g.fill(); });
+  if(hoverX!=null){ const d=Math.max(0,Math.min(L,(hoverX-padL)/(W-padL-padR)*L)); let b=V[0]; V.forEach(s=>{ if(Math.abs(s.d-d)<Math.abs(b.d-d)) b=s; }); g.strokeStyle="rgba(255,255,255,.7)"; g.beginPath(); g.moveTo(X(b.d),padT); g.lineTo(X(b.d),Hh-padB); g.stroke();
+    g.fillStyle="#fff"; g.textAlign=X(b.d)>W/2?"right":"left"; g.fillText(b.h.toFixed(1)+" m · "+fmtD(b.d),X(b.d)+(X(b.d)>W/2?-5:5),padT+9); drawPts({c:b.c,t:b.h.toFixed(1)}); } else drawPts();
+  c.onpointermove=e=>{ const r=c.getBoundingClientRect(); chart(e.clientX-r.left); }; c.onpointerleave=()=>chart(); }
+function profDoneDbl(){ if(TP.tool==="prof"&&TP.pts.length>1){ TP.pts.pop(); profDone(); setTool(null); } }
+
+/* picking: a tap that did not move picks a point; a drag pans (in sketch mode the sketch canvas is blocked while a tool is on) */
+let dn=null;
+const sk=()=>document.body.classList.contains("sk-on");
+const inMap=e=>{ const c=map.getContainer(); return c&&c.contains(e.target)&&!(e.target.closest&&e.target.closest("#tpPanel,#skUI .sk-tools,#skUI .sk-top,.maplibregl-ctrl")); };
+const onDown=e=>{ if(!TP.on||!TP.tool||!inMap(e)||e.button>0) return; dn={x:e.clientX,y:e.clientY,t:Date.now(),px:e.clientX,py:e.clientY,moved:false}; if(sk()){ e.stopPropagation(); e.preventDefault(); } };
+const onMoveP=e=>{ if(!dn) return; const dx=e.clientX-dn.px, dy=e.clientY-dn.py; if(!dn.moved&&Math.hypot(e.clientX-dn.x,e.clientY-dn.y)>6) dn.moved=true;
+  if(dn.moved&&sk()){ e.stopPropagation(); map.panBy([-dx,-dy],{animate:false}); } dn.px=e.clientX; dn.py=e.clientY; };
+const onUp=e=>{ if(!dn){ return; } const d=dn; dn=null; if(sk()){ e.stopPropagation(); } if(!d.moved&&TP.on&&TP.tool){ try{ const now=Date.now(); const ll=pointLL(e); if(TP.tool==="prof"&&d.t-(onUp.last||0)<350&&TP.pts.length>1){ onUp.last=0; TP.pts.pop(); profDone(); setTool(null); return; } onUp.last=d.t; onPick(ll); }catch(x){} } };
+const onClickCap=e=>{ if(TP.on&&TP.tool&&inMap(e)){ e.stopPropagation(); e.stopImmediatePropagation(); } };
+const onKey=e=>{ if(!TP.on) return; if(e.key==="Escape"&&TP.tool){ setTool(null); } else if(e.key==="Enter"&&TP.tool==="prof") profDone(); };
+
+function bind(on){ if(on===TP.bound) return; TP.bound=on; const f=on?"addEventListener":"removeEventListener";
+  document[f]("pointermove",onMove,true); document[f]("pointerdown",onDown,true); document[f]("pointermove",onMoveP,true); document[f]("pointerup",onUp,true); document[f]("click",onClickCap,true); document[f]("keydown",onKey,true);
+  const m=on?"on":"off"; map[m]("zoomend",onZoomEnd); map[m]("moveend",onCentre); map[m]("styledata",onStyle); }
+
+/* ---------- switch the mode on / off ---------- */
+function loadScript(src,sri){ return new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src; s.integrity=sri; s.crossOrigin="anonymous"; s.onload=res; s.onerror=()=>rej(new Error("could not load "+src)); document.head.appendChild(s); }); }
+async function loadLib(){ if(TP.lib) return true; try{ if(typeof mlcontour==="undefined") await loadScript(CT_JS,CT_SRI);
+    TP.lib=new mlcontour.DemSource({url:DEM_URL,encoding:"terrarium",maxzoom:MAXZ,worker:false,cacheSize:40,timeoutMs:15000}); TP.lib.setupMaplibre(maplibregl); return true; }
+  catch(e){ console.error("contour library",e); say("Contours are not available (the contour library did not load); the other layers work",true); return false; } }
+async function setOn(v){ if(v===TP.on) return; if(!ok()){ say("The map is still loading",true); return; }
+  if(v){ loadPref(); TP.on=true; ui(); syncUi(); panel.hidden=false; btnState(); bind(true); if(typeof SID_PLAN!=="undefined"&&SID_PLAN&&SID_PLAN.on&&map.getTerrain&&PREF.ter[0]) PREF.ter[0]=0;
+    await loadLib(); if(!TP.on) return; if(lv("col").on&&!TP.range){ TP.range=await fitRange(); } build(); onCentre(); legend(); }
+  else { TP.on=false; setTool(null); bind(false); teardown(); TP.range=null; if(panel) panel.hidden=true; if(tag) tag.hidden=true; document.body.classList.remove("tp-pick"); btnState(); } }
+function btnState(){ document.querySelectorAll(".tp-ctl button,#tpSkBtn").forEach(b=>b.classList.toggle("on",TP.on)); }
+
+class TpCtl{ onAdd(){ const d=document.createElement("div"); d.className="maplibregl-ctrl maplibregl-ctrl-group tp-ctl";
+    d.innerHTML=`<button type="button" title="Land Levels — heights, hillshade, contours, slope and profile (30 m satellite model)" aria-label="Land Levels">${TOPO_ICON}</button>`;
+    d.querySelector("button").addEventListener("click",e=>{ e.stopPropagation(); setOn(!TP.on); }); this._d=d; return d; }
+  onRemove(){ this._d&&this._d.remove(); } }
+setInterval(()=>{ try{ if(ok()&&map.addControl&&!map.getContainer().querySelector(".tp-ctl")&&!document.querySelector(".tp-ctl")) map.addControl(new TpCtl(),"bottom-right");
+    const top=document.querySelector("#skUI .sk-top"); if(top&&!document.getElementById("tpSkBtn")){ const b=document.createElement("button"); b.type="button"; b.id="tpSkBtn"; b.className="sk-tb"; b.title="Land Levels — heights, hillshade, contours, slope and profile";
+      b.innerHTML=TOPO_ICON.replace("<svg","<svg width='19' height='19'")+"<span>Land Levels</span>"; b.addEventListener("click",e=>{ e.stopPropagation(); setOn(!TP.on); }); const done=document.getElementById("skDone"); top.insertBefore(b,done||null); btnState(); } }catch(e){} },1500);
+window.SID_TOPO={get on(){ return TP.on; },setOn,elevAt,sourceOf,_t:{TP,fitRange,tileImage,demTile,lv,PREF,ctStep}};
+})();
+</script>
 </body>
 </html>
