@@ -19310,8 +19310,14 @@ const WR=new Map();
 function wrap(id,prop,f){ if(!hasL(id)) return; const k=id+"|"+prop, cur=map.getPaintProperty(id,prop); let r=WR.get(k);
   const mine=!!r&&r.wrapped!==null&&JSON.stringify(cur)===r.wrapped; if(!mine){ r={orig:cur,wrapped:null}; WR.set(k,r); }
   if(f>=.999){ if(mine){ map.setPaintProperty(id,prop,r.orig===undefined?null:r.orig); r.wrapped=null; } return; }
-  if(Array.isArray(r.orig)&&JSON.stringify(r.orig).indexOf('"zoom"')>=0) return;   /* zoom curves cannot be multiplied: leave that layer alone */
-  const o=(r.orig===undefined||r.orig===null)?1:r.orig, nv=["*",f,o]; r.wrapped=JSON.stringify(nv); map.setPaintProperty(id,prop,nv); }
+  const o=(r.orig===undefined||r.orig===null)?1:r.orig, nv=scaleExpr(o,f); if(!nv) return; r.wrapped=JSON.stringify(nv); map.setPaintProperty(id,prop,nv); }
+/* multiply an opacity by f: a number, a zoom curve (every output of the curve) or a plain expression */
+function scaleExpr(e,f){ const m=v=>typeof v==="number"?+(v*f).toFixed(4):["*",f,v];
+  if(typeof e==="number") return m(e);
+  if(Array.isArray(e)&&e[0]==="interpolate"&&Array.isArray(e[2])&&e[2][0]==="zoom"){ const c=e.slice(0,3); for(let i=3;i+1<e.length;i+=2){ c.push(e[i]); c.push(m(e[i+1])); } return c; }
+  if(Array.isArray(e)&&e[0]==="step"&&Array.isArray(e[1])&&e[1][0]==="zoom"){ const c=[e[0],e[1],m(e[2])]; for(let i=3;i+1<e.length;i+=2){ c.push(e[i]); c.push(m(e[i+1])); } return c; }
+  if(JSON.stringify(e).indexOf('"zoom"')>=0) return null;
+  return ["*",f,e]; }
 function unwrapAll(){ WR.forEach((r,k)=>{ if(r.wrapped===null) return; const [id,prop]=k.split("|"); try{ if(hasL(id)) map.setPaintProperty(id,prop,r.orig===undefined?null:r.orig); }catch(e){} }); WR.clear(); }
 const roadLike=l=>!isLb(l)&&!isMine(l)&&!isPlot(l)&&/road|street|highway|bridge|tunnel|motorway|trunk|transport/i.test(l.id)&&l.type==="line";
 function baseLayers(){ const sat=hasL("e"), ls=layersAll(), I=lv("img"), S1=lv("str"), P=lv("plt"), R=lv("rd");
@@ -19352,6 +19358,10 @@ function ui(){ if(panel) return; panel=document.createElement("div"); panel.id="
     if(b.id==="tpX") setOn(false); else if(b.id==="tpMin"){ panel.classList.toggle("min"); PREF.min=panel.classList.contains("min")?1:0; savePref(); }
     else if(b.dataset.t) setTool(TP.tool===b.dataset.t?null:b.dataset.t); else if(b.id==="tpClr"){ TP.pts=[]; TP.res=null; q("#tpRes").innerHTML=""; drawPts(); }
     else if(b.id==="tpFit"){ colRefit(); } else if(b.id==="tpDone"){ profDone(); } else if(b.id==="tpUndo"){ TP.pts.pop(); toolUpd(); } });
+  const hd=panel.querySelector(".tp-hd"); let dg=null; hd.style.cursor="grab"; hd.style.touchAction="none";
+  hd.addEventListener("pointerdown",e=>{ if(e.target.closest("button")||innerWidth<=560) return; const r=panel.getBoundingClientRect(); dg={dx:e.clientX-r.left,dy:e.clientY-r.top}; hd.setPointerCapture(e.pointerId); });
+  hd.addEventListener("pointermove",e=>{ if(!dg) return; panel.style.left=Math.max(0,Math.min(innerWidth-120,e.clientX-dg.dx))+"px"; panel.style.top=Math.max(0,Math.min(innerHeight-60,e.clientY-dg.dy))+"px"; panel.style.bottom="auto"; });
+  hd.addEventListener("pointerup",()=>{ dg=null; });
   panel.addEventListener("pointerdown",e=>e.stopPropagation()); panel.addEventListener("wheel",e=>e.stopPropagation(),{passive:true}); panel.addEventListener("dblclick",e=>e.stopPropagation()); }
 function syncUi(){ if(!panel) return; LY.forEach(([k])=>{ const c=lv(k), row=panel.querySelector(`.tp-row[data-k="${k}"]`); row.querySelector("input[type=checkbox]").checked=c.on; row.querySelector("input[type=range]").value=Math.round(c.op*100);
     let na=false; if((k==="img")&&!hasL("e")) na=true; if(k==="rd"&&hasL("e")) na=true; if(k==="ct"&&!TP.lib) na=true; row.classList.toggle("off",na); row.title=na?(k==="ct"?"Contour library not loaded":k==="rd"?"The satellite picture already shows the roads":"Only on the satellite map"):""; });
