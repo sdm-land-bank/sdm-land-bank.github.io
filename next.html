@@ -18953,24 +18953,29 @@ function edgeLines(land,roadsR,polys){ const L=[], add=(a,b)=>{ const l=lhyp(a,b
 function blockAt(g,quick){ const B=detectBlock(g); if(!B.err) return {B,g}; if(/not closed|first/i.test(B.err)) return {err:B.err};
   const R=quick?[9]:[6,12,20,30], K=quick?6:12; for(const r of R) for(let k=0;k<K;k++){ const a=k/K*2*Math.PI, q=[g[0]+Math.cos(a)*r,g[1]+Math.sin(a)*r]; if(plotAt(q)) continue; const B2=detectBlock(q); if(!B2.err) return {B:B2,g:q}; }
   return {err:B.err}; }
+// the nearest unpinned plot within d metres (a click on a filled block's own service road, passage or gap)
+function nearPlot(g,d){ let best=null, bd=d; PL.plan.plots.forEach(x=>{ if(x.pin) return; const P=x.pts.map(Lc); if(lInPoly(g,P)){ bd=0; best=x; return; } for(let i=0;i<P.length;i++){ const pr=projSeg(g,P[i],P[(i+1)%P.length]); if(pr.d<bd){ bd=pr.d; best=x; } } }); return best; }
 // a block that already has plots: found with its own (unpinned) plots and service roads left out
-function filledBlockAt(g){ const p=PL.plan, hit=plotAt(g); if(!hit||hit.pin) return null; const blk=hit.blk||String(hit.code||"").split("-")[0];
+function filledBlockAt(g,hit){ const p=PL.plan; hit=hit||plotAt(g); if(!hit||hit.pin) return null; const gp=lInPoly(g,hit.pts.map(Lc))?g:lCent(hit.pts.map(Lc)); const blk=hit.blk||String(hit.code||"").split("-")[0];
   const sp=p.plots, sr=p.roads; p.plots=p.plots.filter(x=>x.pin||(x.blk||String(x.code||"").split("-")[0])!==blk); p.roads=p.roads.filter(r=>!(r.t==="serv"&&r.blk===blk)); GR=null; let B;
-  try{ B=detectBlock(g); } finally { p.plots=sp; p.roads=sr; GR=null; } return B.err?null:{B,blk,phase:hit.phase||1}; }
-function refillAt(g){ const f=filledBlockAt(g); if(!f){ A.flash("This block could not be planned again — move or delete its plots first"); return null; }
+  try{ B=detectBlock(gp); } finally { p.plots=sp; p.roads=sr; GR=null; } return B.err?null:{B,blk,phase:hit.phase||1,g:gp}; }
+function refillAt(g,hit){ const f=filledBlockAt(g,hit); if(!f){ A.flash("This block could not be planned again — move or delete its plots first"); return null; }
   const p=PL.plan, inB=c=>lInPoly(c,f.B.poly), keep=JSON.stringify(p); pushUndo(); QUIET++; let m=null;
   try{ const ids=new Set(p.plots.filter(x=>!x.pin&&(x.blk||String(x.code||"").split("-")[0])===f.blk).map(x=>x.id));
     p.plots=p.plots.filter(x=>!ids.has(x.id)); p.items=p.items.filter(it=>!(it.plot&&ids.has(it.plot))); p.roads=p.roads.filter(r=>!(r.t==="serv"&&r.blk===f.blk));
     p.green=p.green.filter(gr=>!(gr.k==="lawn"&&gr.auto&&inB(lCent(gr.pts.map(Lc))))); GR=null; CG=null; PL.ver++;
-    m=autoPlots(g,false,{letter:f.blk,phase:f.phase}); } finally { QUIET--; }
+    m=autoPlots(f.g,false,{letter:f.blk,phase:f.phase}); } finally { QUIET--; }
   if(!m||!m.length){ PL.plan=JSON.parse(keep); PL.undo.pop(); O=null; GR=null; CG=null; changed(["all"]); A.flash("No better plan for this block — it was left as it was"); return null; }
   A.flash(`Block ${f.blk} planned again: ${m.length} plots · Undo puts the old ones back`); return m; }
 function smartTap(g){ const hit=plotAt(g); PL.hov=null; if(PL.plan.land&&!hit&&!lInPoly(g,PL.plan.land.pts.map(Lc))){ A.flash("Click inside the land"); return; }
-  if(hit){ if(hit.pin){ A.flash("That plot is pinned — unpin it to plan its block again"); return; } refillAt(g); return; }
-  const r=blockAt(g); if(r.err){ A.flash(r.err); return; } autoPlots(r.g); }
+  if(hit){ if(hit.pin){ A.flash("That plot is pinned — unpin it to plan its block again"); return; } refillAt(g,hit); return; }
+  const r=blockAt(g); if(!r.err){ autoPlots(r.g); return; }
+  const np=nearPlot(g,25); if(np){ refillAt(g,np); return; } A.flash(r.err); }
 // the preview under the pointer (Smart fill, and Master plan inside a road ring)
 function hoverPreview(pt){ const now=performance.now(); if(PL.hovT&&now-PL.hovT<130) return; PL.hovT=now; const g=ground(pt), p=PL.plan; let H=null;
-  try{ if(PL.psub==="auto"){ const hit=plotAt(g); if(hit&&!hit.pin){ const f=filledBlockAt(g); if(f) H={poly:f.B.poly,k:"refill",blk:f.blk}; } else if(!hit){ const r=blockAt(g,true); H=r.err?{k:"none",msg:r.err}:{poly:r.B.poly,k:"fill"}; } }
+  try{ if(PL.psub==="auto"){ const hit=plotAt(g); let r=null; if(!hit&&!(p.land&&!lInPoly(g,p.land.pts.map(Lc)))){ r=blockAt(g,true); if(!r.err) H={poly:r.B.poly,k:"fill"}; }
+      if(!H){ const np=hit||(r?nearPlot(g,25):null); if(np&&!np.pin){ const f=filledBlockAt(g,np); if(f) H={poly:f.B.poly,k:"refill",blk:f.blk}; } }
+      if(!H) H={k:"none"}; }
     else if(PL.psub==="master"&&!p.land&&p.roads.length){ const B=detectBlock(g); H=B.err?{k:"none",msg:B.err}:{poly:B.poly,k:"ring"}; } }catch(e){ H=null; }
   PL.hov=H; const cv=A.cv(); if(cv) cv.style.cursor=H&&H.poly?"pointer":H?"not-allowed":""; A.need(); }
 // a box for a plot or landscape: along a road only when it starts near one, else along the nearest land side, else along the screen
