@@ -17954,6 +17954,7 @@ function detectBlock(ptLocal){ const p=PL.plan;
   if(!best) return {err:"Could not find the block"};
   let poly=best.map(([i,j])=>[bx+i*res,bz+j*res]); poly=A.rdp(poly.concat([poly[0]]),res*.9); poly.pop(); if(poly.length>3&&lhyp(poly[0],poly[poly.length-1])<res) poly.pop();
   if(poly.length<3) return {err:"The block is too small"};
+  try{ const RV=p.roads.map(r=>({V:r.pts.map(Lr),w:r.w})), PP=p.plots.map(x=>x.pts.map(Lr)).concat(p.green.map(x=>x.pts.map(Lr))); poly=snapOutline(poly,edgeLines(land,RV,PP),res); }catch(e){ console.warn("snap",e); }
   poly=poly.map(unrot); if(lArea(poly)<0) poly.reverse();
   return {poly,res,cells:n};
 }
@@ -18130,13 +18131,13 @@ function mats(){ if(MAT) return MAT; const cvTex=(w,h,draw,rx,ry)=>{ const c=doc
   const gnd=(o,ro)=>{ const m=new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,transparent:o<1,opacity:o,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-ro,polygonOffsetUnits:-ro}); return m; };
   MAT={wall:new T.MeshLambertMaterial({map:wallTex,vertexColors:true,side:T.DoubleSide}),roof:new T.MeshLambertMaterial({map:roofTex,vertexColors:true,side:T.DoubleSide}),
     det:new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide}),ao:new T.MeshBasicMaterial({map:aoTex,color:0x000000,transparent:true,opacity:.85,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-6,polygonOffsetUnits:-6}),
-    land:gnd(.42,1),plot:gnd(.88,2),grn:gnd(.96,2),side:gnd(1,3),asph:gnd(1,4),mark:gnd(1,5),apron:gnd(1,6),
+    land:gnd(.16,1),plot:gnd(.88,2),grn:gnd(.96,2),side:gnd(1,3),asph:gnd(1,4),mark:gnd(1,5),apron:gnd(1,6),
     line:new T.LineBasicMaterial({color:0x8a8172,transparent:true,opacity:.95,depthWrite:false}),warn:new T.LineBasicMaterial({color:0xff9f0a,depthWrite:false}),
     sel:new T.LineBasicMaterial({color:0xffd60a,depthWrite:false})};
   return MAT; }
 const RO={land:1,plot:2,side:3,asph:4,mark:5,apron:7,ao:8,line:9};
 function addK(g,k,mat,ro){ if(!k.p.length) return; const m=mkMesh(k,mat); if(ro) m.renderOrder=ro; g.add(m); }
-function buildLand(g){ const L=PL.plan.land; if(!L) return; const P=L.pts.map(Lc), M=mats(), f=kit(), w=kit(); flat(f,P,.04,col("#D8C9A2")); walls(w,P,0,2.4,col("#D6CCB8")); addK(g,f,M.land,RO.land); addK(g,w,M.det); }
+function buildLand(g){ const L=PL.plan.land; if(!L) return; const P=L.pts.map(Lc), M=mats(), f=kit(), w=kit(); flat(f,P,.04,col("#D8C9A2")); walls(w,P,0,1,col("#D6CCB8")); addK(g,f,M.land,RO.land); addK(g,w,M.det); }
 // landscape: lawn, park (trees scattered over it), green buffer (dense trees) and water; low kerb round the green
 function buildGreen(g){ const G=PL.plan.green; if(!G.length) return; const M=mats(), f=kit(), w=kit(), d=kit(); let nT=0;
   G.forEach(gr=>{ const P=gr.pts.map(Lc), K=GK[gr.k]||GK.lawn; if(P.length<3) return; flat(f,P,.07,col(K.c));
@@ -18437,7 +18438,7 @@ function autoPlots(g,qt,o){ const fl=m=>{ if(!qt) A.flash(m); }; const B=detectB
   if(!parts.length){ fl(S.plots.length?"No room for plots here — the landscape fills this block":"This block is too small for plots of "+A.nf(PL.target,0)+" m²"); return; }
   ensureOrigin(); pushUndo(); const p=PL.plan, ph=o&&o.phase?o.phase:Math.max(1,+PL.phase||1); if(!p.secs||typeof p.secs!=="object") p.secs={}; let letter; if(o&&o.letter) letter=o.letter; else { const si=p.secs[ph]||0; letter=secLetter(si)+ph; p.secs[ph]=si+1; p.sec++; } const made=[], nB=p.plots.filter(x=>(x.blk||"")===letter).length;
   parts.forEach((P,i)=>{ const mi=S.plots.indexOf(P), mt=S.meta&&mi>=0?S.meta[mi]:null, pl={id:newId(),code:letter+"-"+(nB+i+1),blk:letter,phase:ph,pts:(lArea(P)>0?P:P.slice().reverse()).map(c=>Gc(c[0],c[1]))}; if(mt){ pl.mod=mt.m; pl.n=mt.n; } else { const P0=prof(), t0=P0.mix.filter(e=>MODS[e.m]).sort((x,y)=>y.s-x.s)[0]; if(t0){ const M0=MODS[t0.m]; pl.mod=t0.m; pl.n=Math.max(1,Math.round(Math.abs(lArea(P))/(M0.w*M0.d))); } } p.plots.push(pl); made.push(pl); });
-  (S.greens||[]).forEach(Q=>p.green.push({id:newId(),k:"lawn",pts:(lArea(Q)>0?Q:Q.slice().reverse()).map(c=>Gc(c[0],c[1]))}));
+  (S.greens||[]).forEach(Q=>p.green.push({id:newId(),k:"lawn",auto:1,pts:(lArea(Q)>0?Q:Q.slice().reverse()).map(c=>Gc(c[0],c[1]))}));
   srv.forEach(R=>{ const rd={id:newId(),t:"serv",w:RT[2].w,blk:letter,pts:R.map(c=>Gc(c[0],c[1]))}; p.roads.push(rd); joinRoads(rd); }); GR=null;
   // a tree standing where a new service road runs is taken out
   const n0=p.items.length; p.items=p.items.filter(it=>{ if(!TREES.includes(it.k)) return true; const c=Lc(it.c); return !srv.some(R=>{ for(let k=1;k<R.length;k++) if(projSeg(c,R[k-1],R[k]).d<7) return true; return false; }); }); const felled=n0-p.items.length;
@@ -18825,7 +18826,7 @@ function down(pt,e){ const now=performance.now(), g=ground(pt), t=PL.tool, D={pi
 function move(pt,e){ const d=PL.drag; if(!d) return; if(!d.moved&&A.hyp(pt,d.start)>8) d.moved=true; const g=ground(pt);
   if(d.k==="vert"){ const c=PL.cur; if(!c) return;
     if(d.first&&d.moved&&!isOpen(c.t)&&PL.shp==="box"){ // drag a box: land is screen-aligned, a plot or landscape lines up with the nearest road
-      const a=Lc(c.pts[0]); let u=[1,0]; if(c.t!=="land"){ const r=roadBearing(a)*Math.PI/180; u=[Math.sin(r),-Math.cos(r)]; } else { const b=map.getBearing()*Math.PI/180; u=[Math.cos(b),Math.sin(b)]; }
+      const a=Lc(c.pts[0]); let u=boxAxis(a,c.t);
       const v=[-u[1],u[0]], q=Lc(atP(pt,{edges:true})), du=(q[0]-a[0])*u[0]+(q[1]-a[1])*u[1], dv=(q[0]-a[0])*v[0]+(q[1]-a[1])*v[1];
       c.box=true; c.pts=[c.pts[0],Gc(a[0]+u[0]*du,a[1]+u[1]*du),Gc(a[0]+u[0]*du+v[0]*dv,a[1]+u[1]*du+v[1]*dv),Gc(a[0]+v[0]*dv,a[1]+v[1]*dv)]; live(); return; }
     if(d.moved){ const ll=atP(pt,{edges:c.t!=="road"}); if(c.pts.length===1) c.pts.push(ll); else c.pts[c.pts.length-1]=ll; live(); } return; }
@@ -18851,7 +18852,7 @@ function up(pt,e,cx){ const d=PL.drag; PL.drag=null; if(!d) return; const g=grou
   if(cx){ PL.drag=d; cancel(); return; }   // pointer cancelled (iPad system gesture): a move or resize is put back, nothing half-done is kept
   if(d.k==="free"){ if(!d.moved||d.path.length<3){ lastTap={t:performance.now(),p:d.start}; PL.cur={t:d.ct,pts:[atP(d.start,{edges:true})]}; live(); A.need(); return; }   // a tap starts corners
     let S=A.rdp(d.path.concat([d.path[0]]),2.5); S.pop(); const pts=S.map(p=>r9(A.U(p[0],p[1]))); if(pts.length>=3&&Math.abs(lArea(pts.map(Lc)))>4) commitShape(d.ct,pts); else A.flash("Too small — draw a bigger shape"); A.need(); return; }
-  if(d.k==="tap"&&!d.moved){ if(PL.tool==="plot"){ if(PL.psub==="master"){ if(!PL.plan.land) masterFromRing(g); else A.flash("Press “Make the plan” in the bar above"); } else autoPlots(g); } else if(PL.tool==="road"){ if(PL.rsub==="gate") placeGate(g,pt); else placeRound(g,pt); }
+  if(d.k==="tap"&&!d.moved){ if(PL.tool==="plot"){ if(PL.psub==="master"){ if(!PL.plan.land) masterFromRing(g); else A.flash("Press “Make the plan” in the bar above"); } else smartTap(g); } else if(PL.tool==="road"){ if(PL.rsub==="gate") placeGate(g,pt); else placeRound(g,pt); }
     else if(rowTool()){ const h=roadAt(g,10*mpp(pt)); if(h) alongRoad(h.r,rowKind()); else A.flash("Tap a road — the row goes along both sides of it"); }
     else if(PL.tool==="build"){ const pl=plotAt(g), has=pl&&PL.plan.items.find(i=>isBld(i.k)&&i.plot===pl.id);
       menu(pt,pl?`Plot ${pl.code||""} · ${A.fArea(geoArea(pl.pts))}${has?" · now "+KIND(has.k).l:""}`:"Build here",Object.entries(BK).map(([k,v])=>[k,v.l,pl?"fits the plot":(A.nf(v.len,0)+" × "+A.nf(v.w,0)+" m"),k===PL.bk?"#FFD60A":null]),k=>{ PL.bk=k; persist(); opts(); placeBuilding(k,pl,g); }); }
@@ -18861,7 +18862,7 @@ function up(pt,e,cx){ const d=PL.drag; PL.drag=null; if(!d) return; const g=grou
     else rowAlong(path,kind); return; }
   if(d.k==="move"||d.k==="handle"){ if(d.changed){ PL.liveId=null; if(layer&&layer.g) clearG(layer.g.live); clearTimeout(rfT); const s=obj(PL.sel); let rf=null; if(d.base) rf=liveReflow(d,true); else if(s&&PL.sel.t==="road") joinRoads(s); GR=null; changed(PL.sel.t==="item"?["items"]:["all"]);
       if(rf&&rf.all){} else if(rf&&rf.blocks.length) A.flash(`Re-planned ${rf.blocks.length} block${rf.blocks.length>1?"s":""} (${rf.blocks.slice(0,6).join(", ")}${rf.blocks.length>6?"…":""}): ${rf.before} → ${rf.after} plots · pinned plots kept · Undo puts it back`); } else if(d.k==="move"&&PL.sel&&!d.moved){ card(); } return; } }
-function hover(pt){ const c=PL.cur; if(c&&c.pts&&!c.box){ c.hv=atP(pt,{edges:c.t!=="road"}); live(); A.need(); return; }
+function hover(pt){ const c=PL.cur; if(!c&&PL.tool==="plot"&&(PL.psub==="auto"||PL.psub==="master")){ hoverPreview(pt); return; } if(PL.hov){ PL.hov=null; A.need(); } if(c&&c.pts&&!c.box){ c.hv=atP(pt,{edges:c.t!=="road"}); live(); A.need(); return; }
   if(A.SK.snapAt){ A.SK.snapAt=null; A.need(); } const cv=A.cv(); if(!cv) return;
   if(PL.tool==="select"){ const s=obj(PL.sel); let over=false; if(s) for(const h of handles()) if(A.hyp(pt,h.p)<18){ over=true; break; } cv.style.cursor=over?"pointer":hitAny(pt)?"move":""; } else cv.style.cursor=""; }
 function finishCur(){ const c=PL.cur; if(!c) return; PL.cur=null; const out=[]; c.pts.forEach(p=>{ if(!out.length||A.hyp(A.P(out[out.length-1]),A.P(p))>3) out.push(p); });
@@ -18924,6 +18925,60 @@ function dims(pt){ const s=obj(PL.sel); if(!s||PL.sel.t!=="item"){ return; } clo
   setTimeout(()=>{ const i=q("#plDL"); if(i){ i.focus(); i.select(); } },30); }
 
 /* ---------- overlay: what is being drawn, labels, selection handles ---------- */
+
+/* ---------- V96: exact block outline — the grid outline snapped to the real edges round it ---------- */
+function snapOutline(P,Ls,res){ const n=P.length; if(n<4||!Ls.length) return P; const tol=res*1.3+.35, sinA=Math.sin(9*Math.PI/180);
+  const E=[]; for(let i=0;i<n;i++){ const a=P[i], b=P[(i+1)%n], L=lhyp(a,b); if(L<1e-6) continue; const d=[(b[0]-a[0])/L,(b[1]-a[1])/L]; let best=null, bd=1e9;
+    for(let k=0;k<Ls.length;k++){ const l=Ls[k]; if(Math.abs(d[0]*l.u[1]-d[1]*l.u[0])>sinA) continue;
+      const da=Math.abs((a[0]-l.p[0])*l.u[1]-(a[1]-l.p[1])*l.u[0]), db=Math.abs((b[0]-l.p[0])*l.u[1]-(b[1]-l.p[1])*l.u[0]); if(da>tol*1.6||db>tol*1.6) continue; if(da+db<bd){ bd=da+db; best=k; } }
+    E.push({a,b,L,k:best,u:best!=null?Ls[best].u:d,p:best!=null?Ls[best].p:a}); }
+  // short unsnapped steps between two snapped sides are grid artefacts at a corner: dropped
+  const F=E.filter((e,i)=>!(e.k==null&&e.L<res*4&&E[(i-1+E.length)%E.length].k!=null&&E[(i+1)%E.length].k!=null));
+  const M=[]; F.forEach(e=>{ const l=M[M.length-1]; if(l&&e.k!=null&&l.k===e.k){ l.b=e.b; l.L+=e.L; } else M.push(Object.assign({},e)); });
+  if(M.length>1&&M[0].k!=null&&M[0].k===M[M.length-1].k){ const l=M.pop(); M[0].a=l.a; } if(M.length<3) return P;
+  const X=(e1,e2)=>{ const den=e1.u[0]*e2.u[1]-e1.u[1]*e2.u[0]; if(Math.abs(den)<Math.sin(4*Math.PI/180)) return null; const t=((e2.p[0]-e1.p[0])*e2.u[1]-(e2.p[1]-e1.p[1])*e2.u[0])/den; return [e1.p[0]+e1.u[0]*t,e1.p[1]+e1.u[1]*t]; };
+  const pr=(q,e)=>{ const t=(q[0]-e.p[0])*e.u[0]+(q[1]-e.p[1])*e.u[1]; return [e.p[0]+e.u[0]*t,e.p[1]+e.u[1]*t]; };
+  const out=[]; for(let i=0;i<M.length;i++){ const e1=M[i], e2=M[(i+1)%M.length], x=X(e1,e2); if(x&&lhyp(x,e1.b)<Math.max(6*res,4)) out.push(x); else { out.push(pr(e1.b,e1)); out.push(pr(e2.a,e2)); } }
+  const C=[]; out.forEach(q=>{ if(!C.length||lhyp(C[C.length-1],q)>.2) C.push(q); }); if(C.length>2&&lhyp(C[0],C[C.length-1])<.2) C.pop();
+  for(let i=C.length-1;i>=0&&C.length>3;i--){ const a=C[(i-1+C.length)%C.length], b=C[i], c=C[(i+1)%C.length]; if(Math.abs((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]))<.05*lhyp(a,c)) C.splice(i,1); }
+  const a0=Math.abs(lArea(P)), a1=Math.abs(lArea(C)); if(C.length<3||Math.abs(a1-a0)>a0*.06) return P; return C; }
+/* the lines a block can be bounded by (in the frame of detectBlock): land sides, both edges of every road, plot and landscape sides */
+function edgeLines(land,roadsR,polys){ const L=[], add=(a,b)=>{ const l=lhyp(a,b); if(l<2) return; L.push({p:a,u:[(b[0]-a[0])/l,(b[1]-a[1])/l]}); };
+  if(land) for(let i=0;i<land.length;i++) add(land[i],land[(i+1)%land.length]);
+  roadsR.forEach(r=>{ for(let k=1;k<r.V.length;k++){ const a=r.V[k-1], b=r.V[k], l=lhyp(a,b); if(l<2) continue; const n=[-(b[1]-a[1])/l*r.w/2,(b[0]-a[0])/l*r.w/2]; add([a[0]+n[0],a[1]+n[1]],[b[0]+n[0],b[1]+n[1]]); add([a[0]-n[0],a[1]-n[1]],[b[0]-n[0],b[1]-n[1]]); } });
+  polys.forEach(P=>{ for(let i=0;i<P.length;i++) add(P[i],P[(i+1)%P.length]); }); return L; }
+
+/* ---------- V96: Smart fill that always answers ---------- */
+// the block for a click: the point itself, else a point close by (a click on a road, its pavement or a block edge)
+function blockAt(g,quick){ const B=detectBlock(g); if(!B.err) return {B,g}; if(/not closed|first/i.test(B.err)) return {err:B.err};
+  const R=quick?[9]:[6,12,20,30], K=quick?6:12; for(const r of R) for(let k=0;k<K;k++){ const a=k/K*2*Math.PI, q=[g[0]+Math.cos(a)*r,g[1]+Math.sin(a)*r]; if(plotAt(q)) continue; const B2=detectBlock(q); if(!B2.err) return {B:B2,g:q}; }
+  return {err:B.err}; }
+// a block that already has plots: found with its own (unpinned) plots and service roads left out
+function filledBlockAt(g){ const p=PL.plan, hit=plotAt(g); if(!hit||hit.pin) return null; const blk=hit.blk||String(hit.code||"").split("-")[0];
+  const sp=p.plots, sr=p.roads; p.plots=p.plots.filter(x=>x.pin||(x.blk||String(x.code||"").split("-")[0])!==blk); p.roads=p.roads.filter(r=>!(r.t==="serv"&&r.blk===blk)); GR=null; let B;
+  try{ B=detectBlock(g); } finally { p.plots=sp; p.roads=sr; GR=null; } return B.err?null:{B,blk,phase:hit.phase||1}; }
+function refillAt(g){ const f=filledBlockAt(g); if(!f){ A.flash("This block could not be planned again — move or delete its plots first"); return null; }
+  const p=PL.plan, inB=c=>lInPoly(c,f.B.poly), keep=JSON.stringify(p); pushUndo(); QUIET++; let m=null;
+  try{ const ids=new Set(p.plots.filter(x=>!x.pin&&(x.blk||String(x.code||"").split("-")[0])===f.blk).map(x=>x.id));
+    p.plots=p.plots.filter(x=>!ids.has(x.id)); p.items=p.items.filter(it=>!(it.plot&&ids.has(it.plot))); p.roads=p.roads.filter(r=>!(r.t==="serv"&&r.blk===f.blk));
+    p.green=p.green.filter(gr=>!(gr.k==="lawn"&&gr.auto&&inB(lCent(gr.pts.map(Lc))))); GR=null; CG=null; PL.ver++;
+    m=autoPlots(g,false,{letter:f.blk,phase:f.phase}); } finally { QUIET--; }
+  if(!m||!m.length){ PL.plan=JSON.parse(keep); PL.undo.pop(); O=null; GR=null; CG=null; changed(["all"]); A.flash("No better plan for this block — it was left as it was"); return null; }
+  A.flash(`Block ${f.blk} planned again: ${m.length} plots · Undo puts the old ones back`); return m; }
+function smartTap(g){ const hit=plotAt(g); PL.hov=null;
+  if(hit){ if(hit.pin){ A.flash("That plot is pinned — unpin it to plan its block again"); return; } refillAt(g); return; }
+  const r=blockAt(g); if(r.err){ A.flash(r.err); return; } autoPlots(r.g); }
+// the preview under the pointer (Smart fill, and Master plan inside a road ring)
+function hoverPreview(pt){ const now=performance.now(); if(PL.hovT&&now-PL.hovT<130) return; PL.hovT=now; const g=ground(pt), p=PL.plan; let H=null;
+  try{ if(PL.psub==="auto"){ const hit=plotAt(g); if(hit&&!hit.pin){ const f=filledBlockAt(g); if(f) H={poly:f.B.poly,k:"refill",blk:f.blk}; } else if(!hit){ const r=blockAt(g,true); H=r.err?{k:"none",msg:r.err}:{poly:r.B.poly,k:"fill"}; } }
+    else if(PL.psub==="master"&&!p.land&&p.roads.length){ const B=detectBlock(g); H=B.err?{k:"none",msg:B.err}:{poly:B.poly,k:"ring"}; } }catch(e){ H=null; }
+  PL.hov=H; const cv=A.cv(); if(cv) cv.style.cursor=H&&H.poly?"pointer":H?"not-allowed":""; A.need(); }
+// a box for a plot or landscape: along a road only when it starts near one, else along the nearest land side, else along the screen
+function boxAxis(a,t){ if(t!=="land"){ let bd=60, best=null; PL.plan.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let i=1;i<V.length;i++){ const pr=projSeg(a,V[i-1],V[i]); if(pr.d<bd){ bd=pr.d; best=[V[i-1],V[i]]; } } });
+    if(!best&&PL.plan.land){ const Ld=PL.plan.land.pts.map(Lc); let ld=80; for(let i=0;i<Ld.length;i++){ const b2=Ld[(i+1)%Ld.length], pr=projSeg(a,Ld[i],b2); if(pr.d<ld){ ld=pr.d; best=[Ld[i],b2]; } } }
+    if(best){ const L=lhyp(best[0],best[1])||1; return [(best[1][0]-best[0][0])/L,(best[1][1]-best[0][1])/L]; } }
+  const b=map.getBearing()*Math.PI/180; return [Math.cos(b),Math.sin(b)]; }
+
 function draw2d(ctx,labels,now){ const p=PL.plan, sel=obj(PL.sel), Pp=A.P;
   const poly=(V,close,stroke,w,fill,dash)=>{ if(V.length<2) return; ctx.beginPath(); ctx.moveTo(V[0][0],V[0][1]); for(let i=1;i<V.length;i++) ctx.lineTo(V[i][0],V[i][1]); if(close) ctx.closePath(); if(fill){ ctx.fillStyle=fill; ctx.fill(); } ctx.setLineDash(dash||[]); ctx.lineWidth=w+3; ctx.strokeStyle="rgba(0,0,0,.45)"; ctx.stroke(); ctx.lineWidth=w; ctx.strokeStyle=stroke; ctx.stroke(); ctx.setLineDash([]); };
   ctx.save(); ctx.lineJoin="round"; ctx.lineCap="round";
@@ -18937,6 +18992,10 @@ function draw2d(ctx,labels,now){ const p=PL.plan, sel=obj(PL.sel), Pp=A.P;
   const bOn=new Set(p.items.filter(i=>isBld(i.k)&&i.plot).map(i=>i.plot));
   p.plots.forEach(x=>{ const a=geoArea(x.pts); if(Math.sqrt(a)/mp<46) return; const c=lCent(x.pts.map(Lc)), s=gScr(c); ctx.font=`800 12px ${A.FONT}`; ctx.lineWidth=3; ctx.strokeStyle="rgba(0,0,0,.55)"; const lb=(x.pin?"📌 ":"")+(x.code||""); ctx.strokeText(lb,s[0],s[1]-7); ctx.fillStyle="#fff"; ctx.fillText(lb,s[0],s[1]-7);
     if(Math.sqrt(a)/mp>80&&!bOn.has(x.id)){ ctx.font=`600 10.5px ${A.FONT}`; const t=A.fArea(a); ctx.strokeText(t,s[0],s[1]+8); ctx.fillStyle="rgba(255,255,255,.9)"; ctx.fillText(t,s[0],s[1]+8); } });
+  if(PL.hov&&PL.hov.poly&&PL.tool==="plot"&&!PL.cur){ const H=PL.hov, rf=H.k==="refill", c1=rf?"#FF9F0A":"#34C759", V=H.poly.map(gScr);
+    poly(V,true,c1,2,rf?"rgba(255,159,10,.13)":"rgba(52,199,89,.13)",[9,6]);
+    const cc=gScr(lCent(H.poly)), t=rf?`Click to plan block ${H.blk||""} again`:H.k==="ring"?`Click — master plan inside this ring · ${A.fArea(Math.abs(lArea(H.poly)))}`:`Click to fill · ${A.fArea(Math.abs(lArea(H.poly)))}`;
+    ctx.font=`700 11px ${A.FONT}`; ctx.textAlign="center"; ctx.textBaseline="middle"; const w=ctx.measureText(t).width+16; ctx.fillStyle="rgba(20,20,22,.82)"; ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(cc[0]-w/2,cc[1]-11,w,22,11); else ctx.rect(cc[0]-w/2,cc[1]-11,w,22); ctx.fill(); ctx.fillStyle=c1; ctx.fillText(t,cc[0],cc[1]+.5); }
   if(PL.block&&now-PL.block.t<1400){ const k=1-(now-PL.block.t)/1400; poly(PL.block.poly.map(gScr),true,`rgba(255,214,10,${k})`,3,`rgba(255,214,10,${.25*k})`); A.need(); }
   // what is being drawn
   const c=PL.cur; if(c&&c.pts){ const pts=c.hv?c.pts.concat([c.hv]):c.pts, V=pts.map(Pp);
@@ -18976,9 +19035,42 @@ function deactivate(leaving){ if(!PL.on) return; if(PL.cur) finishCur(); PL.on=f
 // the building and tree models, shared with the AR table view (sold factories and warehouses)
 window.SID_3D={build(T3,F,L,W,h,k,id,K,opts){ if(!T) T=T3; return buildingAt(F,L,W,h,k,String(id),K,opts); }, tree(T3,K,x,z,sz,c,palm){ if(!T) T=T3; treeAt(K,x,z,sz,c,palm); }};
 window.SID_PLAN={get on(){ return PL.on; },plotAt:planPlotAt,activate,deactivate,down,move,up,hover,cancel,undo,redo,del,esc:escK,enter:enterK,key,hint:hintTxt,draw2d,obstacles,tool:()=>PL.tool,setTool,
-  state:PL,_t:{Lc,Gc,detectBlock,subdivide,stats,iCorners,fitOnPlot,autoPlots,placeBuilding,commitRoad,commitLand,commitPlot,commitGreen,graph,cgraph,rbs,noAccess,lArea,layer:()=>layer,veh:()=>VEH,scr,itemScreen,
+  state:PL,_t:{Lc,Gc,detectBlock,smartTap,refillAt,blockAt,hoverPreview,snapOutline,newDrawing,deleteDrawing,subdivide,stats,iCorners,fitOnPlot,autoPlots,placeBuilding,commitRoad,commitLand,commitPlot,commitGreen,graph,cgraph,rbs,noAccess,lArea,layer:()=>layer,veh:()=>VEH,scr,itemScreen,
     alongRoad,rowAlong,rowPos,placeRound,keepClear,avoid,overlap,segClear,srvRoute,curType,hitAny,opts,masterPlan,masterFromRing,shapeOK,obbOf,planAudit}};
 })();
 </script>
+
+<style>
+/* ---- V96 compact planner: smaller bars, buttons, cards and type; the map gets the room ---- */
+#skUI .sk-glass{border-radius:12px;box-shadow:0 6px 22px rgba(0,0,0,.32)}
+#skUI .sk-tools{left:8px;padding:4px}
+#skUI .sk-b{width:46px;height:40px;border-radius:9px;gap:1px}
+#skUI .sk-b svg{width:18px;height:18px} #skUI .sk-b span{font-size:8.5px}
+#skUI .sk-sep{margin:3px 5px}
+#skUI .sk-top{top:8px;right:8px;padding:3px}
+#skUI .sk-tb{height:30px;padding:0 9px;border-radius:8px;font-size:12px;gap:5px} #skUI .sk-tb svg{width:15px;height:15px}
+#skUI .sk-mode{padding:2px;border-radius:9px;margin-right:4px} #skUI .sk-mode button{height:26px;padding:0 11px;font-size:12px;border-radius:7px}
+#skUI .sk-hint{padding:6px 14px;font-size:12px;bottom:10px;max-width:min(640px,calc(100vw - 140px))}
+#skUI .sk-card{padding:10px 12px;width:min(320px,calc(100vw - 100px))}
+#skUI .sk-compass{width:60px;right:10px}
+#skUI .sk-bar{gap:3px} #skUI .sk-mn{width:20px;height:18px;font-size:13px}
+.pl-opt{gap:4px;padding:4px 6px;max-width:min(720px,calc(100vw - 90px))}
+.pl-opt .sep{height:16px;margin:0 2px} .pl-opt label{font-size:11px;gap:4px} .pl-opt b{font-size:10px;padding:0 2px}
+.pl-opt button{height:26px;padding:0 9px;font-size:11.5px;border-radius:7px} .pl-opt input{height:26px;width:62px;font-size:12px;border-radius:7px}
+.pl-opt .hi{font-size:10.5px}
+.pl-kpi{font-size:11px;padding:6px 10px;gap:1px 10px;min-width:168px} .pl-kpi .t{font-size:9.5px}
+#plCard{width:min(300px,calc(100vw - 100px));padding:10px 12px}
+#plCard .hd{font-size:10.5px} #plCard .hd .x{width:22px;height:22px;font-size:13px}
+#plCard .big{font-size:19px;margin-top:2px} #plCard .sub{font-size:11.5px} #plCard .w{font-size:11.5px} #plCard .acts{gap:4px;margin-top:8px}
+#plCard .acts button,#plCard select,#plLive button{height:28px;font-size:11.5px;padding:0 9px;border-radius:8px}
+#plLive{padding:5px 6px 5px 12px;gap:8px} #plLive .v{font-size:15px} #plLive .s{font-size:11px}
+.pl-plans{width:min(270px,calc(100vw - 100px));padding:4px}
+.pl-plans .nm{height:30px;padding:0 8px;border-radius:8px} .pl-plans .nm b{font-size:12.5px;max-width:130px} .pl-plans .nm small{font-size:10px}
+.pl-plans .nw{height:30px;padding:0 10px;font-size:11.5px;border-radius:8px}
+.pl-list .op .n{font-size:12.5px} .pl-list .ac button,.pl-list .rw>button:not(.op),.pl-list .shr button,.pl-list .ft button{height:26px;font-size:11px}
+#plRules{font-size:11.5px;width:min(320px,calc(100vw - 24px));padding:10px 12px} #plRules select,#plRules input{height:26px;font-size:12px}
+.pl-menu{min-width:190px;padding:4px} .pl-menu button{height:34px;font-size:12.5px}
+.pl-dims{width:250px;padding:10px} .pl-dims input,.pl-dims select{height:30px;font-size:13px}
+</style>
 </body>
 </html>
