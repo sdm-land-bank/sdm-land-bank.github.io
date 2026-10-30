@@ -19872,16 +19872,16 @@ const planKey=p=>JSON.stringify(p.pts.slice(0,3));
 async function planPass(PL,cb,force){ const tz=PL&&PL.tz; if(!tz||!(tz.avoid||tz.low)) return; const plots=(PL.plan&&PL.plan.plots)||[]; if(!plots.length) return; const maxS=Math.max(1,+tz.max||6), lowD=Math.max(.2,+tz.lowDepth||1);
   try{ cb.flash("Checking the terrain under "+plots.length+" plots…"); let w=1e9,s=1e9,e=-1e9,n=-1e9; plots.forEach(p=>p.pts.forEach(c=>{ if(c[0]<w)w=c[0]; if(c[0]>e)e=c[0]; if(c[1]<s)s=c[1]; if(c[1]>n)n=c[1]; }));
     const box=[w,s,e,n]; await svEnsure(box).catch(()=>{}); await preload(box); const dep=tz.low?await depressions(box):null; if(tz.low&&!dep) cb.flash("Not enough height data here to look for low spots");
-    const out=[], stats=[]; let nSteep=0, nLow=0, mn=1e9, mx=-1e9;
+    const out=[], stats=[], kept=[]; let nSteep=0, nLow=0, mn=1e9, mx=-1e9, kmn=1e9, kmx=-1e9;
     for(const p of plots){ const st=await levels([p.pts],{noload:true}).catch(()=>null); if(!st){ p.tz=null; continue; } stats.push(st); if(st.min<mn)mn=st.min; if(st.max>mx)mx=st.max;
       let low=false,depth=0; if(dep){ const ring=p.pts, lon0=ring.reduce((t,c)=>t+c[0],0)/ring.length, lat0=ring.reduce((t,c)=>t+c[1],0)/ring.length; depth=Math.max(dep.depth(lon0,lat0),ring.reduce((t,c)=>t+dep.depth(c[0],c[1]),0)/ring.length); low=depth>=lowD; }
-      const steep=!!(tz.avoid&&st.slope!=null&&st.slope>maxS&&!p.pin); p.tz={slope:st.slope==null?null:+st.slope.toFixed(1),mean:+st.mean.toFixed(1),min:+st.min.toFixed(1),max:+st.max.toFixed(1),low:!!low,depth:+depth.toFixed(1),src:st.src}; if(low) nLow++; if(steep){ nSteep++; out.push(p.id); } }
-    lastPlan={n:stats.length,min:mn,max:mx,maxSlope:tz.avoid?maxS:null,steep:nSteep,low:nLow,src:stats.every(x=>x.src==="sv")?"survey":"30 m estimate ±"+ERR+" m"};
+      const steep=!!(tz.avoid&&st.slope!=null&&st.slope>maxS&&!p.pin); p.tz={slope:st.slope==null?null:+st.slope.toFixed(1),mean:+st.mean.toFixed(1),min:+st.min.toFixed(1),max:+st.max.toFixed(1),low:!!low,depth:+depth.toFixed(1),src:st.src}; if(steep){ nSteep++; out.push(p.id); } else { kept.push(st); if(low) nLow++; if(st.min<kmn) kmn=st.min; if(st.max>kmx) kmx=st.max; } }
+    lastPlan={n:kept.length,min:kept.length?kmn:mn,max:kept.length?kmx:mx,maxSlope:tz.avoid?maxS:null,steep:nSteep,low:nLow,src:stats.every(x=>x.src==="sv")?"survey":stats.every(x=>x.src==="est")?"30 m estimate ±"+ERR+" m":"survey + 30 m estimate"};
     cb.apply(tz.avoid?out:[]); const msg=[]; if(tz.avoid) msg.push(nSteep?("removed "+nSteep+" plot"+(nSteep>1?"s":"")+" steeper than "+maxS+"% (Undo brings them back)"):("no plot steeper than "+maxS+"%")); if(tz.low) msg.push(nLow?(nLow+" plot"+(nLow>1?"s":"")+" on a low spot ▼ (ponding ≥ "+lowD+" m, indicative)"):"no low spots found"); cb.flash("Terrain: "+msg.join(" · ")+" — "+lastPlan.src); }
   catch(e){ console.error("planner terrain",e); cb.flash("Terrain check failed: "+(e&&e.message||e)); } }
 const planTxt=p=>{ try{ if(!p||!p.tz) return ""; const t=p.tz; return " · slope "+(t.slope==null?"—":t.slope+" %")+" · level "+t.min+"–"+t.max+" m"+(t.low?" · ▼ low spot":""); }catch(e){ return ""; } };
 const planCaption=()=>lastPlan?("Levels "+nf(lastPlan.min,1)+"–"+nf(lastPlan.max,1)+" m"+(lastPlan.maxSlope?" · slopes ≤ "+lastPlan.maxSlope+" %":"")+(lastPlan.low?" · "+lastPlan.low+" low spot(s)":"")+" · "+lastPlan.src):"";
-window.SID_TOPO2={planPass,planTxt,planCaption,stats:levels,plotLevels,svList,svEnsure,SV,_t:{levels,cutFill,readCSV,readDXF,makeGrid,gridAt,packGrid,unpackGrid,suggestCrs,toLL,needProj4,CRS,depressions,SUM,ST,bindRows,rowKey,ensureParks,addXlsxCols,gridFromRaster,parkStats,sigOf,offerStats}};
+window.SID_TOPO2={startUp:()=>startUp(),upRead:f=>upRead(f),get UP(){ return UP; },svUi,planPass,planTxt,planCaption,stats:levels,plotLevels,svList,svEnsure,SV,_t:{levels,cutFill,readCSV,readDXF,makeGrid,gridAt,packGrid,unpackGrid,suggestCrs,toLL,needProj4,CRS,depressions,SUM,ST,bindRows,rowKey,ensureParks,addXlsxCols,gridFromRaster,parkStats,sigOf,offerStats}};
 })();
 </script>
 </body>
