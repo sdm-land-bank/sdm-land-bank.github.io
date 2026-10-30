@@ -18430,7 +18430,7 @@ function placeRound(g,pt){ const tol=Math.max(25,30*mpp(pt)), gr=graph(); let c=
 function trimRound(o){ const c=Lc(o.c), R=o.r+3, O=[]; for(let i=0;i<24;i++){ const a=i/24*2*Math.PI; O.push([c[0]+Math.cos(a)*R/Math.cos(Math.PI/24),c[1]+Math.sin(a)*R/Math.cos(Math.PI/24)]); } let n=0;
   PL.plan.plots.forEach(pl=>{ const P=pl.pts.map(Lc); if(clearOf(P,O)) return; const A0=Math.abs(lArea(P)), res=cutOff(P,[O],A0*.5/.35); if(!res.length) return; const Q=res.sort((x,y)=>Math.abs(lArea(y))-Math.abs(lArea(x)))[0]; pl.pts=(lArea(Q)>0?Q:Q.slice().reverse()).map(q=>Gc(q[0],q[1])); n++; }); return n; }
 function plotAt(g){ const L=PL.plan.plots; for(let i=L.length-1;i>=0;i--) if(lInPoly(g,L[i].pts.map(Lc))) return L[i]; return null; }
-function autoPlots(g,qt,o){ const fl=m=>{ if(!qt) A.flash(m); }; const B=detectBlock(g); if(B.err){ fl(B.err); return; } const S=stripFill(B.poly)||modFill(B.poly), OB2=keepClear(), OBr=keepClear(true);   // service roads do not swerve round single trees
+function autoPlots(g,qt,o){ const fl=m=>{ if(!qt) A.flash(m); }; const B=detectBlock(g); if(B.err){ fl(B.err); return; } const S=stripFill(B.poly)||mixAs(()=>modFill(B.poly)), OB2=keepClear(), OBr=keepClear(true);   // service roads do not swerve round single trees
   // a detour is scored by how many plots end up on a road with it
   const lines=PL.plan.roads.map(r=>({V:r.pts.map(Lc),w:r.w})); S.roads.forEach(R=>segClear(R[0],R[1],OBr).forEach(s=>lines.push({V:s,w:RT[2].w})));
   const reach=(P,ls)=>{ for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length]; for(let s=0;s<=4;s++){ const m=[a[0]+(b[0]-a[0])*s/4,a[1]+(b[1]-a[1])*s/4]; for(const r of ls) for(let k=1;k<r.V.length;k++) if(projSeg(m,r.V[k-1],r.V[k]).d<=r.w/2+4) return true; } } return false; };
@@ -19021,6 +19021,9 @@ function stripFill(B){ const P0=prof(), M=P0.mix.filter(e=>(+e.s||0)>0&&MODS[e.m
   cols.forEach(cl=>{ const parts=cl.deep||!two?[[e.v0-5,e.v1+5]]:[[e.v0-5,(e.v0+e.v1)/2],[(e.v0+e.v1)/2,e.v1+5]];
     parts.forEach(([t0,t1])=>{ const Q=cut(cl.a,cl.b,t0,t1); if(Q){ plots.push(Q); meta.push({m:cl.c.m,n:cl.c.n,deep:cl.deep}); } }); });
   return plots.length?{plots,roads:[],meta,greens:[]}:null; }
+// the module fill with the plot size chosen in the bar (one size) instead of the sold mix — no 50,000 m² plots unless asked
+function mixAs(fn){ const P=prof(), t=+PL.target||0; if(!(t>0)) return fn(); const M=P.mix.filter(e=>(+e.s||0)>0&&MODS[e.m]); if(!M.length) return fn();
+  const t0=M.slice().sort((x,y)=>y.s-x.s)[0], Am=MODS[t0.m].w*MODS[t0.m].d, keep=P.mix; P.mix=[{m:t0.m,n:Math.max(1,Math.min(4,Math.round(t/Am))),s:100}]; try{ return fn(); } finally { P.mix=keep; } }
 // a looser shape rule for what a fill keeps: trapezoids at slanted block ends are normal plots; only real scraps are dropped
 function shapeLoose(P,o){ o=o||obbOf(P); if(!o) return false; const a=o.e.u1-o.e.u0, b=o.e.v1-o.e.v0, L=Math.max(a,b), Wd=Math.min(a,b); if(Wd<12||L/Wd>4.5) return false; if(Math.abs(lArea(P))<.55*a*b) return false;
   for(let i=0;i<P.length;i++){ const p0=P[(i+P.length-1)%P.length], p1=P[i], p2=P[(i+1)%P.length], v1=[p0[0]-p1[0],p0[1]-p1[1]], v2=[p2[0]-p1[0],p2[1]-p1[1]], l1=Math.hypot(v1[0],v1[1]), l2=Math.hypot(v2[0],v2[1]); if(l1<.5||l2<.5) continue;
