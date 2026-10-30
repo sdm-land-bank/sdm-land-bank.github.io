@@ -17229,7 +17229,7 @@ function selDown(pt,pid,e){ const cur=byId(SK.sel), h=cur&&handleAt(cur,pt);
 function onMove(e){
   if(!SK.on) return; const pt=xy(e); if(e.pointerType!=="touch"||!SK.penSeen) SK.ptr=pt;
   if(e.pointerType==="touch"&&ptrs.has(e.pointerId)){ ptrs.set(e.pointerId,pt); if(gest){ gestMove(); need(); return; } }
-  const d=SK.drag; if(!d&&!gest) tipAt(pt,e); else if(SK.tipK) tipHide();
+  const d=SK.drag, prv=PLAN()&&window.SID_PLAN.tool()==="plot"&&/^(auto|master)$/.test(window.SID_PLAN.state.psub); if(!d&&!gest&&!prv) tipAt(pt,e); else if(SK.tipK) tipHide();
   if(!d&&PLAN()){ PLAN().hover(pt,e); return; }
   if(!d){ if(SK.cur&&SK.cur.path&&e.pointerType!=="touch"){ SK.cur.hv=at(pt); need(); } else if(SK.snapAt){ SK.snapAt=null; need(); } hoverCur(pt); return; }
   if(d.pid!=null&&d.pid!==e.pointerId) return;
