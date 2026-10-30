@@ -19011,7 +19011,8 @@ function stripFill(B){ const P0=prof(), M=P0.mix.filter(e=>(+e.s||0)>0&&MODS[e.m
   const S2=B.map(q=>[q[0]*u[0]+q[1]*u[1],q[0]*v[0]+q[1]*v[1]]), sp=spans(S2,1,(e.v0+e.v1)/2).sort((a2,b2)=>(b2[1]-b2[0])-(a2[1]-a2[0]))[0]; if(!sp) return null;
   const s0=sp[0], s1=sp[1];
   // plot sizes from the mix, by count: always the size most behind its share
-  const cls=M.map(m=>({m:m.m,n:Math.max(1,+m.n||1),s:+m.s,got:0})), pick=()=>{ const N=cls.reduce((a2,c)=>a2+c.got,0)+1; let b2=cls[0], bv=-1e9; cls.forEach(c=>{ const d2=c.s/100*N-c.got; if(d2>bv){ bv=d2; b2=c; } }); return b2; };
+  // the plot size chosen in the bar wins (all plots that size); “From sales history” uses the sold mix
+  const tg=+PL.target||0, cls=tg>0?[{m:top.m,n:Math.max(1,Math.round(tg/Am)),s:100,got:0}]:M.map(m=>({m:m.m,n:Math.max(1,+m.n||1),s:+m.s,got:0})), pick=()=>{ const N=cls.reduce((a2,c)=>a2+c.got,0)+1; let b2=cls[0], bv=-1e9; cls.forEach(c=>{ const d2=c.s/100*N-c.got; if(d2>bv){ bv=d2; b2=c; } }); return b2; };
   const cols=[]; let sc=s0;
   while(sc<s1-.5){ const c=pick(), deep=two&&c.n>=4, w=Math.max(Wm*.8,c.n*Am/(deep?D:rowD)); c.got+=deep||!two?1:2; cols.push({a:sc,b:sc+w,c,deep}); sc+=w; }
   if(!cols.length) return null; const last=cols[cols.length-1]; last.b=s1; if(cols.length>1&&last.b-last.a<Wm*.6){ cols.pop(); cols[cols.length-1].b=s1; }
