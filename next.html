@@ -17923,9 +17923,9 @@ function detectBlock(ptLocal){ const p=PL.plan;
   let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9; pts.forEach(v=>{ x0=Math.min(x0,v[0]); x1=Math.max(x1,v[0]); z0=Math.min(z0,v[1]); z1=Math.max(z1,v[1]); });
   const ext=Math.max(x1-x0,z1-z0), res=Math.max(.75,ext/1100), W=Math.ceil((x1-x0)/res)+3, H=Math.ceil((z1-z0)/res)+3, bx=x0-res, bz=z0-res, N=W*H, blk=new Uint8Array(N);
   const cx=i=>bx+(i+.5)*res, cz=j=>bz+(j+.5)*res;
-  if(land){ for(let j=0;j<H;j++){ const z=cz(j), xs=[]; for(let i=0;i<land.length;i++){ const a=land[i], b=land[(i+1)%land.length]; if((a[1]<=z&&b[1]>z)||(b[1]<=z&&a[1]>z)) xs.push(a[0]+(z-a[1])/(b[1]-a[1])*(b[0]-a[0])); } xs.sort((u,v)=>u-v);
-      for(let i=0;i<W;i++){ const x=cx(i); let n=0; for(const v of xs) if(v<x) n++; if(n%2===0) blk[j*W+i]=1; } } }
-  else for(let i=0;i<W;i++){ blk[i]=1; blk[(H-1)*W+i]=1; }
+  // V97: the land boundary is an edge like a road, not a wall round the world: an area closed by roads is a block wherever it is
+  if(land){ const rw=res*.8; for(let q=0;q<land.length;q++){ const a=land[q], b=land[(q+1)%land.length]; const i0=Math.max(0,Math.floor((Math.min(a[0],b[0])-rw-bx)/res)), i1=Math.min(W-1,Math.ceil((Math.max(a[0],b[0])+rw-bx)/res)), j0=Math.max(0,Math.floor((Math.min(a[1],b[1])-rw-bz)/res)), j1=Math.min(H-1,Math.ceil((Math.max(a[1],b[1])+rw-bz)/res));
+      for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){ if(projSeg([cx(i),cz(j)],a,b).d<=rw) blk[j*W+i]=1; } } }
   p.roads.forEach(r=>{ const V=r.pts.map(Lr), rr=r.w/2; for(let k=1;k<V.length;k++){ const a=V[k-1], b=V[k]; const i0=Math.max(0,Math.floor((Math.min(a[0],b[0])-rr-bx)/res)), i1=Math.min(W-1,Math.ceil((Math.max(a[0],b[0])+rr-bx)/res)), j0=Math.max(0,Math.floor((Math.min(a[1],b[1])-rr-bz)/res)), j1=Math.min(H-1,Math.ceil((Math.max(a[1],b[1])+rr-bz)/res));
       for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){ if(projSeg([cx(i),cz(j)],a,b).d<=rr) blk[j*W+i]=1; } } });
   // a hand-drawn ring: a road end that stops short of another road (gap under 16 m) is joined to it, so the block still counts as closed
@@ -18976,13 +18976,13 @@ function refillAt(g,hit){ const f=filledBlockAt(g,hit); if(!f){ A.flash("This bl
     m=autoPlots(f.g,false,{letter:f.blk,phase:f.phase}); } finally { QUIET--; }
   if(!m||!m.length){ PL.plan=JSON.parse(keep); PL.undo.pop(); O=null; GR=null; CG=null; changed(["all"]); A.flash("No better plan for this block — it was left as it was"); return null; }
   A.flash(`Block ${f.blk} planned again: ${m.length} plots · Undo puts the old ones back`); return m; }
-function smartTap(g){ const hit=plotAt(g); PL.hov=null; if(PL.plan.land&&!hit&&!lInPoly(g,PL.plan.land.pts.map(Lc))){ A.flash("Click inside the land"); return; }
+function smartTap(g){ const hit=plotAt(g); PL.hov=null;
   if(hit){ if(hit.pin){ A.flash("That plot is pinned — unpin it to plan its block again"); return; } refillAt(g,hit); return; }
   const r=blockAt(g); if(!r.err){ autoPlots(r.g); return; }
   const np=nearPlot(g,25); if(np){ refillAt(g,np); return; } A.flash(r.err); }
 // the preview under the pointer (Smart fill, and Master plan inside a road ring)
 function hoverPreview(pt){ const now=performance.now(); if(PL.hovT&&now-PL.hovT<130) return; PL.hovT=now; const g=ground(pt), p=PL.plan; let H=null;
-  try{ if(PL.psub==="auto"){ const hit=plotAt(g); let r=null; if(!hit&&!(p.land&&!lInPoly(g,p.land.pts.map(Lc)))){ r=blockAt(g,true); if(!r.err) H={poly:r.B.poly,k:"fill"}; }
+  try{ if(PL.psub==="auto"){ const hit=plotAt(g); let r=null; if(!hit){ r=blockAt(g,true); if(!r.err) H={poly:r.B.poly,k:"fill"}; }
       if(!H){ const np=hit||(r?nearPlot(g,25):null); if(np&&!np.pin){ const f=filledBlockAt(g,np); if(f) H={poly:f.B.poly,k:"refill",blk:f.blk}; } }
       if(!H) H={k:"none"}; }
     else if(PL.psub==="master"&&!p.land&&p.roads.length){ const B=detectBlock(g); H=B.err?{k:"none",msg:B.err}:{poly:B.poly,k:"ring"}; } }catch(e){ H=null; }
