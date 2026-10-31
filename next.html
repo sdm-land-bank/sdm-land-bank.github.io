@@ -19449,7 +19449,7 @@ function ui(){ if(panel) return; panel=document.createElement("div"); panel.id="
     else if(t.id==="tpTerrOn"){ PREF.ter[0]=t.checked?1:0; savePref(); terrain(); }
     else if(t.id==="tpEx"){ PREF.ter[1]=+t.value; q("#tpExV").textContent=t.value; savePref(); if(PREF.ter[0]) terrain(); } });
   panel.addEventListener("click",e=>{ const sc=e.target.closest(".tp-sec"); if(sc&&sc.parentElement.classList.contains("tp-gp")){ const g=sc.parentElement; g.classList.toggle("cl"); PREF.cl[g.dataset.g]=g.classList.contains("cl")?1:0; savePref(); return; } const b=e.target.closest("button"); if(!b) return;
-    if(b.id==="tpX") setOn(false); else if(b.id==="tpMin"){ panel.classList.toggle("min"); PREF.min=panel.classList.contains("min")?1:0; savePref(); }
+    if(b.id==="tpX") setOn(false); else if(b.id==="tpMin"){ panel.classList.toggle("min"); PREF.min=panel.classList.contains("min")?1:0; savePref(); avoidSoon(); }
     else if(b.dataset.t) setTool(TP.tool===b.dataset.t?null:b.dataset.t); else if(b.id==="tpClr"){ TP.pts=[]; TP.res=null; SC.fin=false; secHide(); q("#tpRes").innerHTML=""; drawPts(); }
     else if(b.id==="tpFit"){ colRefit(); } else if(b.id==="tpDone"){ finishProf(); } else if(b.id==="tpUndo"){ TP.pts.pop(); if(TP.pts.length<2) SC.fin=false; toolUpd(); } else if(b.id==="tpNew"){ SC.fin=false; TP.pts=[]; secHide(); drawPts(); guide(); } });
   boxDrag(panel,panel.querySelector(".tp-hd"),"p"); boxResize(panel,"p",230,120); restoreBox(panel,"p");
@@ -19603,7 +19603,7 @@ async function profDone(){ const P=TP.pts; if(P.length<2){ secHide(); guide(); r
   const nk=profData&&profData.key===key; profData={S,V,mn,mx,L,seg,P:P.map(p=>[p[0],p[1]]),rise,fall,maxS,avgS,net,key,step}; if(!nk){ SC.grid=null; SC.hov=null; SC.ex=Math.max(1,Math.min(10,Math.round(L*.12/Math.max(2,mx.h-mn.h)*2)/2)); }
   q("#tpRes").innerHTML=`<div class="tp-card"><b>Section ${fmtD(L)}</b>${badge(P[0][0],P[0][1])}<div class="tp-kv"><span>Start → end</span><span>${V[0].h.toFixed(1)} → ${V[V.length-1].h.toFixed(1)} m (${sgn(net)})</span><span>Lowest</span><span>${mn.h.toFixed(1)} m at ${fmtD(mn.d)}</span><span>Highest</span><span>${mx.h.toFixed(1)} m at ${fmtD(mx.d)}</span></div>
    <div class="tp-bts" style="margin-top:6px">${SC.fin?'':'<button class="tp-bt sm" id="tpDone">Finish line</button>'}<button class="tp-bt sm" id="tpUndo">Undo last point</button><button class="tp-bt sm" id="tpNew">New line</button></div><div class="tp-note">Chart, 3D block and CSV are in the section window. Sampled every ${Math.round(step)} m. Rise and fall add up small model noise: read them as an indication.</div></div>`;
-  secEvents(); secShow(); if(SC.v==="3d") secGrid().then(()=>secDraw()); drawPts(); }
+  secEvents(); secShow(); avoidSoon(); if(SC.v==="3d") secGrid().then(()=>secDraw()); drawPts(); }
 function finishProf(){ if(TP.tool!=="prof"||TP.pts.length<2) return; SC.fin=true; profDone(); }
 
 /* picking: a tap that did not move picks a point; a drag pans (in sketch mode the sketch canvas is blocked while a tool is on) */
@@ -19630,11 +19630,19 @@ async function loadLib(){ if(TP.lib) return true; try{ if(typeof mlcontour==="un
   catch(e){ console.error("contour library",e); say("Contours are not available (the contour library did not load); the other layers work",true); return false; } }
 async function setOn(v){ if(v===TP.on) return; if(!ok()){ say("The map is still loading",true); return; }
   if(v){ loadPref(); TP.on=true; ui(); syncUi(); panel.hidden=false; btnState(); bind(true); if(typeof SID_PLAN!=="undefined"&&SID_PLAN&&SID_PLAN.on&&map.getTerrain&&PREF.ter[0]) PREF.ter[0]=0;
-    await loadLib(); if(HK.ready){ try{ await HK.ready(); }catch(e){ console.error(e); } } if(!TP.on) return; if(lv("col").on&&!TP.range){ TP.range=await fitRange(); } build(); onCentre(); legend(); }
+    await loadLib(); if(HK.ready){ try{ await HK.ready(); }catch(e){ console.error(e); } } if(!TP.on) return; if(lv("col").on&&!TP.range){ TP.range=await fitRange(); } build(); onCentre(); legend(); avoidSoon(); }
   else { TP.on=false; setTool(null); secHide(); bind(false); teardown(); TP.range=null; if(panel) panel.hidden=true; if(tag) tag.hidden=true; document.body.classList.remove("tp-pick"); btnState(); } }
-/* on a phone-width screen a plot / shape card and the Land Levels panel cannot share the screen: fold the panel while a card is open */
-function cardCheck(){ if(!TP.on||!panel||innerWidth>820||panel.classList.contains("min")) return; const u=document.getElementById("skUI"); const c=u&&u.querySelector("#plCard,#skCard"); if(c&&!c.hidden&&c.getClientRects().length) panel.classList.add("min"); }
-function cardWatch(){ const u=document.getElementById("skUI"); if(!u||u._tw) return; u._tw=1; new MutationObserver(cardCheck).observe(u,{attributes:true,subtree:true,attributeFilter:["hidden","class","style"]}); }
+/* keep the panel and the section window off the drawing-mode boxes (plot card, plan options, hint ...): when the default spot is taken, slide to the nearest free spot; if the screen is full, fold the panel to its title bar and try again */
+let avT=0; const avoidSoon=()=>{ clearTimeout(avT); avT=setTimeout(()=>{ try{ avoid(panel); avoid(dock()); }catch(e){ console.error("avoid",e); } },120); };
+function avoid(el){ if(!el||el.hidden||el.dataset.pin||!TP.on||!el.getClientRects().length) return;
+  const others=()=>[...document.querySelectorAll("#skUI .sk-mv,#skUI .sk-top,#skUI .sk-hint")].concat([el===panel?dock():panel]).filter(o=>o&&o!==el&&!o.hidden&&!o.classList.contains("off")&&o.getClientRects().length&&getComputedStyle(o).visibility!=="hidden").map(o=>o.getBoundingClientRect()).filter(r=>r.width>4&&r.height>4);
+  const hitAt=(O,x,y,w,h)=>O.some(o=>x<o.right-2&&x+w>o.left+2&&y<o.bottom-2&&y+h>o.top+2);
+  const place=()=>{ const O=others(); if(!O.length) return true; let r=el.getBoundingClientRect(); if(!hitAt(O,r.left,r.top,r.width,r.height)) return true; if(el.dataset.av){ ["left","top","right","bottom"].forEach(k=>el.style.removeProperty(k)); delete el.dataset.av; r=el.getBoundingClientRect(); if(!hitAt(O,r.left,r.top,r.width,r.height)) return true; } const w=r.width, h=r.height;
+    let best=null, bd=1e9; for(let x=4;x<=innerWidth-w-4;x+=12) for(let y=4;y<=innerHeight-h-4;y+=12){ if(hitAt(O,x,y,w,h)) continue; const d=Math.hypot(x-r.left,y-r.top); if(d<bd){ bd=d; best=[x,y]; } }
+    if(!best) return false; el.style.left=best[0]+"px"; el.style.top=best[1]+"px"; el.style.right="auto"; el.style.bottom="auto"; el.dataset.av="1"; return true; };
+  if(place()) return; if(el===panel&&!el.classList.contains("min")){ el.classList.add("min"); place(); } }
+const cardCheck=avoidSoon;
+function cardWatch(){ const u=document.getElementById("skUI"); if(!u||u._tw) return; u._tw=1; new MutationObserver(avoidSoon).observe(u,{attributes:true,subtree:true,childList:true,attributeFilter:["hidden","class","style"]}); window.addEventListener("resize",avoidSoon); }
 function btnState(){ document.querySelectorAll(".tp-ctl button,#tpSkBtn").forEach(b=>b.classList.toggle("on",TP.on)); }
 
 class TpCtl{ onAdd(){ const d=document.createElement("div"); d.className="maplibregl-ctrl maplibregl-ctrl-group tp-ctl";
