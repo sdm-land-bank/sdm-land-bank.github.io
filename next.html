@@ -19191,6 +19191,44 @@ body.sk-on #tpPanel{left:90px;width:min(330px,calc(100vw - 102px))}
 #tpTag{position:fixed;z-index:2147483001;pointer-events:none;padding:2px 7px;border-radius:7px;background:rgba(20,20,22,.85);color:#fff;font:700 12px -apple-system,BlinkMacSystemFont,Inter,sans-serif;white-space:nowrap}
 #tpTag[hidden]{display:none!important}
 body.tp-pick .maplibregl-canvas,body.tp-pick #skCv{cursor:crosshair!important}
+#tpSec{position:fixed;left:354px;right:12px;bottom:12px;height:min(310px,44vh);display:flex;flex-direction:column;z-index:2147483000;font:12px -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;
+  background:rgba(28,28,30,.82);-webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 34px rgba(0,0,0,.38);border-radius:16px;padding:8px 12px 8px}
+body.sk-on #tpSec{left:432px}
+#tpSec[hidden],#tpSec [hidden]{display:none!important}
+#tpSec button{font-family:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation;cursor:pointer}
+#tpSec .sc-hd{display:flex;align-items:center;gap:6px;flex:none;flex-wrap:wrap}
+#tpSec .sc-hd>b{font-size:13px}
+#tpSec .sc-len{font-size:13px;font-weight:700;color:#ffd25a}
+#tpSec .tp-src{margin-left:0;font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(255,159,10,.2);color:#ffcf7a;white-space:nowrap}
+#tpSec .tp-src.sv{background:rgba(52,199,89,.2);color:#8be6a6}
+#tpSec .sc-tabs{display:flex;gap:2px;margin-left:auto;padding:2px;border-radius:9px;background:rgba(255,255,255,.1)}
+#tpSec .sc-tabs button{height:22px;padding:0 10px;border:0;border-radius:7px;background:transparent;color:#fff;font-weight:600;font-size:11px}
+#tpSec .sc-tabs button.on{background:#fff;color:#111}
+#tpSec .sc-b{height:24px;padding:0 8px;border:0;border-radius:7px;background:rgba(255,255,255,.1);color:#fff;font-weight:700;font-size:10px}
+#tpSec .sc-b:hover,#tpSec .tp-ib:hover{background:rgba(255,255,255,.2)}
+#tpSec .tp-ib{width:24px;height:24px;border:0;border-radius:7px;background:rgba(255,255,255,.1);color:#fff;font-size:15px;line-height:1}
+#tpSec .sc-rd{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;padding:5px 0 2px;min-height:20px;flex:none}
+#tpSec .sc-rd .mut{opacity:.55}
+#tpSec .sc-rd b{font-size:13px}
+#tpSec .sc-cv{position:relative;flex:1;min-height:0}
+#tpSec canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+#tpSec .sc-ex{position:absolute;right:4px;top:0;display:flex;align-items:center;gap:6px;font-size:10px;padding:3px 8px;border-radius:9px;background:rgba(20,20,22,.7)}
+#tpSec .sc-ex input{width:90px;height:14px;margin:0;accent-color:#d23a55}
+#tpSec .sc-st{display:flex;gap:5px;overflow-x:auto;flex:none;padding-top:5px;scrollbar-width:thin}
+#tpSec .sc-st div{flex:none;padding:3px 9px;border-radius:8px;background:rgba(255,255,255,.08);display:flex;flex-direction:column}
+#tpSec .sc-st small{font-size:9px;opacity:.6;text-transform:uppercase;letter-spacing:.05em}
+#tpSec .sc-st b{font-size:12px}
+/* smaller icons: Land Levels button on the map and the drawing-mode bars */
+.tp-ctl button{width:28px!important;height:28px!important}
+.tp-ctl button svg{width:16px!important;height:16px!important}
+body #skUI .sk-b{width:40px;height:34px;border-radius:8px;gap:1px}
+body #skUI .sk-b svg{width:16px;height:16px} body #skUI .sk-b span{font-size:8px}
+body #skUI .sk-tb{height:26px;padding:0 8px;border-radius:7px;font-size:11px;gap:4px} body #skUI .sk-tb svg{width:14px;height:14px}
+body #skUI .sk-mode button{height:24px;padding:0 9px;font-size:11px}
+body #skUI .sk-top{top:6px;right:6px}
+@media (max-height:690px){ body #skUI .sk-tools{grid-template-columns:40px 40px} }
+@media (max-width:900px){ #tpSec{left:12px;bottom:64px;height:min(300px,40vh)} body.sk-on #tpSec{left:90px} }
+@media (max-width:560px){ #tpSec,body.sk-on #tpSec{left:8px;right:8px;top:48px;bottom:auto;height:min(46dvh,360px)} }
 @media (max-width:560px){
  #tpPanel,body.sk-on #tpPanel{left:8px;right:8px;width:auto;bottom:8px;max-height:56vh;max-height:56dvh}
  #tpPanel .tp-row{grid-template-columns:20px 1fr 96px;padding:5px 0}
@@ -19310,8 +19348,8 @@ function build(){ if(!TP.on||!ok()) return; if(!map.isStyleLoaded()){ map.once("
      if(!hasL("sidtopo-ct-lbl")) map.addLayer({id:"sidtopo-ct-lbl",type:"symbol",source:ID.ct,"source-layer":"contours",filter:["==",["get","level"],1],layout:{visibility:vc,"symbol-placement":"line","text-field":["concat",["to-string",["get","ele"]]," m"],"text-font":FONT,"text-size":11,"text-max-angle":35},paint:{"text-color":"#fff4cf","text-halo-color":"rgba(20,16,0,.85)","text-halo-width":1.6}},above); }
    if(!hasS(ID.pts)) map.addSource(ID.pts,{type:"geojson",data:{type:"FeatureCollection",features:[]}});
    if(!hasL("sidtopo-pl")) map.addLayer({id:"sidtopo-pl",type:"line",source:ID.pts,filter:["==",["geometry-type"],"LineString"],paint:{"line-color":"#ff2d55","line-width":3,"line-dasharray":[2,1]}});
-   if(!hasL("sidtopo-pp")) map.addLayer({id:"sidtopo-pp",type:"circle",source:ID.pts,filter:["==",["geometry-type"],"Point"],paint:{"circle-radius":["case",["==",["get","hov"],1],8,5.5],"circle-color":["case",["==",["get","hov"],1],"#ffd60a","#ff2d55"],"circle-stroke-color":"#fff","circle-stroke-width":2}});
-   if(!hasL("sidtopo-pt")) map.addLayer({id:"sidtopo-pt",type:"symbol",source:ID.pts,filter:["==",["geometry-type"],"Point"],layout:{"text-field":["get","t"],"text-font":FONT,"text-size":12,"text-offset":[0,-1.5],"text-allow-overlap":true},paint:{"text-color":"#fff","text-halo-color":"rgba(20,20,22,.9)","text-halo-width":2}});
+   if(!hasL("sidtopo-pp")) map.addLayer({id:"sidtopo-pp",type:"circle",source:ID.pts,filter:["==",["geometry-type"],"Point"],paint:{"circle-radius":["case",["==",["get","hov"],1],8,["==",["get","hov"],2],0,5.5],"circle-color":["case",["==",["get","hov"],1],"#ffd60a","#ff2d55"],"circle-stroke-color":"#fff","circle-stroke-width":["case",["==",["get","hov"],2],0,2]}});
+   if(!hasL("sidtopo-pt")) map.addLayer({id:"sidtopo-pt",type:"symbol",source:ID.pts,filter:["==",["geometry-type"],"Point"],layout:{"text-field":["get","t"],"text-font":FONT,"text-size":["case",["==",["get","hov"],2],10,12],"text-offset":["case",["==",["get","hov"],2],["literal",[0,1.1]],["literal",[0,-1.5]]],"text-allow-overlap":true},paint:{"text-color":"#fff","text-halo-color":"rgba(20,20,22,.9)","text-halo-width":2}});
   }catch(e){ console.error("land levels build",e); say("Land Levels: "+(e&&e.message||e),true); }
   applyAll(); drawPts(); terrain(); legend(); }
 function applyAll(){ if(!TP.on) return;
@@ -19363,11 +19401,14 @@ function ui(){ if(panel) return; panel=document.createElement("div"); panel.id="
   <div class="tp-body"><div class="tp-rd" id="tpRd"><span>Height —</span></div>
    <div class="tp-sec">Layers</div><div id="tpLy"></div>
    <div class="tp-sec">3D terrain (preview)</div><div class="tp-row" id="tpTerr"><input type="checkbox" id="tpTerrOn" aria-label="3D terrain"><span>Show in 3D · exaggeration <b id="tpExV"></b>×</span><input type="range" id="tpEx" min="1" max="3" step=".5" aria-label="Exaggeration"></div>
-   <div class="tp-sec">Tools</div><div class="tp-bts"><button class="tp-bt" data-t="pt">Point height</button><button class="tp-bt" data-t="prof">Profile</button><button class="tp-bt" data-t="slope">Slope A→B</button><button class="tp-bt" id="tpClr">Clear</button></div>
+   <div class="tp-sec">Tools</div><div class="tp-bts"><button class="tp-bt" data-t="pt">Point height</button><button class="tp-bt" data-t="prof" title="Draw a line, see distance, a level profile and a 3D block">Section</button><button class="tp-bt" data-t="slope">Slope A→B</button><button class="tp-bt" id="tpClr">Clear</button></div>
    <div class="tp-res" id="tpRes"></div>
    <div class="tp-note">Heights are a 30 m satellite model (SRTM), a surface model that includes buildings and trees. Use them for planning only, not for earthworks levels: those need a survey.</div></div>`;
   if(HK.ui){ try{ HK.ui(panel); }catch(e){ console.error("panel extras",e); } }
-  document.body.appendChild(panel); tag=document.createElement("div"); tag.id="tpTag"; tag.hidden=true; document.body.appendChild(tag);
+  document.body.appendChild(panel); const dk=document.createElement("div"); dk.id="tpSec"; dk.hidden=true; dk.setAttribute("role","region"); dk.setAttribute("aria-label","Land section");
+  dk.innerHTML=`<div class="sc-hd"><b>Land section</b><span class="sc-len" id="scLen"></span><span class="tp-src" id="scSrc"></span><div class="sc-tabs"><button data-v="2d" class="on">Profile</button><button data-v="3d">3D block</button></div><button class="sc-b" id="scCsv" title="Download the levels as CSV">CSV</button><button class="sc-b" id="scPng" title="Save this picture">PNG</button><button class="tp-ib" id="scX" title="Close the section" aria-label="Close section">×</button></div>
+   <div class="sc-rd" id="scRd"></div><div class="sc-cv"><canvas id="scCv" aria-label="Section chart"></canvas><div class="sc-ex" id="scExW" hidden>Height ×<input type="range" id="scEx" min="1" max="10" step=".5" aria-label="Height exaggeration"><b id="scExV"></b></div></div><div class="sc-st" id="scSt"></div>`;
+  document.body.appendChild(dk); tag=document.createElement("div"); tag.id="tpTag"; tag.hidden=true; document.body.appendChild(tag);
   const ly=panel.querySelector("#tpLy"); ly.innerHTML=LY.map(([k,n])=>`<label class="tp-row" data-k="${k}"><input type="checkbox" data-c="${k}" aria-label="${n}"><span>${n}</span><input type="range" min="0" max="100" data-o="${k}" aria-label="${n} opacity"></label><div class="tp-lg" data-lg="${k}" hidden></div>`).join("");
   panel.addEventListener("input",e=>{ const t=e.target; if(t.dataset.c){ const k=t.dataset.c; setLv(k,t.checked); if(k==="col"&&t.checked) colOn(); if(k==="ct"&&t.checked) ctRebuild(); applyAll(); legend(); }
     else if(t.dataset.o){ setLv(t.dataset.o,null,t.value/100); applyAll(); }
@@ -19375,8 +19416,8 @@ function ui(){ if(panel) return; panel=document.createElement("div"); panel.id="
     else if(t.id==="tpEx"){ PREF.ter[1]=+t.value; q("#tpExV").textContent=t.value; savePref(); if(PREF.ter[0]) terrain(); } });
   panel.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
     if(b.id==="tpX") setOn(false); else if(b.id==="tpMin"){ panel.classList.toggle("min"); PREF.min=panel.classList.contains("min")?1:0; savePref(); }
-    else if(b.dataset.t) setTool(TP.tool===b.dataset.t?null:b.dataset.t); else if(b.id==="tpClr"){ TP.pts=[]; TP.res=null; q("#tpRes").innerHTML=""; drawPts(); }
-    else if(b.id==="tpFit"){ colRefit(); } else if(b.id==="tpDone"){ profDone(); } else if(b.id==="tpUndo"){ TP.pts.pop(); toolUpd(); } });
+    else if(b.dataset.t) setTool(TP.tool===b.dataset.t?null:b.dataset.t); else if(b.id==="tpClr"){ TP.pts=[]; TP.res=null; SC.fin=false; secHide(); q("#tpRes").innerHTML=""; drawPts(); }
+    else if(b.id==="tpFit"){ colRefit(); } else if(b.id==="tpDone"){ finishProf(); } else if(b.id==="tpUndo"){ TP.pts.pop(); if(TP.pts.length<2) SC.fin=false; toolUpd(); } else if(b.id==="tpNew"){ SC.fin=false; TP.pts=[]; secHide(); drawPts(); guide(); } });
   const hd=panel.querySelector(".tp-hd"); let dg=null; hd.style.cursor="grab"; hd.style.touchAction="none";
   hd.addEventListener("pointerdown",e=>{ if(e.target.closest("button")||innerWidth<=560) return; const r=panel.getBoundingClientRect(); dg={dx:e.clientX-r.left,dy:e.clientY-r.top}; hd.setPointerCapture(e.pointerId); });
   hd.addEventListener("pointermove",e=>{ if(!dg) return; panel.style.left=Math.max(0,Math.min(innerWidth-120,e.clientX-dg.dx))+"px"; panel.style.top=Math.max(0,Math.min(innerHeight-60,e.clientY-dg.dy))+"px"; panel.style.bottom="auto"; });
@@ -19402,7 +19443,7 @@ function showRd(ll,x,y){ const rd=q("#tpRd"); if(!rd) return; const h=elevSync(l
   if(h===null){ rd.innerHTML="<span>Height —</span><small>no data here</small>"; if(tag) tag.hidden=true; return; }
   rd.innerHTML=`<span>${h.toFixed(1)} m</span><small>${esc(sourceOf(ll[0],ll[1]).txt)}</small>`;
   if(tag&&x!=null&&matchMedia("(hover:hover)").matches&&!panel.contains(document.elementFromPoint(x,y)||panel)){ tag.hidden=false; tag.textContent=h.toFixed(1)+" m"; tag.style.left=(x+14)+"px"; tag.style.top=(y+14)+"px"; } else if(tag) tag.hidden=true; }
-const onMove=e=>{ if(!TP.on||(e.target&&e.target.closest&&e.target.closest("#tpPanel"))){ if(tag) tag.hidden=true; return; } hovE=e; if(hovRaf) return; hovRaf=requestAnimationFrame(()=>{ hovRaf=0; if(!hovE) return; try{ const ll=pointLL(hovE); showRd(ll,hovE.clientX,hovE.clientY); if(elevSync(ll[0],ll[1])===undefined) setTimeout(()=>{ if(TP.on&&hovE) showRd(pointLL(hovE),hovE.clientX,hovE.clientY); },350); }catch(x){} }); };
+const onMove=e=>{ if(!TP.on||(e.target&&e.target.closest&&e.target.closest("#tpPanel,#tpSec"))){ if(tag) tag.hidden=true; return; } hovE=e; if(hovRaf) return; hovRaf=requestAnimationFrame(()=>{ hovRaf=0; if(!hovE) return; try{ const ll=pointLL(hovE); showRd(ll,hovE.clientX,hovE.clientY); if(TP.tool==="prof"){ const P=TP.pts; if(P.length&&!SC.fin){ let tot=0; for(let i=1;i<P.length;i++) tot+=hav(P[i-1],P[i]); const l=P[P.length-1]; drawPts({c:ll,t:fmtD(tot+hav(l,ll)),line:[[l[0],l[1]],ll],hov:0}); } else if(SC.fin||!P.length) nearLine(hovE); } if(elevSync(ll[0],ll[1])===undefined) setTimeout(()=>{ if(TP.on&&hovE) showRd(pointLL(hovE),hovE.clientX,hovE.clientY); },350); }catch(x){} }); };
 const onCentre=()=>{ if(!TP.on||matchMedia("(hover:hover)").matches) return; const c=map.getCenter(); showRd([c.lng,c.lat]); };
 const onZoomEnd=()=>{ if(TP.on) legend(); };
 let styleT=0; const onStyle=()=>{ if(!TP.on) return; clearTimeout(styleT); styleT=setTimeout(()=>{ if(!TP.on||!map.isStyleLoaded()) return; if(!hasS(ID.dem)){ WR.clear(); build(); } },80); };
@@ -19412,55 +19453,138 @@ const R6=6371008.8, rad=d=>d*Math.PI/180;
 const hav=(a,b)=>{ const dp=rad(b[1]-a[1]), dl=rad(b[0]-a[0]); const h=Math.sin(dp/2)**2+Math.cos(rad(a[1]))*Math.cos(rad(b[1]))*Math.sin(dl/2)**2; return 2*R6*Math.asin(Math.min(1,Math.sqrt(h))); };
 const fmtD=m=>m>=1000?(m/1000).toFixed(2)+" km":Math.round(m)+" m";
 const sgn=v=>(v>0?"+":v<0?"−":"")+Math.abs(v).toFixed(1)+" m";
-function setTool(t){ TP.tool=t; TP.pts=[]; TP.res=null; q("#tpRes").innerHTML=""; panel.querySelectorAll("[data-t]").forEach(b=>b.classList.toggle("on",b.dataset.t===t)); document.body.classList.toggle("tp-pick",!!t); drawPts();
-  const h={pt:"Tap the map to read heights.",prof:"Tap points along the line, then press Done (or double-tap).",slope:"Tap point A, then point B."}[t]; if(t) q("#tpRes").innerHTML=`<div class="tp-note" style="margin:0">${h}</div>`; }
-function drawPts(extra){ if(!hasS(ID.pts)) return; const F=[]; const n=TP.pts.length;
-  if((TP.tool==="prof"||TP.tool==="slope")&&n>1) F.push({type:"Feature",properties:{},geometry:{type:"LineString",coordinates:TP.pts.map(p=>[p[0],p[1]])}});
-  TP.pts.forEach((p,i)=>F.push({type:"Feature",properties:{t:p[2]||(TP.tool==="slope"?(i?"B":"A"):""),hov:0},geometry:{type:"Point",coordinates:[p[0],p[1]]}}));
-  if(extra) F.push({type:"Feature",properties:{hov:1,t:extra.t||""},geometry:{type:"Point",coordinates:extra.c}}); try{ map.getSource(ID.pts).setData({type:"FeatureCollection",features:F}); }catch(e){} }
+function setTool(t){ TP.tool=t; TP.pts=[]; TP.res=null; SC.fin=false; secHide(); q("#tpRes").innerHTML=""; panel.querySelectorAll("[data-t]").forEach(b=>b.classList.toggle("on",b.dataset.t===t)); document.body.classList.toggle("tp-pick",!!t); drawPts();
+  const h={pt:"Tap the map to read heights.",prof:"Tap points along the line (distances show on the map). Double-tap, Enter or Finish cuts the section.",slope:"Tap point A, then point B."}[t]; if(t) q("#tpRes").innerHTML=`<div class="tp-note" style="margin:0">${h}</div>`; }
+function drawPts(extra){ if(!hasS(ID.pts)) return; const F=[]; const n=TP.pts.length, pr=TP.tool==="prof";
+  if((pr||TP.tool==="slope")&&n>1) F.push({type:"Feature",properties:{},geometry:{type:"LineString",coordinates:TP.pts.map(p=>[p[0],p[1]])}});
+  let cum=0; TP.pts.forEach((p,i)=>{ let t=p[2]||(TP.tool==="slope"?(i?"B":"A"):""); if(pr){ if(i) cum+=hav(TP.pts[i-1],p); t=i?fmtD(cum):"A"; if(i&&n>2) F.push({type:"Feature",properties:{t:fmtD(hav(TP.pts[i-1],p)),hov:2},geometry:{type:"Point",coordinates:[(p[0]+TP.pts[i-1][0])/2,(p[1]+TP.pts[i-1][1])/2]}}); }
+    F.push({type:"Feature",properties:{t,hov:0},geometry:{type:"Point",coordinates:[p[0],p[1]]}}); });
+  if(extra){ if(extra.line) F.push({type:"Feature",properties:{},geometry:{type:"LineString",coordinates:extra.line}}); F.push({type:"Feature",properties:{hov:extra.hov==null?1:extra.hov,t:extra.t||""},geometry:{type:"Point",coordinates:extra.c}}); } try{ map.getSource(ID.pts).setData({type:"FeatureCollection",features:F}); }catch(e){} }
 async function onPick(ll){ if(TP.tool==="pt"){ const h=await elevAt(ll[0],ll[1]); if(TP.pts.length>=8) TP.pts.shift(); TP.pts.push([ll[0],ll[1],h==null?"—":h.toFixed(1)+" m",h]); drawPts();
     q("#tpRes").innerHTML=TP.pts.slice().reverse().map(p=>`<div class="tp-card"><b>${p[3]==null?"—":p[3].toFixed(1)+" m"}</b>${badge(p[0],p[1])}<div class="tp-kv"><span>Position</span><span>${p[1].toFixed(5)}, ${p[0].toFixed(5)}</span></div></div>`).join(""); return; }
   if(TP.tool==="slope"){ if(TP.pts.length>=2) TP.pts=[]; TP.pts.push([ll[0],ll[1]]); drawPts(); if(TP.pts.length===2) await slopeRes(); else q("#tpRes").innerHTML='<div class="tp-note" style="margin:0">Now tap point B.</div>'; return; }
-  if(TP.tool==="prof"){ TP.pts.push([ll[0],ll[1]]); drawPts(); toolUpd(); } }
-function toolUpd(){ drawPts(); if(TP.tool==="prof"){ if(TP.pts.length>1) profDone(true); else q("#tpRes").innerHTML=`<div class="tp-note" style="margin:0">Tap the next point.</div>`; } }
+  if(TP.tool==="prof"){ if(SC.fin){ TP.pts=[]; SC.fin=false; secHide(); } TP.pts.push([ll[0],ll[1]]); drawPts(); toolUpd(); } }
+function toolUpd(){ drawPts(); if(TP.tool==="prof"){ if(TP.pts.length>1) profDone(); else { SC.fin=false; secHide(); q("#tpRes").innerHTML=TP.pts.length?`<div class="tp-note" style="margin:0">Tap the next point.</div>`:""; if(!TP.pts.length) guide(); } } }
 async function slopeRes(){ const [a,b]=TP.pts, ha=await elevAt(a[0],a[1]), hb=await elevAt(b[0],b[1]), d=hav(a,b); if(ha==null||hb==null){ q("#tpRes").innerHTML='<div class="tp-card">No height data here (—)</div>'; return; }
   a[2]="A "+ha.toFixed(1); b[2]="B "+hb.toFixed(1); drawPts(); const dh=hb-ha, sl=d>0?dh/d*100:0, small=Math.abs(dh)<ERR;
   q("#tpRes").innerHTML=`<div class="tp-card"><b>${Math.abs(sl).toFixed(2)} %</b> ${sl>0?"up":sl<0?"down":"flat"} A→B ${badge(a[0],a[1])}<div class="tp-kv"><span>Distance</span><span>${fmtD(d)}</span><span>Level A</span><span>${ha.toFixed(1)} m</span><span>Level B</span><span>${hb.toFixed(1)} m</span><span>Difference</span><span>${sgn(dh)}</span><span>Angle</span><span>${(Math.atan(Math.abs(dh)/Math.max(d,1e-6))*180/Math.PI).toFixed(2)}°</span></div>${small?`<div class="tp-note">The height difference is smaller than the ±${ERR} m accuracy: treat this slope as an indication only.</div>`:""}</div>`; }
+/* ---------- section: a drawn line with distances, a profile and a 3D block, linked to the map ---------- */
+const SC={v:"2d",hov:null,src:"",yaw:-.38,pitch:.5,ex:3,grid:null,fin:false,tok:0,pts3:[],drag:null};
 let profData=null;
-async function profDone(live){ const P=TP.pts; if(P.length<2){ q("#tpRes").innerHTML='<div class="tp-note" style="margin:0">Tap at least two points.</div>'; return; }
-  const seg=[0]; for(let i=1;i<P.length;i++) seg.push(seg[i-1]+hav(P[i-1],P[i])); const L=seg[seg.length-1]; if(L<1){ return; }
-  const step=Math.max(15,L/240), N=Math.max(2,Math.ceil(L/step)+1), S=[];
+const nice=(lo,hi,n)=>{ const r=Math.max(1e-9,hi-lo), raw=r/n, p=Math.pow(10,Math.floor(Math.log10(raw))), f=raw/p, s=(f<1.5?1:f<3?2:f<7?5:10)*p, a=[]; for(let v=Math.ceil(lo/s)*s; v<=hi+1e-9; v+=s) a.push(+v.toFixed(6)); return a; };
+const slpCol=s=>{ s=Math.abs(s); for(const c of SLP) if(s<c[0]) return c[1]; return SLP[SLP.length-1][1]; };
+const rampAt=t=>{ t=Math.max(0,Math.min(1,t))*(RAMP.length-1); const i=Math.min(RAMP.length-2,Math.floor(t)), f=t-i, a=hexRGB(RAMP[i]), b=hexRGB(RAMP[i+1]); return [0,1,2].map(k=>a[k]+(b[k]-a[k])*f); };
+const dock=()=>q("#tpSec");
+const guide=()=>{ q("#tpRes").innerHTML='<div class="tp-note" style="margin:0">Tap points along the line (distances show on the map). Double-tap, Enter or Finish to cut the section.</div>'; };
+function secHide(){ SC.tok++; SC.hov=null; SC.grid=null; profData=null; const d=dock(); if(d) d.hidden=true; }
+function hovPt(d){ const pd=profData; if(!pd||d==null) return null; const V=pd.V; let i=0; while(i<V.length-2&&V[i+1].d<d) i++; const a=V[i], b=V[i+1], f=b.d>a.d?Math.max(0,Math.min(1,(d-a.d)/(b.d-a.d))):0;
+  return {d:a.d+(b.d-a.d)*f,h:a.h+(b.h-a.h)*f,c:[a.c[0]+(b.c[0]-a.c[0])*f,a.c[1]+(b.c[1]-a.c[1])*f],sl:b.d>a.d?(b.h-a.h)/(b.d-a.d)*100:0}; }
+function secRead(b){ const el=q("#scRd"); if(!el||!profData) return; const V=profData.V;
+  if(!b){ el.innerHTML='<span class="mut">Move along the chart (or along the line on the map) to read the level</span>'; return; }
+  const dv=b.h-V[0].h; el.innerHTML=`<span>Distance <b>${fmtD(b.d)}</b></span><span>Level <b>${b.h.toFixed(1)} m</b></span><span>Slope <b style="color:${slpCol(b.sl)}">${b.sl>0?"+":b.sl<0?"−":""}${Math.abs(b.sl).toFixed(1)} %</b></span><span>vs start <b>${sgn(dv)}</b></span>`; }
+function setHov(d,src){ SC.hov=d; SC.src=src||""; secDraw(); const b=hovPt(d); secRead(b); if(b) drawPts({c:b.c,t:b.h.toFixed(1)+" m"}); else drawPts(); }
+function secShow(){ const d=dock(), pd=profData; if(!d||!pd) return; d.hidden=false; if(innerWidth<=900) panel.classList.add("min");
+  q("#scLen").textContent=fmtD(pd.L); const s=sourceOf(pd.P[0][0],pd.P[0][1]), sp=q("#scSrc"); sp.textContent=s.txt; sp.classList.toggle("sv",s.kind==="sv");
+  q("#scSt").innerHTML=[["Start",pd.V[0].h.toFixed(1)+" m"],["End",pd.V[pd.V.length-1].h.toFixed(1)+" m"],["Net",sgn(pd.net)],["Lowest",pd.mn.h.toFixed(1)+" m"],["Highest",pd.mx.h.toFixed(1)+" m"],["Rise",pd.rise.toFixed(1)+" m"],["Fall",pd.fall.toFixed(1)+" m"],["Avg slope",pd.avgS.toFixed(1)+" %"],["Max slope",pd.maxS.toFixed(1)+" %"]].map(a=>`<div><small>${a[0]}</small><b>${a[1]}</b></div>`).join("");
+  q("#scEx").value=SC.ex; q("#scExV").textContent=SC.ex; q("#scExW").hidden=SC.v!=="3d"; secRead(hovPt(SC.hov)); secDraw(); }
+function sizeCv(){ const c=q("#scCv"); if(!c) return null; const dpr=Math.min(2,window.devicePixelRatio||1), W=c.clientWidth, H=c.clientHeight; if(W<10||H<10) return null; if(c.width!==Math.round(W*dpr)||c.height!==Math.round(H*dpr)){ c.width=Math.round(W*dpr); c.height=Math.round(H*dpr); } const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); return {c,g,W,H}; }
+function secDraw(){ const d=dock(); if(!d||d.hidden||!profData) return; if(SC.v==="3d") sec3D(); else sec2D(); }
+function sec2D(){ const z=sizeCv(); if(!z) return; const {c,g,W,H}=z, {V,mn,mx,L,seg}=profData, padL=44, padR=14, padT=24, padB=24;
+  let lo=mn.h, hi=mx.h; if(hi-lo<2){ lo-=1; hi+=1; } const m=(hi-lo)*.12; lo-=m; hi+=m*1.4;
+  const X=d=>padL+(d/L)*(W-padL-padR), Y=h=>padT+(1-(h-lo)/(hi-lo))*(H-padT-padB); c._g={padL,padR,W};
+  g.font="10px -apple-system,Inter,sans-serif"; g.lineWidth=1; g.textBaseline="alphabetic";
+  nice(lo,hi,4).forEach(h=>{ const y=Y(h); g.strokeStyle="rgba(255,255,255,.1)"; g.beginPath(); g.moveTo(padL,y); g.lineTo(W-padR,y); g.stroke(); g.fillStyle="rgba(255,255,255,.65)"; g.textAlign="right"; g.fillText(h%1?h.toFixed(1):h+" m",padL-5,y+3); });
+  g.textAlign="center"; nice(0,L,Math.max(2,Math.floor((W-padL-padR)/90))).forEach(d=>{ const x=X(d); g.strokeStyle="rgba(255,255,255,.07)"; g.beginPath(); g.moveTo(x,padT); g.lineTo(x,H-padB); g.stroke(); g.fillStyle="rgba(255,255,255,.65)"; g.fillText(fmtD(d),Math.min(W-18,Math.max(padL+8,x)),H-8); });
+  const gr=g.createLinearGradient(0,padT,0,H-padB); gr.addColorStop(0,"rgba(255,210,90,.38)"); gr.addColorStop(1,"rgba(255,210,90,.03)");
+  g.beginPath(); V.forEach((s,i)=>{ i?g.lineTo(X(s.d),Y(s.h)):g.moveTo(X(s.d),Y(s.h)); }); g.lineTo(X(V[V.length-1].d),H-padB); g.lineTo(X(V[0].d),H-padB); g.closePath(); g.fillStyle=gr; g.fill();
+  for(let i=1;i<seg.length-1;i++){ const x=X(seg[i]); g.setLineDash([3,3]); g.strokeStyle="rgba(255,255,255,.35)"; g.beginPath(); g.moveTo(x,padT); g.lineTo(x,H-padB); g.stroke(); g.setLineDash([]); g.fillStyle="rgba(255,255,255,.8)"; g.fillText(String(i),x,padT-8); }
+  g.lineWidth=2.6; g.lineJoin="round"; g.lineCap="round"; for(let i=1;i<V.length;i++){ g.strokeStyle=slpCol((V[i].h-V[i-1].h)/Math.max(1e-6,V[i].d-V[i-1].d)*100); g.beginPath(); g.moveTo(X(V[i-1].d),Y(V[i-1].h)); g.lineTo(X(V[i].d),Y(V[i].h)); g.stroke(); }
+  const lab=(p,col,up)=>{ const x=X(p.d), y=Y(p.h); g.beginPath(); g.arc(x,y,4,0,7); g.fillStyle=col; g.fill(); g.strokeStyle="#fff"; g.lineWidth=1.5; g.stroke(); g.fillStyle="#fff"; g.font="700 10px -apple-system,Inter,sans-serif"; g.textAlign=x>W-70?"right":x<padL+40?"left":"center"; g.fillText((up?"▲ ":"▼ ")+p.h.toFixed(1)+" m",x+(g.textAlign==="right"?6:g.textAlign==="left"?-6:0),y+(up?-9:16)); g.font="10px -apple-system,Inter,sans-serif"; };
+  lab(mx,"#ff453a",true); if(mn!==mx) lab(mn,"#5ac8fa",false);
+  g.fillStyle="rgba(255,255,255,.9)"; g.font="700 10px -apple-system,Inter,sans-serif"; g.textAlign="left"; g.fillText("A",X(0)+5,padT-8); g.textAlign="right"; g.fillText("B",X(L)-2,padT-8);
+  g.font="10px -apple-system,Inter,sans-serif"; g.fillStyle="rgba(255,255,255,.5)"; g.textAlign="right"; g.fillText("height ×"+(((H-padT-padB)/(hi-lo))/((W-padL-padR)/L)).toFixed(1)+" · line colour = slope",W-padR,12);
+  const b=hovPt(SC.hov); if(b){ const x=X(b.d), y=Y(b.h); g.strokeStyle="rgba(255,255,255,.85)"; g.lineWidth=1; g.beginPath(); g.moveTo(x,padT); g.lineTo(x,H-padB); g.stroke(); g.beginPath(); g.moveTo(padL,y); g.lineTo(x,y); g.setLineDash([2,3]); g.stroke(); g.setLineDash([]);
+    g.beginPath(); g.arc(x,y,5.5,0,7); g.fillStyle="#ffd60a"; g.fill(); g.strokeStyle="#fff"; g.lineWidth=2; g.stroke();
+    const t1=b.h.toFixed(1)+" m", t2=fmtD(b.d); g.font="700 11px -apple-system,Inter,sans-serif"; const w=Math.max(g.measureText(t1).width,g.measureText(t2).width)+14, bx=Math.min(W-w-2,Math.max(padL,x-w/2)), by=Math.max(2,y-46);
+    g.fillStyle="rgba(20,20,22,.9)"; g.beginPath(); if(g.roundRect) g.roundRect(bx,by,w,32,7); else g.rect(bx,by,w,32); g.fill(); g.fillStyle="#ffd60a"; g.textAlign="center"; g.fillText(t1,bx+w/2,by+14); g.fillStyle="rgba(255,255,255,.8)"; g.font="10px -apple-system,Inter,sans-serif"; g.fillText(t2,bx+w/2,by+26); } }
+async function secGrid(){ const pd=profData; if(!pd) return null; if(SC.grid&&SC.grid.key===pd.key) return SC.grid; const tok=SC.tok, W=Math.max(30,Math.min(400,pd.L*.22)), M=7, st=Math.max(1,Math.ceil(pd.S.length/110)), cols=[];
+  for(let i=0;i<pd.S.length;i+=st) cols.push(i); if(cols[cols.length-1]!==pd.S.length-1) cols.push(pd.S.length-1);
+  const job=[]; cols.forEach((ci,k)=>{ const a=pd.S[Math.max(0,ci-st)], b=pd.S[Math.min(pd.S.length-1,ci+st)], cl=Math.cos(rad(pd.S[ci].c[1])); let dx=(b.c[0]-a.c[0])*cl*111320, dy=(b.c[1]-a.c[1])*111320; const n=Math.hypot(dx,dy)||1; dx/=n; dy/=n;
+    for(let r=0;r<M;r++){ const v=W*r/(M-1), lon=pd.S[ci].c[0]+(-dy*v)/(111320*cl), lat=pd.S[ci].c[1]+(dx*v)/111320; job.push(r===0&&pd.S[ci].h!=null?Promise.resolve(pd.S[ci].h):elevAt(lon,lat)); } });
+  const H=await Promise.all(job); if(tok!==SC.tok||!profData||profData.key!==pd.key) return null; let hmin=1e9,hmax=-1e9; const Z=cols.map((ci,k)=>{ const h=[]; for(let r=0;r<M;r++){ const v=H[k*M+r]; h.push(v); if(v!=null){ hmin=Math.min(hmin,v); hmax=Math.max(hmax,v); } } return {d:pd.S[ci].d,h}; });
+  if(hmin>hmax) return null; Z.forEach((c,k)=>{ for(let r=0;r<M;r++) if(c.h[r]==null){ let v=null; for(let o=1;o<M&&v==null;o++){ v=c.h[r-o]!=null?c.h[r-o]:c.h[r+o]!=null?c.h[r+o]:null; } if(v==null) v=(Z[k-1]&&Z[k-1].h[r])||(Z[k+1]&&Z[k+1].h[r])||hmin; c.h[r]=v; } });
+  SC.grid={key:pd.key,W,M,cols:Z,hmin,hmax}; return SC.grid; }
+function sec3D(){ const z=sizeCv(); if(!z) return; const {g,W,H}=z, G=SC.grid, pd=profData;
+  g.textBaseline="alphabetic"; if(!G){ g.fillStyle="rgba(255,255,255,.7)"; g.font="12px -apple-system,Inter,sans-serif"; g.textAlign="center"; g.fillText("Building the 3D block …",W/2,H/2); secGrid().then(()=>{ if(SC.v==="3d") secDraw(); }); return; }
+  const L=pd.L, ex=SC.ex, span=Math.max(2,G.hmax-G.hmin), base=G.hmin-Math.max(2,span*.22), cy=Math.cos(SC.yaw), sy=Math.sin(SC.yaw), cp=Math.cos(SC.pitch), sp=Math.sin(SC.pitch), Wd=G.W, M=G.M, N=G.cols.length;
+  const P=(d,v,h)=>{ const u=d-L/2, w=(h-base)*ex, vv=v-Wd/2, x=u*cy-vv*sy, y=u*sy+vv*cy; return [x,y*sp+w*cp,y*cp-w*sp]; };
+  const wmax=(G.hmax-base)*ex; let x0=1e18,x1=-1e18,y0=1e18,y1=-1e18; [[0,0],[L,0],[0,Wd],[L,Wd]].forEach(a=>[base,G.hmax].forEach(h=>{ const p=P(a[0],a[1],h); x0=Math.min(x0,p[0]); x1=Math.max(x1,p[0]); y0=Math.min(y0,p[1]); y1=Math.max(y1,p[1]); }));
+  const mg=16, top=34, bot=22, s=Math.min((W-2*mg)/Math.max(1,x1-x0),(H-top-bot)/Math.max(1,y1-y0)), ox=W/2-(x0+x1)/2*s, oy=top+(H-top-bot)/2+(y0+y1)/2*s;
+  const T=(d,v,h)=>{ const p=P(d,v,h); return [ox+p[0]*s,oy-p[1]*s,p[2]]; };
+  const polys=[], tone=(c,k)=>"rgb("+c.map(x=>Math.round(Math.max(0,Math.min(255,x*k)))).join(",")+")", rng=Math.max(1e-6,G.hmax-G.hmin);
+  const face=(pts,col,nx,ny,nz)=>{ const n2=nx*sy+ny*cy; if(-n2*cp+nz*sp<=0) return; polys.push({p:pts,col,z:pts.reduce((a,q)=>a+q[2],0)/pts.length}); };
+  for(let i=0;i<N-1;i++){ const a=G.cols[i], b=G.cols[i+1];
+    for(let r=0;r<M-1;r++){ const v0=Wd*r/(M-1), v1=Wd*(r+1)/(M-1), h00=a.h[r], h10=b.h[r], h11=b.h[r+1], h01=a.h[r+1], du=b.d-a.d||1, dv=v1-v0, dhu=(h10+h11-h00-h01)/2/du*ex, dhv=(h01+h11-h00-h10)/2/dv*ex, nl=Math.hypot(dhu,dhv,1), lit=.62+.5*Math.max(-.6,Math.min(1,(-dhu*.5-dhv*.35+.8)/nl));
+      const hm=(h00+h10+h11+h01)/4, col=tone(rampAt((hm-G.hmin)/rng),lit), pts=[T(a.d,v0,h00),T(b.d,v0,h10),T(b.d,v1,h11),T(a.d,v1,h01)]; polys.push({p:pts,col,z:pts.reduce((q,w)=>q+w[2],0)/4}); }
+    const f0=a.h[0], f1=b.h[0]; face([T(a.d,0,f0),T(b.d,0,f1),T(b.d,0,base),T(a.d,0,base)],"#d9b878",0,-1,0);
+    const g0=a.h[M-1], g1=b.h[M-1]; face([T(a.d,Wd,g0),T(b.d,Wd,g1),T(b.d,Wd,base),T(a.d,Wd,base)],"#8c7a5a",0,1,0); }
+  for(let r=0;r<M-1;r++){ const v0=Wd*r/(M-1), v1=Wd*(r+1)/(M-1), a=G.cols[0], b=G.cols[N-1]; face([T(0,v0,a.h[r]),T(0,v1,a.h[r+1]),T(0,v1,base),T(0,v0,base)],"#a89160",-1,0,0); face([T(L,v0,b.h[r]),T(L,v1,b.h[r+1]),T(L,v1,base),T(L,v0,base)],"#a89160",1,0,0); }
+  polys.sort((p,q)=>q.z-p.z); polys.forEach(o=>{ g.beginPath(); o.p.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1])); g.closePath(); g.fillStyle=o.col; g.fill(); g.strokeStyle=o.col; g.lineWidth=.7; g.stroke(); });
+  SC.pts3=[]; const edge=[]; G.cols.forEach(c=>{ const t=T(c.d,0,c.h[0]); edge.push(t); SC.pts3.push({x:t[0],y:t[1],d:c.d}); });
+  g.lineJoin="round"; g.lineCap="round"; g.lineWidth=3; for(let i=1;i<edge.length;i++){ g.strokeStyle=slpCol((G.cols[i].h[0]-G.cols[i-1].h[0])/Math.max(1e-6,G.cols[i].d-G.cols[i-1].d)*100); g.beginPath(); g.moveTo(edge[i-1][0],edge[i-1][1]); g.lineTo(edge[i][0],edge[i][1]); g.stroke(); }
+  [[0,"A"],[L,"B"]].forEach(a=>{ const c=a[0]?G.cols[N-1]:G.cols[0], t=T(a[0],0,c.h[0]); g.fillStyle="#fff"; g.font="700 11px -apple-system,Inter,sans-serif"; g.textAlign="center"; g.fillText(a[1],t[0],t[1]-8); });
+  const b=hovPt(SC.hov); if(b){ let k=0; for(let i=0;i<N-1;i++) if(G.cols[i+1].d<b.d) k=i+1; const a=G.cols[k], c2=G.cols[Math.min(N-1,k+1)], f=c2.d>a.d?Math.max(0,Math.min(1,(b.d-a.d)/(c2.d-a.d))):0, h=a.h[0]+(c2.h[0]-a.h[0])*f, t=T(b.d,0,h), t0=T(b.d,0,base);
+    g.setLineDash([3,3]); g.strokeStyle="rgba(255,255,255,.85)"; g.lineWidth=1.2; g.beginPath(); g.moveTo(t0[0],t0[1]); g.lineTo(t[0],t[1]); g.stroke(); g.setLineDash([]); g.beginPath(); g.arc(t[0],t[1],6,0,7); g.fillStyle="#ffd60a"; g.fill(); g.strokeStyle="#fff"; g.lineWidth=2; g.stroke();
+    const t1=h.toFixed(1)+" m · "+fmtD(b.d); g.font="700 11px -apple-system,Inter,sans-serif"; const w=g.measureText(t1).width+14, bx=Math.min(W-w-2,Math.max(2,t[0]-w/2)), by=Math.max(2,t[1]-34); g.fillStyle="rgba(20,20,22,.9)"; g.beginPath(); if(g.roundRect) g.roundRect(bx,by,w,20,7); else g.rect(bx,by,w,20); g.fill(); g.fillStyle="#ffd60a"; g.textAlign="center"; g.fillText(t1,bx+w/2,by+14); }
+  g.font="10px -apple-system,Inter,sans-serif"; g.fillStyle="rgba(255,255,255,.55)"; g.textAlign="left"; g.fillText("Front face = your line · drag to rotate · double-tap resets",8,12); g.fillText("terrain "+Math.round(Wd)+" m deep · height ×"+ex,8,H-8);
+  const gx=W-120, gy=H-14; const gr=g.createLinearGradient(gx,0,gx+100,0); RAMP.forEach((c,i)=>gr.addColorStop(i/(RAMP.length-1),c)); g.fillStyle=gr; g.fillRect(gx,gy-6,100,6); g.fillStyle="rgba(255,255,255,.7)"; g.textAlign="left"; g.fillText(G.hmin.toFixed(0),gx,gy+8); g.textAlign="right"; g.fillText(G.hmax.toFixed(0)+" m",gx+100,gy+8); }
+function dl(name,blob){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },600); }
+function secCsv(){ const pd=profData; if(!pd) return; const rows=["distance_m,level_m,slope_pct,lat,lon,source"]; pd.V.forEach((s,i)=>{ const a=pd.V[Math.max(0,i-1)], b=pd.V[Math.min(pd.V.length-1,i+1)], sl=b.d>a.d?(b.h-a.h)/(b.d-a.d)*100:0; rows.push([s.d.toFixed(1),s.h.toFixed(2),sl.toFixed(2),s.c[1].toFixed(6),s.c[0].toFixed(6),sourceOf(s.c[0],s.c[1]).txt].join(",")); }); dl("land-section-"+Math.round(pd.L)+"m.csv",new Blob([rows.join("\n")],{type:"text/csv"})); }
+function secPng(){ const c=q("#scCv"); if(c) c.toBlob(b=>{ if(b) dl("land-section-"+SC.v+".png",b); }); }
+function secPick3(x,y){ let best=null,bd=40; SC.pts3.forEach(p=>{ const d=Math.hypot(p.x-x,p.y-y); if(d<bd){ bd=d; best=p; } }); setHov(best?best.d:null,"chart"); }
+function secEvents(){ const d=dock(), cv=q("#scCv"); if(!d||d._b) return; d._b=1;
+  d.addEventListener("pointerdown",e=>e.stopPropagation()); d.addEventListener("wheel",e=>e.stopPropagation(),{passive:true}); d.addEventListener("dblclick",e=>e.stopPropagation());
+  d.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; if(b.id==="scX"){ SC.fin=false; TP.pts=[]; secHide(); drawPts(); guide(); } else if(b.id==="scCsv") secCsv(); else if(b.id==="scPng") secPng(); else if(b.dataset.v){ SC.v=b.dataset.v; d.querySelectorAll("[data-v]").forEach(x=>x.classList.toggle("on",x===b)); q("#scExW").hidden=SC.v!=="3d"; if(SC.v==="3d") secGrid().then(()=>secDraw()); secDraw(); } });
+  q("#scEx").addEventListener("input",e=>{ SC.ex=+e.target.value; q("#scExV").textContent=SC.ex; secDraw(); });
+  const pos=e=>{ const r=cv.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]; };
+  cv.addEventListener("pointerdown",e=>{ if(!profData) return; try{ cv.setPointerCapture(e.pointerId); }catch(x){} const p=pos(e); if(SC.v==="3d") SC.drag={x:e.clientX,y:e.clientY,moved:false,p}; else setHov(Math.max(0,Math.min(profData.L,(p[0]-cv._g.padL)/(cv._g.W-cv._g.padL-cv._g.padR)*profData.L)),"chart"); });
+  cv.addEventListener("pointermove",e=>{ if(!profData) return; const p=pos(e);
+    if(SC.v==="2d"){ if(!cv._g||(e.pointerType!=="mouse"&&e.buttons===0)) return; setHov(Math.max(0,Math.min(profData.L,(p[0]-cv._g.padL)/(cv._g.W-cv._g.padL-cv._g.padR)*profData.L)),"chart"); return; }
+    if(SC.drag){ const dx=e.clientX-SC.drag.x, dy=e.clientY-SC.drag.y; if(Math.hypot(dx,dy)>3) SC.drag.moved=true; if(SC.drag.moved){ SC.yaw+=dx*.008; SC.pitch=Math.max(.12,Math.min(1.45,SC.pitch+dy*.006)); SC.drag.x=e.clientX; SC.drag.y=e.clientY; secDraw(); } }
+    else if(e.pointerType==="mouse") secPick3(p[0],p[1]); });
+  cv.addEventListener("pointerup",e=>{ const d0=SC.drag; SC.drag=null; if(d0&&!d0.moved) secPick3(d0.p[0],d0.p[1]); });
+  cv.addEventListener("pointerleave",e=>{ if(!SC.drag&&e.pointerType==="mouse") setHov(null); });
+  cv.addEventListener("dblclick",()=>{ if(SC.v==="3d"){ SC.yaw=-.38; SC.pitch=.5; secDraw(); } });
+  window.addEventListener("resize",()=>{ if(!d.hidden) secDraw(); }); }
+function nearLine(e){ const pd=profData, d=dock(); if(!pd||!d||d.hidden) return; const r=map.getContainer().getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top; let best=null, bd=26;
+  for(let i=0;i<pd.V.length;i++){ const p=map.project(pd.V[i].c), dd=Math.hypot(p.x-mx,p.y-my); if(dd<bd){ bd=dd; best=pd.V[i]; } }
+  if(best){ if(SC.hov==null||Math.abs(SC.hov-best.d)>1e-6) setHov(best.d,"map"); } else if(SC.hov!=null&&SC.src==="map") setHov(null); }
+async function profDone(){ const P=TP.pts; if(P.length<2){ secHide(); guide(); return; }
+  const seg=[0]; for(let i=1;i<P.length;i++) seg.push(seg[i-1]+hav(P[i-1],P[i])); const L=seg[seg.length-1]; if(L<1) return;
+  const step=Math.max(10,L/300), N=Math.max(2,Math.ceil(L/step)+1), S=[], tok=++SC.tok;
   for(let i=0;i<N;i++){ const d=L*i/(N-1); let j=1; while(j<seg.length-1&&seg[j]<d) j++; const f=(d-seg[j-1])/Math.max(1e-9,seg[j]-seg[j-1]); S.push({d,c:[P[j-1][0]+(P[j][0]-P[j-1][0])*f,P[j-1][1]+(P[j][1]-P[j-1][1])*f]}); }
-  const H=await Promise.all(S.map(s=>elevAt(s.c[0],s.c[1]))); if(TP.tool!=="prof"&&!live) return; S.forEach((s,i)=>s.h=H[i]);
-  const V=S.filter(s=>s.h!=null); if(V.length<2){ q("#tpRes").innerHTML='<div class="tp-card">No height data along this line (—)</div>'; return; }
-  let mn=V[0],mx=V[0],rise=0,fall=0; for(let i=0;i<V.length;i++){ if(V[i].h<mn.h) mn=V[i]; if(V[i].h>mx.h) mx=V[i]; if(i){ const dh=V[i].h-V[i-1].h; if(dh>0) rise+=dh; else fall-=dh; } }
-  const net=V[V.length-1].h-V[0].h; profData={S,V,mn,mx,L};
-  q("#tpRes").innerHTML=`<div class="tp-card"><b>Profile ${fmtD(L)}</b>${badge(P[0][0],P[0][1])}<canvas id="tpCv" aria-label="Profile chart"></canvas><div class="tp-kv"><span>Lowest</span><span>${mn.h.toFixed(1)} m at ${fmtD(mn.d)}</span><span>Highest</span><span>${mx.h.toFixed(1)} m at ${fmtD(mx.d)}</span><span>Start → end</span><span>${V[0].h.toFixed(1)} → ${V[V.length-1].h.toFixed(1)} m (${sgn(net)})</span><span>Total rise</span><span>${rise.toFixed(1)} m</span><span>Total fall</span><span>${fall.toFixed(1)} m</span></div>
-   <div class="tp-bts" style="margin-top:6px">${live?'<button class="tp-bt sm" id="tpDone">Done</button>':''}<button class="tp-bt sm" id="tpUndo">Undo last point</button></div><div class="tp-note">Sampled every ${Math.round(step)} m. Rise and fall add up small model noise: read them as an indication.</div></div>`;
-  chart(); }
-function chart(hoverX){ const c=q("#tpCv"); if(!c||!profData) return; const dpr=Math.min(2,window.devicePixelRatio||1), W=c.clientWidth||290, Hh=118; c.width=W*dpr; c.height=Hh*dpr; const g=c.getContext("2d"); g.scale(dpr,dpr);
-  const {V,mn,mx,L}=profData, padL=36, padR=6, padT=8, padB=16; let lo=mn.h, hi=mx.h; if(hi-lo<2){ lo-=1; hi+=1; } const m=(hi-lo)*.08; lo-=m; hi+=m;
-  const X=d=>padL+(d/L)*(W-padL-padR), Y=h=>padT+(1-(h-lo)/(hi-lo))*(Hh-padT-padB);
-  g.fillStyle="rgba(255,255,255,.05)"; g.fillRect(padL,padT,W-padL-padR,Hh-padT-padB); g.font="10px -apple-system,Inter,sans-serif"; g.fillStyle="rgba(255,255,255,.7)"; g.strokeStyle="rgba(255,255,255,.12)"; g.lineWidth=1;
-  for(let i=0;i<=3;i++){ const h=lo+(hi-lo)*i/3, y=Y(h); g.beginPath(); g.moveTo(padL,y); g.lineTo(W-padR,y); g.stroke(); g.textAlign="right"; g.fillText(h.toFixed(1),padL-4,y+3); }
-  g.textAlign="center"; for(let i=0;i<=4;i++){ const d=L*i/4; g.fillText(fmtD(d),Math.min(W-22,Math.max(padL+10,X(d))),Hh-3); }
-  g.beginPath(); V.forEach((s,i)=>{ i?g.lineTo(X(s.d),Y(s.h)):g.moveTo(X(s.d),Y(s.h)); }); g.strokeStyle="#ffd25a"; g.lineWidth=2; g.stroke(); g.lineTo(X(V[V.length-1].d),Hh-padB); g.lineTo(X(V[0].d),Hh-padB); g.closePath(); g.fillStyle="rgba(255,210,90,.16)"; g.fill();
-  [[mn,"#5ac8fa"],[mx,"#ff453a"]].forEach(([p,col])=>{ g.beginPath(); g.arc(X(p.d),Y(p.h),3.5,0,7); g.fillStyle=col; g.fill(); });
-  if(hoverX!=null){ const d=Math.max(0,Math.min(L,(hoverX-padL)/(W-padL-padR)*L)); let b=V[0]; V.forEach(s=>{ if(Math.abs(s.d-d)<Math.abs(b.d-d)) b=s; }); g.strokeStyle="rgba(255,255,255,.7)"; g.beginPath(); g.moveTo(X(b.d),padT); g.lineTo(X(b.d),Hh-padB); g.stroke();
-    g.fillStyle="#fff"; g.textAlign=X(b.d)>W/2?"right":"left"; g.fillText(b.h.toFixed(1)+" m · "+fmtD(b.d),X(b.d)+(X(b.d)>W/2?-5:5),padT+9); drawPts({c:b.c,t:b.h.toFixed(1)}); } else drawPts();
-  c.onpointermove=e=>{ const r=c.getBoundingClientRect(); chart(e.clientX-r.left); }; c.onpointerleave=()=>chart(); }
-function profDoneDbl(){ if(TP.tool==="prof"&&TP.pts.length>1){ TP.pts.pop(); profDone(); setTool(null); } }
+  const H=await Promise.all(S.map(s=>elevAt(s.c[0],s.c[1]))); if(tok!==SC.tok||TP.tool!=="prof") return; S.forEach((s,i)=>s.h=H[i]);
+  const V=S.filter(s=>s.h!=null); if(V.length<2){ secHide(); q("#tpRes").innerHTML='<div class="tp-card">No height data along this line (—)</div>'; return; }
+  let mn=V[0],mx=V[0],rise=0,fall=0,maxS=0,sumS=0; for(let i=0;i<V.length;i++){ if(V[i].h<mn.h) mn=V[i]; if(V[i].h>mx.h) mx=V[i]; if(i){ const dh=V[i].h-V[i-1].h, sl=Math.abs(dh)/Math.max(1e-6,V[i].d-V[i-1].d)*100; if(dh>0) rise+=dh; else fall-=dh; sumS+=sl; } }
+  /* the maximum is read over about 3 samples, so a single noisy cell does not decide it */
+  const w=3; for(let i=w;i<V.length;i++){ const sl=Math.abs(V[i].h-V[i-w].h)/Math.max(1e-6,V[i].d-V[i-w].d)*100; if(sl>maxS) maxS=sl; } if(V.length<=w) maxS=sumS/Math.max(1,V.length-1);
+  const net=V[V.length-1].h-V[0].h, avgS=(rise+fall)/L*100; const key=P.map(p=>p[0].toFixed(6)+","+p[1].toFixed(6)).join(";");
+  const nk=profData&&profData.key===key; profData={S,V,mn,mx,L,seg,P:P.map(p=>[p[0],p[1]]),rise,fall,maxS,avgS,net,key,step}; if(!nk){ SC.grid=null; SC.hov=null; SC.ex=Math.max(1,Math.min(10,Math.round(L*.12/Math.max(2,mx.h-mn.h)*2)/2)); }
+  q("#tpRes").innerHTML=`<div class="tp-card"><b>Section ${fmtD(L)}</b>${badge(P[0][0],P[0][1])}<div class="tp-kv"><span>Start → end</span><span>${V[0].h.toFixed(1)} → ${V[V.length-1].h.toFixed(1)} m (${sgn(net)})</span><span>Lowest</span><span>${mn.h.toFixed(1)} m at ${fmtD(mn.d)}</span><span>Highest</span><span>${mx.h.toFixed(1)} m at ${fmtD(mx.d)}</span></div>
+   <div class="tp-bts" style="margin-top:6px">${SC.fin?'':'<button class="tp-bt sm" id="tpDone">Finish line</button>'}<button class="tp-bt sm" id="tpUndo">Undo last point</button><button class="tp-bt sm" id="tpNew">New line</button></div><div class="tp-note">Chart, 3D block and CSV are in the section window. Sampled every ${Math.round(step)} m. Rise and fall add up small model noise: read them as an indication.</div></div>`;
+  secEvents(); secShow(); if(SC.v==="3d") secGrid().then(()=>secDraw()); drawPts(); }
+function finishProf(){ if(TP.tool!=="prof"||TP.pts.length<2) return; SC.fin=true; profDone(); }
 
 /* picking: a tap that did not move picks a point; a drag pans (in sketch mode the sketch canvas is blocked while a tool is on) */
 let dn=null;
 const sk=()=>document.body.classList.contains("sk-on");
-const inMap=e=>{ const c=map.getContainer(); return c&&c.contains(e.target)&&!(e.target.closest&&e.target.closest("#tpPanel,#skUI .sk-tools,#skUI .sk-top,.maplibregl-ctrl")); };
+const inMap=e=>{ const c=map.getContainer(); return c&&c.contains(e.target)&&!(e.target.closest&&e.target.closest("#tpPanel,#tpSec,#skUI .sk-tools,#skUI .sk-top,.maplibregl-ctrl")); };
 const onDown=e=>{ if(!TP.on||!TP.tool||!inMap(e)||e.button>0) return; dn={x:e.clientX,y:e.clientY,t:Date.now(),px:e.clientX,py:e.clientY,moved:false}; if(sk()){ e.stopPropagation(); e.preventDefault(); } };
 const onMoveP=e=>{ if(!dn) return; const dx=e.clientX-dn.px, dy=e.clientY-dn.py; if(!dn.moved&&Math.hypot(e.clientX-dn.x,e.clientY-dn.y)>6) dn.moved=true;
   if(dn.moved&&sk()){ e.stopPropagation(); map.panBy([-dx,-dy],{animate:false}); } dn.px=e.clientX; dn.py=e.clientY; };
-const onUp=e=>{ if(!dn){ return; } const d=dn; dn=null; if(sk()){ e.stopPropagation(); } if(!d.moved&&TP.on&&TP.tool){ try{ const now=Date.now(); const ll=pointLL(e); if(TP.tool==="prof"&&d.t-(onUp.last||0)<350&&TP.pts.length>1){ onUp.last=0; TP.pts.pop(); profDone(); setTool(null); return; } onUp.last=d.t; onPick(ll); }catch(x){} } };
+const onUp=e=>{ if(!dn){ return; } const d=dn; dn=null; if(sk()){ e.stopPropagation(); } if(!d.moved&&TP.on&&TP.tool){ try{ const now=Date.now(); const ll=pointLL(e); if(TP.tool==="prof"&&d.t-(onUp.last||0)<350&&TP.pts.length>1){ onUp.last=0; finishProf(); return; } onUp.last=d.t; onPick(ll); }catch(x){} } };
 const onClickCap=e=>{ if(TP.on&&TP.tool&&inMap(e)){ e.stopPropagation(); e.stopImmediatePropagation(); } };
-const onKey=e=>{ if(!TP.on) return; if(e.key==="Escape"&&TP.tool){ setTool(null); } else if(e.key==="Enter"&&TP.tool==="prof") profDone(); };
+const onKey=e=>{ if(!TP.on) return; if(e.key==="Escape"&&TP.tool){ if(TP.tool==="prof"&&!SC.fin&&TP.pts.length>1) finishProf(); else setTool(null); } else if(e.key==="Enter"&&TP.tool==="prof") finishProf(); };
 
 function bind(on){ if(on===TP.bound) return; TP.bound=on; const f=on?"addEventListener":"removeEventListener";
   document[f]("pointermove",onMove,true); document[f]("pointerdown",onDown,true); document[f]("pointermove",onMoveP,true); document[f]("pointerup",onUp,true); document[f]("click",onClickCap,true); document[f]("keydown",onKey,true);
@@ -19476,11 +19600,11 @@ async function loadLib(){ if(TP.lib) return true; try{ if(typeof mlcontour==="un
 async function setOn(v){ if(v===TP.on) return; if(!ok()){ say("The map is still loading",true); return; }
   if(v){ loadPref(); TP.on=true; ui(); syncUi(); panel.hidden=false; btnState(); bind(true); if(typeof SID_PLAN!=="undefined"&&SID_PLAN&&SID_PLAN.on&&map.getTerrain&&PREF.ter[0]) PREF.ter[0]=0;
     await loadLib(); if(HK.ready){ try{ await HK.ready(); }catch(e){ console.error(e); } } if(!TP.on) return; if(lv("col").on&&!TP.range){ TP.range=await fitRange(); } build(); onCentre(); legend(); }
-  else { TP.on=false; setTool(null); bind(false); teardown(); TP.range=null; if(panel) panel.hidden=true; if(tag) tag.hidden=true; document.body.classList.remove("tp-pick"); btnState(); } }
+  else { TP.on=false; setTool(null); secHide(); bind(false); teardown(); TP.range=null; if(panel) panel.hidden=true; if(tag) tag.hidden=true; document.body.classList.remove("tp-pick"); btnState(); } }
 function btnState(){ document.querySelectorAll(".tp-ctl button,#tpSkBtn").forEach(b=>b.classList.toggle("on",TP.on)); }
 
 class TpCtl{ onAdd(){ const d=document.createElement("div"); d.className="maplibregl-ctrl maplibregl-ctrl-group tp-ctl";
-    d.innerHTML=`<button type="button" title="Land Levels — heights, hillshade, contours, slope and profile (30 m satellite model)" aria-label="Land Levels">${TOPO_ICON}</button>`;
+    d.innerHTML=`<button type="button" title="Land Levels — heights, contours, slope and section (30 m satellite model)" aria-label="Land Levels">${TOPO_ICON}</button>`;
     d.querySelector("button").addEventListener("click",e=>{ e.stopPropagation(); setOn(!TP.on); }); this._d=d; return d; }
   onRemove(){ this._d&&this._d.remove(); } }
 setInterval(()=>{ try{ if(ok()&&map.addControl&&!map.getContainer().querySelector(".tp-ctl")&&!document.querySelector(".tp-ctl")) map.addControl(new TpCtl(),"bottom-right");
