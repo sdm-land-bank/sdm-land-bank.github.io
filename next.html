@@ -18323,7 +18323,7 @@ function set3d(on){ PL.v3=on; persist(); btns(); map.easeTo({pitch:on?60:0,beari
 function btns(){ if(!ui) return; ui.querySelectorAll("[data-pt]").forEach(b=>{ const on=b.dataset.pt===PL.tool; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on); });
   q("#plUndo").disabled=!PL.undo.length&&!PL.cur; q("#plRedo").disabled=!PL.redo.length; const b3=q("#pl3d"); if(b3) b3.classList.toggle("on",!!PL.v3); const rb=q("#plRB"); if(rb) rb.classList.toggle("on",rulesOn); }
 const tzOf=()=>PL.tz||(PL.tz={avoid:false,max:6,low:false,lowDepth:1});
-function tzBtns(){ const z=tzOf(); return `<i class="sep"></i><b title="Heights: 30 m satellite model or your uploaded survey">Terrain</b><button type="button" data-tz="avoid" class="${z.avoid?"on":""}" title="Leave out plots steeper than this">Avoid slopes ></button><input type="number" id="plTzM" min="1" max="30" step="1" value="${z.max}" inputmode="numeric" aria-label="Steepest slope in percent"> %<button type="button" data-tz="low" class="${z.low?"on":""}" title="Mark plots on a low spot where water would collect (▼)">Flag low spots</button>`; }
+function tzBtns(){ const z=tzOf(); return `<i class="sep"></i><span class="tzg"><b title="Heights: 30 m satellite model or your uploaded survey">Terrain</b><button type="button" data-tz="avoid" class="${z.avoid?"on":""}" title="Leave out plots steeper than this">Avoid slopes ></button><input type="number" id="plTzM" min="1" max="30" step="1" value="${z.max}" inputmode="numeric" aria-label="Steepest slope in percent"> %<button type="button" data-tz="low" class="${z.low?"on":""}" title="Mark plots on a low spot where water would collect (▼)">Flag low spots</button></span>`; }
 function tzCb(){ return {flash:m=>A.flash(m), apply:(rm)=>{ if(rm&&rm.length){ pushUndo(); const set=new Set(rm); PL.plan.plots=PL.plan.plots.filter(x=>!set.has(x.id)); PL.plan.items=PL.plan.items.filter(i=>!(i.plot&&set.has(i.plot))); GR=null; CG=null; } changed(["all"]); } }; }
 function tzAfter(){ try{ const z=PL.tz; if(z&&(z.avoid||z.low)&&window.SID_TOPO2) setTimeout(()=>window.SID_TOPO2.planPass(PL,tzCb()),30); }catch(e){} }
 function opts(){ const el=q("#plOpt"); if(!el) return; let h=""; const t=PL.tool, SEP=`<i class="sep"></i>`;
@@ -19239,6 +19239,8 @@ body #skUI .sk-top{top:6px;right:6px}
 @media (max-height:690px){ body #skUI .sk-tools{grid-template-columns:40px 40px} }
 @media (max-width:900px){ #tpSec{left:12px;bottom:52px;height:min(280px,40vh)} body.sk-on #tpSec{left:70px;bottom:92px} }
 @media (max-width:560px){ #tpSec,body.sk-on #tpSec{left:8px;right:8px;top:auto;bottom:58px;height:min(42dvh,340px);min-width:0} html body.sk-on #tpSec{left:62px;bottom:96px} }
+/* the app turns its side rail into a bottom bar (62 px) at 820 px and below: keep clear of it */
+@media (max-width:820px){ html body #tpPanel,html body.sk-on #tpPanel{bottom:calc(70px + env(safe-area-inset-bottom,0px))} html body #tpSec,html body.sk-on #tpSec{bottom:calc(118px + env(safe-area-inset-bottom,0px))} }
 @media (max-width:560px){
  html body.sk-on #tpPanel{left:62px;bottom:44px}
  #tpPanel,body.sk-on #tpPanel{left:8px;right:8px;width:auto;bottom:8px;max-height:46vh;max-height:46dvh}
@@ -19420,7 +19422,7 @@ function boxResize(el,key,minW,minH,after){ const h=document.createElement("div"
   h.addEventListener("pointerdown",e=>{ if(innerWidth<=560||e.button>0) return; pinEl(el); const r=el.getBoundingClientRect(); st={x:e.clientX,y:e.clientY,w:r.width,h:r.height}; el.style.maxHeight="none"; try{ h.setPointerCapture(e.pointerId); }catch(x){} e.preventDefault(); e.stopPropagation(); });
   h.addEventListener("pointermove",e=>{ if(!st) return; el.style.width=Math.max(minW,Math.min(innerWidth-8,st.w+e.clientX-st.x))+"px"; el.style.height=Math.max(minH,Math.min(innerHeight-8,st.h+e.clientY-st.y))+"px"; if(after) after(); });
   const end=()=>{ if(st){ st=null; saveBox(el,key); if(after) after(); } }; h.addEventListener("pointerup",end); h.addEventListener("pointercancel",end); }
-function accordion(){ const body=panel.querySelector(".tp-body"); let cur=null; [...body.children].forEach(k=>{ if(k.classList.contains("tp-sec")){ cur=document.createElement("div"); cur.className="tp-gp"; body.insertBefore(cur,k); cur.appendChild(k); const key=k.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""); cur.dataset.g=key; const st=PREF.cl[key]!=null?PREF.cl[key]:(/3d|survey/.test(key)||(innerWidth<=560&&key==="layers")?1:0); cur.classList.toggle("cl",!!st); } else if(cur) cur.appendChild(k); }); }
+function accordion(){ const body=panel.querySelector(".tp-body"); let cur=null; [...body.children].forEach(k=>{ if(k.classList.contains("tp-sec")){ cur=document.createElement("div"); cur.className="tp-gp"; body.insertBefore(cur,k); cur.appendChild(k); const key=k.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""); cur.dataset.g=key; const st=PREF.cl[key]!=null?PREF.cl[key]:(/3d|survey/.test(key)||(innerWidth<=820&&key==="layers")?1:0); cur.classList.toggle("cl",!!st); } else if(cur) cur.appendChild(k); }); }
 const openTools=()=>{ const g=panel&&panel.querySelector('[data-g="tools"]'); if(g) g.classList.remove("cl"); };
 window.addEventListener("resize",()=>{ [panel,dock()].forEach(el=>{ if(!el) return; if(innerWidth<=560) unpinEl(el); else keepIn(el); }); });
 
@@ -19630,13 +19632,16 @@ async function setOn(v){ if(v===TP.on) return; if(!ok()){ say("The map is still 
   if(v){ loadPref(); TP.on=true; ui(); syncUi(); panel.hidden=false; btnState(); bind(true); if(typeof SID_PLAN!=="undefined"&&SID_PLAN&&SID_PLAN.on&&map.getTerrain&&PREF.ter[0]) PREF.ter[0]=0;
     await loadLib(); if(HK.ready){ try{ await HK.ready(); }catch(e){ console.error(e); } } if(!TP.on) return; if(lv("col").on&&!TP.range){ TP.range=await fitRange(); } build(); onCentre(); legend(); }
   else { TP.on=false; setTool(null); secHide(); bind(false); teardown(); TP.range=null; if(panel) panel.hidden=true; if(tag) tag.hidden=true; document.body.classList.remove("tp-pick"); btnState(); } }
+/* on a phone-width screen a plot / shape card and the Land Levels panel cannot share the screen: fold the panel while a card is open */
+function cardCheck(){ if(!TP.on||!panel||innerWidth>820||panel.classList.contains("min")) return; const u=document.getElementById("skUI"); const c=u&&u.querySelector("#plCard,#skCard"); if(c&&!c.hidden&&c.getClientRects().length) panel.classList.add("min"); }
+function cardWatch(){ const u=document.getElementById("skUI"); if(!u||u._tw) return; u._tw=1; new MutationObserver(cardCheck).observe(u,{attributes:true,subtree:true,attributeFilter:["hidden","class","style"]}); }
 function btnState(){ document.querySelectorAll(".tp-ctl button,#tpSkBtn").forEach(b=>b.classList.toggle("on",TP.on)); }
 
 class TpCtl{ onAdd(){ const d=document.createElement("div"); d.className="maplibregl-ctrl maplibregl-ctrl-group tp-ctl";
     d.innerHTML=`<button type="button" title="Land Levels — heights, contours, slope and section (30 m satellite model)" aria-label="Land Levels">${TOPO_ICON}</button>`;
     d.querySelector("button").addEventListener("click",e=>{ e.stopPropagation(); setOn(!TP.on); }); this._d=d; return d; }
   onRemove(){ this._d&&this._d.remove(); } }
-setInterval(()=>{ try{ if(ok()&&map.addControl&&!map.getContainer().querySelector(".tp-ctl")&&!document.querySelector(".tp-ctl")) map.addControl(new TpCtl(),"bottom-right");
+setInterval(()=>{ try{ cardWatch(); if(ok()&&map.addControl&&!map.getContainer().querySelector(".tp-ctl")&&!document.querySelector(".tp-ctl")) map.addControl(new TpCtl(),"bottom-right");
     const top=document.querySelector("#skUI .sk-top"); if(top&&!document.getElementById("tpSkBtn")){ const b=document.createElement("button"); b.type="button"; b.id="tpSkBtn"; b.className="sk-tb"; b.title="Land Levels — heights, hillshade, contours, slope and profile";
       b.innerHTML=TOPO_ICON.replace("<svg","<svg width='19' height='19'")+"<span>Land Levels</span>"; b.addEventListener("click",e=>{ e.stopPropagation(); setOn(!TP.on); }); const done=document.getElementById("skDone"); top.insertBefore(b,done||null); btnState(); } }catch(e){} },1500);
 /* the survey changed: forget decoded tiles, rebuild the layers that read heights */
@@ -19649,6 +19654,7 @@ window.SID_TOPO={get on(){ return TP.on; },setOn,elevAt,elevSync,sourceOf,refres
 
 <style id="tpCss2">
 /* ---- V99 Land Levels: plot levels, survey ---- */
+#skUI .tzg{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap}
 .tp-lv{margin:8px 0 4px;padding:8px 10px;border-radius:12px;background:rgba(10,132,255,.07);border:1px solid rgba(10,132,255,.22);font-size:12px;line-height:1.45}
 .tp-lv h4{margin:0 0 4px;font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .tp-lv .tp-b{font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;background:rgba(255,159,10,.2);color:#9a5b00}
