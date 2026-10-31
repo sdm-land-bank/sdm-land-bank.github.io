@@ -19149,7 +19149,7 @@ window.SID_PLAN={get on(){ return PL.on; },get pl(){ return PL; },plotAt:planPlo
 .tp-ctl button.on{background:#fff!important;color:#9e1f35!important}
 .tp-ctl button svg{width:20px;height:20px}
 .tp-ctl{box-shadow:0 4px 14px rgba(158,31,53,.45)!important}
-#tpPanel{position:fixed;left:12px;bottom:12px;width:min(292px,calc(100vw - 24px));max-height:min(72vh,calc(100dvh - 24px));min-width:230px;display:flex;flex-direction:column;z-index:2147483000;
+#tpPanel{position:fixed;left:12px;bottom:12px;width:min(292px,calc(100vw - 24px));max-height:min(72vh,calc(100dvh - 24px));min-width:230px;display:flex;flex-direction:column;z-index:2147482000;
   font:11.5px -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;
   background:rgba(28,28,30,.8);-webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 34px rgba(0,0,0,.38);border-radius:14px}
 body.sk-on #tpPanel{left:70px;bottom:46px;width:min(292px,calc(100vw - 82px))}
@@ -19200,7 +19200,7 @@ body.sk-on #tpPanel{left:70px;bottom:46px;width:min(292px,calc(100vw - 82px))}
 #tpTag{position:fixed;z-index:2147483001;pointer-events:none;padding:2px 7px;border-radius:7px;background:rgba(20,20,22,.85);color:#fff;font:700 12px -apple-system,BlinkMacSystemFont,Inter,sans-serif;white-space:nowrap}
 #tpTag[hidden]{display:none!important}
 body.tp-pick .maplibregl-canvas,body.tp-pick #skCv{cursor:crosshair!important}
-#tpSec{position:fixed;left:322px;right:12px;bottom:12px;height:min(290px,42vh);min-width:300px;display:flex;flex-direction:column;z-index:2147483000;font:12px -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;
+#tpSec{position:fixed;left:322px;right:12px;bottom:12px;height:min(290px,42vh);min-width:300px;display:flex;flex-direction:column;z-index:2147482000;font:12px -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;
   background:rgba(28,28,30,.82);-webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 34px rgba(0,0,0,.38);border-radius:16px;padding:8px 12px 8px}
 body.sk-on #tpSec{left:376px;bottom:46px}
 #tpSec[hidden],#tpSec [hidden]{display:none!important}
@@ -19633,9 +19633,9 @@ async function setOn(v){ if(v===TP.on) return; if(!ok()){ say("The map is still 
     await loadLib(); if(HK.ready){ try{ await HK.ready(); }catch(e){ console.error(e); } } if(!TP.on) return; if(lv("col").on&&!TP.range){ TP.range=await fitRange(); } build(); onCentre(); legend(); avoidSoon(); }
   else { TP.on=false; setTool(null); secHide(); bind(false); teardown(); TP.range=null; if(panel) panel.hidden=true; if(tag) tag.hidden=true; document.body.classList.remove("tp-pick"); btnState(); } }
 /* keep the panel and the section window off the drawing-mode boxes (plot card, plan options, hint ...): when the default spot is taken, slide to the nearest free spot; if the screen is full, fold the panel to its title bar and try again */
-let avT=0; const avoidSoon=()=>{ clearTimeout(avT); avT=setTimeout(()=>{ try{ avoid(panel); avoid(dock()); }catch(e){ console.error("avoid",e); } },120); };
+let avT=0, avT2=0; const avoidRun=()=>{ try{ avoid(panel); avoid(dock()); }catch(e){ console.error("avoid",e); } }; const avoidSoon=()=>{ clearTimeout(avT); clearTimeout(avT2); avT=setTimeout(avoidRun,120); avT2=setTimeout(avoidRun,520); };
 function avoid(el){ if(!el||el.hidden||el.dataset.pin||!TP.on||!el.getClientRects().length) return;
-  const others=()=>[...document.querySelectorAll("#skUI .sk-mv,#skUI .sk-top,#skUI .sk-hint")].concat([el===panel?dock():panel]).filter(o=>o&&o!==el&&!o.hidden&&!o.classList.contains("off")&&o.getClientRects().length&&getComputedStyle(o).visibility!=="hidden").map(o=>o.getBoundingClientRect()).filter(r=>r.width>4&&r.height>4);
+  const others=()=>[...document.querySelectorAll("#skUI .sk-mv,#skUI .sk-top,#skUI .sk-hint,#skUI .pl-menu,#skUI .sk-pop")].concat([el===panel?dock():panel]).filter(o=>o&&o!==el&&!o.hidden&&!o.classList.contains("off")&&o.getClientRects().length&&getComputedStyle(o).visibility!=="hidden").map(o=>o.getBoundingClientRect()).filter(r=>r.width>4&&r.height>4);
   const hitAt=(O,x,y,w,h)=>O.some(o=>x<o.right-2&&x+w>o.left+2&&y<o.bottom-2&&y+h>o.top+2);
   const place=()=>{ const O=others(); if(!O.length) return true; let r=el.getBoundingClientRect(); if(!hitAt(O,r.left,r.top,r.width,r.height)) return true; if(el.dataset.av){ ["left","top","right","bottom"].forEach(k=>el.style.removeProperty(k)); delete el.dataset.av; r=el.getBoundingClientRect(); if(!hitAt(O,r.left,r.top,r.width,r.height)) return true; } const w=r.width, h=r.height;
     let best=null, bd=1e9; for(let x=4;x<=innerWidth-w-4;x+=12) for(let y=4;y<=innerHeight-h-4;y+=12){ if(hitAt(O,x,y,w,h)) continue; const d=Math.hypot(x-r.left,y-r.top); if(d<bd){ bd=d; best=[x,y]; } }
