@@ -18143,11 +18143,11 @@ function gtri(k,F,a,b,c,cl){ const P=p=>[F.c[0]+F.u[0]*p[0]+F.v[0]*p[1],.075,F.c
 function gHedge(k,F,u0,u1,v0,v1,h){ box(k,F,u0-.25,u1+.25,v0-.25,v1+.25,0,.3,col("#C9CCD1"),col("#B9BEC6")); box(k,F,u0,u1,v0,v1,.3,h||1,col("#3F8A3A"),col("#63B047")); }
 function gTree(k,F,u,v,sz){ treeAt(k,F.c[0]+F.u[0]*u+F.v[0]*v,F.c[1]+F.u[1]*u+F.v[1]*v,sz||1,"#2F7A44",false); }
 // road paint around the gate: lane lines, zebra bars, yellow IN / OUT arrows; hedges and trees on both flanks
-function gDress(k,F,W,o){ o=o||{}; const h2=W/2, yel=col("#E8B800"), wht=col("#F2F2F2"), isl=o.isl||2, lanes=Math.max(1,Math.round((h2-isl)/4.2)), lw=(h2-isl)/lanes, U=o.U||15;
-  for(const sg of [-1,1]){ for(let i=1;i<lanes;i++){ const v=sg*(isl+lw*i); for(let u=-U;u<U;u+=6) gq(k,F,u,u+3,v-.1,v+.1,wht); }
+function gDress(k,F,W,o,kp){ kp=kp||k; o=o||{}; const h2=W/2, yel=col("#E8B800"), wht=col("#F2F2F2"), isl=o.isl||2, lanes=Math.max(1,Math.round((h2-isl)/4.2)), lw=(h2-isl)/lanes, U=o.U||15;
+  for(const sg of [-1,1]){ for(let i=1;i<lanes;i++){ const v=sg*(isl+lw*i); for(let u=-U;u<U;u+=6) gq(kp,F,u,u+3,v-.1,v+.1,wht); }
     const side=sg>0?1:-1;   // traffic comes from this end and drives towards the gate
-    for(let i=0;i<lanes;i++){ const va=sg*(isl+lw*i+.5), vb=sg*(isl+lw*(i+1)-.5); for(let j=0;j<5;j++){ const u=side*(7+j*1.1); gq(k,F,Math.min(u,u+side*.55),Math.max(u,u+side*.55),Math.min(va,vb),Math.max(va,vb),wht); } }   // zebra bars
-    const vm=sg*(isl+lw*.5), uc=side*(U-2); gtri(k,F,[uc+side*2.6,vm-1.7],[uc+side*2.6,vm+1.7],[uc-side*1.8,vm],yel); gtri(k,F,[uc+side*1.4,vm-.85],[uc+side*1.4,vm+.85],[uc-side*.4,vm],col("#4A4F56")); }
+    for(let i=0;i<lanes;i++){ const va=sg*(isl+lw*i+.5), vb=sg*(isl+lw*(i+1)-.5); for(let j=0;j<5;j++){ const u=side*(7+j*1.1); gq(kp,F,Math.min(u,u+side*.55),Math.max(u,u+side*.55),Math.min(va,vb),Math.max(va,vb),wht); } }   // zebra bars
+    const vm=sg*(isl+lw*.5), uc=side*(U-2); gtri(kp,F,[uc+side*2.6,vm-1.7],[uc+side*2.6,vm+1.7],[uc-side*1.8,vm],yel); gtri(kp,F,[uc+side*1.4,vm-.85],[uc+side*1.4,vm+.85],[uc-side*.4,vm],col("#4A4F56")); }
   if(o.flank!==false) for(const sg of [-1,1]){ gHedge(k,F,-9,9,sg*(h2+1.6),sg*(h2+3.4),1.1); gTree(k,F,-4,sg*(h2+2.5),1.2); gTree(k,F,5,sg*(h2+2.5),1.1); } }
 function gateGeo(K,F,style,W){ const k=K.d; W=Math.max(10,W||GW[style]||20); const h2=W/2, conc=col("#C9CCD1"), dk=col("#1E2A32"), stone=col("#9C9A94"), wood=col("#B07A4B"), sand=col("#D9D4C8");
   const arm=(s,e)=>{ const n=8; for(let i=0;i<n;i++){ const f0=i/n, f1=(i+1)/n, L=f=>[s[0]+(e[0]-s[0])*f,s[1]+(e[1]-s[1])*f,s[2]+(e[2]-s[2])*f]; gbar(k,F,L(f0),L(f1),.09,col(i%2?"#F7F7F7":"#C62828")); } };
@@ -18164,7 +18164,7 @@ function gateGeo(K,F,style,W){ const k=K.d; W=Math.max(10,W||GW[style]||20); con
     // roof beam over all lanes (two thick slabs, deep overhang)
     box(k,F,-3.2,3.2,-edge-1.2,edge+1.2,ph,ph+.75,sand,col("#EDE9DF")); box(k,F,-3.3,3.3,-edge-1.3,edge+1.3,ph+.75,ph+.95,col("#C8C2B4"),col("#E3DFD4"));
     for(const sg of [-1,1]){ boom(sg*(isl+.9),sg*(edge-pw*.6-.6),sg>0); box(k,F,-.35,.35,sg*(isl+.9)-.35,sg*(isl+.9)+.35,0,1.2,col("#BFC4CA")); }
-    gDress(k,F,W,{isl,U:16}); }
+    gDress(k,F,W,{isl,U:16},K.a); }
   else if(style==="canopy"){ const wallW=1.8, rise=2.6, y0=6.4, edge=h2;
     island(-10,10,-isl,isl); gHedge(k,F,-9.5,9.5,-isl+.4,isl-.4,.8); gTree(k,F,-7,0,1.4); gTree(k,F,7.5,0,1.5); gBooth(k,F,-1.8,1.8,-1.2,1.2,3,true);
     for(const sg of [-1,1]){ const v=sg*(edge-wallW/2); box(k,F,-4,4,v-wallW/2,v+wallW/2,0,y0+rise*.55,col("#B4642F"),col("#C97A44")); for(let u=-3.6;u<4;u+=.7) box(k,F,u-.12,u+.12,v-wallW/2-.05,v+wallW/2+.05,.3,y0+rise*.5,col("#8E4A22")); }
@@ -18177,24 +18177,24 @@ function gateGeo(K,F,style,W){ const k=K.d; W=Math.max(10,W||GW[style]||20); con
     for(const sg of [-1,1]){ const v=sg*e; quad(k,P(ua,v,ya),P(ur,v,yr),P(ur,v,yr+T),P(ua,v,ya+T),null,col("#FFFFFF")); quad(k,P(ur,v,yr),P(ub,v,yb),P(ub,v,yb+T),P(ur,v,yr+T),null,col("#F2F2EE")); }
     for(const sv of [-1,1]) for(const su of [-2.6,2.6]){ cyl(k,F.c[0]+F.u[0]*su+F.v[0]*sv*(isl+.2),F.c[1]+F.u[1]*su+F.v[1]*sv*(isl+.2),.28,0,y0+rise*.8,col("#2B2F35"),10,false); }
     for(const sg of [-1,1]){ boom(sg*(isl+.9),sg*(edge-wallW-.6),sg<0); box(k,F,-.35,.35,sg*(isl+.9)-.35,sg*(isl+.9)+.35,0,1.2,col("#BFC4CA")); }
-    gDress(k,F,W,{isl,U:16}); }
+    gDress(k,F,W,{isl,U:16},K.a); }
   else if(style==="boom"){ island(-6,6,-isl,isl); gHedge(k,F,-5,5,-isl+.3,isl-.3,.8); gBooth(k,F,-1.6,1.6,-1,1,3); boom(isl+.4,h2-.4,false); boom(-isl-.4,-h2+.4,true);
-    box(k,F,-2,2,h2-.1,h2+.5,0,.25,conc); box(k,F,-2,2,-h2-.5,-h2+.1,0,.25,conc); gDress(k,F,W,{isl,U:14}); }
+    box(k,F,-2,2,h2-.1,h2+.5,0,.25,conc); box(k,F,-2,2,-h2-.5,-h2+.1,0,.25,conc); gDress(k,F,W,{isl,U:14},K.a); }
   else if(style==="slide"){ const pil=v=>{ box(k,F,-.9,.9,v-.9,v+.9,0,4.4,col("#D6CFC0"),col("#8E959E")); slats(-.9,.9,v-.9,v+.9,.4,4.1); box(k,F,-1.05,1.05,v-1.05,v+1.05,4.4,4.75,col("#9A9382"),col("#7F7968")); };
     pil(-h2-1); pil(h2+1); const rl=col("#59616B"); box(k,F,-.12,.12,-h2,h2,.35,.55,rl); box(k,F,-.12,.12,-h2,h2,1.2,1.3,rl); box(k,F,-.12,.12,-h2,h2,2.35,2.6,rl); box(k,F,-.14,.14,-h2,h2,.55,1.2,col("#6B7480")); for(let v=-h2+.4;v<h2;v+=.75) box(k,F,-.1,.1,v-.06,v+.06,1.3,2.35,col("#7B8591"));
-    box(k,F,-.3,.3,-h2-1,h2+1,0,.12,col("#6E7378")); for(const sg of [-1,1]){ box(k,F,-.4,.4,sg*(h2+1.9),sg*(h2+9),0,2.4,col("#D6CFC0"),col("#8E959E")); } gBooth(k,F,1.8,5,h2+1.8,h2+4.4,3); gDress(k,F,W,{isl:0,U:14,flank:false}); }
+    box(k,F,-.3,.3,-h2-1,h2+1,0,.12,col("#6E7378")); for(const sg of [-1,1]){ box(k,F,-.4,.4,sg*(h2+1.9),sg*(h2+9),0,2.4,col("#D6CFC0"),col("#8E959E")); } gBooth(k,F,1.8,5,h2+1.8,h2+4.4,3); gDress(k,F,W,{isl:0,U:14,flank:false},K.a); }
   else if(style==="swing"){ const pil=v=>{ box(k,F,-.8,.8,v-.8,v+.8,0,4.6,col("#E4DFD2"),col("#9A9382")); slats(-.8,.8,v-.8,v+.8,.4,4.3); cyl(k,F.c[0]+F.v[0]*v,F.c[1]+F.v[1]*v,.5,4.6,5.2,col("#F5F3E8"),12); };
     pil(-h2-.9); pil(h2+.9); const a=55*Math.PI/180;
     for(const sg of [-1,1]){ const hv=sg*h2, tu=Math.sin(a)*h2, tv=hv-sg*Math.cos(a)*h2; gbar(k,F,[0,hv,2.8],[tu,tv,2.8],.09,dk); gbar(k,F,[0,hv,.5],[tu,tv,.5],.09,dk); gbar(k,F,[0,hv,1.6],[tu,tv,1.6],.05,dk);
       for(let i=0;i<=10;i++){ const f=i/10, pu=tu*f, pv=hv+(tv-hv)*f; gbar(k,F,[pu,pv,.5],[pu,pv,2.8],.05,dk); gbar(k,F,[pu,pv,2.8],[pu,pv,3.2],.03,col("#C9A227")); } }
-    gBooth(k,F,-6,-2.4,h2+1.8,h2+4.6,3); gDress(k,F,W,{isl:0,U:14}); }
+    gBooth(k,F,-6,-2.4,h2+1.8,h2+4.6,3); gDress(k,F,W,{isl:0,U:14},K.a); }
   else if(style==="arch"){ const pv=h2+1.8, pil=v=>{ box(k,F,-1.4,1.4,v-1.3,v+1.3,0,7.4,col("#E9E6DF"),col("#CFC9BC")); slats(-1.4,1.4,v-1.3,v+1.3,.5,2.1); box(k,F,-1.45,1.45,v-1.35,v+1.35,2.3,2.7,col("#B3263D")); box(k,F,-1.5,1.5,v-1.4,v+1.4,7.4,7.8,col("#9A9382")); };
     pil(-pv); pil(pv); box(k,F,-1.35,1.35,-pv-1.3,pv+1.3,7.1,8.6,col("#F2EFE8"),col("#CFC9BC")); box(k,F,-1.4,1.4,-h2,h2,7.3,8.3,col("#B3263D"),col("#8E1E31")); box(k,F,-1.41,1.41,-h2*.8,h2*.8,7.65,7.95,col("#FFFFFF"));
-    island(-5,5,-isl,isl); gHedge(k,F,-4.2,4.2,-isl+.3,isl-.3,.8); gBooth(k,F,-1.5,1.5,-.95,.95,2.9); boom(isl+.4,h2-.4,false); boom(-isl-.4,-h2+.4,true); gDress(k,F,W,{isl,U:14}); }
+    island(-5,5,-isl,isl); gHedge(k,F,-4.2,4.2,-isl+.3,isl-.3,.8); gBooth(k,F,-1.5,1.5,-.95,.95,2.9); boom(isl+.4,h2-.4,false); boom(-isl-.4,-h2+.4,true); gDress(k,F,W,{isl,U:14},K.a); }
   else { const iv=W/6; island(-7,7,-iv-1,-iv+1); island(-7,7,iv-1,iv+1); gHedge(k,F,-6,6,-iv-.4,-iv+.4,.8); gHedge(k,F,-6,6,iv-.4,iv+.4,.8); gBooth(k,F,-2.4,2.4,-iv-.8,-iv+.8,3.2,true); gBooth(k,F,-2.4,2.4,iv-.8,iv+.8,3.2,true);
     for(const sv of [-1,1]) for(const su of [-3.6,3.6]) box(k,F,su-.35,su+.35,sv*h2-.35,sv*h2+.35,0,5.8,col("#A9AEB6"));
     box(k,F,-4.2,4.2,-h2-.6,h2+.6,5.6,5.85,col("#B3263D"),col("#8E1E31")); box(k,F,-4.1,4.1,-h2-.5,h2+.5,5.85,6.15,col("#DADDE2"),col("#F4F5F7"));
-    for(const sv of [-1,1]) boom(sv*(iv+1.5),sv*(h2-.3),false); boom(-iv+1.5,iv-1.5,false); gDress(k,F,W,{isl:iv+1,U:15,flank:true}); } }
+    for(const sv of [-1,1]) boom(sv*(iv+1.5),sv*(h2-.3),false); boom(-iv+1.5,iv-1.5,false); gDress(k,F,W,{isl:iv+1,U:15,flank:true},K.a); } }
 // the frame of a gate on the land boundary: u points into the land (the way the road goes), v across it
 function gateFrame(gt){ const p=PL.plan; if(!p.land) return null; let Q=p.land.pts.map(Lc); if(lArea(Q)<0) Q=Q.slice().reverse(); const c=Lc(gt.c); let n=null, bd=1e9;
   for(let i=0;i<Q.length;i++){ const a=Q[i], b=Q[(i+1)%Q.length], pr=projSeg(c,a,b); if(pr.d<bd){ bd=pr.d; const l=lhyp(a,b)||1; n=[-(b[1]-a[1])/l,(b[0]-a[0])/l]; } }
