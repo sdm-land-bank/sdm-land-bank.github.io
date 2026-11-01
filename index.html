@@ -17708,8 +17708,10 @@ const RT=[{k:"main",l:"Main road",w:30},{k:"sec",l:"Secondary",w:20},{k:"serv",l
 const BK={factory:{l:"Factory",w:40,len:70,h:12,c:"#E9D9A8"},warehouse:{l:"Warehouse",w:45,len:80,h:11,c:"#AFC3DD"},showroom:{l:"Showroom",w:24,len:40,h:8,c:"#7FA7CF"},
   admin:{l:"Admin building",w:20,len:36,h:16,c:"#ECE8E0"},substation:{l:"Substation",w:30,len:40,h:6,c:"#BFC4CA"},tank:{l:"Water tank",w:14,len:14,h:22,c:"#E7ECF1"}};
 const OB={palm:{l:"Palm tree",w:7,len:7,h:6.5,c:"#4FA05A"},tree:{l:"Tree",w:6,len:6,h:7,c:"#3E8E4A"},shrub:{l:"Shrub",w:3,len:3,h:2.2,c:"#5BAA5E"},
-  lamp:{l:"Street light",w:1.2,len:3,h:9,c:"#9AA3AD"},truck:{l:"Truck",w:3,len:12,h:4,c:"#F2F4F7"},sign:{l:"Park sign",w:2,len:10,h:5,c:"#B3263D"}};
-const TREES=["palm","tree","shrub"], OBJS=["lamp","truck","sign"], GAP={palm:9,tree:8,shrub:4,lamp:30,truck:16,sign:24};
+  lamp:{l:"Street light",w:1.2,len:3,h:9,c:"#9AA3AD"},truck:{l:"Truck",w:3,len:12,h:4,c:"#F2F4F7"},sign:{l:"Park sign",w:2,len:10,h:5,c:"#B3263D"},
+  gate_boom:{l:"Boom gate",w:24,len:30,h:3.5,c:"#C62828"},gate_slide:{l:"Sliding gate",w:20,len:30,h:4.5,c:"#7B8591"},gate_swing:{l:"Swing gate",w:20,len:30,h:5,c:"#1E2A32"},gate_arch:{l:"Arch gate",w:28,len:30,h:8.5,c:"#B3263D"},gate_check:{l:"Truck checkpoint",w:32,len:30,h:6,c:"#DADDE2"},gate_portal:{l:"Portal gate",w:36,len:32,h:7.5,c:"#D9D4C8"},gate_canopy:{l:"Canopy gate",w:40,len:32,h:9,c:"#B4642F"}};
+const TREES=["palm","tree","shrub"], OBJS=["lamp","truck","sign","gate_boom","gate_slide","gate_swing","gate_arch","gate_check","gate_portal","gate_canopy"], GAP={palm:9,tree:8,shrub:4,lamp:30,truck:16,sign:24};
+const isGate=k=>typeof k==="string"&&k.indexOf("gate_")===0, GATES=[["portal","Portal gate"],["canopy","Canopy gate"],["arch","Arch gate"],["boom","Boom gate"],["swing","Swing gate"],["slide","Sliding gate"],["check","Truck checkpoint"]], GW={boom:24,slide:20,swing:20,arch:28,check:32,portal:36,canopy:40}, gdef=gt=>gt.style||(gt.main?"portal":"boom");
 const ROADOK=k=>TREES.includes(k)||k==="lamp";   // kinds that can line both sides of a road
 // landscape areas (V86) and roundabouts
 const GK={lawn:{l:"Lawn",c:"#86B85F"},park:{l:"Park",c:"#6FA552"},buffer:{l:"Green buffer",c:"#5E9446"},water:{l:"Water",c:"#5DA9D6"}};
@@ -18119,6 +18121,7 @@ function buildingAt(F,L,W,h,k,id,K,opts){ const pt=(s,t,y)=>[F.c[0]+F.u[0]*s+F.v
   if(!wh&&hash(id+"ch")<.4&&L>20){ const q=pt(L*.3,-W*.22,0); cyl(K.d,q[0],q[2],1.1,h,h+9,col("#C6C9CE"),12,col("#6E7378")); cyl(K.d,q[0],q[2],1.15,h+6.5,h+7.6,col("#B3263D"),12,false); out.chimney=[q[0],h+9,q[2]]; }
   return out; }
 function object(it,K){ const F=iFrame(it), pt=(s,t,y)=>[F.c[0]+F.u[0]*s+F.v[0]*t,y,F.c[1]+F.u[1]*s+F.v[1]*t], k=it.k;
+  if(isGate(k)) return gateGeo(K,F,k.slice(5),it.w);
   if(k==="palm") return treeAt(K.d,F.c[0],F.c[1],it.h/6.5,OB.palm.c,true);
   if(k==="tree") return treeAt(K.d,F.c[0],F.c[1],it.h/7,["#3E8E4A","#2F7A44","#4FA05A"][(hash(it.id)*3)|0],false);
   if(k==="shrub") return treeAt(K.d,F.c[0],F.c[1],it.h/5.5,"#5BAA5E",false);
@@ -18127,6 +18130,75 @@ function object(it,K){ const F=iFrame(it), pt=(s,t,y)=>[F.c[0]+F.u[0]*s+F.v[0]*t
     for(const s of [-L*.36,-L*.22,L*.32]) for(const t of [-W/2,W/2]){ const q=pt(s,t,0); cyl(K.d,q[0],q[2],.5,0,.4,col("#222"),8); } return; }
   if(k==="sign"){ const L=it.len, h=it.h; box(K.d,F,-L*.42,-L*.42+.3,-.15,.15,0,h,col("#8F98A3")); box(K.d,F,L*.42-.3,L*.42,-.15,.15,0,h,col("#8F98A3")); box(K.d,F,-L/2,L/2,-.25,.25,h*.45,h,col("#B3263D"),col("#8E1E31")); box(K.d,F,-L*.4,L*.4,.25,.3,h*.62,h*.82,col("#FFFFFF")); return; }
 }
+/* ---------- gates: real-looking entrance gates (V103). u runs along the road, v across it ---------- */
+function gbar(k,F,a,b,th,cl){ const P=p=>[F.c[0]+F.u[0]*p[0]+F.v[0]*p[1],p[2],F.c[1]+F.u[1]*p[0]+F.v[1]*p[1]], A0=P(a), B0=P(b); let d=[B0[0]-A0[0],B0[1]-A0[1],B0[2]-A0[2]]; const L=Math.hypot(d[0],d[1],d[2])||1; d=d.map(x=>x/L);
+  let s=[-d[2],0,d[0]]; const sl=Math.hypot(s[0],s[2]); if(sl<1e-4) s=[1,0,0]; else s=[s[0]/sl,0,s[2]/sl]; const t=[d[1]*s[2]-d[2]*s[1],d[2]*s[0]-d[0]*s[2],d[0]*s[1]-d[1]*s[0]];
+  const C=[[1,1],[-1,1],[-1,-1],[1,-1]].map(([x,y])=>[(s[0]*x+t[0]*y)*th,(s[1]*x+t[1]*y)*th,(s[2]*x+t[2]*y)*th]), add=(p,c)=>[p[0]+c[0],p[1]+c[1],p[2]+c[2]];
+  for(let i=0;i<4;i++){ const j=(i+1)%4; quad(k,add(A0,C[i]),add(A0,C[j]),add(B0,C[j]),add(B0,C[i]),null,cl); } }
+function gBooth(k,F,u0,u1,v0,v1,h,wood){ box(k,F,u0-.3,u1+.3,v0-.3,v1+.3,0,.22,col("#C9CCD1"),col("#B9BEC6")); box(k,F,u0,u1,v0,v1,.22,h,col(wood?"#8E959E":"#F1EEE6"),col(wood?"#8E959E":"#F1EEE6")); if(wood) box(k,F,u0-.02,u0+(u1-u0)*.45,v0-.04,v1+.04,.22,h,col("#B4642F"));
+  box(k,F,u0-.45,u1+.45,v0-.45,v1+.45,h,h+.28,col(wood?"#6F737A":"#B3263D"),col(wood?"#55595F":"#8E1E31")); box(k,F,u0+.3,u1-.3,v0-.05,v0,.22+h*.34,h-.45,col("#2F5560")); box(k,F,u0+.3,u1-.3,v1,v1+.05,.22+h*.34,h-.45,col("#2F5560")); }
+// flat paint / pavers on the ground
+function gq(k,F,u0,u1,v0,v1,cl,y){ const P=(u,v)=>[F.c[0]+F.u[0]*u+F.v[0]*v,y||.07,F.c[1]+F.u[1]*u+F.v[1]*v]; quad(k,P(u0,v0),P(u1,v0),P(u1,v1),P(u0,v1),UP,cl); }
+function gtri(k,F,a,b,c,cl){ const P=p=>[F.c[0]+F.u[0]*p[0]+F.v[0]*p[1],.075,F.c[1]+F.u[1]*p[0]+F.v[1]*p[1]]; tri(k,P(a),P(b),P(c),UP,cl); }
+function gHedge(k,F,u0,u1,v0,v1,h){ box(k,F,u0-.25,u1+.25,v0-.25,v1+.25,0,.3,col("#C9CCD1"),col("#B9BEC6")); box(k,F,u0,u1,v0,v1,.3,h||1,col("#3F8A3A"),col("#63B047")); }
+function gTree(k,F,u,v,sz){ treeAt(k,F.c[0]+F.u[0]*u+F.v[0]*v,F.c[1]+F.u[1]*u+F.v[1]*v,sz||1,"#2F7A44",false); }
+// road paint around the gate: lane lines, zebra bars, yellow IN / OUT arrows; hedges and trees on both flanks
+function gDress(k,F,W,o,kp){ kp=kp||k; o=o||{}; const h2=W/2, yel=col("#E8B800"), wht=col("#F2F2F2"), isl=o.isl||2, lanes=Math.max(1,Math.round((h2-isl)/4.2)), lw=(h2-isl)/lanes, U=o.U||15;
+  for(const sg of [-1,1]){ for(let i=1;i<lanes;i++){ const v=sg*(isl+lw*i); for(let u=-U;u<U;u+=6) gq(kp,F,u,u+3,v-.1,v+.1,wht); }
+    const side=sg>0?1:-1;   // traffic comes from this end and drives towards the gate
+    for(let i=0;i<lanes;i++){ const va=sg*(isl+lw*i+.5), vb=sg*(isl+lw*(i+1)-.5); for(let j=0;j<5;j++){ const u=side*(7+j*1.1); gq(kp,F,Math.min(u,u+side*.55),Math.max(u,u+side*.55),Math.min(va,vb),Math.max(va,vb),wht); } }   // zebra bars
+    const vm=sg*(isl+lw*.5), uc=side*(U-2); gtri(kp,F,[uc+side*2.6,vm-1.7],[uc+side*2.6,vm+1.7],[uc-side*1.8,vm],yel); gtri(kp,F,[uc+side*1.4,vm-.85],[uc+side*1.4,vm+.85],[uc-side*.4,vm],col("#4A4F56")); }
+  if(o.flank!==false) for(const sg of [-1,1]){ gHedge(k,F,-9,9,sg*(h2+1.6),sg*(h2+3.4),1.1); gTree(k,F,-4,sg*(h2+2.5),1.2); gTree(k,F,5,sg*(h2+2.5),1.1); } }
+function gateGeo(K,F,style,W){ const k=K.d; W=Math.max(10,W||GW[style]||20); const h2=W/2, conc=col("#C9CCD1"), dk=col("#1E2A32"), stone=col("#9C9A94"), wood=col("#B07A4B"), sand=col("#D9D4C8");
+  const arm=(s,e)=>{ const n=8; for(let i=0;i<n;i++){ const f0=i/n, f1=(i+1)/n, L=f=>[s[0]+(e[0]-s[0])*f,s[1]+(e[1]-s[1])*f,s[2]+(e[2]-s[2])*f]; gbar(k,F,L(f0),L(f1),.09,col(i%2?"#F7F7F7":"#C62828")); } };
+  const post=(u,v)=>{ box(k,F,u-.3,u+.3,v-.3,v+.3,0,1.15,col("#E9ECEF"),col("#C62828")); }, island=(u0,u1,v0,v1)=>box(k,F,u0,u1,v0,v1,0,.2,conc,col("#B9BEC6"));
+  const boom=(vs,ve,raised)=>{ post(0,vs); const L=ve-vs, sg=L>0?1:-1; if(raised) arm([0,vs+sg*.3,1.1],[0,vs+sg*Math.abs(L)*.3,1.1+Math.abs(L)*.85]); else arm([0,vs+sg*.3,1.1],[0,ve,1.1]); };
+  // slatted wood facing for a pillar: thin vertical battens on the road-facing sides
+  const slats=(u0,u1,v0,v1,y0,y1)=>{ for(let u=u0+.2;u<u1;u+=.45){ box(k,F,u-.1,u+.1,v0-.07,v0,y0,y1,wood); box(k,F,u-.1,u+.1,v1,v1+.07,y0,y1,wood); } };
+  const isl=style==="check"?W/6:style==="portal"||style==="canopy"?3:style==="arch"?1.4:1.5;
+  if(style==="portal"){ const pw=1.9, ph=7, edge=h2-.2;
+    island(-10,10,-isl,isl); gHedge(k,F,-9,9,-isl+.4,isl-.4,.9); gTree(k,F,-6.5,0,1.5); gTree(k,F,6.5,0,1.5); gBooth(k,F,3,6,-1,1,2.9,true);
+    // central pylon: stone core, wood battens, sign panel
+    box(k,F,-1.4,1.4,-1.6,1.6,.2,ph-.3,stone,col("#B9B6AE")); slats(-1.4,1.4,-1.6,1.6,.4,ph-.5); box(k,F,-1.5,1.5,-1.2,1.2,ph-1.9,ph-.9,col("#16222E")); box(k,F,-1.52,1.52,-.8,.8,ph-1.55,ph-1.25,col("#C9A227"));
+    for(const sg of [-1,1]){ const v=sg*edge; box(k,F,-pw,pw,v-pw*.6,v+pw*.6,0,ph,stone,col("#B9B6AE")); slats(-pw,pw,v-pw*.6,v+pw*.6,.3,ph-.4); box(k,F,-pw-.3,pw+.3,v-pw*.6-.3,v+pw*.6+.3,ph,ph+.3,sand,col("#EDE9DF")); }
+    // roof beam over all lanes (two thick slabs, deep overhang)
+    box(k,F,-3.2,3.2,-edge-1.2,edge+1.2,ph,ph+.75,sand,col("#EDE9DF")); box(k,F,-3.3,3.3,-edge-1.3,edge+1.3,ph+.75,ph+.95,col("#C8C2B4"),col("#E3DFD4"));
+    for(const sg of [-1,1]){ boom(sg*(isl+.9),sg*(edge-pw*.6-.6),sg>0); box(k,F,-.35,.35,sg*(isl+.9)-.35,sg*(isl+.9)+.35,0,1.2,col("#BFC4CA")); }
+    gDress(k,F,W,{isl,U:16},K.a); }
+  else if(style==="canopy"){ const wallW=1.8, rise=2.6, y0=6.4, edge=h2;
+    island(-10,10,-isl,isl); gHedge(k,F,-9.5,9.5,-isl+.4,isl-.4,.8); gTree(k,F,-7,0,1.4); gTree(k,F,7.5,0,1.5); gBooth(k,F,-1.8,1.8,-1.2,1.2,3,true);
+    for(const sg of [-1,1]){ const v=sg*(edge-wallW/2); box(k,F,-4,4,v-wallW/2,v+wallW/2,0,y0+rise*.55,col("#B4642F"),col("#C97A44")); for(let u=-3.6;u<4;u+=.7) box(k,F,u-.12,u+.12,v-wallW/2-.05,v+wallW/2+.05,.3,y0+rise*.5,col("#8E4A22")); }
+    // one big folded roof: white fascia on top, wood-panel soffit underneath, rising towards the inside of the park
+    const P=(u,v,y)=>[F.c[0]+F.u[0]*u+F.v[0]*v,y,F.c[1]+F.u[1]*u+F.v[1]*v], ua=-9, ur=1.5, ub=10, ya=y0, yr=y0+rise*1.5, yb=y0+rise*.4, e=edge+1.2, T=.55;
+    // a folded roof: it rises to a ridge, then drops again; white on top, wood-panel soffit below
+    quad(k,P(ua,-e,ya),P(ur,-e,yr),P(ur,e,yr),P(ua,e,ya),null,col("#8A4B2A")); quad(k,P(ur,-e,yr),P(ub,-e,yb),P(ub,e,yb),P(ur,e,yr),null,col("#7A4023"));
+    quad(k,P(ua,-e,ya+T),P(ua,e,ya+T),P(ur,e,yr+T),P(ur,-e,yr+T),null,col("#F7F7F4")); quad(k,P(ur,-e,yr+T),P(ur,e,yr+T),P(ub,e,yb+T),P(ub,-e,yb+T),null,col("#DFDFDA"));
+    quad(k,P(ua,-e,ya),P(ua,e,ya),P(ua,e,ya+T),P(ua,-e,ya+T),null,col("#FFFFFF")); quad(k,P(ub,-e,yb),P(ub,-e,yb+T),P(ub,e,yb+T),P(ub,e,yb),null,col("#E9E9E4"));
+    for(const sg of [-1,1]){ const v=sg*e; quad(k,P(ua,v,ya),P(ur,v,yr),P(ur,v,yr+T),P(ua,v,ya+T),null,col("#FFFFFF")); quad(k,P(ur,v,yr),P(ub,v,yb),P(ub,v,yb+T),P(ur,v,yr+T),null,col("#F2F2EE")); }
+    for(const sv of [-1,1]) for(const su of [-2.6,2.6]){ cyl(k,F.c[0]+F.u[0]*su+F.v[0]*sv*(isl+.2),F.c[1]+F.u[1]*su+F.v[1]*sv*(isl+.2),.28,0,y0+rise*.8,col("#2B2F35"),10,false); }
+    for(const sg of [-1,1]){ boom(sg*(isl+.9),sg*(edge-wallW-.6),sg<0); box(k,F,-.35,.35,sg*(isl+.9)-.35,sg*(isl+.9)+.35,0,1.2,col("#BFC4CA")); }
+    gDress(k,F,W,{isl,U:16},K.a); }
+  else if(style==="boom"){ island(-6,6,-isl,isl); gHedge(k,F,-5,5,-isl+.3,isl-.3,.8); gBooth(k,F,-1.6,1.6,-1,1,3); boom(isl+.4,h2-.4,false); boom(-isl-.4,-h2+.4,true);
+    box(k,F,-2,2,h2-.1,h2+.5,0,.25,conc); box(k,F,-2,2,-h2-.5,-h2+.1,0,.25,conc); gDress(k,F,W,{isl,U:14},K.a); }
+  else if(style==="slide"){ const pil=v=>{ box(k,F,-.9,.9,v-.9,v+.9,0,4.4,col("#D6CFC0"),col("#8E959E")); slats(-.9,.9,v-.9,v+.9,.4,4.1); box(k,F,-1.05,1.05,v-1.05,v+1.05,4.4,4.75,col("#9A9382"),col("#7F7968")); };
+    pil(-h2-1); pil(h2+1); const rl=col("#59616B"); box(k,F,-.12,.12,-h2,h2,.35,.55,rl); box(k,F,-.12,.12,-h2,h2,1.2,1.3,rl); box(k,F,-.12,.12,-h2,h2,2.35,2.6,rl); box(k,F,-.14,.14,-h2,h2,.55,1.2,col("#6B7480")); for(let v=-h2+.4;v<h2;v+=.75) box(k,F,-.1,.1,v-.06,v+.06,1.3,2.35,col("#7B8591"));
+    box(k,F,-.3,.3,-h2-1,h2+1,0,.12,col("#6E7378")); for(const sg of [-1,1]){ box(k,F,-.4,.4,sg*(h2+1.9),sg*(h2+9),0,2.4,col("#D6CFC0"),col("#8E959E")); } gBooth(k,F,1.8,5,h2+1.8,h2+4.4,3); gDress(k,F,W,{isl:0,U:14,flank:false},K.a); }
+  else if(style==="swing"){ const pil=v=>{ box(k,F,-.8,.8,v-.8,v+.8,0,4.6,col("#E4DFD2"),col("#9A9382")); slats(-.8,.8,v-.8,v+.8,.4,4.3); cyl(k,F.c[0]+F.v[0]*v,F.c[1]+F.v[1]*v,.5,4.6,5.2,col("#F5F3E8"),12); };
+    pil(-h2-.9); pil(h2+.9); const a=55*Math.PI/180;
+    for(const sg of [-1,1]){ const hv=sg*h2, tu=Math.sin(a)*h2, tv=hv-sg*Math.cos(a)*h2; gbar(k,F,[0,hv,2.8],[tu,tv,2.8],.09,dk); gbar(k,F,[0,hv,.5],[tu,tv,.5],.09,dk); gbar(k,F,[0,hv,1.6],[tu,tv,1.6],.05,dk);
+      for(let i=0;i<=10;i++){ const f=i/10, pu=tu*f, pv=hv+(tv-hv)*f; gbar(k,F,[pu,pv,.5],[pu,pv,2.8],.05,dk); gbar(k,F,[pu,pv,2.8],[pu,pv,3.2],.03,col("#C9A227")); } }
+    gBooth(k,F,-6,-2.4,h2+1.8,h2+4.6,3); gDress(k,F,W,{isl:0,U:14},K.a); }
+  else if(style==="arch"){ const pv=h2+1.8, pil=v=>{ box(k,F,-1.4,1.4,v-1.3,v+1.3,0,7.4,col("#E9E6DF"),col("#CFC9BC")); slats(-1.4,1.4,v-1.3,v+1.3,.5,2.1); box(k,F,-1.45,1.45,v-1.35,v+1.35,2.3,2.7,col("#B3263D")); box(k,F,-1.5,1.5,v-1.4,v+1.4,7.4,7.8,col("#9A9382")); };
+    pil(-pv); pil(pv); box(k,F,-1.35,1.35,-pv-1.3,pv+1.3,7.1,8.6,col("#F2EFE8"),col("#CFC9BC")); box(k,F,-1.4,1.4,-h2,h2,7.3,8.3,col("#B3263D"),col("#8E1E31")); box(k,F,-1.41,1.41,-h2*.8,h2*.8,7.65,7.95,col("#FFFFFF"));
+    island(-5,5,-isl,isl); gHedge(k,F,-4.2,4.2,-isl+.3,isl-.3,.8); gBooth(k,F,-1.5,1.5,-.95,.95,2.9); boom(isl+.4,h2-.4,false); boom(-isl-.4,-h2+.4,true); gDress(k,F,W,{isl,U:14},K.a); }
+  else { const iv=W/6; island(-7,7,-iv-1,-iv+1); island(-7,7,iv-1,iv+1); gHedge(k,F,-6,6,-iv-.4,-iv+.4,.8); gHedge(k,F,-6,6,iv-.4,iv+.4,.8); gBooth(k,F,-2.4,2.4,-iv-.8,-iv+.8,3.2,true); gBooth(k,F,-2.4,2.4,iv-.8,iv+.8,3.2,true);
+    for(const sv of [-1,1]) for(const su of [-3.6,3.6]) box(k,F,su-.35,su+.35,sv*h2-.35,sv*h2+.35,0,5.8,col("#A9AEB6"));
+    box(k,F,-4.2,4.2,-h2-.6,h2+.6,5.6,5.85,col("#B3263D"),col("#8E1E31")); box(k,F,-4.1,4.1,-h2-.5,h2+.5,5.85,6.15,col("#DADDE2"),col("#F4F5F7"));
+    for(const sv of [-1,1]) boom(sv*(iv+1.5),sv*(h2-.3),false); boom(-iv+1.5,iv-1.5,false); gDress(k,F,W,{isl:iv+1,U:15,flank:true},K.a); } }
+// the frame of a gate on the land boundary: u points into the land (the way the road goes), v across it
+function gateFrame(gt){ const p=PL.plan; if(!p.land) return null; let Q=p.land.pts.map(Lc); if(lArea(Q)<0) Q=Q.slice().reverse(); const c=Lc(gt.c); let n=null, bd=1e9;
+  for(let i=0;i<Q.length;i++){ const a=Q[i], b=Q[(i+1)%Q.length], pr=projSeg(c,a,b); if(pr.d<bd){ bd=pr.d; const l=lhyp(a,b)||1; n=[-(b[1]-a[1])/l,(b[0]-a[0])/l]; } }
+  return n?{c,u:n,v:[-n[1],n[0]]}:null; }
 function itemGeo(it,K){ try{ if(isBld(it.k)) building(it,K); else object(it,K); }catch(e){ console.warn("plan item",e); } }
 
 /* ---------- the 3D layer ---------- */
@@ -18181,6 +18253,7 @@ function buildRoads(g){ const R=PL.plan.roads, RB=rbs(); if(!R.length&&!RB.lengt
     if(b.ri>9){ const n=Math.min(14,Math.floor(2*Math.PI*(b.ri-2.5)/7)); for(let i=0;i<n;i++){ const a=i/n*2*Math.PI; treeAt(deco,b.c[0]+Math.cos(a)*(b.ri-2.5),b.c[1]+Math.sin(a)*(b.ri-2.5),.8,OB.palm.c,true); } } });
   addK(g,side,M.side,RO.side); addK(g,asph,M.asph,RO.asph); addK(g,mark,M.mark,RO.mark); addK(g,isl,M.apron,RO.apron); addK(g,deco,M.det); }
 function buildItems(g,skip){ const M=mats(), K={w:kit(),r:kit(),d:kit(),s:kit(),a:kit()}; PL.plan.items.forEach(it=>{ if(it.id!==skip) itemGeo(it,K); });
+  (PL.plan.gates||[]).forEach(gt=>{ try{ const F=gateFrame(gt), st=gdef(gt); if(F) gateGeo(K,F,st,GW[st]); }catch(e){ console.warn("gate",e); } });
   addK(g,K.a,M.apron,RO.apron); addK(g,K.s,M.ao,RO.ao); addK(g,K.w,M.wall); addK(g,K.r,M.roof); addK(g,K.d,M.det); }
 function buildLive(g,it){ clearG(g); if(!it) return; const M=mats(), K={w:kit(),r:kit(),d:kit(),s:kit(),a:kit()}; itemGeo(it,K); addK(g,K.a,M.apron,RO.apron); addK(g,K.s,M.ao,RO.ao); addK(g,K.w,M.wall); addK(g,K.r,M.roof); addK(g,K.d,M.det); }
 /* cars and trucks drive every road, keep right, turn at junctions */
@@ -18204,7 +18277,7 @@ function sync(L){ const D=PL.dirty; if(!D.size) return; const all=D.has("all");
   if(all||D.has("green")){ clearG(L.g.green); buildGreen(L.g.green); }
   if(all||D.has("plots")||D.has("roads")||D.has("items")){ clearG(L.g.plots); buildPlots(L.g.plots); }
   if(all||D.has("roads")){ clearG(L.g.roads); buildRoads(L.g.roads); buildCars(L.g.cars); }
-  if(all||D.has("items")){ clearG(L.g.items); buildItems(L.g.items,PL.liveId); }
+  if(all||D.has("items")||D.has("roads")){ clearG(L.g.items); buildItems(L.g.items,PL.liveId); }
   D.clear(); }
 function mkLayer(){ return {id:"sid-plan3d",type:"custom",renderingMode:"3d",
   onAdd(m,gl){ this.r=new T.WebGLRenderer({canvas:m.getCanvas(),context:gl,antialias:true}); this.r.autoClear=false; this.cam=new T.Camera(); this.sc=new T.Scene();
@@ -18282,7 +18355,7 @@ function curType(){ const t=PL.tool; if(t==="land") return "land"; if(t==="road"
   if(t==="green"&&PL.gsub==="area") return "green"; if(rowTool()&&howOf()==="line") return "row"; return null; }
 const rowTool=()=>PL.tool==="street"||(PL.tool==="green"&&PL.gsub==="trees");
 const rowKind=()=>PL.tool==="street"?PL.ok:PL.tk;
-const howOf=()=>{ const k=rowKind(); return PL.how==="road"&&!ROADOK(k)?"line":PL.how; };
+const howOf=()=>{ const k=rowKind(); if(PL.tool==="street"&&isGate(k)) return "one"; return PL.how==="road"&&!ROADOK(k)?"line":PL.how; };
 const gapOf=k=>PL.gaps[k]||GAP[k]||8;
 const isOpen=t=>t==="road"||t==="row";
 function hintTxt(){ const t=PL.tool;
@@ -18291,6 +18364,7 @@ function hintTxt(){ const t=PL.tool;
   if(t==="plot"&&PL.psub==="master") return "Master plan: choose the plot size and landscape share, then press Make the plan — roads, roundabout, service roads, plots, park, trees and lights are made for the whole land · no land? Make the plan fills every block your roads close · tap inside a road ring for a full plan with its own roads";
   if(t==="plot") return PL.psub==="auto"?"Smart fill: tap an empty block between the roads — plots keep clear of the landscape · choose the plot size above":shpHint("plot")+" — it lines up with the nearest road";
   if(t==="green"&&PL.gsub==="area") return shpHint((GK[PL.gk]||GK.lawn).l.toLowerCase())+" · smart fill keeps clear of it";
+  if(PL.tool==="street"&&isGate(PL.ok)) return "Tap where the gate goes — near the land boundary it snaps on and faces inwards · tap a placed gate and use Exact sizes to resize · Eraser removes it";
   if(rowTool()){ const h=howOf(), l=KIND(rowKind()).l.toLowerCase(); return h==="line"?`Tap the start and end of the ${l} row (more taps bend it) · tap the last point to finish`:h==="road"?`Tap a road — ${l}s go on both sides, every ${gapOf(rowKind())} m, clear of the junctions`:h==="free"?`Drag along your finger to place a row of ${l}s · tap for one`:`Tap to place one ${l}`; }
   return {select:"Tap anything to select it · drag to move · blue handle turns it · corner dots resize · double-tap for exact sizes",hand:"Drag to move the map · pinch to zoom · twist with two fingers to turn it",
     build:"Tap a plot (or empty land) and choose what to build",eraser:"Tap a building, tree, plot, landscape, roundabout, road or the land to remove it"}[t]||""; }
@@ -18329,21 +18403,21 @@ function tzAfter(){ try{ const z=PL.tz; if(z&&(z.avoid||z.low)&&window.SID_TOPO2
 function opts(){ const el=q("#plOpt"); if(!el) return; let h=""; const t=PL.tool, SEP=`<i class="sep"></i>`;
   const seg=(o,list,cur,num)=>list.map(([v,l])=>`<button type="button" data-o="${o}" data-v="${v}"${num?' data-n="1"':""} class="${String(v)===String(cur)?"on":""}">${l}</button>`).join("");
   const shape=()=>`<b>Shape</b>`+seg("shp",SHAPES,PL.shp);
-  const rows=()=>{ const k=rowKind(); return `<b>How</b>`+seg("how",HOWS.filter(x=>x[0]!=="road"||ROADOK(k)),howOf())+(howOf()==="one"?"":`<label>every<input type="number" id="plGap" min="1" max="500" step="1" value="${gapOf(k)}" inputmode="numeric" aria-label="Spacing in metres"> m</label>`); };
+  const rows=()=>{ const k=rowKind(); if(PL.tool==="street"&&isGate(k)) return `<b>Look</b>`+seg("ok",GATES.map(([v,l])=>["gate_"+v,l]),k); return `<b>How</b>`+seg("how",HOWS.filter(x=>x[0]!=="road"||ROADOK(k)),howOf())+(howOf()==="one"?"":`<label>every<input type="number" id="plGap" min="1" max="500" step="1" value="${gapOf(k)}" inputmode="numeric" aria-label="Spacing in metres"> m</label>`); };
   if(t==="land") h=`<b>Land</b>`+SEP+shape();
-  else if(t==="road") h=seg("rsub",[["road","Road"],["round","Roundabout"],["gate","Gate"]],PL.rsub)+SEP+(PL.rsub==="gate"?`<b>Gates</b><span class="hi">${(PL.plan.gates||[]).length?(PL.plan.gates.length+" placed · the first is the main entrance"):"none yet — Master plan places them itself"}</span>`:PL.rsub==="round"?`<b>Across</b>`+seg("rdia",RDIA.map(d=>[d,d+" m"]),PL.rdia,1):seg("rt",RT.map((r,i)=>[i,`${r.l} · ${r.w} m`]),PL.rt,1));
+  else if(t==="road") h=seg("rsub",[["road","Road"],["round","Roundabout"],["gate","Gate"]],PL.rsub)+SEP+(PL.rsub==="gate"?`<b>Look</b>`+seg("gstyle",GATES,PL.gstyle||"portal")+`<span class="hi">${(PL.plan.gates||[]).length?(PL.plan.gates.length+" placed · the first is the main entrance"):"none yet — Master plan places them itself"}</span>`:PL.rsub==="round"?`<b>Across</b>`+seg("rdia",RDIA.map(d=>[d,d+" m"]),PL.rdia,1):seg("rt",RT.map((r,i)=>[i,`${r.l} · ${r.w} m`]),PL.rt,1));
   else if(t==="plot"){ const H=history(), sz=()=>`<b>Plot size</b>`+seg("target",[2500,5000,10000,20000].map(v=>[v,A.nf(v,0)+" m²"]),PL.target,1)+`<input type="number" id="plTg" min="300" step="100" value="${PL.target}" inputmode="numeric" aria-label="Plot size in m²">`+(H.n>=20?`<button type="button" id="plHist" title="The size that sold best: ${H.n} sold plots, middle size ${A.nf(H.med,0)} m²">From sales history</button>`:"");
     const phs=SEP+`<b>Phase</b>`+seg("phase",[[1,"1"],[2,"2"],[3,"3"]],PL.phase||1,1);
     h=seg("psub",[["draw","Draw"],["auto","Smart fill"],["master","Master plan"]],PL.psub)+SEP+(PL.psub==="auto"?sz()+phs+tzBtns():PL.psub==="master"?sz()+SEP+`<b>Green</b>`+seg("mpg",[4.3,5,8].map(v=>[v,v+"%"]),+prof().bud.green,1)+`<button type="button" data-tg="trees" class="${PL.mp.trees!==false?"on":""}">Trees</button><button type="button" data-tg="lights" class="${PL.mp.lights!==false?"on":""}">Lights</button><button type="button" id="plMk" class="mk">Make the plan</button>`+phs+tzBtns():shape()); }
   else if(t==="build") h=`<b>Build</b>`+seg("bk",Object.entries(BK).map(([k,v])=>[k,v.l]),PL.bk);
   else if(t==="green") h=seg("gsub",[["area","Landscape"],["trees","Trees"]],PL.gsub)+SEP+(PL.gsub==="area"?seg("gk",Object.entries(GK).map(([k,v])=>[k,v.l]),PL.gk)+SEP+shape():seg("tk",TREES.map(k=>[k,OB[k].l]),PL.tk)+SEP+rows());
-  else if(t==="street") h=seg("ok",OBJS.map(k=>[k,OB[k].l]),PL.ok)+SEP+rows();
+  else if(t==="street") h=seg("ok",OBJS.filter(k=>!isGate(k)).map(k=>[k,OB[k].l]).concat([[isGate(PL.ok)?PL.ok:(PL.gl||"gate_portal"),"Gate"]]),PL.ok)+SEP+rows();
   el.innerHTML=h; el.hidden=!h; placeKpi(); if(A&&A.arrange) A.arrange();
   el.onclick=e=>{ const tzb=e.target.closest("button[data-tz]"); if(tzb){ const k=tzb.dataset.tz, z=tzOf(); z[k]=!z[k]; persist(); opts(); if(z[k]&&PL.plan.plots.length&&window.SID_TOPO2) window.SID_TOPO2.planPass(PL,tzCb()); return; }
     const tg2=e.target.closest("button[data-tg]"); if(tg2){ const k=tg2.dataset.tg==="trees"?"trees":"lights"; PL.mp[k]=PL.mp[k]===false; persist(); opts(); return; }
     const mk=e.target.closest("#plMk"); if(mk){ masterAsk(); return; } const hb=e.target.closest("#plHist"); if(hb){ const H=history(); const t=Math.max(300,Math.round(H.med/250)*250); PL.target=t; persist(); opts(); A.flash("Plot size set to "+A.nf(t,0)+" m² — the middle size of "+H.n+" sold plots"+(H.top[0]?" · most sales were near "+A.nf(H.top[0],0)+" m²":"")); return; }
     const mg=e.target.closest('button[data-o="mpg"]'); if(mg){ PL.mp.green=+mg.dataset.v; prof().bud.green=+mg.dataset.v; persist(); opts(); if(rulesOn) rulesUI(); return; }
-    const b=e.target.closest("button[data-o]"); if(!b) return; const o=b.dataset.o, v=b.dataset.n?+b.dataset.v:b.dataset.v; if(PL[o]===v) return; PL[o]=v;
+    const b=e.target.closest("button[data-o]"); if(!b) return; const o=b.dataset.o, v=b.dataset.n?+b.dataset.v:b.dataset.v; if(PL[o]===v) return; PL[o]=v; if(o==="ok"&&isGate(v)) PL.gl=v;
     if(PL.cur&&PL.cur.t!==curType()) finishCur(); closeMenu(); persist(); opts(); live(); A.hint(); A.need(); };
   const tzm=q("#plTzM"); if(tzm){ tzm.onkeydown=e=>e.stopPropagation(); tzm.onchange=()=>{ const v=+tzm.value; if(v>=1&&v<=30){ tzOf().max=v; persist(); if(tzOf().avoid&&PL.plan.plots.length&&window.SID_TOPO2) window.SID_TOPO2.planPass(PL,tzCb()); } else { A.flash("Steepest slope between 1 and 30 %"); tzm.value=tzOf().max; } }; }
   const tg=q("#plTg"); if(tg){ tg.onkeydown=e=>e.stopPropagation(); tg.onchange=()=>{ const v=+tg.value; if(v>=300&&v<=1e6){ PL.target=Math.round(v); persist(); opts(); } else { A.flash("Plot size between 300 and 1,000,000 m²"); tg.value=PL.target; } }; }
@@ -18390,7 +18464,7 @@ function placeBuilding(k,pl,ptLocal){ ensureOrigin(); pushUndo(); let it;
   PL.plan.items.push(it); PL.sel={t:"item",id:it.id}; changed(["items"]); A.flash(KIND(k).l+" built — "+A.nf(it.len,0)+" × "+A.nf(it.w,0)+" m, "+A.nf(it.h,0)+" m high"); return it; }
 function roadBearing(p){ let best=null, bd=400; PL.plan.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let i=1;i<V.length;i++){ const pr=projSeg(p,V[i-1],V[i]); if(pr.d<bd){ bd=pr.d; best=[V[i-1],V[i]]; } } });
   if(!best) return +(((map.getBearing()%360)+360)%360).toFixed(2); const L=lhyp(best[0],best[1])||1; return +bearingOf([(best[1][0]-best[0][0])/L,(best[1][1]-best[0][1])/L]).toFixed(2); }
-function placeObject(k,ptLocal,rot){ const KD=KIND(k); return {id:newId(),k,c:Gc(ptLocal[0],ptLocal[1]),rot:rot!=null?rot:roadBearing(ptLocal),len:KD.len,w:KD.w,h:+(KD.h*(TREES.includes(k)?(.85+hash(PL.nid+k)*.35):1)).toFixed(2),plot:null}; }
+function placeObject(k,ptLocal,rot){ const KD=KIND(k); if(isGate(k)&&PL.plan.land){ let Q=PL.plan.land.pts.map(Lc); if(lArea(Q)<0) Q=Q.slice().reverse(); let bd=45,bp=null,bn=null; for(let i=0;i<Q.length;i++){ const a=Q[i], b=Q[(i+1)%Q.length], pr=projSeg(ptLocal,a,b); if(pr.d<bd){ bd=pr.d; bp=pr.p; const l=lhyp(a,b)||1; bn=[-(b[1]-a[1])/l,(b[0]-a[0])/l]; } } if(bp){ ptLocal=bp; rot=+bearingOf(bn).toFixed(1); } } return {id:newId(),k,c:Gc(ptLocal[0],ptLocal[1]),rot:rot!=null?rot:roadBearing(ptLocal),len:KD.len,w:KD.w,h:+(KD.h*(TREES.includes(k)?(.85+hash(PL.nid+k)*.35):1)).toFixed(2),plot:null}; }
 function commitGreen(pts,k){ ensureOrigin(); pushUndo(); k=k||PL.gk; const gr={id:newId(),k,pts:pts.map(r9)}; PL.plan.green.push(gr); PL.sel={t:"green",id:gr.id}; changed(["green"]);
   const a=geoArea(gr.pts); A.flash(`${(GK[k]||GK.lawn).l}: ${A.fArea(a)}${A.fArea2(a)?" · "+A.fArea2(a):""} — smart fill keeps clear of it`); return gr; }
 function commitShape(t,pts){ if(t==="land") commitLand(pts); else if(t==="green") commitGreen(pts); else commitPlot(pts); }
@@ -18416,9 +18490,9 @@ function roadAt(g,tol){ let best=null, bd=1e9; PL.plan.roads.forEach(r=>{ const 
 
 // gates: points on the land boundary where the outer road comes in (the first one is the main entrance)
 function placeGate(g,pt){ const p=PL.plan; if(!p.land){ A.flash("Draw the land first — gates sit on its boundary"); return; } const Land=p.land.pts.map(Lc), tol=Math.max(30,30*mpp(pt));
-  const hit=(p.gates||[]).find(x=>lhyp(Lc(x.c),g)<Math.max(20,18*mpp(pt))); if(hit){ pushUndo(); p.gates=p.gates.filter(x=>x!==hit); if(hit.main&&p.gates.length) p.gates[0].main=true; changed(["roads"]); opts(); A.flash("Gate removed"); return; }
+  const hit=(p.gates||[]).find(x=>lhyp(Lc(x.c),g)<Math.max(20,18*mpp(pt))); if(hit){ const want=PL.gstyle||"portal"; if(gdef(hit)!==want){ pushUndo(); hit.style=want; changed(["roads","items"]); A.flash("Gate changed to "+(GATES.find(x=>x[0]===want)||[0,want])[1].toLowerCase()+" · tap it again to remove"); return; } pushUndo(); p.gates=p.gates.filter(x=>x!==hit); if(hit.main&&p.gates.length) p.gates[0].main=true; changed(["roads","items"]); opts(); A.flash("Gate removed"); return; }
   let best=null, bd=tol; for(let i=0;i<Land.length;i++){ const pr=projSeg(g,Land[i],Land[(i+1)%Land.length]); if(pr.d<bd){ bd=pr.d; best=pr.p; } }
-  if(!best){ A.flash("Tap on the land boundary to put a gate there"); return; } pushUndo(); if(!p.gates) p.gates=[]; const main=!p.gates.length; p.gates.push({id:newId(),c:Gc(best[0],best[1]),main}); changed(["roads"]); opts(); A.flash(main?"Main entrance placed — services go next to it":"Gate "+p.gates.length+" placed"); }
+  if(!best){ A.flash("Tap on the land boundary to put a gate there"); return; } pushUndo(); if(!p.gates) p.gates=[]; const main=!p.gates.length; p.gates.push({id:newId(),c:Gc(best[0],best[1]),main,style:PL.gstyle||"portal"}); changed(["roads","items"]); opts(); A.flash(main?"Main entrance placed — services go next to it":"Gate "+p.gates.length+" placed"); }
 function offsetPoly(P,d){ // inward offset of a polygon (mitred corners); P is made counter-clockwise first
   let Q=lArea(P)<0?P.slice().reverse():P.slice(); const n=Q.length, L=[]; for(let i=0;i<n;i++){ const a=Q[i], b=Q[(i+1)%n], l=lhyp(a,b)||1, nv=[-(b[1]-a[1])/l,(b[0]-a[0])/l]; L.push({p:[a[0]+nv[0]*d,a[1]+nv[1]*d],u:[(b[0]-a[0])/l,(b[1]-a[1])/l]}); }
   const out=[]; for(let i=0;i<n;i++){ const A1=L[(i-1+n)%n], B1=L[i], den=A1.u[0]*B1.u[1]-A1.u[1]*B1.u[0]; if(Math.abs(den)<1e-6){ out.push(B1.p); continue; } const t=((B1.p[0]-A1.p[0])*B1.u[1]-(B1.p[1]-A1.p[1])*B1.u[0])/den; const x=[A1.p[0]+A1.u[0]*t,A1.p[1]+A1.u[1]*t]; out.push(lhyp(x,Q[i])>Math.abs(d)*4?B1.p:x); }
@@ -19053,8 +19127,10 @@ function draw2d(ctx,labels,now){ const p=PL.plan, sel=obj(PL.sel), Pp=A.P;
   ctx.save(); ctx.lineJoin="round"; ctx.lineCap="round";
   const circ=(c,r)=>{ const V=[]; for(let i=0;i<=40;i++){ const a=i/40*2*Math.PI; V.push(gScr([c[0]+Math.cos(a)*r,c[1]+Math.sin(a)*r])); } return V; };
   if(!layer||!layer.ok){ if(p.land) poly(p.land.pts.map(Pp),true,"#E6D9B8",2,"rgba(230,217,184,.25)"); p.green.forEach(x=>poly(x.pts.map(Pp),true,"#3E7F34",1.5,(GK[x.k]||GK.lawn).c)); p.roads.forEach(r=>poly(r.pts.map(Pp),false,"#3B3F45",Math.max(3,r.w/mpp([cvW()/2,cvH()/2])))); rbs().forEach(b=>{ poly(circ(b.c,b.r),true,"#3B3F45",2,"#3B3F45"); poly(circ(b.c,b.ri),true,"#E4DED0",1.5,"#6E9B5A"); }); p.plots.forEach(x=>poly(x.pts.map(Pp),true,"#fff",1.5,"rgba(246,241,230,.75)")); p.items.forEach(it=>poly(iCorners(it).map(gScr),true,"#B3263D",1.5,"rgba(233,217,168,.9)")); }
-  (p.gates||[]).forEach((gt,i)=>{ const s2=Pp(gt.c); ctx.beginPath(); ctx.arc(s2[0],s2[1],gt.main?11:8,0,2*Math.PI); ctx.fillStyle=gt.main?"#FFD60A":"#fff"; ctx.fill(); ctx.lineWidth=2.5; ctx.strokeStyle="#B3263D"; ctx.stroke();
-    ctx.font=`800 10px ${A.FONT}`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle="#111"; ctx.fillText(gt.main?"M":String(i+1),s2[0],s2[1]+.5); });
+  (p.gates||[]).forEach((gt,i)=>{ const s2=Pp(gt.c), t=gt.main?"Main gate":"Gate "+(i+1), st=gdef(gt);
+    if(!layer||!layer.ok){ const F=gateFrame(gt); if(F){ const W=GW[st]/2, a=gScr([F.c[0]-F.v[0]*W,F.c[1]-F.v[1]*W]), b=gScr([F.c[0]+F.v[0]*W,F.c[1]+F.v[1]*W]); ctx.lineCap="butt"; ctx.lineWidth=5; ctx.strokeStyle="#C62828"; ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); ctx.setLineDash([6,6]); ctx.strokeStyle="#fff"; ctx.stroke(); ctx.setLineDash([]); [a,b].forEach(q=>{ ctx.fillStyle="#E9E6DF"; ctx.fillRect(q[0]-4,q[1]-4,8,8); ctx.strokeStyle="#8E959E"; ctx.lineWidth=1; ctx.strokeRect(q[0]-4,q[1]-4,8,8); }); ctx.lineCap="round"; } }
+    ctx.font=`800 10px ${A.FONT}`; ctx.textAlign="center"; ctx.textBaseline="middle"; const w=ctx.measureText(t).width+14, x=s2[0]-w/2, y=s2[1]-38;
+    ctx.fillStyle="rgba(20,20,22,.85)"; ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(x,y,w,17,8.5); else ctx.rect(x,y,w,17); ctx.fill(); if(gt.main){ ctx.lineWidth=1.5; ctx.strokeStyle="#FFD60A"; ctx.stroke(); } ctx.fillStyle=gt.main?"#FFD60A":"#fff"; ctx.fillText(t,s2[0],y+9); });
   // plot codes (only when the plots are big enough on screen)
   const mp=mpp([cvW()/2,cvH()/2]); ctx.textAlign="center"; ctx.textBaseline="middle";
   p.green.forEach(x=>{ const a=geoArea(x.pts); if(Math.sqrt(a)/mp<70) return; const s=gScr(lCent(x.pts.map(Lc))), t=(GK[x.k]||GK.lawn).l+" · "+A.fArea(a); ctx.font=`700 11px ${A.FONT}`; ctx.lineWidth=3; ctx.strokeStyle="rgba(0,0,0,.5)"; ctx.strokeText(t,s[0],s[1]); ctx.fillStyle="#EFFFE6"; ctx.fillText(t,s[0],s[1]); });
