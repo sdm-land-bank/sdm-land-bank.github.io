@@ -20682,7 +20682,7 @@ function compare(){ const rows=[]; (A.users||[]).forEach(u=>{ const R=roleOf(u.r
   const t=legacySnap(R), n=effective(g,ex.add,ex.rem), hasEx=Object.keys(ex.add).length||Object.keys(ex.rem).length;
   rows.push({u,ok:same(t,n),ex:hasEx,d:diff(t,n)}); }); return rows; }
 function switchHtml(){
-  const rows=compare(), missing=(A.roles||[]).filter(r=>!r.is_admin&&!roleGrid(r)), bad=rows.filter(r=>!r.ok&&!r.ex), exd=rows.filter(r=>!r.ok&&r.ex);
+  const rows=compare(), missing=(A.roles||[]).filter(r=>!r.is_admin&&!roleGrid(r)), bad=rows.filter(r=>!r.ok&&!r.ex&&!r.nogrid), exd=rows.filter(r=>!r.ok&&r.ex), nog=rows.filter(r=>r.nogrid);
   const ready=!A.nosql&&!missing.length&&!bad.length;
   return `${A.nosql?`<div class="acc-warn"><b>Database step needed.</b> The grid columns do not exist yet. Ask Claude to run <code>web-seed/sql_17_access.sql</code> (with your OK). Until then everything works with today's rules; this page only previews.</div>`:""}
    <div class="acc-card"><h3>1. Build the grid from today's roles</h3><p>Fills every role's grid with exactly what that role can do today (pages, editing, plot-status part). Saves nothing about people.</p>
@@ -20690,7 +20690,7 @@ function switchHtml(){
    <div class="acc-card"><h3>2. Check every person</h3><p>Today's access compared with the new grid. Must be the same for everybody except people you gave exceptions on purpose.</p>
     <table class="acc-grid"><thead><tr><th>Person</th><th>Role</th><th colspan="3">Result</th></tr></thead><tbody>
     ${rows.map(r=>`<tr><td>${E(r.u.name||r.u.email)}</td><td>${E((roleOf(r.u.role)||{}).label||r.u.role)}</td><td colspan="3" style="text-align:left">${r.adm?`<span class="acc-ok">Administrator — everything</span>`:r.nogrid?`<span class="acc-bad">Role grid not built</span>`:r.ok?`<span class="acc-ok">Same as today</span>`:`<span class="${r.ex?"":"acc-bad"}">${r.ex?"Different on purpose (exceptions)":"Different"}</span> <span class="acc-diff">${r.d.join(" · ")}</span>`}</td></tr>`).join("")}</tbody></table>
-    <p class="acc-diff" style="margin-top:8px">${rows.length} people · ${rows.filter(r=>r.ok).length} same as today · ${exd.length} with exceptions · <b class="${bad.length?"acc-bad":"acc-ok"}">${bad.length} different without a reason</b></p></div>
+    <p class="acc-diff" style="margin-top:8px">${rows.length} people · ${rows.filter(r=>r.ok).length} same as today · ${exd.length} with exceptions${nog.length?" · "+nog.length+" waiting for their role grid":""} · <b class="${bad.length?"acc-bad":"acc-ok"}">${bad.length} different without a reason</b></p></div>
    <div class="acc-card"><h3>3. Switch</h3><p>Now: <b>${A.mode==="modules"?"Module permissions are ON":"Today's rules (legacy)"}</b>. The switch applies the next time each person opens the dashboard. Switching back is always possible.</p>
     <div class="acc-btns">${A.mode==="modules"?`<button class="acc-btn" data-a="modeOff">Back to today's rules</button>`:`<button class="acc-btn p" data-a="modeOn" ${ready?"":"disabled"}>Turn module permissions ON</button>`}
      ${!ready&&A.mode!=="modules"?`<span class="acc-diff">${A.nosql?"Needs the database step first.":missing.length?"Build the grid first.":"Fix the differences first."}</span>`:""}</div></div>`;
