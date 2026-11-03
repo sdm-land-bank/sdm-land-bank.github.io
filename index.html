@@ -2613,6 +2613,53 @@ html[data-look="modules"] #toast{z-index:1400}
 @media (max-width:380px){#nlHome .nl-grid{grid-template-columns:repeat(2,1fr)}}
 @media (prefers-reduced-motion:reduce){#nlHome .nl-sq{transition:none}}
 </style>
+<style id="sid-access">
+/* V107 Users & access panel */
+.acc-ov{position:fixed;inset:0;z-index:1250;background:rgba(0,0,0,.38);display:flex;align-items:stretch;justify-content:center;padding:24px;font-family:Inter,-apple-system,system-ui,sans-serif}
+.acc-box{--a-ink:#1C1C1E;--a-mute:#6b6b70;--a-line:rgba(0,0,0,.09);--a-bg:rgba(255,255,255,.96);--a-soft:rgba(0,0,0,.04);--a-acc:#B3263D;
+ width:min(1180px,100%);display:flex;flex-direction:column;background:var(--a-bg);color:var(--a-ink);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.35);overflow:hidden;
+ backdrop-filter:saturate(185%) blur(28px);-webkit-backdrop-filter:saturate(185%) blur(28px);font-size:13.5px}
+html[data-skin="glass-dark"] .acc-box{--a-ink:#F5F5F7;--a-mute:rgba(245,245,247,.6);--a-line:rgba(255,255,255,.1);--a-bg:rgba(32,32,40,.9);--a-soft:rgba(255,255,255,.05)}
+.acc-h{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--a-line)}
+.acc-h b{font-size:18px}.acc-h .sp{flex:1}
+.acc-x{border:0;background:var(--a-soft);color:inherit;width:34px;height:34px;border-radius:10px;font-size:20px;cursor:pointer}
+.acc-st{padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.acc-st.legacy{background:rgba(142,142,147,.18)}.acc-st.modules{background:rgba(52,199,89,.2);color:#1e7a3a}.acc-st.nosql{background:rgba(255,159,10,.2);color:#8a5200}
+html[data-skin="glass-dark"] .acc-st.modules{color:#7be39a}html[data-skin="glass-dark"] .acc-st.nosql{color:#ffc46b}
+.acc-tabs{display:flex;gap:4px;padding:10px 20px 0}
+.acc-tabs button{border:0;background:none;color:var(--a-mute);font:600 14px inherit;font-family:inherit;padding:8px 14px;border-radius:10px 10px 0 0;cursor:pointer}
+.acc-tabs button.on{color:var(--a-ink);background:var(--a-soft)}
+.acc-body{flex:1;overflow:auto;padding:16px 20px 24px;background:var(--a-soft)}
+.acc-cols{display:grid;grid-template-columns:230px 1fr;gap:16px;align-items:start}
+.acc-list{display:flex;flex-direction:column;gap:4px;position:sticky;top:0}
+.acc-list input{padding:8px 10px;border-radius:10px;border:1px solid var(--a-line);background:var(--a-bg);color:inherit;font:inherit;margin-bottom:6px}
+.acc-list button{text-align:left;border:1px solid transparent;background:var(--a-bg);color:inherit;border-radius:10px;padding:8px 10px;font:inherit;cursor:pointer}
+.acc-list button.on{border-color:var(--a-acc);box-shadow:0 0 0 2px rgba(179,38,61,.15)}
+.acc-list button em{display:block;font-style:normal;font-size:11.5px;color:var(--a-mute)}
+.acc-card{background:var(--a-bg);border:1px solid var(--a-line);border-radius:16px;padding:14px 16px;margin-bottom:12px}
+.acc-card h3{margin:0 0 4px;font-size:15px}.acc-card p{margin:2px 0 8px;color:var(--a-mute);font-size:12.5px}
+.acc-grid{width:100%;border-collapse:collapse}
+.acc-grid th,.acc-grid td{padding:6px 8px;border-bottom:1px solid var(--a-line);text-align:center}
+.acc-grid th:first-child,.acc-grid td:first-child{text-align:left}
+.acc-grid th{font-size:11px;color:var(--a-mute);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.acc-grid tr.subp td{font-size:12.5px;color:var(--a-mute);padding-top:3px;padding-bottom:3px}
+.acc-grid tr.tab td{background:var(--a-soft);font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--a-mute)}
+.acc-grid td small{display:block;color:var(--a-mute);font-size:11px}
+.acc-grid input{width:17px;height:17px;accent-color:#B3263D;cursor:pointer}
+.acc-x3{min-width:64px;border:1px solid var(--a-line);background:var(--a-bg);color:inherit;border-radius:8px;padding:3px 6px;font:12px inherit;font-family:inherit;cursor:pointer}
+.acc-x3.allow{background:rgba(52,199,89,.18);border-color:rgba(52,199,89,.5)}.acc-x3.deny{background:rgba(255,59,48,.14);border-color:rgba(255,59,48,.45)}
+.acc-x3.inh.has{color:#1e7a3a}.acc-x3.inh.no{color:var(--a-mute)}
+html[data-skin="glass-dark"] .acc-x3.inh.has{color:#7be39a}
+.acc-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.acc-btn{border:0;border-radius:10px;padding:9px 14px;font:600 13px inherit;font-family:inherit;cursor:pointer;background:var(--a-soft);color:inherit;border:1px solid var(--a-line)}
+.acc-btn.p{background:#B3263D;color:#fff;border-color:#B3263D}.acc-btn[disabled]{opacity:.45;cursor:not-allowed}
+.acc-chips{display:flex;flex-wrap:wrap;gap:6px}.acc-chips span{padding:4px 9px;border-radius:999px;background:var(--a-soft);border:1px solid var(--a-line);font-size:12px}
+.acc-ok{color:#1e7a3a;font-weight:600}.acc-bad{color:#B3263D;font-weight:600}
+html[data-skin="glass-dark"] .acc-ok{color:#7be39a}
+.acc-diff{font-size:12px;color:var(--a-mute)}
+.acc-warn{padding:10px 12px;border-radius:12px;background:rgba(255,159,10,.14);border:1px solid rgba(255,159,10,.35);margin-bottom:12px;font-size:13px}
+@media (max-width:820px){.acc-ov{padding:0}.acc-box{border-radius:0}.acc-cols{grid-template-columns:1fr}.acc-list{position:static}.acc-grid th,.acc-grid td{padding:5px 4px}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -13123,7 +13170,7 @@ const SID_MOD=(function(){
   const me=()=>(typeof SBME!=="undefined"&&SBME)||null;
   const adm=()=>{ const m=me(); return !m||!!m.is_admin; };            /* offline file / not signed in = today's behaviour (all) */
   const pub=()=>{ const m=me(); return !!m&&/roadshow|public/i.test(String(m.role||"")); };
-  const see=id=>typeof canSee==="function"?!!canSee(id):true;
+  const see=id=>{ const f=window.__sidCanSeeLegacy||(typeof canSee==="function"?canSee:null); if(!f) return true; if(String(id).startsWith("lb.")&&!f("sales")) return false; return !!f(id); };   /* a Land Bank view only counts when its door page (Sales & Land Bank) opens */   /* today's page rules (kept even when phase 3 overrides canSee) */
   const any=ids=>ids.some(see);
   const edit=()=>{ const m=me(); return !m||!!(m.can_edit||m.is_admin); };
   const wf=()=>{ const m=me(); return m?(m.is_admin?"ops":(m.wf||null)):"ops"; };
@@ -13165,7 +13212,7 @@ const SID_MOD=(function(){
     {id:"register",tab:"data",label:"MDS register",icon:"sheet",acts:["view","edit","export"],pages:["editor"],rule:{view:()=>see("editor"),edit:()=>see("editor")&&edit(),export:()=>see("editor")&&!pub()},open:{view:"editor"}},
     {id:"health",tab:"data",label:"Data health",icon:"health",acts:["view"],pages:["health"],rule:{view:()=>see("health")},open:{view:"health"}},
     {id:"audit",tab:"data",label:"Change log",icon:"log",acts:["view"],pages:["audit"],rule:{view:()=>see("audit")},open:{view:"audit"}},
-    {id:"lb.settings",tab:"data",label:"Land Bank settings",icon:"gear",acts:["edit"],pages:["lb.settings","lb.changelog","lb.excel-grid"],rule:{view:()=>any(["lb.settings","lb.changelog","lb.excel-grid"]),edit:()=>any(["lb.settings"])},open:{view:"sales"}},
+    {id:"lb.settings",tab:"data",label:"Land Bank settings",hint:"Settings, change log, grid",icon:"gear",acts:["view","edit"],pages:["lb.settings","lb.changelog","lb.excel-grid"],rule:{view:()=>any(["lb.settings","lb.changelog","lb.excel-grid"]),edit:()=>any(["lb.settings"])},open:{view:"sales"}},
     {id:"sync",tab:"data",label:"Sync with online sheet",icon:"sync",acts:["edit"],rule:{view:()=>adm(),edit:()=>adm()},open:{action:"sync"}},
     {id:"admin.users",tab:"admin",label:"Users & access",icon:"users",acts:["view","edit"],pages:["settings"],rule:{view:()=>adm(),edit:()=>adm()},open:{view:"settings"}},
     {id:"admin.viewas",tab:"admin",label:"View as",icon:"eye",acts:["view"],rule:{view:()=>adm()},open:{action:"viewas"}},
@@ -13175,16 +13222,19 @@ const SID_MOD=(function(){
     {id:"admin.usage",tab:"admin",label:"Usage & limits",icon:"gauge",acts:["view"],pages:["usage"],rule:{view:()=>adm()},open:{view:"settings"}}
   ];
   const BY=Object.fromEntries(M.map(m=>[m.id,m]));
-  function can(id,act){ act=act||"view"; const m=BY[id]; if(!m) return false; if(adm()) return true;
+  function legacy(id,act){ act=act||"view"; const m=BY[id]; if(!m) return false; if(adm()) return true;
     const f=m.rule[act]; if(!f) return false; try{ return !!f(); }catch(e){ return false; } }
+  /* phase 3 (web_access.py) can install the module grid here; until then every answer is today's rule */
+  let HOOK=null;
+  function can(id,act){ if(HOOK){ const r=HOOK(id,act||"view"); if(r!==undefined) return !!r; } return legacy(id,act); }
   function list(){ return M.filter(m=>can(m.id,"view")); }
   function tabs(){ const L=list(); return TABS.filter(([t])=>L.some(m=>m.tab===t)&&(t!=="admin"||adm())).map(([id,label])=>({id,label,mods:L.filter(m=>m.tab===id)})); }
   /* every page id that a role can be given today must belong to a module (phase 3 compare relies on it) */
   function check(){ const have=new Set(M.flatMap(m=>m.pages||[]));
     const ids=(typeof ALL_PAGE_IDS!=="undefined"?ALL_PAGE_IDS:[]).filter(id=>!have.has(id)); return ids; }
   /* a snapshot of one person's effective access, for the phase 3 before/after compare */
-  function snapshot(){ const o={}; M.forEach(m=>{ o[m.id]=m.acts.filter(a=>can(m.id,a)); if(!o[m.id].length) delete o[m.id]; }); return o; }
-  return {TABS,MODULES:M,get:id=>BY[id]||null,can,list,tabs,check,snapshot};
+  function snapshot(fn){ fn=fn||can; const o={}; M.forEach(m=>{ o[m.id]=m.acts.filter(a=>fn(m.id,a)); if(!o[m.id].length) delete o[m.id]; }); return o; }
+  return {TABS,MODULES:M,get:id=>BY[id]||null,can,legacy,list,tabs,check,snapshot,setHook:f=>{ HOOK=typeof f==="function"?f:null; }};
 })();
 
 const SID_PREFS=(function(){
@@ -20446,6 +20496,7 @@ function open(id){
   if(!okMod(id)){ if(typeof toast==="function") toast("Your access does not include this module",true); return; }
   const o=m.open||{}; if(o.home){ show(); return; }
   if(o.panel==="me"||o.panel==="look"){ sheet(); return; }
+  if(o.panel&&window.SID_PANELS&&typeof SID_PANELS[o.panel]==="function"){ recPush(id); hide(); SID_PANELS[o.panel](); return; }
   recPush(id); hide();
   if(o.view&&typeof go==="function") go(o.view);
   if(o.view==="sales"&&LBT[id]) lbTab(LBT[id]);
@@ -20524,6 +20575,200 @@ let tries=0; const boot=setInterval(()=>{ tries++;
 /* keep Home's numbers fresh while it is open (approvals, holds, notifications arrive live) */
 setInterval(()=>{ if(NL.shown&&document.visibilityState==="visible") try{ render(); }catch(e){} },20000);
 window.SID_NL={show,hide,open,render,sheet,railHome};
+})();
+</script>
+<script>
+/* ============================================================================
+   V107 — NEW LOOK phase 3: module permissions (grid per role, exceptions per person, switch)
+   ========================================================================== */
+(function(){
+if(typeof SID_MOD==="undefined") return;
+const $q=s=>document.querySelector(s), E=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const me=()=>(typeof SBME!=="undefined"&&SBME)||null;
+const likeEsc=v=>String(v||"").replace(/[\\%_]/g,c=>"\\"+c);   /* e-mail in ilike: _ and % are wildcards */
+const ACTS=[["view","View"],["edit","Edit"],["approve","Approve"],["export","Export"]];
+const ALWAYS=new Set(["home","me"]);          /* everybody keeps Home and My Settings */
+/* a module made of several pages (CEO Suite = 6 views …) can be limited to some of them: key "<module>/pages" = the pages it opens
+   (no key = all its pages). Only the role grid uses it; it keeps today's page-by-page rights exact. */
+const SUBP=m=>(m.pages||[]).filter(p=>p!=="sales"&&p!=="portfolio");
+const MULTI=SID_MOD.MODULES.filter(m=>SUBP(m).length>1);
+const PAGE_LABEL=(()=>{ const o={"lb.changelog":"Land Bank change log","lb.excel-grid":"Land Bank grid"}; try{ SID_PAGES.forEach(p=>{ o[p.id]=p.label; (p.subs||[]).forEach(g=>g.items.forEach(([id,l])=>{ o[id]=l; })); }); }catch(e){} return o; })();
+const clean=o=>{ const r={}; if(!o||typeof o!=="object") return r;
+  Object.keys(o).forEach(k=>{ if(!Array.isArray(o[k])) return;
+    if(k.endsWith("/pages")){ const m=SID_MOD.get(k.slice(0,-6)); if(!m) return; r[k]=[...new Set(o[k].filter(p=>SUBP(m).includes(p)))]; return; }
+    const m=SID_MOD.get(k); if(!m) return; const a=o[k].filter(x=>m.acts.includes(x)); if(a.length) r[k]=[...new Set(a)]; });
+  Object.keys(r).filter(k=>k.endsWith("/pages")).forEach(k=>{ if(!r[k.slice(0,-6)]) delete r[k]; }); return r; };
+const modeOn=()=>{ const m=me(); return !!m&&m.access_mode==="modules"&&!!m.access&&typeof m.access==="object"; };
+/* the grid answer for the signed-in person (or the person shown by View as) */
+function gridCan(id,act){ const m=me(); if(!m) return undefined; if(m.is_admin) return true; if(ALWAYS.has(id)) return true;
+  const has=(o)=>!!(o&&Array.isArray(o[id])&&o[id].includes(act));
+  return (has(m.access)||has(m.access_add))&&!has(m.access_remove); }
+SID_MOD.setHook((id,act)=>modeOn()?gridCan(id,act):undefined);
+/* ---- pages follow the grid in modules mode: every page id belongs to one module ---- */
+const NOPUB=new Set(["sales","audit","codes","approvals","demand","offer","editor","health","usage","settings","match.fin"]);
+const PAGE2MOD={}; SID_MOD.MODULES.forEach(m=>(m.pages||[]).forEach(p=>{ PAGE2MOD[p]=m.id; }));
+if(typeof canSee==="function"&&!window.__sidCanSeeLegacy){
+  const legacy=canSee; window.__sidCanSeeLegacy=legacy;
+  canSee=function(id){
+    if(!modeOn()) return legacy(id);
+    const m=me(); if(!m) return true; if(m.is_admin) return true;
+    if(id==="settings"||id==="usage") return false;
+    if(/roadshow|public/i.test(String(m.role||""))&&NOPUB.has(String(id))) return false;   /* the public screen stays locked (web_roadshow3.py) */
+    if(id==="sales") return SID_MOD.MODULES.some(x=>(x.pages||[]).some(p=>String(p).startsWith("lb."))&&SID_MOD.can(x.id,"view"));
+    if(id==="approvals") return SID_MOD.can("approvals","view")&&!!m.wf;
+    const mod=PAGE2MOD[id]||PAGE2MOD[String(id).split(".")[0]]; if(!mod) return legacy(id);
+    if(!SID_MOD.can(mod,"view")) return false;
+    const sub=m.access&&m.access[mod+"/pages"]; return !Array.isArray(sub)||!SUBP(SID_MOD.get(mod)).includes(id)||sub.includes(id); };
+}
+/* ---- View as: also apply the viewed person's grid and exceptions (not the administrator's) ---- */
+if(typeof window.sidViewAs==="function"&&!window.__sidVaAcc){ window.__sidVaAcc=1; const orig=window.sidViewAs;
+  window.sidViewAs=async function(real){ const r=await orig(real); if(!r||!r.viewAs) return r;
+    try{ const v=window.SID_VIEWAS||{};
+      const [ro,us]=await Promise.all([SB.from("sid_roles").select("*").eq("role",r.role).maybeSingle(),SB.from("sid_users").select("*").ilike("email",likeEsc(v.email||r.email)).maybeSingle()]);
+      r.access=ro.data&&ro.data.access||null; r.access_add=us.data&&us.data.access_add||{}; r.access_remove=us.data&&us.data.access_remove||{};
+      if(us.data&&us.data.team!==undefined) r.team=us.data.team;
+      if(real&&real.access_mode) r.access_mode=real.access_mode;
+      if(r.access_mode==="modules"){ const h=o=>!!(o&&Array.isArray(o.register)&&o.register.includes("edit")); r.can_edit=!!r.is_admin||((h(r.access)||h(r.access_add))&&!h(r.access_remove)); }
+    }catch(e){ console.warn("view as access",e); }
+    return r; }; }
+/* ---- the panel ---- */
+const A={tab:"roles",roles:null,users:null,ex:{},cur:null,person:null,draft:null,pdraft:null,nosql:false,mode:"legacy",busy:false,q:""};
+const tabOf=Object.fromEntries(SID_MOD.TABS);
+/* today's rules for a role, worked out with today's code (the same answers people get today) */
+function legacySnap(role){ const save=SBME; try{ SBME={email:"x",name:"x",role:role.role,label:role.label,pages:role.pages||[],can_edit:!!role.can_edit||!!role.is_admin,is_admin:!!role.is_admin,wf:role.is_admin?"ops":(role.wf||null)};
+    const o=SID_MOD.snapshot(SID_MOD.legacy); ALWAYS.forEach(id=>{ if(!o[id]) o[id]=["view"]; });
+    const see=window.__sidCanSeeLegacy||canSee;
+    MULTI.forEach(m=>{ if(!o[m.id]) return; const all=SUBP(m), vis=all.filter(p=>!!see(p)); if(vis.length<all.length) o[m.id+"/pages"]=vis; });
+    return o; } finally{ SBME=save; } }
+function effective(roleAcc,add,rem){ const o={}; Object.keys(roleAcc||{}).filter(k=>k.endsWith("/pages")).forEach(k=>{ o[k]=roleAcc[k].slice(); }); SID_MOD.MODULES.forEach(m=>{ const a=m.acts.filter(x=>ALWAYS.has(m.id)&&x==="view"||(((roleAcc||{})[m.id]||[]).includes(x)||((add||{})[m.id]||[]).includes(x))&&!((rem||{})[m.id]||[]).includes(x)); if(a.length) o[m.id]=a; }); return o; }
+/* compare with "no page list" read as "all its pages" */
+const norm=o=>{ const r={...o}; MULTI.forEach(m=>{ const k=m.id+"/pages"; if(r[m.id]&&!r[k]) r[k]=SUBP(m); if(!r[m.id]) delete r[k]; }); return r; };
+const same=(a,b)=>{ a=norm(a); b=norm(b); const k=new Set([...Object.keys(a),...Object.keys(b)]); for(const x of k){ const p=(a[x]||[]).slice().sort().join(), q=(b[x]||[]).slice().sort().join(); if(p!==q) return false; } return true; };
+function diff(a,b){ a=norm(a); b=norm(b); const out=[]; const k=new Set([...Object.keys(a),...Object.keys(b)]); k.forEach(x=>{ const p=a[x]||[], q=b[x]||[]; const lost=p.filter(y=>!q.includes(y)), got=q.filter(y=>!p.includes(y));
+  const pg=x.endsWith("/pages"), L=pg?((SID_MOD.get(x.slice(0,-6))||{}).label||x)+" pages":((SID_MOD.get(x)||{}).label||x), nm=y=>pg?(PAGE_LABEL[y]||y):y;
+  if(lost.length) out.push(`<span class="acc-bad">−</span> ${E(L)} (${lost.map(nm).map(E).join(", ")})`); if(got.length) out.push(`<span class="acc-ok">+</span> ${E(L)} (${got.map(nm).map(E).join(", ")})`); }); return out; }
+async function load(){
+  A.busy=true; draw();
+  try{
+    const ro=await SB.from("sid_roles").select("*").order("role"); if(ro.error) throw ro.error; A.roles=ro.data||[];
+    A.nosql=!A.roles.length||!("access" in A.roles[0]);
+    let users=[]; try{ users=(await laraFn("sid-admin",{action:"list"})).users||[]; }catch(e){}
+    A.users=users.filter(u=>u.role).map(u=>({email:u.email,name:u.name||"",role:u.role,team:u.team||""}));
+    A.ex={}; if(!A.nosql){ const us=await SB.from("sid_users").select("email,access_add,access_remove"); (us.data||[]).forEach(u=>{ A.ex[String(u.email).toLowerCase()]={email:u.email,add:clean(u.access_add),rem:clean(u.access_remove)}; }); }
+    const kv=await SB.from("sid_kv").select("value").eq("key","access_mode").maybeSingle(); A.mode=kv.data&&kv.data.value&&kv.data.value.mode==="modules"?"modules":"legacy";
+    if(!A.cur) A.cur=(A.roles.find(r=>!r.is_admin)||A.roles[0]||{}).role;
+  }catch(e){ if(typeof toast==="function") toast("Could not read users and roles: "+(e.message||e),true); }
+  A.busy=false; A.draft=null; A.pdraft=null; draw();
+}
+const roleOf=r=>A.roles&&A.roles.find(x=>x.role===r);
+function roleGrid(role){ return role&&role.access&&typeof role.access==="object"?clean(role.access):null; }
+function gridRows(cell,sub){ return SID_MOD.TABS.map(([t,tl])=>{ const ms=SID_MOD.MODULES.filter(m=>m.tab===t&&!ALWAYS.has(m.id)); if(!ms.length) return "";
+  return `<tr class="tab"><td colspan="5">${E(tl)}</td></tr>`+ms.map(m=>`<tr><td>${E(m.label)}${m.hint?`<small>${E(m.hint)}</small>`:""}</td>${ACTS.map(([a])=>`<td>${m.acts.includes(a)?cell(m,a):""}</td>`).join("")}</tr>`+(sub&&SUBP(m).length>1?SUBP(m).map(pg=>`<tr class="subp"><td style="padding-left:26px">↳ ${E(PAGE_LABEL[pg]||pg)}</td><td>${sub(m,pg)}</td><td></td><td></td><td></td></tr>`).join(""):"")).join(""); }).join(""); }
+function rolesHtml(){
+  const R=roleOf(A.cur); if(!R) return `<p>No roles.</p>`;
+  const today=legacySnap(R), saved=roleGrid(R); if(!A.draft||A.draft.role!==R.role) A.draft={role:R.role,acc:saved?{...saved}:{...today}};
+  const D=A.draft.acc, dis=R.is_admin||A.nosql, ch=!same(D,saved||{}), dToday=diff(today,D);
+  return `<div class="acc-cols"><div class="acc-list">${A.roles.map(r=>`<button data-role="${E(r.role)}" class="${r.role===A.cur?"on":""}"><b>${E(r.label||r.role)}</b><em>${r.is_admin?"everything":(roleGrid(r)?Object.keys(roleGrid(r)).length+" modules":"grid not built yet")}</em></button>`).join("")}</div>
+   <div><div class="acc-card"><h3>${E(R.label||R.role)}</h3><p>${R.is_admin?"Administrators always have every module and every action.":saved?"Saved grid. Changes apply the next time a person with this role opens the dashboard.":"Not saved yet — showing what this role can do today."}</p>
+     ${dToday.length?`<p class="acc-diff"><b>Compared with today:</b> ${dToday.join(" · ")}</p>`:`<p class="acc-diff acc-ok">Same as today's rules.</p>`}
+     <table class="acc-grid"><thead><tr><th>Module</th>${ACTS.map(a=>`<th>${a[1]}</th>`).join("")}</tr></thead><tbody>
+     ${gridRows((m,a)=>`<input type="checkbox" data-gm="${m.id}" data-ga="${a}" ${R.is_admin||(D[m.id]||[]).includes(a)?"checked":""} ${dis?"disabled":""}>`,
+       (m,pg)=>{ const on=R.is_admin||((D[m.id]||[]).includes("view")&&(!D[m.id+"/pages"]||D[m.id+"/pages"].includes(pg))); return `<input type="checkbox" data-gp="${m.id}|${pg}" ${on?"checked":""} ${dis||!(D[m.id]||[]).includes("view")?"disabled":""}>`; })}</tbody></table>
+     <div class="acc-btns"><button class="acc-btn p" data-a="saveRole" ${dis||!ch?"disabled":""}>Save this role</button><button class="acc-btn" data-a="todayRole" ${dis?"disabled":""}>Reset to today's rules</button>
+       ${A.nosql?`<span class="acc-diff">Saving needs the database step (sql_17).</span>`:""}</div></div></div></div>`;
+}
+function peopleHtml(){
+  const q=A.q.toLowerCase(), L=(A.users||[]).filter(u=>!q||(u.name+" "+u.email+" "+u.role).toLowerCase().includes(q)).sort((a,b)=>(a.name||a.email).localeCompare(b.name||b.email));
+  const P=(A.users||[]).find(u=>u.email===A.person); let right="";
+  if(P){ const R=roleOf(P.role)||{}, base=roleGrid(R)||legacySnap(R), ex=A.ex[P.email.toLowerCase()]||{add:{},rem:{}};
+    if(!A.pdraft||A.pdraft.email!==P.email) A.pdraft={email:P.email,add:JSON.parse(JSON.stringify(ex.add)),rem:JSON.parse(JSON.stringify(ex.rem))};
+    const D=A.pdraft, st=(m,a)=>(D.add[m]||[]).includes(a)?"allow":(D.rem[m]||[]).includes(a)?"deny":"inh";
+    const eff=R.is_admin?SID_MOD.snapshot(()=>true):effective(base,D.add,D.rem), dis=A.nosql||R.is_admin, ch=JSON.stringify(D.add)!==JSON.stringify(ex.add)||JSON.stringify(D.rem)!==JSON.stringify(ex.rem);
+    right=`<div class="acc-card"><h3>${E(P.name||P.email)}</h3><p>${E(P.email)} · role <b>${E(R.label||P.role)}</b>${P.team?" · team "+E(P.team):""}${roleGrid(R)?"":" · role grid not built yet (showing today's rules)"}</p>
+      <p class="acc-diff">Each cell: <b>role</b> = what the role gives · <b>+ allow</b> = extra for this person · <b>− take away</b> = removed for this person. Click to change.</p>
+      <table class="acc-grid"><thead><tr><th>Module</th>${ACTS.map(a=>`<th>${a[1]}</th>`).join("")}</tr></thead><tbody>
+      ${gridRows((m,a)=>{ const s=st(m.id,a), has=(base[m.id]||[]).includes(a); return `<button class="acc-x3 ${s} ${s==="inh"?(has?"has":"no"):""}" data-pm="${m.id}" data-pa="${a}" ${dis?"disabled":""}>${s==="allow"?"+ allow":s==="deny"?"− take away":(has?"role ✓":"role –")}</button>`; })}</tbody></table>
+      <div class="acc-btns"><button class="acc-btn p" data-a="savePerson" ${dis||!ch?"disabled":""}>Save exceptions</button><button class="acc-btn" data-a="clearPerson" ${dis?"disabled":""}>Clear exceptions</button>
+        <button class="acc-btn" data-a="viewAs" data-e="${E(P.email)}" data-n="${E(P.name)}" data-r="${E(P.role)}">View as ${E((P.name||P.email).split(" ")[0])}</button></div></div>
+      <div class="acc-card"><h3>What ${E((P.name||P.email).split(" ")[0])} sees</h3><p>Tiles on the Modules home and pages in Classic.</p>
+      ${SID_MOD.TABS.map(([t,tl])=>{ const ms=SID_MOD.MODULES.filter(m=>m.tab===t&&eff[m.id]&&!ALWAYS.has(m.id)); return ms.length?`<p style="margin:8px 0 4px"><b>${E(tl)}</b></p><div class="acc-chips">${ms.map(m=>`<span>${E(m.label)}${eff[m.id].filter(x=>x!=="view").length?" · "+eff[m.id].filter(x=>x!=="view").join(", "):""}</span>`).join("")}</div>`:""; }).join("")}</div>`; }
+  return `<div class="acc-cols"><div class="acc-list"><input type="search" placeholder="Search people" value="${E(A.q)}" data-a="q">${L.map(u=>`<button data-person="${E(u.email)}" class="${u.email===A.person?"on":""}"><b>${E(u.name||u.email)}</b><em>${E((roleOf(u.role)||{}).label||u.role)}${A.ex[u.email.toLowerCase()]&&(Object.keys(A.ex[u.email.toLowerCase()].add).length||Object.keys(A.ex[u.email.toLowerCase()].rem).length)?" · exceptions":""}</em></button>`).join("")}</div>
+   <div>${right||`<div class="acc-card"><p>Pick a person on the left.</p></div>`}</div></div>`;
+}
+/* every person: today's access vs the new grid (with their exceptions) */
+function compare(){ const rows=[]; (A.users||[]).forEach(u=>{ const R=roleOf(u.role); if(!R) return; if(R.is_admin){ rows.push({u,ok:true,adm:1,d:[]}); return; }
+  const g=roleGrid(R); if(!g){ rows.push({u,ok:false,nogrid:1,d:[]}); return; } const ex=A.ex[u.email.toLowerCase()]||{add:{},rem:{}};
+  const t=legacySnap(R), n=effective(g,ex.add,ex.rem), hasEx=Object.keys(ex.add).length||Object.keys(ex.rem).length;
+  rows.push({u,ok:same(t,n),ex:hasEx,d:diff(t,n)}); }); return rows; }
+function switchHtml(){
+  const rows=compare(), missing=(A.roles||[]).filter(r=>!r.is_admin&&!roleGrid(r)), bad=rows.filter(r=>!r.ok&&!r.ex&&!r.nogrid), exd=rows.filter(r=>!r.ok&&r.ex), nog=rows.filter(r=>r.nogrid);
+  const ready=!A.nosql&&!missing.length&&!bad.length;
+  return `${A.nosql?`<div class="acc-warn"><b>Database step needed.</b> The grid columns do not exist yet. Ask Claude to run <code>web-seed/sql_17_access.sql</code> (with your OK). Until then everything works with today's rules; this page only previews.</div>`:""}
+   <div class="acc-card"><h3>1. Build the grid from today's roles</h3><p>Fills every role's grid with exactly what that role can do today (pages, editing, plot-status part). Saves nothing about people.</p>
+    <div class="acc-btns"><button class="acc-btn p" data-a="buildAll" ${A.nosql?"disabled":""}>Build from today's roles</button><span class="acc-diff">${missing.length?missing.length+" role(s) without a grid: "+missing.map(r=>E(r.label||r.role)).join(", "):"Every role has a grid."}</span></div></div>
+   <div class="acc-card"><h3>2. Check every person</h3><p>Today's access compared with the new grid. Must be the same for everybody except people you gave exceptions on purpose.</p>
+    <table class="acc-grid"><thead><tr><th>Person</th><th>Role</th><th colspan="3">Result</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td>${E(r.u.name||r.u.email)}</td><td>${E((roleOf(r.u.role)||{}).label||r.u.role)}</td><td colspan="3" style="text-align:left">${r.adm?`<span class="acc-ok">Administrator — everything</span>`:r.nogrid?`<span class="acc-bad">Role grid not built</span>`:r.ok?`<span class="acc-ok">Same as today</span>`:`<span class="${r.ex?"":"acc-bad"}">${r.ex?"Different on purpose (exceptions)":"Different"}</span> <span class="acc-diff">${r.d.join(" · ")}</span>`}</td></tr>`).join("")}</tbody></table>
+    <p class="acc-diff" style="margin-top:8px">${rows.length} people · ${rows.filter(r=>r.ok).length} same as today · ${exd.length} with exceptions${nog.length?" · "+nog.length+" waiting for their role grid":""} · <b class="${bad.length?"acc-bad":"acc-ok"}">${bad.length} different without a reason</b></p></div>
+   <div class="acc-card"><h3>3. Switch</h3><p>Now: <b>${A.mode==="modules"?"Module permissions are ON":"Today's rules (legacy)"}</b>. The switch applies the next time each person opens the dashboard. Switching back is always possible.</p>
+    <div class="acc-btns">${A.mode==="modules"?`<button class="acc-btn" data-a="modeOff">Back to today's rules</button>`:`<button class="acc-btn p" data-a="modeOn" ${ready?"":"disabled"}>Turn module permissions ON</button>`}
+     ${!ready&&A.mode!=="modules"?`<span class="acc-diff">${A.nosql?"Needs the database step first.":missing.length?"Build the grid first.":"Fix the differences first."}</span>`:""}</div></div>`;
+}
+function draw(){
+  const ov=$q("#accOv"); if(!ov) return;
+  const st=A.nosql?`<span class="acc-st nosql">Preview — database step not run</span>`:A.mode==="modules"?`<span class="acc-st modules">Module permissions ON</span>`:`<span class="acc-st legacy">Today's rules</span>`;
+  ov.innerHTML=`<div class="acc-box" role="dialog" aria-label="Users and access"><div class="acc-h"><b>Users &amp; access</b>${st}<span class="sp"></span><button class="acc-btn" data-a="reload">Refresh</button><button class="acc-x" data-a="close" aria-label="Close">×</button></div>
+   <div class="acc-tabs">${[["roles","Roles"],["people","People"],["switch","Check & switch"]].map(([k,l])=>`<button data-tab="${k}" class="${A.tab===k?"on":""}">${l}</button>`).join("")}</div>
+   <div class="acc-body">${A.busy||!A.roles?`<p>Reading users and roles…</p>`:A.tab==="roles"?rolesHtml():A.tab==="people"?peopleHtml():switchHtml()}</div></div>`;
+}
+function toggle(o,m,a,on){ const L=new Set(o[m]||[]); on?L.add(a):L.delete(a); if(L.size) o[m]=[...L]; else delete o[m]; }
+async function act(a,b){
+  const R=roleOf(A.cur);
+  if(a==="close"){ $q("#accOv").remove(); return; }
+  if(a==="reload"){ load(); return; }
+  if(a==="todayRole"&&R){ A.draft={role:R.role,acc:legacySnap(R)}; draw(); return; }
+  if(a==="saveRole"&&R){ const acc=clean(A.draft.acc); ALWAYS.forEach(id=>{ acc[id]=["view"]; });
+    const r=await SB.from("sid_roles").update({access:acc,updated_at:new Date().toISOString()}).eq("role",R.role); if(r.error){ toast("Not saved: "+r.error.message,true); return; }
+    toast("Saved — "+(R.label||R.role)); await load(); return; }
+  if(a==="buildAll"){ if(!confirm("Fill every role's grid with what it can do today? Roles that already have a grid are overwritten with today's rules.")) return;
+    for(const r of A.roles.filter(x=>!x.is_admin)){ const acc=legacySnap(r); const x=await SB.from("sid_roles").update({access:acc,updated_at:new Date().toISOString()}).eq("role",r.role); if(x.error){ toast("Not saved ("+r.role+"): "+x.error.message,true); return; } }
+    toast("Grid built for every role from today's rules"); await load(); A.tab="switch"; draw(); return; }
+  if(a==="savePerson"||a==="clearPerson"){ const P=A.pdraft; if(!P) return; if(a==="clearPerson"){ P.add={}; P.rem={}; }
+    const r=await SB.from("sid_users").update({access_add:clean(P.add),access_remove:clean(P.rem)}).eq("email",(A.ex[P.email.toLowerCase()]||{}).email||P.email); if(r.error){ toast("Not saved: "+r.error.message,true); return; }
+    toast("Saved"); await load(); A.tab="people"; draw(); return; }
+  if(a==="viewAs"&&b){ try{ sessionStorage.setItem("sid.viewas",JSON.stringify({email:b.dataset.e,name:b.dataset.n,role:b.dataset.r})); }catch(e){} location.reload(); return; }
+  if(a==="modeOn"||a==="modeOff"){ const on=a==="modeOn";
+    if(!confirm(on?"Turn module permissions ON for everybody? Each person gets exactly the grid of their role plus their exceptions, the next time they open the dashboard.":"Go back to today's rules for everybody?")) return;
+    const r=await SB.from("sid_kv").upsert({key:"access_mode",value:{mode:on?"modules":"legacy",at:new Date().toISOString()},updated_at:new Date().toISOString()});
+    if(r.error){ toast("Not switched: "+r.error.message,true); return; } toast(on?"Module permissions are ON":"Back to today's rules"); await load(); return; }
+}
+function open(){ const m=me(); if(!m||!m.is_admin||window.SID_VIEWAS){ if(typeof toast==="function") toast("Users & access is for administrators",true); return; }
+  let ov=$q("#accOv"); if(!ov){ ov=document.createElement("div"); ov.id="accOv"; ov.className="acc-ov"; document.body.appendChild(ov);
+    ov.addEventListener("click",async e=>{ if(e.target===ov){ ov.remove(); return; }
+      const t=e.target.closest("[data-tab]"); if(t){ A.tab=t.dataset.tab; draw(); return; }
+      const r=e.target.closest("[data-role]"); if(r){ A.cur=r.dataset.role; A.draft=null; draw(); return; }
+      const p=e.target.closest("[data-person]"); if(p){ A.person=p.dataset.person; A.pdraft=null; draw(); return; }
+      const g=e.target.closest("[data-gm]"); if(g&&A.draft){ toggle(A.draft.acc,g.dataset.gm,g.dataset.ga,g.checked); if(g.dataset.ga!=="view"&&g.checked) toggle(A.draft.acc,g.dataset.gm,"view",true); if(g.dataset.ga==="view"&&!g.checked) delete A.draft.acc[g.dataset.gm]; draw(); return; }
+      const gp=e.target.closest("[data-gp]"); if(gp&&A.draft){ const [m,pg]=gp.dataset.gp.split("|"), mod=SID_MOD.get(m), k=m+"/pages", D=A.draft.acc; const L=new Set(D[k]||SUBP(mod)); gp.checked?L.add(pg):L.delete(pg);
+        if(L.size>=SUBP(mod).length) delete D[k]; else D[k]=[...L]; draw(); return; }
+      const x=e.target.closest("[data-pm]"); if(x&&A.pdraft){ const m=x.dataset.pm, a=x.dataset.pa, D=A.pdraft; const s=(D.add[m]||[]).includes(a)?"allow":(D.rem[m]||[]).includes(a)?"deny":"inh";
+        toggle(D.add,m,a,false); toggle(D.rem,m,a,false); if(s==="inh") toggle(D.add,m,a,true); else if(s==="allow") toggle(D.rem,m,a,true); draw(); return; }
+      const b=e.target.closest("button[data-a]"); if(b) act(b.dataset.a,b); });
+    ov.addEventListener("input",e=>{ if(e.target.dataset.a==="q"){ A.q=e.target.value; const pos=e.target.selectionStart; draw(); const i=ov.querySelector('[data-a="q"]'); if(i){ i.focus(); try{ i.setSelectionRange(pos,pos); }catch(_){} } } });
+    document.addEventListener("keydown",function k(e){ if(e.key==="Escape"&&$q("#accOv")){ $q("#accOv").remove(); } }); }
+  load(); }
+window.SID_PANELS=Object.assign(window.SID_PANELS||{},{access:open});
+window.SID_ACCESS={open,legacySnap,effective,gridCan,modeOn};
+/* the Admin tile "Users & access" opens this panel */
+try{ const m=SID_MOD.get("admin.users"); if(m) m.open={panel:"access"}; }catch(e){}
+/* Classic Settings page: a card at the top that opens the panel; the page ticks below are not used once module permissions are ON */
+if(typeof viewSettings==="function"){ const vs=viewSettings; viewSettings=function(){ const h=vs.apply(this,arguments); if(!SBME||!SBME.is_admin) return h;
+  const on=modeOn()||(SBME.access_mode==="modules");
+  const card=`<section class="card wide" id="accCard"><h3>Users &amp; access <span class="sub">modules × View / Edit / Approve / Export, per role, with exceptions per person</span></h3>
+    <p class="note" style="margin:4px 0 8px">${on?"<b>Module permissions are ON.</b> The \"Roles &amp; page access\" ticks further down are no longer used — use Users &amp; access.":"Today's rules are in use (the ticks below). Build and check the new grid in Users &amp; access, then switch when it matches."}</p>
+    <button class="applybtn" type="button" data-acc-open="1">Open Users &amp; access</button></section>`;
+  const at='id="setReload">Refresh</button></div>'; return h.includes(at)?h.replace(at,at+card):h; }; }
+document.addEventListener("click",e=>{ if(e.target.closest("[data-acc-open]")){ e.preventDefault(); open(); } });
 })();
 </script>
 </body>
