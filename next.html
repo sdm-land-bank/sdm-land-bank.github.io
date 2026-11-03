@@ -2549,7 +2549,8 @@ html[data-look="modules"] #nlHome.on{display:block;position:fixed;inset:0;z-inde
 #nlHome .nl-top{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:14px 28px;
  background:linear-gradient(to bottom,rgba(0,0,0,.18),transparent);backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur)}
 html[data-skin="glass-light"] #nlHome .nl-top{background:linear-gradient(to bottom,rgba(255,255,255,.5),transparent)}
-#nlHome .nl-logo{height:30px;width:auto;display:block;border-radius:6px}
+#nlHome .nl-logo{height:34px;width:auto;display:block;border-radius:9px;padding:4px 8px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+#nlHome .nl-card .v.t{font-size:17px;line-height:1.3;padding-top:6px}
 #nlHome .nl-sp{flex:1}
 #nlHome .nl-ic{position:relative;width:40px;height:40px;border-radius:12px;border:0;background:transparent;color:var(--sg-ink);display:grid;place-items:center;cursor:pointer}
 #nlHome .nl-ic:hover{background:var(--sg-glass-2)}
@@ -20377,6 +20378,8 @@ const TINT={"map.planner":"#2F80ED","map.levels":"#8DAE2C","map.sketch":"#5B5FC7
  "roadshow":"#E07A1F","map.explore":"#B3263D","map.share":"#2E9E5B","cost":"#B3263D","register":"#2E9E5B","audit":"#8E44AD","sync":"#2E9E5B","admin.viewas":"#E07A1F"};
 const LBT={"sales.cockpits":"lb.dashboard","sales.inventory":"lb.inventory_breakdown","sales.pipeline":"lb.sales","ceo":"lb.ceo_brief","exec.fin":"lb.executive","exec.engine":"lb.financial_engine","lb.settings":"lb.settings"};
 const NL={tab:null,shown:false};
+/* same as the View as banner's Exit (web_roadshow.py): forget the person, reload as myself */
+const exitVA=()=>{ try{ sessionStorage.removeItem("sid.viewas"); }catch(e){} location.reload(); };
 const fmt=n=>typeof n==="number"&&isFinite(n)?n.toLocaleString("en-US"):"—";
 function greet(){ const h=new Date().getHours(); return h<12?"Good morning":h<17?"Good afternoon":"Good evening"; }
 function initials(n){ const p=String(n||"").trim().split(/\s+/).filter(Boolean); return ((p[0]||"?")[0]+(p[1]?p[1][0]:"")).toUpperCase(); }
@@ -20419,7 +20422,7 @@ function render(){
     <div class="nl-tabs" role="tablist">${tabs.map(t=>`<button class="nl-tab${t.id===NL.tab?" on":""}" role="tab" aria-selected="${t.id===NL.tab}" data-t="${t.id}">${E(t.label)}</button>`).join("")}</div>
     <div class="nl-lbl">Apps</div>
     <div class="nl-grid">${T.mods.filter(x=>x.id!=="home").map(tile).join("")}</div>
-    <div class="nl-today">${today().map(c=>`<button class="nl-card" data-m="${c[3]}"><h4>${E(c[0])}</h4><div class="v">${E(c[1])}</div><div class="n">${E(c[2])}</div></button>`).join("")}</div>
+    <div class="nl-today">${today().map(c=>`<button class="nl-card" data-m="${c[3]}"><h4>${E(c[0])}</h4><div class="v${/^[\d,—]+$/.test(c[1])?"":" t"}">${E(c[1])}</div><div class="n">${E(c[2])}</div></button>`).join("")}</div>
     ${R.length?`<div class="nl-lbl">Recent</div><div class="nl-recent">${R.map(x=>`<button class="nl-chip" data-m="${x.id}">${E(x.label)}</button>`).join("")}</div>`:""}
     <div class="nl-note">New look — preview for administrators. Classic is one click away (Appearance).</div>
    </div>`;
@@ -20466,7 +20469,7 @@ function sheet(){
     ${window.SID_VIEWAS?`<button class="nl-act" data-a="exitva">Back to my own view</button>`:""}<button class="nl-act" data-a="close">Close</button>`;
   s.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; const g=b.closest(".nl-seg");
     if(g){ SID_PREFS.set(g.dataset.k,b.dataset.v); g.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); after(g.dataset.k); return; }
-    if(b.dataset.a==="exitva"&&typeof exitViewAs==="function") exitViewAs();
+    if(b.dataset.a==="exitva") exitVA();
     if(b.dataset.a==="close") s.remove(); });
   document.body.appendChild(s);
 }
@@ -20505,7 +20508,7 @@ const el=document.createElement("div"); el.id="nlHome"; el.setAttribute("aria-la
 el.addEventListener("click",e=>{
   const f=e.target.closest("[data-fav]"); if(f){ e.stopPropagation(); const id=f.dataset.fav, L=SID_PREFS.get("fav")||[]; SID_PREFS.set("fav",L.includes(id)?L.filter(x=>x!==id):[...L,id]); render(); return; }
   const t=e.target.closest("[data-t]"); if(t){ NL.tab=t.dataset.t; SID_PREFS.set("tab",NL.tab); render(); return; }
-  const a=e.target.closest("[data-a]"); if(a){ if(a.dataset.a==="look") sheet(); if(a.dataset.a==="search") find(); if(a.dataset.a==="exitva"&&typeof exitViewAs==="function") exitViewAs(); return; }
+  const a=e.target.closest("[data-a]"); if(a){ if(a.dataset.a==="look") sheet(); if(a.dataset.a==="search") find(); if(a.dataset.a==="exitva") exitVA(); return; }
   const m=e.target.closest("[data-m]"); if(m) open(m.dataset.m); });
 document.addEventListener("keydown",e=>{ if(SID_LOOK.look()!=="modules") return;
   if((e.metaKey||e.ctrlKey)&&String(e.key).toLowerCase()==="k"){ e.preventDefault(); find(); }
@@ -20516,7 +20519,7 @@ document.addEventListener("click",e=>{ const s=$q("#nlSheet"); if(s&&!s.contains
 document.addEventListener("click",e=>{ if(SID_LOOK.look()==="modules"&&e.target.closest(".rail .brand")){ e.preventDefault(); show(); } },true);
 /* start: once signed in and the page is ready, apply the person's look; Modules opens on Home */
 let tries=0; const boot=setInterval(()=>{ tries++;
-  if(window.__sidMeFinal&&document.body.classList.contains("sb-online")){ clearInterval(boot); try{ SID_LOOK.apply(); railHome(); if(SID_LOOK.look()==="modules") show(); }catch(e){ console.warn("new look",e); } }
+  if(window.__sidMeFinal&&document.body.classList.contains("sb-online")){ clearInterval(boot); try{ SID_LOOK.apply(); railHome(); if(SID_LOOK.look()==="modules"){ show(); [1500,4000,8000,15000].forEach(ms=>setTimeout(()=>{ if(NL.shown) render(); },ms)); } }catch(e){ console.warn("new look",e); } }
   if(tries>600) clearInterval(boot); },300);
 /* keep Home's numbers fresh while it is open (approvals, holds, notifications arrive live) */
 setInterval(()=>{ if(NL.shown&&document.visibilityState==="visible") try{ render(); }catch(e){} },20000);
