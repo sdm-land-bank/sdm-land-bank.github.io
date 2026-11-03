@@ -21037,7 +21037,8 @@ function sync(){ try{
   let st=d.getElementById("sid-glass-lb"); if(on&&!st&&(d.head||d.body)){ st=d.createElement("style"); st.id="sid-glass-lb"; st.textContent=CSS; (d.head||d.body).appendChild(st); }
   if(!on&&st) st.remove();
   /* redraws inside the frame (switching views) re-run the Glass Dark contrast fixer at once */
-  if(on&&!d.__nlmo&&d.documentElement){ d.__nlmo=new MutationObserver(()=>{ try{ queue(); }catch(e){} }); d.__nlmo.observe(d.documentElement,{childList:true,subtree:true}); }
+  if(on&&!d.__nlmo&&d.documentElement){ d.__nlmo=new MutationObserver(recs=>{ try{ if(recs.some(theirs)) queue(); }catch(e){} });
+    d.__nlmo.observe(d.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["class"],attributeOldValue:true}); }
 }catch(e){} }
 setInterval(sync,1200);
 /* Glass Dark contrast fixer: text the page paints near-black stays readable on dark glass (→ light), light text on a white
@@ -21065,10 +21066,14 @@ function fix(doc){ try{
     if(light){ if(c.l>.55) e.classList.add("nl-lt"); }
     else if(c.l<.12) e.classList.add("nl-dk"); else if(c.l<.3) e.classList.add("nl-dk2");
   } }catch(e){} }
+/* a change made by the page (not by the fixer's own nl-* marks) */
+const strip=v=>String(v||"").split(/\s+/).filter(c=>c&&!/^nl-(dk|dk2|lt|dbg)$/.test(c)).sort().join(" ");
+const theirs=r=>r.type!=="attributes"||strip(r.oldValue)!==strip(r.target.getAttribute("class"));
 let tq=null, dirty=false; const run=()=>{ tq=null; const dk=document.documentElement.dataset.skin==="glass-dark"&&document.documentElement.dataset.look==="modules";
+  if(dk&&document.body&&document.body.classList.contains("m-moving")){ tq=setTimeout(run,600); return; }   /* never while the map moves */
   if(!dk&&!dirty) return; dirty=dk; fix(document); try{ const f=document.querySelector("#lbwrap iframe"); if(f&&f.contentDocument) fix(f.contentDocument); }catch(e){} };
-const queue=()=>{ if(tq) return; tq=setTimeout(run,700); };   /* throttle: runs at most every 0.7 s, also while the map keeps changing */
-new MutationObserver(queue).observe(document.documentElement,{attributes:true,attributeFilter:["data-skin","data-look"],childList:true,subtree:true});
+const queue=()=>{ if(tq) return; tq=setTimeout(run,250); };   /* throttle: runs at most every 0.7 s, also while the map keeps changing */
+new MutationObserver(recs=>{ if(recs.some(r=>r.attributeName==="data-skin"||r.attributeName==="data-look"||theirs(r))) queue(); }).observe(document.documentElement,{attributes:true,attributeFilter:["data-skin","data-look","class"],attributeOldValue:true,childList:true,subtree:true});
 setInterval(()=>{ if(document.documentElement.dataset.skin==="glass-dark") queue(); },4000);
 })();
 </script>
