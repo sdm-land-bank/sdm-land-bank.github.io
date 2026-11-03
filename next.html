@@ -2744,9 +2744,9 @@ body.nl-x-share .pc-sh,body.nl-x-share .pc-ex-i[data-k="share"]{display:none!imp
 body.nl-x-pipeline .pp-mode.nl-pipe{display:none!important}
 </style>
 <style id="sid-compass">
-#sidCompass{position:absolute;right:10px;top:46%;width:124px;height:124px;margin:-62px -2px 0 0;z-index:6;touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;
-  transform:scale(.4);transform-origin:100% 50%;opacity:.4;transition:transform .28s cubic-bezier(.2,.8,.2,1),opacity .45s ease,filter .3s ease;cursor:grab;-webkit-tap-highlight-color:transparent}
-#sidCompass.on{transform:scale(1);opacity:1;filter:drop-shadow(0 0 12px rgba(255,214,10,.75));transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .12s ease,filter .15s ease;cursor:grabbing}
+#sidCompass{position:absolute;right:-28px;top:46%;width:124px;height:124px;margin:-62px 0 0 0;z-index:6;touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;
+  transform:scale(.4);transform-origin:50% 50%;opacity:.4;transition:transform .28s cubic-bezier(.2,.8,.2,1),opacity .45s ease,filter .3s ease;cursor:grab;-webkit-tap-highlight-color:transparent}
+#sidCompass.on{transform:translateX(-28px) scale(1);opacity:1;filter:drop-shadow(0 0 12px rgba(255,214,10,.75));transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .12s ease,filter .15s ease;cursor:grabbing}
 #sidCompass .cd{position:absolute;inset:0;border-radius:50%;background:rgba(28,28,30,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.25);box-shadow:0 6px 18px rgba(0,0,0,.35)}
 #sidCompass svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #sidCompass .dg{position:absolute;left:0;right:0;bottom:-18px;text-align:center;font:700 11px -apple-system,Inter,sans-serif;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);opacity:0;transition:opacity .2s}
@@ -21122,7 +21122,7 @@ function build(m,host){ if(document.getElementById("sidCompass")) return; const 
   c.innerHTML='<div class="cd"></div>'+svg()+'<div class="dg"></div>'; host.appendChild(c);
   const upd=()=>{ try{ const b=m.getBearing(), r=c.querySelector("#sidCRing"); if(r) r.setAttribute("transform","rotate("+(-b).toFixed(1)+" 50 50)"); const d=c.querySelector(".dg"); if(d) d.textContent=(Math.round(((b%360)+360)%360)%360)+"°"; }catch(e){} };
   m.on("rotate",upd); m.on("move",upd); upd();
-  const ang=e=>{ const r=c.getBoundingClientRect(); return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2))*180/Math.PI; };
+  const ang=e=>{ const r=host.getBoundingClientRect(), cx=r.right-62, cy=r.top+.46*r.height; return Math.atan2(e.clientY-cy,e.clientX-cx)*180/Math.PI; };
   let st=null, fade=0;
   c.addEventListener("pointerdown",e=>{ e.stopPropagation(); e.preventDefault(); clearTimeout(fade); c.classList.add("on"); try{ c.setPointerCapture(e.pointerId); }catch(_){}
     st={a:ang(e),b:m.getBearing(),t:performance.now(),moved:0,pid:e.pointerId}; });
