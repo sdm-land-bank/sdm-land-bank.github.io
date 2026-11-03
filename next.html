@@ -2563,6 +2563,7 @@ html[data-look="modules"] #nlBar{display:flex;position:fixed;top:0;left:0;right:
 #nlBar .b-tab{flex:0 0 auto;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--sg-mute);padding:0 4px 0 6px}
 #nlBar .b-pills{position:relative;flex:1 1 auto;min-width:0;display:flex;gap:4px;align-items:center;overflow-x:auto;scrollbar-width:none;padding:3px 0}
 #nlBar .b-pills::-webkit-scrollbar{display:none}
+#nlBar .b-pills{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent);padding-right:22px}
 #nlBar .b-p{flex:0 0 auto;height:34px;padding:0 14px;border-radius:999px;border:1px solid transparent;background:transparent;color:inherit;font:500 13.5px var(--sg-font);cursor:pointer;white-space:nowrap;transition:background .22s var(--sg-ease),color .22s,transform .18s}
 #nlBar .b-p:hover{background:rgba(127,127,127,.16)}
 #nlBar .b-p.on{background:var(--sg-accent);color:#fff;box-shadow:0 4px 14px rgba(179,38,61,.35)}
@@ -21200,11 +21201,11 @@ const AD=(function(){
     if(k.l>=.8) return rgba(rgbOf(k.h,Math.min(1,k.s+.2),.5),.38); return null; }
   function selectors(t){ const out=[]; let d=0,q="",cur=""; for(const ch of t){ if(q){ cur+=ch; if(ch===q) q=""; continue; } if(ch==='"'||ch==="'"){ q=ch; cur+=ch; continue; }
     if(ch==="("||ch==="[") d++; if(ch===")"||ch==="]") d--; if(ch===","&&d===0){ out.push(cur.trim()); cur=""; continue; } cur+=ch; } if(cur.trim()) out.push(cur.trim()); return out; }
-  const SKIP=/(^|[\s>+~(,])(html|body|:root)([\s.#:\[>+~)]|$)|maplibre|\.plogo|\.poi\b|\.tpin|\.rail\b|#nav\b|\.nav-|\.brand|\.lara|#lara|\.va-|#toast|\.toast|\.nl-|#nl|\.acc-|\.ms-|\.slo-|\.sk-|\.tp-|\[data-look|\[data-skin|\.pdf|::-webkit-scrollbar|::selection|:fullscreen/;
+  const SKIP=/maplibre|\.plogo|\.poi\b|\.tpin|\.rail\b|#nav\b|\.nav-|\.brand|\.lara|#lara|\.va-|#toast|\.toast|\.nl-|#nl|\.acc-|\.ms-|\.slo-|\.sk-|\.tp-|\[data-look|\[data-skin|\.pdf|::-webkit-scrollbar|::selection|:fullscreen/;
   const OWN=/^sid-(autodark|glass|glass-lb|shell|mysettings|access|nlmod|perm|maptools|newlook-tokens)$/;
   const PRE='html[data-look="modules"][data-skin="glass-dark"] ';
   function gen(doc){ const out=[];
-    const rule=(r,conds)=>{ const sels=selectors(r.selectorText||"").filter(s=>s&&!SKIP.test(s)); if(!sels.length) return; const st=r.style, d=[];
+    const rule=(r,conds)=>{ const sels=selectors(r.selectorText||"").filter(s=>s&&!SKIP.test(s)&&!/^(html|body|:root)([.#:\[]|$)/i.test(s.split(/[\s>+~]+/).pop())); if(!sels.length) return; const st=r.style, d=[];
       const bgc=parse(st.getPropertyValue("background-color")), nbg=bgc?mapBg(bgc):null; if(nbg) d.push("background-color:"+nbg+"!important");
       const keepLight=!!bgc&&!nbg&&bgc.a>.5&&hsl(bgc).l>.5;
       for(const p of ["color","-webkit-text-fill-color","caret-color","fill","stroke"]){ if(p==="color"&&keepLight) continue; const c=parse(st.getPropertyValue(p)), m=c&&mapText(c); if(m) d.push(p+":"+m+"!important"); }
