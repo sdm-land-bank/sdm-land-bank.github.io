@@ -2660,6 +2660,47 @@ html[data-skin="glass-dark"] .acc-ok{color:#7be39a}
 .acc-warn{padding:10px 12px;border-radius:12px;background:rgba(255,159,10,.14);border:1px solid rgba(255,159,10,.35);margin-bottom:12px;font-size:13px}
 @media (max-width:820px){.acc-ov{padding:0}.acc-box{border-radius:0}.acc-cols{grid-template-columns:1fr}.acc-list{position:static}.acc-grid th,.acc-grid td{padding:5px 4px}}
 </style>
+<style id="sid-maptools">
+/* V110 map tools by permission */
+body.nl-x-sketch [title^="Sketch & measure"]{display:none!important}
+body.nl-x-planner .sk-mode [data-mode="build"]{display:none!important}
+body.nl-x-levels [title^="Land Levels"]{display:none!important}
+body.nl-x-logistics #sitesBtn,body.nl-x-logistics #pfSites,body.nl-x-logistics .pc-ex-i[data-k="truck"]{display:none!important}
+body.nl-x-tour .tpin,body.nl-x-tour .pc-tour{display:none!important}
+body.nl-x-explore .pc-ex-b:not(.pc-sh),body.nl-x-explore .pc-ex-l{display:none!important}
+body.nl-x-share .pc-sh,body.nl-x-share .pc-ex-i[data-k="share"]{display:none!important}
+body.nl-x-pipeline .pp-mode.nl-pipe{display:none!important}
+</style>
+<style id="sid-mysettings">
+/* V110 My Settings — iPhone "Settings" grouped lists */
+.ms-ov{position:fixed;inset:0;z-index:1250;background:rgba(20,20,30,.3);display:flex;justify-content:center;align-items:flex-start;padding:28px 16px;overflow:auto;font-family:Inter,-apple-system,"SF Pro Text",system-ui,sans-serif}
+.ms-box{--m-ink:#1d1d1f;--m-mute:#6e6e73;--m-line:rgba(60,60,67,.14);--m-bg:rgba(242,242,247,.9);--m-cell:rgba(255,255,255,.86);
+ width:min(640px,100%);background:var(--m-bg);color:var(--m-ink);border-radius:24px;border:1px solid rgba(255,255,255,.7);box-shadow:0 30px 80px rgba(0,0,0,.3);
+ -webkit-backdrop-filter:saturate(185%) blur(28px);backdrop-filter:saturate(185%) blur(28px);padding:18px 18px 22px;font-size:14px}
+html[data-skin="glass-dark"] .ms-box{--m-ink:#f5f5f7;--m-mute:#a1a1a8;--m-line:rgba(255,255,255,.12);--m-bg:rgba(28,28,34,.92);--m-cell:rgba(58,58,66,.7);border-color:rgba(255,255,255,.12)}
+.ms-h{display:flex;align-items:center;gap:12px;margin-bottom:10px}.ms-h b{font-size:22px;letter-spacing:-.02em}.ms-h .sp{flex:1}
+.ms-x{border:0;background:rgba(127,127,127,.18);color:inherit;width:32px;height:32px;border-radius:16px;font-size:18px;cursor:pointer}
+.ms-prof{display:flex;gap:14px;align-items:center;background:var(--m-cell);border-radius:14px;padding:14px;margin-bottom:18px}
+.ms-av{width:54px;height:54px;border-radius:27px;background:linear-gradient(160deg,#E0435C,#B3263D);color:#fff;display:grid;place-items:center;font-weight:600;font-size:19px}
+.ms-prof em{display:block;font-style:normal;color:var(--m-mute);font-size:12.5px}
+.ms-cap{margin:16px 14px 6px;font-size:12px;color:var(--m-mute);text-transform:uppercase;letter-spacing:.04em}
+.ms-grp{background:var(--m-cell);border-radius:14px;overflow:hidden}
+.ms-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--m-line);min-height:46px}
+.ms-row:last-child{border-bottom:0}.ms-row>span{flex:1}.ms-row small{display:block;color:var(--m-mute);font-size:11.5px}
+.ms-seg{display:flex;background:rgba(127,127,127,.16);border-radius:9px;padding:2px;flex-wrap:wrap}
+.ms-seg button{border:0;background:none;color:inherit;font:12.5px inherit;font-family:inherit;padding:6px 10px;border-radius:7px;cursor:pointer}
+.ms-seg button.on{background:#fff;color:#1d1d1f;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+html[data-skin="glass-dark"] .ms-seg button.on{background:#636366;color:#fff}
+.ms-walls{display:flex;gap:8px}.ms-walls button{width:34px;height:34px;border-radius:10px;border:2px solid transparent;cursor:pointer;padding:0}
+.ms-walls button.on{border-color:#B3263D}
+.ms-link{border:0;background:none;color:#B3263D;font:inherit;cursor:pointer;padding:0}
+html[data-skin="glass-dark"] .ms-link{color:#ff6b81}
+.ms-note{margin:8px 14px 0;font-size:12px;color:var(--m-mute)}
+.ms-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(127,127,127,.14);margin:3px 4px 3px 0;font-size:12.5px}
+.ms-chip button{border:0;background:none;color:inherit;cursor:pointer;font-size:14px;line-height:1}
+.ms-save{border:0;background:#B3263D;color:#fff;border-radius:10px;padding:9px 14px;font:600 13px inherit;font-family:inherit;cursor:pointer}
+@media (max-width:600px){.ms-ov{padding:0}.ms-box{border-radius:0;min-height:100%}.ms-row{flex-wrap:wrap}}
+</style>
 <style id="sid-glass">
 /* ===== V108 memo glass — tokens ===== */
 html[data-look="modules"]{
@@ -2724,12 +2765,24 @@ html[data-look="modules"] .va-box,html[data-look="modules"] .cmp-box,html[data-l
 /* MapLibre corner controls (zoom, compass, Land Levels, pencil) */
 html[data-look="modules"] .maplibregl-ctrl-group{background:var(--g-surface)!important;border:1px solid var(--g-edge)!important;box-shadow:var(--g-shadow-s)!important;border-radius:14px!important;overflow:hidden}
 html[data-look="modules"] body:not(.m-moving) .maplibregl-ctrl-group{-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur)}
-/* Glass Dark: page surfaces stay light frosted glass until their own group (readability of the existing page colours) */
-html[data-look="modules"][data-skin="glass-dark"] .kpi,html[data-look="modules"][data-skin="glass-dark"] .card,html[data-look="modules"][data-skin="glass-dark"] .parkcard,
-html[data-look="modules"][data-skin="glass-dark"] .selpanel,html[data-look="modules"][data-skin="glass-dark"] .sheet,html[data-look="modules"][data-skin="glass-dark"] .pfside:not(.pf-closed),
-html[data-look="modules"][data-skin="glass-dark"] .mapbtns,html[data-look="modules"][data-skin="glass-dark"] .tp-card,html[data-look="modules"][data-skin="glass-dark"] header.top,
-html[data-look="modules"][data-skin="glass-dark"] .maplibregl-ctrl-group,html[data-look="modules"][data-skin="glass-dark"] .mm-empty{background:rgba(255,255,255,.78)!important;border-color:rgba(255,255,255,.55)!important}
-html[data-look="modules"][data-skin="glass-dark"] .va-box,html[data-look="modules"][data-skin="glass-dark"] .cmp-box,html[data-look="modules"][data-skin="glass-dark"] #toast{background:rgba(255,255,255,.92)!important}
+/* ===== Glass Dark on every page (V110): the page's own colour variables turn dark; surfaces are dark frosted glass ===== */
+html[data-look="modules"][data-skin="glass-dark"]{color-scheme:dark;
+ --ink:#f5f5f7;--ink-2:#d1d1d6;--mute:#a1a1a8;--panel:rgba(40,42,50,.94);--bg:transparent;--rule:rgba(255,255,255,.12);--rule-2:rgba(255,255,255,.2);
+ --n50:rgba(255,255,255,.04);--n100:rgba(255,255,255,.07);--n200:rgba(255,255,255,.12);--n300:rgba(255,255,255,.2);--n400:#8e8e93;--n500:#a1a1a8;--n600:#c7c7cc;--n700:#e5e5ea;--n800:#f2f2f7;--n900:#f5f5f7;
+ --w:rgba(40,42,50,.94);--signal:#ff6b81;--signal-b:#ff8a9b;--signal-w:rgba(255,107,129,.16);--ok:#6fe39a}
+html[data-look="modules"][data-skin="glass-dark"] body{color:var(--ink)}
+html[data-look="modules"][data-skin="glass-dark"] .fbtn,html[data-look="modules"][data-skin="glass-dark"] .lg,html[data-look="modules"][data-skin="glass-dark"] .ebtn,
+html[data-look="modules"][data-skin="glass-dark"] .mapbtns button,html[data-look="modules"][data-skin="glass-dark"] .pp-mode,html[data-look="modules"][data-skin="glass-dark"] .cmp-btn{background:rgba(255,255,255,.12)!important;color:#f5f5f7!important}
+html[data-look="modules"][data-skin="glass-dark"] .mapbtns button.on,html[data-look="modules"][data-skin="glass-dark"] .pp-mode.on,html[data-look="modules"][data-skin="glass-dark"] .fbtn.on{background:rgba(255,255,255,.24)!important;color:#ff8a9b!important}
+html[data-look="modules"][data-skin="glass-dark"] input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),html[data-look="modules"][data-skin="glass-dark"] select,
+html[data-look="modules"][data-skin="glass-dark"] textarea{background-color:rgba(255,255,255,.1)!important;color:#f5f5f7!important}
+html[data-look="modules"][data-skin="glass-dark"] input::placeholder,html[data-look="modules"][data-skin="glass-dark"] textarea::placeholder{color:#8e8e95}
+html[data-look="modules"][data-skin="glass-dark"] select option{background:#2c2c34;color:#f5f5f7}
+html[data-look="modules"][data-skin="glass-dark"] .va-box,html[data-look="modules"][data-skin="glass-dark"] .cmp-box,html[data-look="modules"][data-skin="glass-dark"] #toast{background:rgba(30,32,40,.92)!important;color:#f5f5f7}
+html[data-look="modules"][data-skin="glass-dark"] .tablewrap{background:rgba(30,32,40,.82)!important}
+html[data-look="modules"][data-skin="glass-dark"] .tbl th{color:#c7c7cc}
+/* the register grid stays a light sheet in every theme (Excel-like reading) */
+html[data-look="modules"][data-skin="glass-dark"] .ed-grid,html[data-look="modules"][data-skin="glass-dark"] .ed-head{color-scheme:light;color:#1d1d1f;--ink:#15171B;--ink-2:#5A5F69;--mute:#868B95;--panel:#fff;--rule:#E5E7EB;--rule-2:#D5D8DD;--n100:#F1F2F4;--n50:#F7F8F9;--n200:#E5E7EB;--n300:#D5D8DD}
 /* ===== groups 5-7: page surfaces (V109) ===== */
 html[data-look="modules"] .wf-card,html[data-look="modules"] .mm-form,html[data-look="modules"] .mm-res,html[data-look="modules"] .sld-k,html[data-look="modules"] .sld-c,
 html[data-look="modules"] .slo-tabs,html[data-look="modules"] .ed-bar,html[data-look="modules"] .set-re,html[data-look="modules"] .set-rl button{
@@ -13332,7 +13385,7 @@ const SID_MOD=(function(){
 })();
 
 const SID_PREFS=(function(){
-  const DEF={v:1,look:"classic",theme:"light",wall:"sdm",accent:"crimson",rt:"auto",text:"normal",start:"map",fav:[],tab:""};   /* V108: memo glass — light on a wallpaper by default */
+  const DEF={v:1,look:"classic",theme:"light",wall:"sdm",accent:"crimson",rt:"auto",text:"normal",start:"home",fav:[],tab:""};   /* V108: memo glass — light on a wallpaper by default */
   const OK={look:["classic","modules"],theme:["dark","light","auto","contrast"],wall:["sdm","aurora","sunset","ocean","graphite"],accent:["crimson","blue","green","graphite"],rt:["auto","on","off"],text:["normal","large"],start:["home","map","last"]};
   let P={...DEF}, CO={}, uid=null;
   const lk=()=>"sid.prefs.v1."+(uid||"anon");
@@ -20560,7 +20613,7 @@ function render(){
     <button class="nl-ic" data-a="search" title="Find a module" aria-label="Find a module"><svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="6"/><path d="m15 15 4 4"/></svg></button>
     ${okMod("notif")?`<button class="nl-ic" data-m="notif" title="Notifications" aria-label="Notifications"><svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 15V10a5 5 0 0 1 10 0v5l2 2H4z"/><path d="M9 19a2 2 0 0 0 4 0"/></svg>${notifN()?`<i>${notifN()}</i>`:""}</button>`:""}
     <button class="nl-ic" data-a="look" title="Appearance" aria-label="Appearance"><svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="3"/><path d="M11 2v3M11 17v3M2 11h3M17 11h3M4.6 4.6l2.1 2.1M15.3 15.3l2.1 2.1M17.4 4.6l-2.1 2.1M6.7 15.3l-2.1 2.1"/></svg></button>
-    <button class="nl-av" data-a="look" title="${E(m.name||m.email||"")}">${E(initials(m.name||m.email))}</button></div>
+    <button class="nl-av" data-m="me" title="My Settings — ${E(m.name||m.email||"")}">${E(initials(m.name||m.email))}</button></div>
    <div class="nl-wrap">
     ${va?`<div class="nl-va">👁 Viewing as <b>${E(va.name||va.email)}</b> · ${E(m.label||m.role||"")} — exactly the modules this person can open<span class="nl-sp"></span><button class="nl-chip" data-a="exitva">Back to my view</button></div>`:""}
     <h1>${greet()}, ${E((m.name||"").trim()||"there")}</h1>
@@ -20592,6 +20645,7 @@ function open(id){
   const m=SID_MOD.get(id); if(!m) return;
   if(!okMod(id)){ if(typeof toast==="function") toast("Your access does not include this module",true); return; }
   const o=m.open||{}; if(o.home){ show(); return; }
+  if(o.panel==="me"&&window.SID_PANELS&&SID_PANELS.me){ SID_PANELS.me(); return; }
   if(o.panel==="me"||o.panel==="look"){ sheet(); return; }
   if(o.panel&&window.SID_PANELS&&typeof SID_PANELS[o.panel]==="function"){ recPush(id); hide(); SID_PANELS[o.panel](); return; }
   recPush(id); hide();
@@ -20668,7 +20722,9 @@ document.addEventListener("click",e=>{ const s=$q("#nlSheet"); if(s&&!s.contains
 document.addEventListener("click",e=>{ if(SID_LOOK.look()==="modules"&&e.target.closest(".rail .brand")){ e.preventDefault(); show(); } },true);
 /* start: once signed in and the page is ready, apply the person's look; Modules opens on Home */
 let tries=0; const boot=setInterval(()=>{ tries++;
-  if(window.__sidMeFinal&&document.body.classList.contains("sb-online")){ clearInterval(boot); try{ SID_LOOK.apply(); railHome(); if(SID_LOOK.look()==="modules"){ show(); [1500,4000,8000,15000].forEach(ms=>setTimeout(()=>{ if(NL.shown) render(); },ms)); } }catch(e){ console.warn("new look",e); } }
+  if(window.__sidMeFinal&&document.body.classList.contains("sb-online")){ clearInterval(boot); try{ SID_LOOK.apply(); railHome(); const st=SID_PREFS.get("start"), hashView=(location.hash||"").replace("#","");
+      if(SID_LOOK.look()==="modules"&&st==="home"&&!hashView){ show(); [1500,4000,8000,15000].forEach(ms=>setTimeout(()=>{ if(NL.shown) render(); },ms)); }
+      else if(st==="last"&&!hashView&&window.SID_LAST&&SID_LAST.get()&&typeof go==="function"){ go(SID_LAST.get()); } }catch(e){ console.warn("new look",e); } }
   if(tries>600) clearInterval(boot); },300);
 /* keep Home's numbers fresh while it is open (approvals, holds, notifications arrive live) */
 setInterval(()=>{ if(NL.shown&&document.visibilityState==="visible") try{ render(); }catch(e){} },20000);
@@ -20870,9 +20926,106 @@ document.addEventListener("click",e=>{ if(e.target.closest("[data-acc-open]")){ 
 })();
 </script>
 <script>
+/* ============================================================================
+   V110 — map tools follow the module permissions (both looks)
+   ========================================================================== */
+(function(){
+if(typeof SID_MOD==="undefined") return;
+const T=[["sketch","map.sketch"],["planner","map.planner"],["levels","map.levels"],["logistics","map.logistics"],["tour","map.tour"],["explore","map.explore"],["share","map.share"],["pipeline","map.pipeline"]];
+const ok=(id,act)=>{ try{ return SID_MOD.can(id,act||(SID_MOD.get(id).acts.includes("view")?"view":SID_MOD.get(id).acts[0])); }catch(e){ return true; } };
+const no=(label)=>{ try{ toast("Your access does not include "+label,true); }catch(e){} };
+function apply(){
+  if(typeof SBME==="undefined"||!SBME||!window.__sidMeFinal) return;
+  const b=document.body; T.forEach(([c,id])=>b.classList.toggle("nl-x-"+c,!ok(id,id==="map.share"?"export":"view")));
+  document.querySelectorAll("button.pp-mode").forEach(x=>{ if(/pipeline/i.test(x.textContent)) x.classList.add("nl-pipe"); });
+  /* a hidden logistics layer must not stay switched on */
+  if(!ok("map.logistics")){ const s=document.getElementById("sitesBtn"); if(s&&s.classList.contains("on")) s.click(); }
+}
+/* refuse the tools when they are opened another way (Lara, links, keys) */
+function guard(){
+  const S=window.SID_SKETCH; if(S&&!S.__nlg){ S.__nlg=1; const en=S.enter, sm=S.setMode;
+    S.enter=function(){ if(!ok("map.sketch")&&!ok("map.planner")){ no("Sketch & measure"); return; } const r=en.apply(this,arguments);
+      if(!ok("map.sketch")&&ok("map.planner")) setTimeout(()=>{ try{ sm.call(S,"build"); }catch(e){} },300); return r; };
+    S.setMode=function(m){ if(m==="build"&&!ok("map.planner")){ no("the Planner"); return; } if(m==="sketch"&&!ok("map.sketch")){ no("Sketch & measure"); return; } return sm.apply(this,arguments); }; }
+  const P=window.SID_TOPO; if(P&&!P.__nlg){ P.__nlg=1; const so=P.setOn; P.setOn=function(v){ if(v&&!ok("map.levels")){ no("Land Levels"); return; } return so.apply(this,arguments); }; }
+}
+let n=0; const t=setInterval(()=>{ n++; try{ apply(); guard(); }catch(e){} if(n>200) clearInterval(t); },1500);
+/* map bar and cards are redrawn often: re-mark the Pipeline button after each redraw */
+if(typeof buildChrome==="function"){ const bc=buildChrome; buildChrome=function(){ const r=bc.apply(this,arguments); try{ apply(); }catch(e){} return r; }; }
+window.SID_MAPTOOLS={apply};
+})();
+</script>
+<script>
+/* ============================================================================
+   V110 — My Settings (every user) + Company appearance (administrators)
+   ========================================================================== */
+(function(){
+if(typeof SID_PREFS==="undefined"||typeof SID_MOD==="undefined") return;
+const $q=s=>document.querySelector(s), E=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const me=()=>(typeof SBME!=="undefined"&&SBME)||{};
+/* last page opened, per person, for the "Start page: last page" choice */
+const lastKey=()=>"sid.nl.last."+((typeof SBU!=="undefined"&&SBU&&SBU.id)||"anon");
+window.SID_LAST={get(){ try{ const v=localStorage.getItem(lastKey()); return v&&typeof canSee==="function"&&canSee(v)?v:null; }catch(e){ return null; } }};
+if(typeof go==="function"){ const g0=go; go=function(v){ const r=g0.apply(this,arguments); try{ if(typeof S!=="undefined"&&S.view) localStorage.setItem(lastKey(),S.view); }catch(e){} return r; }; }
+const WALLS=[["sdm","SDM","linear-gradient(135deg,#f3a0ae,#c9b8ff 55%,#bfe3ff)"],["aurora","Aurora","linear-gradient(135deg,#8ec5ff,#d9a7ff 55%,#9be7d6)"],["sunset","Sunset","linear-gradient(135deg,#ffc38a,#ff9db8 55%,#b79bff)"],["ocean","Ocean","linear-gradient(135deg,#7fe0ff,#7fa8ff 55%,#7ff0d4)"],["graphite","Graphite","linear-gradient(135deg,#c9d3e6,#d9d2ee 55%,#cfdde0)"]];
+const seg=(k,opts,cur,attr)=>`<div class="ms-seg" ${attr||"data-k"}="${k}">${opts.map(([v,l])=>`<button data-v="${v}" class="${cur===v?"on":""}">${E(l)}</button>`).join("")}</div>`;
+let CO=null;   /* administrator's company draft */
+function draw(){
+  const ov=$q("#msOv"); if(!ov) return; const m=me(), P=SID_PREFS.all(), mine=SID_PREFS.mine(), av=SID_LOOK.available, mod=SID_LOOK.look()==="modules";
+  const favs=(P.fav||[]).map(id=>SID_MOD.get(id)).filter(Boolean);
+  let rec=[]; try{ rec=JSON.parse(sessionStorage.getItem("sid.nl.recent")||"[]").map(id=>SID_MOD.get(id)).filter(Boolean); }catch(e){}
+  const ini=String(m.name||m.email||"?").trim().split(/\s+/).map(x=>x[0]).slice(0,2).join("").toUpperCase();
+  const adm=!!m.is_admin&&!window.SID_VIEWAS, C=CO||SID_PREFS.company();
+  ov.innerHTML=`<div class="ms-box" role="dialog" aria-label="My Settings"><div class="ms-h"><b>My Settings</b><span class="sp"></span><button class="ms-x" data-a="close" aria-label="Close">×</button></div>
+   <div class="ms-prof"><div class="ms-av">${E(ini)}</div><div><b>${E(m.name||"—")}</b><em>${E(m.email||"—")}</em><em>${E(m.label||m.role||"—")}${m.team?" · team "+E(m.team):""}</em></div></div>
+   <div class="ms-cap">Appearance</div><div class="ms-grp">
+    ${av?`<div class="ms-row"><span>Look<small>Classic is exactly today's page</small></span>${seg("look",[["classic","Classic"],["modules","Modules"]],P.look)}</div>`:""}
+    <div class="ms-row"><span>Theme<small>for the Modules look</small></span>${seg("theme",[["light","Light"],["dark","Dark"],["auto","Auto"]],P.theme)}</div>
+    <div class="ms-row"><span>Wallpaper</span><div class="ms-walls" data-k="wall">${WALLS.map(([v,l,bg])=>`<button data-v="${v}" class="${P.wall===v?"on":""}" style="background:${bg}" title="${l}" aria-label="${l}"></button>`).join("")}</div></div>
+    <div class="ms-row"><span>Reduce transparency<small>Auto = on for phones and small tablets</small></span>${seg("rt",[["auto","Auto"],["on","On"],["off","Off"]],P.rt)}</div>
+    <div class="ms-row"><span>Text size</span>${seg("text",[["normal","Normal"],["large","Large"]],P.text)}</div></div>
+   ${!av?`<p class="ms-note">The Modules look is in preview for administrators; these choices apply when it opens for everybody.</p>`:""}
+   <div class="ms-cap">Start page</div><div class="ms-grp"><div class="ms-row"><span>When I open the dashboard<small>a link to a page always opens that page</small></span>${seg("start",[["home","Home"],["map","Map"],["last","Last page"]],P.start)}</div></div>
+   <div class="ms-cap">Favourites</div><div class="ms-grp"><div class="ms-row"><span>${favs.length?favs.map(f=>`<span class="ms-chip">${E(f.label)}<button data-unfav="${f.id}" aria-label="Remove ${E(f.label)}">×</button></span>`).join(""):`<small>Tap the ★ on a tile on Home to pin it here.</small>`}</span></div>
+    <div class="ms-row"><span>Recent<small>${rec.length?rec.map(x=>E(x.label)).join(" · "):"nothing yet"}</small></span><button class="ms-link" data-a="clearRecent">Clear</button></div></div>
+   <div class="ms-cap">Reset</div><div class="ms-grp"><div class="ms-row"><span>Use the company default for everything<small>${Object.keys(mine).filter(k=>k!=="v").length} personal choice(s) saved</small></span><button class="ms-link" data-a="reset">Reset</button></div></div>
+   ${adm?`<div class="ms-cap">Company appearance · administrators</div><div class="ms-grp">
+    <div class="ms-row"><span>Default look<small>for people who have not chosen</small></span>${seg("look",[["classic","Classic"],["modules","Modules"]],C.look||"classic","data-ck")}</div>
+    <div class="ms-row"><span>Default theme</span>${seg("theme",[["light","Light"],["dark","Dark"],["auto","Auto"]],C.theme||"light","data-ck")}</div>
+    <div class="ms-row"><span>Default wallpaper</span><div class="ms-walls" data-ck="wall">${WALLS.map(([v,l,bg])=>`<button data-v="${v}" class="${(C.wall||"sdm")===v?"on":""}" style="background:${bg}" title="${l}"></button>`).join("")}</div></div>
+    <div class="ms-row"><span>Lock the theme<small>nobody can change it</small></span>${seg("lockTheme",[["","No"],["light","Light"],["dark","Dark"]],(C.lock&&C.lock.theme)||"","data-ck")}</div>
+    <div class="ms-row"><span>Modules look off for everybody<small>emergency switch — everybody gets Classic</small></span>${seg("modules_off",[["0","No"],["1","Yes"]],C.modules_off?"1":"0","data-ck")}</div>
+    <div class="ms-row"><span><small>The Modules look itself is still a preview for administrators; the default look applies once it opens for everybody.</small></span><button class="ms-save" data-a="saveCo" ${CO?"":"disabled"}>Save company</button></div></div>`:""}
+  </div>`;
+}
+async function act(a){
+  if(a==="close"){ $q("#msOv").remove(); return; }
+  if(a==="clearRecent"){ try{ sessionStorage.removeItem("sid.nl.recent"); }catch(e){} draw(); if(window.SID_NL) SID_NL.render(); return; }
+  if(a==="reset"){ if(!confirm("Remove your personal appearance choices and use the company default?")) return; SID_PREFS.reset(); draw(); return; }
+  if(a==="saveCo"&&CO){ const v={look:CO.look||"classic",theme:CO.theme||"light",wall:CO.wall||"sdm",modules_off:!!CO.modules_off,lock:CO.lock&&CO.lock.theme?{theme:CO.lock.theme}:{}};
+    const r=await SB.from("sid_kv").upsert({key:"ui_default",value:v,updated_at:new Date().toISOString()}); if(r.error){ toast("Not saved: "+r.error.message,true); return; }
+    toast("Company appearance saved — applies the next time each person opens the dashboard"); CO=null; draw(); }
+}
+function open(){
+  let ov=$q("#msOv"); if(ov){ ov.remove(); } ov=document.createElement("div"); ov.id="msOv"; ov.className="ms-ov"; document.body.appendChild(ov); CO=null;
+  ov.addEventListener("click",e=>{ if(e.target===ov){ ov.remove(); return; }
+    const u=e.target.closest("[data-unfav]"); if(u){ const id=u.dataset.unfav; SID_PREFS.set("fav",(SID_PREFS.get("fav")||[]).filter(x=>x!==id)); draw(); if(window.SID_NL) SID_NL.render(); return; }
+    const b=e.target.closest("button"); if(!b) return;
+    const g=b.closest("[data-k]"); if(g&&b.dataset.v!==undefined){ SID_PREFS.set(g.dataset.k,b.dataset.v); if(g.dataset.k==="look"&&window.SID_NL){ if(SID_LOOK.look()==="modules"){ SID_NL.railHome(); } else { SID_NL.hide(); SID_NL.railHome(); } } draw(); return; }
+    const c=b.closest("[data-ck]"); if(c&&b.dataset.v!==undefined){ CO=CO||JSON.parse(JSON.stringify(SID_PREFS.company()||{})); const k=c.dataset.ck, v=b.dataset.v;
+      if(k==="lockTheme"){ CO.lock=v?{theme:v}:{}; } else if(k==="modules_off"){ CO.modules_off=v==="1"; } else CO[k]=v; draw(); return; }
+    if(b.dataset.a) act(b.dataset.a); });
+  document.addEventListener("keydown",function k(e){ if(e.key==="Escape"&&$q("#msOv")) $q("#msOv").remove(); });
+  draw();
+}
+window.SID_PANELS=Object.assign(window.SID_PANELS||{},{me:open});
+window.SID_MYSETTINGS={open};
+})();
+</script>
+<script>
 /* V109 — keep the Sales & Land Bank frame in the same look: copy the look attributes and the memo glass rules into it */
 (function(){
-const CSS="/* ===== V108 memo glass \u2014 tokens ===== */\nhtml[data-look=\"modules\"]{\n --g-surface:rgba(255,255,255,.56); --g-strong:rgba(255,255,255,.86); --g-sub:rgba(255,255,255,.34);\n --g-edge:rgba(255,255,255,.72); --g-line:rgba(60,60,67,.16);\n --g-shadow:0 10px 34px rgba(40,50,110,.14),inset 0 1px 0 rgba(255,255,255,.7);\n --g-shadow-s:0 4px 16px rgba(40,50,110,.10),inset 0 1px 0 rgba(255,255,255,.7);\n --g-blur:blur(24px) saturate(1.7); --g-r:16px; --g-r-lg:22px;\n --g-wall:radial-gradient(60% 55% at 12% 8%,#f3a0ae 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#c9b8ff 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#ffc9a8 0%,transparent 62%),radial-gradient(55% 55% at 8% 88%,#bfe3ff 0%,transparent 60%),linear-gradient(160deg,#fbe9ee,#efe9ff);\n}\nhtml[data-look=\"modules\"][data-wall=\"aurora\"]{--g-wall:radial-gradient(60% 55% at 12% 8%,#8ec5ff 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#d9a7ff 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#ffb3c7 0%,transparent 62%),radial-gradient(55% 55% at 8% 88%,#9be7d6 0%,transparent 60%),linear-gradient(160deg,#dfe9ff,#f3e6ff)}\nhtml[data-look=\"modules\"][data-wall=\"sunset\"]{--g-wall:radial-gradient(60% 55% at 10% 10%,#ffc38a 0%,transparent 62%),radial-gradient(55% 55% at 90% 12%,#ff9db8 0%,transparent 60%),\n   radial-gradient(65% 60% at 78% 92%,#b79bff 0%,transparent 62%),radial-gradient(55% 55% at 10% 90%,#ffd9a0 0%,transparent 60%),linear-gradient(160deg,#ffe9d6,#ffdce8)}\nhtml[data-look=\"modules\"][data-wall=\"ocean\"]{--g-wall:radial-gradient(60% 55% at 10% 8%,#7fe0ff 0%,transparent 62%),radial-gradient(55% 55% at 92% 16%,#7fa8ff 0%,transparent 60%),\n   radial-gradient(65% 60% at 82% 92%,#7ff0d4 0%,transparent 62%),radial-gradient(55% 55% at 8% 90%,#a6c8ff 0%,transparent 60%),linear-gradient(160deg,#d9f1ff,#dffaf1)}\nhtml[data-look=\"modules\"][data-wall=\"graphite\"]{--g-wall:radial-gradient(60% 55% at 12% 8%,#c9d3e6 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#d9d2ee 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#cfdde0 0%,transparent 62%),linear-gradient(160deg,#eceff5,#e3e6ee)}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"]{\n --g-surface:rgba(44,46,54,.56); --g-strong:rgba(34,36,44,.88); --g-sub:rgba(255,255,255,.08); --g-edge:rgba(255,255,255,.14); --g-line:rgba(255,255,255,.24);\n --g-shadow:0 10px 34px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.09); --g-blur:blur(26px) saturate(1.5);\n --g-wall:radial-gradient(60% 55% at 12% 8%,#5a1a28 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#43266f 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#1c3f78 0%,transparent 62%),radial-gradient(55% 55% at 8% 88%,#12463f 0%,transparent 60%),linear-gradient(160deg,#080a12,#12101d);\n}\n\n/* V109 \u2014 memo glass inside the Sales & Land Bank frame (Tailwind classes, same rules as the memo's glass.css) */\nhtml[data-look=\"modules\"],html[data-look=\"modules\"] body{background:var(--g-wall)!important;background-attachment:fixed!important}\nhtml[data-look=\"modules\"] #root,html[data-look=\"modules\"] main,html[data-look=\"modules\"] [class~=\"bg-gray-100\"],html[data-look=\"modules\"] [class~=\"bg-slate-100\"],\nhtml[data-look=\"modules\"] [class~=\"bg-[#EDEFF3]\"],html[data-look=\"modules\"] [class~=\"bg-[#f5f5f7]\"]{background-color:transparent!important}\nhtml[data-look=\"modules\"] [class~=\"bg-white\"],html[data-look=\"modules\"] [class~=\"bg-white/90\"],html[data-look=\"modules\"] [class~=\"bg-white/80\"],html[data-look=\"modules\"] [class~=\"bg-white/70\"]{\n background-color:var(--g-surface)!important;-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);box-shadow:var(--g-shadow)}\nhtml[data-look=\"modules\"] [class~=\"bg-white\"][class~=\"rounded-full\"]{background-color:#fff!important;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:0 1px 3px rgba(0,0,0,.25)}\nhtml[data-look=\"modules\"] [class~=\"bg-white\"][class~=\"rounded-lg\"],html[data-look=\"modules\"] [class~=\"bg-white\"][class~=\"rounded-md\"],html[data-look=\"modules\"] button[class~=\"bg-white\"]{\n background-color:rgba(255,255,255,.66)!important;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}\nhtml[data-look=\"modules\"] [class~=\"bg-gray-50\"],html[data-look=\"modules\"] [class~=\"bg-slate-50\"],html[data-look=\"modules\"] [class~=\"bg-gray-50/50\"]{background-color:var(--g-sub)!important}\nhtml[data-look=\"modules\"] [class~=\"border-gray-200\"],html[data-look=\"modules\"] [class~=\"border-gray-100\"],html[data-look=\"modules\"] [class~=\"border-slate-200\"],html[data-look=\"modules\"] [class~=\"border-slate-100\"]{border-color:var(--g-edge)!important}\nhtml[data-look=\"modules\"] [class~=\"rounded-xl\"]{border-radius:1.1rem}html[data-look=\"modules\"] [class~=\"rounded-2xl\"]{border-radius:1.35rem}\nhtml[data-look=\"modules\"] input:not([type=checkbox]):not([type=radio]):not([type=range]),html[data-look=\"modules\"] select,html[data-look=\"modules\"] textarea{background-color:rgba(255,255,255,.74)!important;border-color:var(--g-line)!important}\nhtml[data-look=\"modules\"] table{background:rgba(255,255,255,.55)}\n@media print{html[data-look=\"modules\"],html[data-look=\"modules\"] body{background:#fff!important}html[data-look=\"modules\"] *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}}\n";
+const CSS="/* ===== V108 memo glass \u2014 tokens ===== */\nhtml[data-look=\"modules\"]{\n --g-surface:rgba(255,255,255,.56); --g-strong:rgba(255,255,255,.86); --g-sub:rgba(255,255,255,.34);\n --g-edge:rgba(255,255,255,.72); --g-line:rgba(60,60,67,.16);\n --g-shadow:0 10px 34px rgba(40,50,110,.14),inset 0 1px 0 rgba(255,255,255,.7);\n --g-shadow-s:0 4px 16px rgba(40,50,110,.10),inset 0 1px 0 rgba(255,255,255,.7);\n --g-blur:blur(24px) saturate(1.7); --g-r:16px; --g-r-lg:22px;\n --g-wall:radial-gradient(60% 55% at 12% 8%,#f3a0ae 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#c9b8ff 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#ffc9a8 0%,transparent 62%),radial-gradient(55% 55% at 8% 88%,#bfe3ff 0%,transparent 60%),linear-gradient(160deg,#fbe9ee,#efe9ff);\n}\nhtml[data-look=\"modules\"][data-wall=\"aurora\"]{--g-wall:radial-gradient(60% 55% at 12% 8%,#8ec5ff 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#d9a7ff 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#ffb3c7 0%,transparent 62%),radial-gradient(55% 55% at 8% 88%,#9be7d6 0%,transparent 60%),linear-gradient(160deg,#dfe9ff,#f3e6ff)}\nhtml[data-look=\"modules\"][data-wall=\"sunset\"]{--g-wall:radial-gradient(60% 55% at 10% 10%,#ffc38a 0%,transparent 62%),radial-gradient(55% 55% at 90% 12%,#ff9db8 0%,transparent 60%),\n   radial-gradient(65% 60% at 78% 92%,#b79bff 0%,transparent 62%),radial-gradient(55% 55% at 10% 90%,#ffd9a0 0%,transparent 60%),linear-gradient(160deg,#ffe9d6,#ffdce8)}\nhtml[data-look=\"modules\"][data-wall=\"ocean\"]{--g-wall:radial-gradient(60% 55% at 10% 8%,#7fe0ff 0%,transparent 62%),radial-gradient(55% 55% at 92% 16%,#7fa8ff 0%,transparent 60%),\n   radial-gradient(65% 60% at 82% 92%,#7ff0d4 0%,transparent 62%),radial-gradient(55% 55% at 8% 90%,#a6c8ff 0%,transparent 60%),linear-gradient(160deg,#d9f1ff,#dffaf1)}\nhtml[data-look=\"modules\"][data-wall=\"graphite\"]{--g-wall:radial-gradient(60% 55% at 12% 8%,#c9d3e6 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#d9d2ee 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#cfdde0 0%,transparent 62%),linear-gradient(160deg,#eceff5,#e3e6ee)}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"]{\n --g-surface:rgba(44,46,54,.56); --g-strong:rgba(34,36,44,.88); --g-sub:rgba(255,255,255,.08); --g-edge:rgba(255,255,255,.14); --g-line:rgba(255,255,255,.24);\n --g-shadow:0 10px 34px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.09); --g-blur:blur(26px) saturate(1.5);\n --g-wall:radial-gradient(60% 55% at 12% 8%,#5a1a28 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#43266f 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#1c3f78 0%,transparent 62%),radial-gradient(55% 55% at 8% 88%,#12463f 0%,transparent 60%),linear-gradient(160deg,#080a12,#12101d);\n}\n\n/* V109 \u2014 memo glass inside the Sales & Land Bank frame (Tailwind classes, same rules as the memo's glass.css) */\nhtml[data-look=\"modules\"],html[data-look=\"modules\"] body{background:var(--g-wall)!important;background-attachment:fixed!important}\nhtml[data-look=\"modules\"] #root,html[data-look=\"modules\"] main,html[data-look=\"modules\"] [class~=\"bg-gray-100\"],html[data-look=\"modules\"] [class~=\"bg-slate-100\"],\nhtml[data-look=\"modules\"] [class~=\"bg-[#EDEFF3]\"],html[data-look=\"modules\"] [class~=\"bg-[#f5f5f7]\"]{background-color:transparent!important}\nhtml[data-look=\"modules\"] [class~=\"bg-white\"],html[data-look=\"modules\"] [class~=\"bg-white/90\"],html[data-look=\"modules\"] [class~=\"bg-white/80\"],html[data-look=\"modules\"] [class~=\"bg-white/70\"]{\n background-color:var(--g-surface)!important;-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);box-shadow:var(--g-shadow)}\nhtml[data-look=\"modules\"] [class~=\"bg-white\"][class~=\"rounded-full\"]{background-color:#fff!important;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:0 1px 3px rgba(0,0,0,.25)}\nhtml[data-look=\"modules\"] [class~=\"bg-white\"][class~=\"rounded-lg\"],html[data-look=\"modules\"] [class~=\"bg-white\"][class~=\"rounded-md\"],html[data-look=\"modules\"] button[class~=\"bg-white\"]{\n background-color:rgba(255,255,255,.66)!important;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}\nhtml[data-look=\"modules\"] [class~=\"bg-gray-50\"],html[data-look=\"modules\"] [class~=\"bg-slate-50\"],html[data-look=\"modules\"] [class~=\"bg-gray-50/50\"]{background-color:var(--g-sub)!important}\nhtml[data-look=\"modules\"] [class~=\"border-gray-200\"],html[data-look=\"modules\"] [class~=\"border-gray-100\"],html[data-look=\"modules\"] [class~=\"border-slate-200\"],html[data-look=\"modules\"] [class~=\"border-slate-100\"]{border-color:var(--g-edge)!important}\nhtml[data-look=\"modules\"] [class~=\"rounded-xl\"]{border-radius:1.1rem}html[data-look=\"modules\"] [class~=\"rounded-2xl\"]{border-radius:1.35rem}\nhtml[data-look=\"modules\"] input:not([type=checkbox]):not([type=radio]):not([type=range]),html[data-look=\"modules\"] select,html[data-look=\"modules\"] textarea{background-color:rgba(255,255,255,.74)!important;border-color:var(--g-line)!important}\nhtml[data-look=\"modules\"] table{background:rgba(255,255,255,.55)}\n/* Glass Dark inside the frame (memo glass.css dark rules, for the frame's gray / slate classes) */\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"]{color-scheme:dark}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] body{color:#f5f5f7}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-900\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-800\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-900\"],\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-800\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-black\"]{color:#f5f5f7!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-700\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-700\"]{color:#e5e5ea!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-600\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-600\"]{color:#c7c7cc!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-500\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-400\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-500\"],\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-400\"]{color:#a1a1a8!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"bg-white\"][class~=\"rounded-lg\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"bg-white\"][class~=\"rounded-md\"],\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] button[class~=\"bg-white\"]{background-color:rgba(255,255,255,.12)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] input:not([type=checkbox]):not([type=radio]):not([type=range]),html[data-look=\"modules\"][data-skin=\"glass-dark\"] select,\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] textarea{background-color:rgba(255,255,255,.1)!important;color:#f5f5f7!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] table{background:rgba(30,32,40,.6)}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-red-50\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-rose-50\"]{background-color:rgba(255,69,58,.16)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-green-50\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-emerald-50\"]{background-color:rgba(48,209,88,.16)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-amber-50\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-orange-50\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-yellow-50\"]{background-color:rgba(255,159,10,.16)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-blue-50\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-indigo-50\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-sky-50\"]{background-color:rgba(10,132,255,.16)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-red-600\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-red-700\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-rose-600\"]{color:#ff8f89!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-green-600\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-green-700\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-emerald-600\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-emerald-700\"]{color:#6fe39a!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-amber-600\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-amber-700\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-orange-600\"]{color:#ffc766!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-blue-600\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-blue-700\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-indigo-600\"]{color:#7cc0ff!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"border-gray-200\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"border-gray-100\"],html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"border-slate-200\"]{border-color:var(--g-edge)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .recharts-cartesian-axis-tick-value,html[data-look=\"modules\"][data-skin=\"glass-dark\"] .recharts-legend-item-text{fill:#c7c7cc!important;color:#c7c7cc!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .recharts-cartesian-grid line{stroke:rgba(255,255,255,.1)!important}\n@media print{html[data-look=\"modules\"],html[data-look=\"modules\"] body{background:#fff!important}html[data-look=\"modules\"] *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}}\n";
 function sync(){ try{
   const f=document.querySelector("#lbwrap iframe"), d=f&&f.contentDocument; if(!d||!d.documentElement) return;
   const H=document.documentElement, h=d.documentElement, on=H.dataset.look==="modules";
