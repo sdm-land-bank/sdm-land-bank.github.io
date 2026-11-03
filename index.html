@@ -2743,6 +2743,16 @@ body.nl-x-explore .pc-ex-b:not(.pc-sh),body.nl-x-explore .pc-ex-l{display:none!i
 body.nl-x-share .pc-sh,body.nl-x-share .pc-ex-i[data-k="share"]{display:none!important}
 body.nl-x-pipeline .pp-mode.nl-pipe{display:none!important}
 </style>
+<style id="sid-compass">
+#sidCompass{position:absolute;right:-28px;top:46%;width:124px;height:124px;margin:-62px 0 0 0;z-index:6;touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;
+  transform:scale(.4);transform-origin:50% 50%;opacity:.4;transition:transform .28s cubic-bezier(.2,.8,.2,1),opacity .45s ease,filter .3s ease;cursor:grab;-webkit-tap-highlight-color:transparent}
+#sidCompass.on{transform:translateX(-28px) scale(1);opacity:1;filter:drop-shadow(0 0 12px rgba(255,214,10,.75));transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .12s ease,filter .15s ease;cursor:grabbing}
+#sidCompass .cd{position:absolute;inset:0;border-radius:50%;background:rgba(28,28,30,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.25);box-shadow:0 6px 18px rgba(0,0,0,.35)}
+#sidCompass svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#sidCompass .dg{position:absolute;left:0;right:0;bottom:-18px;text-align:center;font:700 11px -apple-system,Inter,sans-serif;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);opacity:0;transition:opacity .2s}
+#sidCompass.on .dg{opacity:1}
+#skCompass{display:none!important}
+</style>
 <style id="sid-mysettings">
 /* V110 My Settings — iPhone "Settings" grouped lists */
 .ms-ov{position:fixed;inset:0;z-index:1250;background:rgba(20,20,30,.3);display:flex;justify-content:center;align-items:flex-start;padding:28px 16px;overflow:auto;font-family:Inter,-apple-system,"SF Pro Text",system-ui,sans-serif}
@@ -21097,6 +21107,31 @@ let n=0; const t=setInterval(()=>{ n++; try{ apply(); guard(); }catch(e){} if(n>
 /* map bar and cards are redrawn often: re-mark the Pipeline button after each redraw */
 if(typeof buildChrome==="function"){ const bc=buildChrome; buildChrome=function(){ const r=bc.apply(this,arguments); try{ apply(); }catch(e){} return r; }; }
 window.SID_MAPTOOLS={apply};
+})();
+</script>
+<script>
+/* V112 compass on every map page */
+(function(){
+function svg(){ let t=""; for(let i=0;i<24;i++){ const a=i*15*Math.PI/180, l=i%6===0?9:(i%3===0?6:3.5); t+='<line x1="'+(50+Math.sin(a)*44)+'" y1="'+(50-Math.cos(a)*44)+'" x2="'+(50+Math.sin(a)*(44-l))+'" y2="'+(50-Math.cos(a)*(44-l))+'" stroke="rgba(255,255,255,.8)" stroke-width="'+(i%6===0?1.8:1)+'"/>'; }
+  const f='font-family="-apple-system,Inter,sans-serif" font-weight="700"';
+  return '<svg viewBox="0 0 100 100" aria-label="Compass"><g id="sidCRing"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.2"/>'+t+
+   '<path d="M50 14 L57 50 L50 46 L43 50 Z" fill="#E5484D"/><path d="M50 86 L57 50 L50 54 L43 50 Z" fill="rgba(255,255,255,.75)"/>'+
+   '<text x="50" y="12" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" '+f+'>N</text><text x="95" y="53.5" text-anchor="middle" font-size="9" fill="#fff" '+f+'>E</text>'+
+   '<text x="50" y="97" text-anchor="middle" font-size="9" fill="#fff" '+f+'>S</text><text x="5" y="53.5" text-anchor="middle" font-size="9" fill="#fff" '+f+'>W</text></g><path d="M50 1 L54 8 L46 8 Z" fill="#FFD60A"/></svg>'; }
+function build(m,host){ if(document.getElementById("sidCompass")) return; const c=document.createElement("div"); c.id="sidCompass"; c.title="Hold and turn to rotate the map · tap = face north";
+  c.innerHTML='<div class="cd"></div>'+svg()+'<div class="dg"></div>'; host.appendChild(c);
+  const upd=()=>{ try{ const b=m.getBearing(), r=c.querySelector("#sidCRing"); if(r) r.setAttribute("transform","rotate("+(-b).toFixed(1)+" 50 50)"); const d=c.querySelector(".dg"); if(d) d.textContent=(Math.round(((b%360)+360)%360)%360)+"°"; }catch(e){} };
+  m.on("rotate",upd); m.on("move",upd); upd();
+  const ang=e=>{ const r=host.getBoundingClientRect(), cx=r.right-62, cy=r.top+.46*r.height; return Math.atan2(e.clientY-cy,e.clientX-cx)*180/Math.PI; };
+  let st=null, fade=0;
+  c.addEventListener("pointerdown",e=>{ e.stopPropagation(); e.preventDefault(); clearTimeout(fade); c.classList.add("on"); try{ c.setPointerCapture(e.pointerId); }catch(_){}
+    st={a:ang(e),b:m.getBearing(),t:performance.now(),moved:0,pid:e.pointerId}; });
+  c.addEventListener("pointermove",e=>{ if(!st||e.pointerId!==st.pid) return; let d=ang(e)-st.a; if(d>180) d-=360; if(d<-180) d+=360; st.moved=Math.max(st.moved,Math.abs(d)); if(st.moved>4) m.jumpTo({bearing:st.b-d}); e.preventDefault(); });
+  const up=e=>{ if(!st||(e&&e.pointerId!==st.pid)) return; const tap=st.moved<=4&&performance.now()-st.t<500; st=null; if(tap) m.easeTo({bearing:0,duration:450}); fade=setTimeout(()=>c.classList.remove("on"),tap?700:250); };
+  c.addEventListener("pointerup",up); c.addEventListener("pointercancel",up); c.addEventListener("lostpointercapture",()=>up(null));
+  ["touchstart","touchmove","mousedown","wheel","dblclick","click"].forEach(n=>c.addEventListener(n,e=>{ e.stopPropagation(); if(n!=="click"&&n!=="wheel") e.preventDefault(); },{passive:false}));
+}
+let n=0; const iv=setInterval(()=>{ try{ const host=document.getElementById("mapwrap"); if(host&&typeof map!=="undefined"&&map&&map.getBearing){ build(map,host); clearInterval(iv); } }catch(e){} if(++n>400) clearInterval(iv); },500);
 })();
 </script>
 <script>
