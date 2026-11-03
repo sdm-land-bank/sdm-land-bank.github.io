@@ -2541,77 +2541,149 @@ html[data-skin][data-rt="on"]{--sg-blur:none}
 html[data-skin][data-text="large"]{font-size:110%}
 </style>
 <style id="sid-shell">
-/* V106 Modules home - only under html[data-look="modules"] */
-#nlHome{display:none}
-html[data-look="modules"] #nlHome.on{display:block;position:fixed;inset:0;z-index:1200;overflow:auto;-webkit-overflow-scrolling:touch;
- background:var(--sg-bg);color:var(--sg-ink);font-family:var(--sg-font);font-size:15px;line-height:1.4}
+
+#nlHome,#nlBar{display:none}
+html[data-look="modules"]{--nl-bar:56px}
+
+html[data-look="modules"] .rail:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"] .app:not(#_g):not(#_g){grid-template-columns:minmax(0,1fr)!important;height:calc(100dvh - var(--nl-bar))!important;margin-top:var(--nl-bar)!important;padding:0!important}
+html[data-look="modules"] main:not(#_g):not(#_g){padding-bottom:0!important;min-width:0}
+html[data-look="modules"]{--tab:0px}
+html[data-look="modules"] .nt-panel:not(#_g):not(#_g){left:auto!important;right:14px!important;top:calc(var(--nl-bar) + 8px)!important;bottom:auto!important}
+html[data-look="modules"] .va-bar:not(#_g):not(#_g){top:auto!important;bottom:0!important;border-radius:12px 12px 0 0!important}
+html[data-look="modules"] #toast:not(#_g):not(#_g){z-index:1400;bottom:22px!important}
+
+html[data-look="modules"] #nlBar:not(#_g):not(#_g){display:flex;position:fixed;top:0;left:0;right:0;height:var(--nl-bar);z-index:1100;align-items:center;gap:8px;padding:0 14px;
+ background:var(--g-surface);-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);border-bottom:1px solid var(--g-edge);box-shadow:var(--g-shadow-s);
+ color:var(--sg-ink);font-family:var(--sg-font);font-size:14px}
+#nlBar *{box-sizing:border-box}
+#nlBar .b-home{flex:0 0 auto;width:38px;height:38px;border-radius:12px;border:0;padding:5px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18);cursor:pointer;display:grid;place-items:center;transition:transform .18s var(--sg-ease)}
+#nlBar .b-home:hover{transform:scale(1.06)}
+#nlBar .b-home img{width:100%;height:100%;object-fit:contain;border-radius:7px}
+#nlBar .b-tab{flex:0 0 auto;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--sg-mute);padding:0 4px 0 6px}
+#nlBar .b-pills{position:relative;flex:1 1 auto;min-width:0;display:flex;gap:4px;align-items:center;overflow-x:auto;scrollbar-width:none;padding:3px 0}
+#nlBar .b-pills::-webkit-scrollbar{display:none}
+#nlBar .b-pills{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent);padding-right:22px}
+#nlBar .b-p{flex:0 0 auto;height:34px;padding:0 14px;border-radius:999px;border:1px solid transparent;background:transparent;color:inherit;font:500 13.5px var(--sg-font);cursor:pointer;white-space:nowrap;transition:background .22s var(--sg-ease),color .22s,transform .18s}
+#nlBar .b-p:hover{background:rgba(127,127,127,.16)}
+#nlBar .b-p.on{background:var(--sg-accent);color:#fff;box-shadow:0 4px 14px rgba(179,38,61,.35)}
+#nlBar .b-p:active{transform:scale(.96)}
+#nlBar .b-sp{flex:0 0 auto}
+#nlBar .b-ic{position:relative;flex:0 0 auto;width:38px;height:38px;border-radius:12px;border:0;background:transparent;color:inherit;display:grid;place-items:center;cursor:pointer;transition:background .18s}
+#nlBar .b-ic:hover{background:rgba(127,127,127,.16)}
+#nlBar .b-ic i{position:absolute;top:3px;right:3px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--sg-bad);color:#fff;font:600 10px/16px var(--sg-font);font-style:normal;text-align:center}
+#nlBar .b-av{flex:0 0 auto;width:38px;height:38px;border-radius:12px;border:0;background:var(--sg-ink);color:var(--sg-bg-solid,#fff);font:600 13px var(--sg-font);cursor:pointer}
+html[data-skin="glass-dark"] #nlBar .b-av{background:#fff;color:#1C1C1E}
+
+html[data-look="modules"] #nlHome:not(#_g):not(#_g){display:block;position:fixed;inset:0;z-index:1200;overflow:auto;-webkit-overflow-scrolling:touch;opacity:0;visibility:hidden;pointer-events:none;
+ transition:opacity .24s ease,visibility 0s .24s;background:var(--sg-bg);color:var(--sg-ink);font-family:var(--sg-font);font-size:15px;line-height:1.4}
+html[data-look="modules"] #nlHome.on:not(#_g):not(#_g){opacity:1;visibility:visible;pointer-events:auto;transition:opacity .24s ease}
 #nlHome *{box-sizing:border-box}
-#nlHome .nl-top{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:14px 28px;
- background:linear-gradient(to bottom,rgba(0,0,0,.18),transparent);backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur)}
+#nlHome .nl-top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:12px 28px;background:linear-gradient(to bottom,rgba(0,0,0,.14),transparent);backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur)}
 html[data-skin="glass-light"] #nlHome .nl-top{background:linear-gradient(to bottom,rgba(255,255,255,.5),transparent)}
 #nlHome .nl-logo{height:34px;width:auto;display:block;border-radius:9px;padding:4px 8px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.2)}
-#nlHome .nl-card .v.t{font-size:17px;line-height:1.3;padding-top:6px}
 #nlHome .nl-sp{flex:1}
-#nlHome .nl-ic{position:relative;width:40px;height:40px;border-radius:12px;border:0;background:transparent;color:var(--sg-ink);display:grid;place-items:center;cursor:pointer}
+#nlHome .nl-ic{position:relative;width:40px;height:40px;border-radius:12px;border:0;background:transparent;color:var(--sg-ink);display:grid;place-items:center;cursor:pointer;transition:background .18s}
 #nlHome .nl-ic:hover{background:var(--sg-glass-2)}
-#nlHome .nl-ic i{position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--sg-bad);color:#fff;font:600 10px/16px var(--sg-font);font-style:normal}
-#nlHome .nl-av{width:40px;height:40px;border-radius:12px;border:0;background:var(--sg-ink);color:var(--sg-glass);font:600 13px var(--sg-font);cursor:pointer}
+#nlHome .nl-ic i{position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--sg-bad);color:#fff;font:600 10px/16px var(--sg-font);font-style:normal;text-align:center}
+#nlHome .nl-av{width:40px;height:40px;border-radius:12px;border:0;background:var(--sg-ink);color:#fff;font:600 13px var(--sg-font);cursor:pointer}
+html[data-skin="glass-light"] #nlHome .nl-av{color:#fff}
 html[data-skin="glass-dark"] #nlHome .nl-av{background:#fff;color:#1C1C1E}
-#nlHome .nl-wrap{max-width:1180px;margin:0 auto;padding:26px 28px 120px}
+#nlHome .nl-wrap{max-width:1180px;margin:0 auto;padding:22px 28px 120px}
 #nlHome .nl-va{display:flex;gap:10px;align-items:center;margin:0 0 18px;padding:9px 14px;border-radius:12px;background:rgba(255,214,10,.16);border:1px solid rgba(255,214,10,.4);font-size:13px}
 #nlHome h1{font-size:42px;font-weight:300;letter-spacing:-.02em;margin:0}
 #nlHome .nl-sub{color:var(--sg-mute);margin-top:6px}
 #nlHome .nl-role{display:inline-block;padding:2px 9px;border-radius:999px;background:rgba(179,38,61,.32);border:1px solid rgba(224,67,92,.5);font-size:12px;margin-right:8px;color:inherit}
-#nlHome .nl-tabs{display:flex;gap:30px;margin-top:34px;border-bottom:1px solid var(--sg-line);overflow-x:auto;scrollbar-width:none}
+#nlHome .nl-tabs{position:relative;display:flex;gap:30px;margin-top:30px;border-bottom:1px solid var(--sg-line);overflow-x:auto;scrollbar-width:none}
 #nlHome .nl-tabs::-webkit-scrollbar{display:none}
-#nlHome .nl-tab{padding:12px 0;font-size:19px;color:var(--sg-mute);cursor:pointer;white-space:nowrap;border:0;background:none;font-family:inherit;border-bottom:3px solid transparent;margin-bottom:-1px}
-#nlHome .nl-tab.on{color:var(--sg-ink);border-bottom-color:var(--sg-accent-2)}
-#nlHome .nl-lbl{margin:26px 0 16px;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--sg-mute);text-transform:uppercase}
-#nlHome .nl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:24px 18px}
-#nlHome .nl-tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:9px;text-align:center;cursor:pointer;border:0;background:none;color:inherit;font-family:inherit;padding:4px}
-#nlHome .nl-sq{width:88px;height:88px;border-radius:22px;display:grid;place-items:center;box-shadow:0 10px 26px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.25);transition:transform var(--sg-fast) var(--sg-ease)}
-#nlHome .nl-tile:hover .nl-sq,#nlHome .nl-tile:focus-visible .nl-sq{transform:translateY(-3px) scale(1.03)}
+#nlHome .nl-tab{padding:12px 0;font-size:19px;color:var(--sg-mute);cursor:pointer;white-space:nowrap;border:0;background:none;font-family:inherit;transition:color .25s}
+#nlHome .nl-tab:hover{color:var(--sg-ink)}
+#nlHome .nl-tab.on{color:var(--sg-ink)}
+#nlHome .nl-ink{position:absolute;left:0;bottom:0;height:3px;width:0;border-radius:3px;background:var(--sg-accent-2);transition:transform .4s var(--sg-ease),width .4s var(--sg-ease)}
+#nlHome .nl-lbl{margin:24px 0 16px;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--sg-mute);text-transform:uppercase}
+#nlHome .nl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:24px 18px;min-height:150px}
+#nlHome .nl-tw{position:relative}
+#nlHome .nl-tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:9px;text-align:center;cursor:pointer;border:0;background:none;color:inherit;font-family:inherit;padding:4px;width:100%}
+#nlHome .nl-sq{width:88px;height:88px;border-radius:22px;display:grid;place-items:center;box-shadow:0 10px 26px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.25);transition:transform .22s var(--sg-ease),box-shadow .22s}
+#nlHome .nl-tile:hover .nl-sq,#nlHome .nl-tile:focus-visible .nl-sq{transform:translateY(-4px) scale(1.05);box-shadow:0 16px 34px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.3)}
+#nlHome .nl-tile:active .nl-sq{transform:scale(.95)}
 #nlHome .nl-tile b{font-size:14.5px;font-weight:500}
 #nlHome .nl-tile small{font-size:11px;color:var(--sg-mute);margin-top:-5px}
 #nlHome .nl-badge{position:absolute;top:-4px;left:calc(50% + 30px);min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--sg-bad);color:#fff;font-size:12px;font-weight:600;display:grid;place-items:center}
-#nlHome .nl-star{position:absolute;top:-2px;left:calc(50% - 52px);width:26px;height:26px;border-radius:13px;border:0;background:var(--sg-glass);color:var(--sg-mute);font-size:14px;cursor:pointer;opacity:0;transition:opacity var(--sg-fast)}
-#nlHome .nl-tile:hover .nl-star,#nlHome .nl-star.on{opacity:1}#nlHome .nl-star.on{color:#FFD60A}
-#nlHome .nl-today{margin-top:42px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-#nlHome .nl-card{background:var(--sg-glass);border:1px solid var(--sg-line);border-radius:var(--sg-r);padding:16px;backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur);box-shadow:var(--sg-shadow);text-align:left;color:inherit;font-family:inherit;cursor:pointer}
+#nlHome .nl-star{position:absolute;top:-2px;left:calc(50% - 52px);width:26px;height:26px;border-radius:13px;border:0;background:var(--sg-glass);color:var(--sg-mute);font-size:14px;cursor:pointer;opacity:0;transition:opacity .15s}
+#nlHome .nl-tw:hover .nl-star,#nlHome .nl-star.on{opacity:1}#nlHome .nl-star.on{color:#FFD60A}
+#nlHome .nl-today{margin-top:38px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+#nlHome .nl-card{background:var(--sg-glass);border:1px solid var(--sg-line);border-radius:var(--sg-r);padding:16px;backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur);box-shadow:var(--sg-shadow);text-align:left;color:inherit;font-family:inherit;cursor:pointer;transition:transform .2s var(--sg-ease)}
+#nlHome .nl-card:hover{transform:translateY(-3px)}
 #nlHome .nl-card h4{margin:0;font-size:11.5px;color:var(--sg-mute);font-weight:600;letter-spacing:.05em;text-transform:uppercase}
 #nlHome .nl-card .v{font-size:28px;font-weight:600;margin-top:6px;font-variant-numeric:tabular-nums}
+#nlHome .nl-card .v.t{font-size:17px;line-height:1.3;padding-top:6px}
 #nlHome .nl-card .n{font-size:12px;color:var(--sg-mute)}
 #nlHome .nl-recent{display:flex;gap:8px;flex-wrap:wrap}
-#nlHome .nl-chip{padding:7px 12px;border-radius:999px;border:1px solid var(--sg-line);background:var(--sg-glass);color:inherit;font:13px var(--sg-font);cursor:pointer}
+#nlHome .nl-chip{padding:7px 12px;border-radius:999px;border:1px solid var(--sg-line);background:var(--sg-glass);color:inherit;font:13px var(--sg-font);cursor:pointer;transition:transform .18s}
+#nlHome .nl-chip:hover{transform:translateY(-2px)}
 #nlHome .nl-note{margin-top:22px;font-size:12px;color:var(--sg-mute)}
-.nl-sheet{position:fixed;z-index:1300;top:64px;right:20px;width:330px;max-width:calc(100% - 32px);padding:16px;border-radius:20px;border:1px solid var(--sg-line);
+
+@keyframes nlTileIn{from{opacity:0;transform:translate3d(calc(var(--nl-dir,1)*26px),12px,0) scale(.9)}to{opacity:1;transform:none}}
+@keyframes nlUp{from{opacity:0;transform:translate3d(0,14px,0)}to{opacity:1;transform:none}}
+#nlHome .nl-grid.in .nl-tw{animation:nlTileIn .42s var(--sg-ease) both;animation-delay:calc(var(--i,0)*45ms)}
+#nlHome .nl-grid.out{opacity:0;transform:translateX(calc(var(--nl-dir,1)*-22px));transition:opacity .13s ease,transform .13s ease}
+#nlHome.on .nl-wrap>.nl-enter{animation:nlUp .5s var(--sg-ease) both;animation-delay:calc(var(--e,0)*70ms)}
+@media (prefers-reduced-motion:reduce){#nlHome *,#nlBar *{animation:none!important;transition:none!important}}
+
+.nl-sheet{position:fixed;z-index:1300;top:calc(var(--nl-bar,56px) + 8px);right:16px;width:330px;max-width:calc(100% - 32px);padding:16px;border-radius:20px;border:1px solid var(--sg-line);
  background:var(--sg-glass);backdrop-filter:saturate(185%) blur(28px);-webkit-backdrop-filter:saturate(185%) blur(28px);box-shadow:var(--sg-shadow);color:var(--sg-ink);font-family:var(--sg-font)}
 html:not([data-skin]) .nl-sheet{--sg-ink:#1C1C1E;--sg-mute:#6b6b70;--sg-line:rgba(0,0,0,.1);--sg-glass:rgba(255,255,255,.92);--sg-accent:#B3263D;--sg-font:Inter,-apple-system,system-ui,sans-serif;--sg-shadow:0 12px 40px rgba(0,0,0,.25)}
-html[data-skin="glass-dark"] .nl-sheet{background:rgba(40,40,48,.82)}
+html[data-skin="glass-dark"] .nl-sheet{background:rgba(40,40,48,.9)}
 .nl-sheet h3{margin:0 0 2px;font-size:17px}.nl-sheet p{margin:0 0 10px;font-size:12px;color:var(--sg-mute)}
-.nl-sheet .row{margin:10px 0}.nl-sheet .row b{display:block;font-size:11.5px;color:var(--sg-mute);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
-.nl-seg{display:flex;background:rgba(127,127,127,.18);border-radius:10px;padding:2px}
-.nl-seg button{flex:1;border:0;background:none;color:inherit;font:13px var(--sg-font);padding:7px 4px;border-radius:8px;cursor:pointer}
-.nl-seg button.on{background:var(--sg-accent);color:#fff}
 .nl-sheet .nl-act{display:block;width:100%;text-align:left;margin-top:6px;padding:9px 10px;border-radius:10px;border:0;background:rgba(127,127,127,.12);color:inherit;font:13px var(--sg-font);cursor:pointer}
-.nl-find{top:70px;left:50%;right:auto;transform:translateX(-50%);width:420px}
-.nl-find .nl-in{width:100%;box-sizing:border-box;margin:2px 0 8px;padding:10px 12px;border-radius:12px;border:1px solid var(--sg-line);background:rgba(127,127,127,.12);color:inherit;font:15px var(--sg-font);outline:none}
+.nl-find{top:calc(var(--nl-bar,56px) + 14px);left:50%;right:auto;transform:translateX(-50%);width:420px}
+.nl-find .nl-in{width:100%;margin:2px 0 8px;padding:10px 12px;border-radius:12px;border:1px solid var(--sg-line);background:rgba(127,127,127,.12);color:inherit;font:15px var(--sg-font);outline:none}
 .nl-find .nl-res{max-height:50vh;overflow:auto}
-#nav .nav-item.nl-homeitem .nav-ico{background:var(--sg-accent,#B3263D);color:#fff}
-html[data-look="modules"] #toast{z-index:1400}
+#nav .nav-item.nl-homeitem{display:none}
+
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]) header.top #fbar:not(#_g):not(#_g),
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]) header.top .legend:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="pipeline"]) .kpis:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="levels"]) header.top:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="logistics"]) #sitesBtn:not(#_g):not(#_g),
+html[data-look="modules"][data-nlg]:not([data-nlg~="logistics"]) #pfSites:not(#_g):not(#_g),
+html[data-look="modules"][data-nlg]:not([data-nlg~="logistics"]) .poi:not(#_g):not(#_g),
+html[data-look="modules"][data-nlg]:not([data-nlg~="logistics"]) .map-note:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="logistics"]):not([data-nlg~="pipeline"]) #lblBtn:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="levels"]) #p3Btn:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="pipeline"]) .mapbtns .pp-seg:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="pipeline"]) #ppBdBtn:not(#_g):not(#_g),
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="pipeline"]) #pfBtn:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]) #slHeatBtn:not(#_g):not(#_g),
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]) .mapbtns .cmp-btn:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="levels"]) .tp-ctl:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="sketch"]) .sk-ctl:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="tour"]) .tpin:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="explore"]):not([data-nlg~="share"]) .pc-ex:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg~="share"]:not([data-nlg~="explore"]) .pc-ex .pc-ex-b:not(.pc-sh):not(#_g):not(#_g),
+html[data-look="modules"][data-nlg~="share"]:not([data-nlg~="explore"]) .pc-ex .pc-ex-l:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg~="explore"]:not([data-nlg~="share"]) .pc-ex .pc-sh:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg~="explore"]:not([data-nlg~="share"]) .pc-ex .pc-ex-i[data-k="share"]:not(#_g):not(#_g){display:none!important}
+
 @media (max-width:820px){
- #nlHome .nl-top{padding:12px 16px}#nlHome .nl-wrap{padding:18px 16px 110px}#nlHome h1{font-size:29px}
+ html[data-look="modules"]{--nl-bar:52px}
+ html[data-look="modules"] #nlBar:not(#_g):not(#_g){padding:0 8px;gap:4px}
+ #nlBar .b-tab,#nlBar .b-search,#nlBar .b-theme{display:none}
+ #nlBar .b-p{height:32px;padding:0 12px;font-size:13px}
+ #nlHome .nl-top{padding:10px 14px}#nlHome .nl-wrap{padding:16px 16px 110px}#nlHome h1{font-size:29px}
  #nlHome .nl-tabs{gap:8px;border:0;margin-top:20px}
- #nlHome .nl-tab{font-size:14px;padding:7px 14px;border:1px solid var(--sg-line);border-radius:999px;margin:0}
+ #nlHome .nl-tab{font-size:14px;padding:7px 14px;border:1px solid var(--sg-line);border-radius:999px;margin:0;transition:background .3s,color .3s,border-color .3s}
  #nlHome .nl-tab.on{background:var(--sg-accent);border-color:var(--sg-accent);color:#fff}
+ #nlHome .nl-ink{display:none}
  #nlHome .nl-grid{grid-template-columns:repeat(3,1fr);gap:18px 6px}
  #nlHome .nl-sq{width:66px;height:66px;border-radius:17px}#nlHome .nl-sq svg{width:30px;height:30px}
  #nlHome .nl-tile b{font-size:12px}#nlHome .nl-tile small{display:none}#nlHome .nl-badge{left:calc(50% + 20px)}
  #nlHome .nl-star{display:none}
  #nlHome .nl-today{grid-template-columns:1fr 1fr}
+ .nl-find{width:calc(100% - 24px)}
 }
 @media (max-width:380px){#nlHome .nl-grid{grid-template-columns:repeat(2,1fr)}}
-@media (prefers-reduced-motion:reduce){#nlHome .nl-sq{transition:none}}
 </style>
 <style id="sid-access">
 /* V107 Users & access panel */
@@ -2750,7 +2822,7 @@ html[data-look="modules"] body:not(.m-moving) .selpanel:not(#_g):not(#_g),html[d
 html[data-look="modules"] body:not(.m-moving) .mapbtns:not(#_g):not(#_g),html[data-look="modules"] body:not(.m-moving) .tp-card:not(#_g):not(#_g){-webkit-backdrop-filter:var(--g-blur)!important;backdrop-filter:var(--g-blur)!important}
 html[data-look="modules"] .pfside.pf-closed:not(#_g):not(#_g){background:transparent!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 
-html[data-look="modules"] .fbtn:not(#_g):not(#_g),html[data-look="modules"] .lg:not(#_g):not(#_g),html[data-look="modules"] .ebtn:not(#_g):not(#_g),html[data-look="modules"] .mapbtns button:not(#_g):not(#_g),html[data-look="modules"] .pp-mode:not(#_g):not(#_g),
+html[data-look="modules"] .fbtn:not(#_g):not(#_g),html[data-look="modules"] .lg:not(#_g):not(#_g),html[data-look="modules"] .ebtn:not(.pri):not(#_g):not(#_g),html[data-look="modules"] .mapbtns button:not(#_g):not(#_g),html[data-look="modules"] .pp-mode:not(#_g):not(#_g),
 html[data-look="modules"] .cmp-btn:not(#_g):not(#_g),html[data-look="modules"] .fp-link.btn:not(#_g):not(#_g){background:rgba(255,255,255,.66)!important;border:1px solid var(--g-edge)!important;box-shadow:none!important;
  -webkit-backdrop-filter:none!important;backdrop-filter:none!important;border-radius:12px!important}
 html[data-look="modules"] .mapbtns button.on:not(#_g):not(#_g),html[data-look="modules"] .pp-mode.on:not(#_g):not(#_g),html[data-look="modules"] .fbtn.on:not(#_g):not(#_g){background:rgba(255,255,255,.95)!important;color:#A6192E!important}
@@ -2771,9 +2843,9 @@ html[data-look="modules"][data-skin="glass-dark"]{color-scheme:dark;
  --n50:rgba(255,255,255,.04);--n100:rgba(255,255,255,.07);--n200:rgba(255,255,255,.12);--n300:rgba(255,255,255,.2);--n400:#8e8e93;--n500:#a1a1a8;--n600:#c7c7cc;--n700:#e5e5ea;--n800:#f2f2f7;--n900:#f5f5f7;
  --w:rgba(40,42,50,.94);--signal:#ff6b81;--signal-b:#ff8a9b;--signal-w:rgba(255,107,129,.16);--ok:#6fe39a}
 html[data-look="modules"][data-skin="glass-dark"] body{color:var(--ink)}
-html[data-look="modules"][data-skin="glass-dark"] .fbtn:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] .lg:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] .ebtn:not(#_g):not(#_g),
+html[data-look="modules"][data-skin="glass-dark"] .fbtn:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] .lg:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] .ebtn:not(.pri):not(#_g):not(#_g),
 html[data-look="modules"][data-skin="glass-dark"] .mapbtns button:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] .pp-mode:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] .cmp-btn:not(#_g):not(#_g){background:rgba(255,255,255,.12)!important;color:#f5f5f7!important}
-html[data-look="modules"][data-skin="glass-dark"] .mapbtns button.on:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] .pp-mode.on:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] .fbtn.on:not(#_g):not(#_g){background:rgba(255,255,255,.24)!important;color:#ff8a9b!important}
+html[data-look="modules"][data-skin="glass-dark"] .mapbtns button.on:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] .pp-mode.on:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] .fbtn.on:not(#_g):not(#_g){background:rgba(255,255,255,.26)!important;color:#fff!important}
 html[data-look="modules"][data-skin="glass-dark"] input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] select:not(#_g):not(#_g),
 html[data-look="modules"][data-skin="glass-dark"] textarea:not(#_g):not(#_g){background-color:rgba(255,255,255,.1)!important;color:#f5f5f7!important}
 html[data-look="modules"][data-skin="glass-dark"] input:not(#_g):not(#_g)::placeholder,html[data-look="modules"][data-skin="glass-dark"] textarea:not(#_g):not(#_g)::placeholder{color:#8e8e95}
@@ -2782,8 +2854,6 @@ html[data-look="modules"][data-skin="glass-dark"] .va-box:not(#_g):not(#_g),html
 html[data-look="modules"][data-skin="glass-dark"] .tablewrap:not(#_g):not(#_g){background:rgba(30,32,40,.82)!important}
 html[data-look="modules"][data-skin="glass-dark"] .tbl th:not(#_g):not(#_g){color:#c7c7cc}
 
-html[data-look="modules"][data-skin="glass-dark"] .ed-grid:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] .ed-head:not(#_g):not(#_g){color-scheme:light;color:#1d1d1f;--ink:#15171B;--ink-2:#5A5F69;--mute:#868B95;--panel:#fff;--rule:#E5E7EB;--rule-2:#D5D8DD;--n100:#F1F2F4;--n50:#F7F8F9;--n200:#E5E7EB;--n300:#D5D8DD}
-
 html[data-look="modules"] .wf-card:not(#_g):not(#_g),html[data-look="modules"] .mm-form:not(#_g):not(#_g),html[data-look="modules"] .mm-res:not(#_g):not(#_g),html[data-look="modules"] .sld-k:not(#_g):not(#_g),html[data-look="modules"] .sld-c:not(#_g):not(#_g),
 html[data-look="modules"] .slo-tabs:not(#_g):not(#_g),html[data-look="modules"] .ed-bar:not(#_g):not(#_g),html[data-look="modules"] .set-re:not(#_g):not(#_g),html[data-look="modules"] .set-rl button:not(#_g):not(#_g){
  background:var(--g-surface)!important;border:1px solid var(--g-edge)!important;box-shadow:var(--g-shadow-s)!important;border-radius:var(--g-r)!important}
@@ -2791,15 +2861,21 @@ html[data-look="modules"] body:not(.m-moving) .wf-card:not(#_g):not(#_g),html[da
 
 html[data-look="modules"] .tablewrap:not(#_g):not(#_g){background:rgba(255,255,255,.82)!important;border-radius:12px!important;border:1px solid var(--g-edge)!important}
 
-html[data-look="modules"] .ed-grid:not(#_g):not(#_g),html[data-look="modules"] .ed-head:not(#_g):not(#_g){background:#fff}
+html[data-look="modules"][data-skin="glass-light"] .ed-grid:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-light"] .ed-head:not(#_g):not(#_g){background:#fff}
+html[data-look="modules"][data-skin="glass-dark"] .ed-grid:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] .ed-head:not(#_g):not(#_g){background:rgba(28,30,38,.92)}
 
 html[data-look="modules"] .acc-box:not(#_g):not(#_g){--a-bg:rgba(255,255,255,.82);--a-soft:rgba(255,255,255,.45);--a-line:rgba(60,60,67,.14);border:1px solid var(--g-edge)}
 html[data-look="modules"][data-skin="glass-dark"] .acc-box:not(#_g):not(#_g){--a-bg:rgba(34,36,44,.9);--a-soft:rgba(255,255,255,.06);--a-line:rgba(255,255,255,.14)}
 html[data-look="modules"] .acc-ov:not(#_g):not(#_g){background:rgba(20,20,30,.28)}
-html[data-look="modules"][data-skin="glass-dark"] .nl-dk:not(#_g):not(#_g){color:#f2f2f7!important}
-html[data-look="modules"][data-skin="glass-dark"] .nl-dk2:not(#_g):not(#_g){color:#b8b8bf!important}
-html[data-look="modules"][data-skin="glass-dark"] .nl-lt:not(#_g):not(#_g){color:#1d1d1f!important}
-html[data-look="modules"][data-skin="glass-dark"] .nl-dbg:not(#_g):not(#_g){background:rgba(44,46,54,.62)!important;border-color:rgba(255,255,255,.14)!important;box-shadow:0 10px 34px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.08)!important}
+
+html[data-look="modules"][data-skin="glass-dark"] [style*="background:#fff" i]:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] [style*="background: #fff" i]:not(#_g):not(#_g),
+html[data-look="modules"][data-skin="glass-dark"] [style*="background:white" i]:not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] [style*="background-color:#fff" i]:not(#_g):not(#_g){background-color:rgba(44,46,54,.66)!important}
+html[data-look="modules"][data-skin="glass-dark"] [style*="color:#1c1c1e" i]:not([style*="background"]):not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] [style*="color:#16181d" i]:not([style*="background"]):not(#_g):not(#_g),
+html[data-look="modules"][data-skin="glass-dark"] [style*="color:#15171b" i]:not([style*="background"]):not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] [style*="color:#111" i]:not([style*="background"]):not(#_g):not(#_g),
+html[data-look="modules"][data-skin="glass-dark"] [style*="color:#222" i]:not([style*="background"]):not(#_g):not(#_g),html[data-look="modules"][data-skin="glass-dark"] [style*="color:#333" i]:not([style*="background"]):not(#_g):not(#_g),
+html[data-look="modules"][data-skin="glass-dark"] [style*="color:#000" i]:not([style*="background"]):not(#_g):not(#_g){color:#f2f2f7!important}
+
+html[data-look="modules"][data-skin="glass-light"]{--mute:#5b6069;--n500:#656a74;--n400:#80858f}
 
 html[data-look="modules"][data-text="large"] body{font-size:13.75px}
 
@@ -13327,7 +13403,7 @@ const SID_MOD=(function(){
   const wf=()=>{ const m=me(); return m?(m.is_admin?"ops":(m.wf||null)):"ops"; };
   const LB_SALES=["lb.dashboard","lb.overview","lb.strategic_bento","lb.intelligence"];
   const LB_CEO=["lb.ceo_brief","lb.ceo_cash","lb.ceo_value","lb.ceo_runway","lb.ceo_customers","lb.ceo_governance"];
-  const TABS=[["work","Workspace"],["land","Land"],["sales","Sales"],["inv","Investors"],["exec","Executive"],["data","Data"],["admin","Admin"]];
+  const TABS=[["work","General (top bar)"],["land","Land"],["sales","Sales"],["inv","Investors"],["exec","Executive"],["data","Data"],["admin","Admin"]];
   /* id, tab, label, hint, icon, actions, pages (today's page ids it covers), rules {view,edit,approve,export}, open */
   const M=[
     {id:"home",tab:"work",label:"Home",icon:"home",acts:["view"],rule:{view:()=>true},open:{home:1}},
@@ -20581,7 +20657,7 @@ const TINT={"map.planner":"#2F80ED","map.levels":"#8DAE2C","map.sketch":"#5B5FC7
  "approvals":"#2E9E5B","demand":"#8E44AD","offer":"#5B5FC7","sales.pipeline":"#FF9F0A","notif":"#5B5FC7","lara":"#14B8C4","me":"#636366","present":"#B3263D","codes":"#14B8C4",
  "roadshow":"#E07A1F","map.explore":"#B3263D","map.share":"#2E9E5B","cost":"#B3263D","register":"#2E9E5B","audit":"#8E44AD","sync":"#2E9E5B","admin.viewas":"#E07A1F"};
 const LBT={"sales.cockpits":"lb.dashboard","sales.inventory":"lb.inventory_breakdown","sales.pipeline":"lb.sales","ceo":"lb.ceo_brief","exec.fin":"lb.executive","exec.engine":"lb.financial_engine","lb.settings":"lb.settings"};
-const NL={tab:null,shown:false};
+const NL={tab:null,shown:false,cur:null,opening:false,built:false,tabIdx:0};
 /* same as the View as banner's Exit (web_roadshow.py): forget the person, reload as myself */
 const exitVA=()=>{ try{ sessionStorage.removeItem("sid.viewas"); }catch(e){} location.reload(); };
 const fmt=n=>typeof n==="number"&&isFinite(n)?n.toLocaleString("en-US"):"—";
@@ -20590,7 +20666,64 @@ function initials(n){ const p=String(n||"").trim().split(/\s+/).filter(Boolean);
 function firstAct(m){ return m.acts.includes("view")?"view":m.acts[0]; }
 function okMod(id){ const m=SID_MOD.get(id); return !!m&&SID_MOD.can(id,firstAct(m)); }
 function notifN(){ try{ const t=(($q("#ntBell")||{}).textContent||"").match(/(\d+)\s*$/); return t?+t[1]:0; }catch(e){ return 0; } }
-function badge(id){ try{ if(id==="approvals"&&typeof wfTodo==="function"&&WF.ready) return wfTodo().length||0; if(id==="notif") return notifN(); }catch(e){} return 0; }
+function badge(id){ try{ if(id==="approvals"&&typeof wfTodo==="function"&&WF.ready) return wfTodo().length||0; }catch(e){} return 0; }
+const isDark=()=>SID_LOOK.skin()==="glass-dark";
+const SUN='<svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="3.4"/><path d="M11 2v2.5M11 17.5V20M2 11h2.5M17.5 11H20M4.6 4.6l1.8 1.8M15.6 15.6l1.8 1.8M17.4 4.6l-1.8 1.8M6.4 15.6l-1.8 1.8"/></svg>';
+const MOON='<svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13.5A7.5 7.5 0 0 1 8.5 4a7.5 7.5 0 1 0 9.5 9.5z"/></svg>';
+const SEARCH='<svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="6"/><path d="m15 15 4 4"/></svg>';
+const BELL='<svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 15V10a5 5 0 0 1 10 0v5l2 2H4z"/><path d="M9 19a2 2 0 0 0 4 0"/></svg>';
+/* the tabs on Home: the old "Workspace" tab is gone — Notifications are the bell, Lara is the orb, My Settings is the avatar */
+const homeTabs=()=>SID_MOD.tabs().filter(t=>t.id!=="work");
+/* ---- module context: which module is open decides what the map / the Land Bank frame show ---- */
+const GROUP={"map":"core","map.status":"core","map.explore":"core explore","map.share":"core share","map.planner":"sketch","map.sketch":"sketch","map.levels":"levels","map.survey":"levels","map.pipeline":"pipeline","map.logistics":"logistics","map.tour":"tour"};
+const FRAME={"sales.cockpits":["lb.overview","lb.strategic_bento","lb.intelligence"],"sales.inventory":["lb.inventory_breakdown","lb.landbank"],"sales.pipeline":["lb.sales"],
+ "ceo":["lb.ceo_brief","lb.ceo_cash","lb.ceo_value","lb.ceo_runway","lb.ceo_customers","lb.ceo_governance"],"exec.fin":["lb.executive"],"exec.engine":["lb.financial_engine"],"lb.settings":["lb.settings","lb.changelog","lb.excel-grid"]};
+const BYVIEW={match:"match",codes:"codes",offer:"offer",demand:"demand",approvals:"approvals",health:"health",audit:"audit"};
+function ctxForView(v){
+  const cur=NL.cur;
+  if(v==="inventory") return cur&&GROUP[cur]?cur:"map";
+  if(v==="sales") return cur&&FRAME[cur]?cur:"sales.cockpits";
+  if(v==="editor") return cur==="cost"?"cost":"register";
+  if(v==="settings") return cur&&/^admin\./.test(cur)?cur:"admin.users";
+  return BYVIEW[v]||cur||"map";
+}
+/* the modules shown as pills in the bar: the pages/tools of the same tab */
+function pillMods(){ const m=SID_MOD.get(NL.cur); if(!m) return []; const T=SID_MOD.tabs().find(t=>t.id===m.tab); if(!T) return [];
+  return T.mods.filter(x=>x.id!=="home"&&x.open&&(x.open.view||x.open.panel==="access")); }
+function renderBar(){
+  const b=$q("#nlBar"); if(!b) return; const m=me()||{}, cur=SID_MOD.get(NL.cur), T=cur&&SID_MOD.tabs().find(t=>t.id===cur.tab);
+  const logo=($q(".brand .mark img")||{}).src||($q(".brand .lockup img")||{}).src||"";
+  const n=notifN();
+  b.innerHTML=`<button class="b-home" data-a="home" title="Home" aria-label="Home">${logo?`<img src="${E(logo)}" alt="" onerror="this.replaceWith(document.createTextNode('SD'))">`:"SD"}</button>
+   ${T?`<span class="b-tab">${E(T.label)}</span>`:""}
+   <div class="b-pills" role="tablist">${pillMods().map(x=>`<button class="b-p${x.id===NL.cur?" on":""}" role="tab" aria-selected="${x.id===NL.cur}" data-m="${x.id}">${E(x.label)}</button>`).join("")}</div>
+   <button class="b-ic b-search" data-a="search" title="Find a module (⌘K)" aria-label="Find a module">${SEARCH}</button>
+   ${okMod("notif")?`<button class="b-ic" data-a="bell" title="Notifications" aria-label="Notifications">${BELL}${n?`<i>${n>99?"99+":n}</i>`:""}</button>`:""}
+   <button class="b-ic b-theme" data-a="theme" title="${isDark()?"Light":"Dark"} theme" aria-label="Switch theme">${isDark()?SUN:MOON}</button>
+   <button class="b-av" data-m="me" title="My Settings — ${E(m.name||m.email||"")}">${E(initials(m.name||m.email))}</button>`;
+  const on=b.querySelector(".b-p.on"); if(on&&on.scrollIntoView) try{ const P=b.querySelector(".b-pills"); P.scrollLeft=Math.max(0,on.offsetLeft-P.clientWidth/2+on.offsetWidth/2); }catch(e){}
+}
+/* what the Land Bank frame shows: only the views of the open module */
+function frameFocus(){
+  try{ const f=$q("#lbwrap iframe"), d=f&&f.contentDocument; if(!d||!d.head||typeof LB_TID==="undefined") return;
+    const set=FRAME[NL.cur], on=SID_LOOK.look()==="modules"&&typeof S!=="undefined"&&S.view==="sales"&&set; let st=d.getElementById("sid-nlmod");
+    if(!on){ if(st) st.remove(); d.querySelectorAll(".sid-cgrp[data-nlh]").forEach(g=>{ g.style.display=""; g.removeAttribute("data-nlh"); }); const nv=d.querySelector(".sid-cnav"); if(nv) nv.style.display=""; return; }
+    const keep=new Set(set.map(k=>LB_TID[k]).filter(Boolean)), hide=Object.values(LB_TID).filter(t=>!keep.has(t));
+    const css=hide.map(t=>"#"+t).join(",")+"{display:none!important}"+"#tab-dashboard{display:none!important}"+(NL.cur==="lb.settings"?"":"header.sid-bar nav.sid-seg{display:none!important}");
+    if(!st){ st=d.createElement("style"); st.id="sid-nlmod"; d.head.appendChild(st); } if(st.textContent!==css) st.textContent=css;
+    let shown=0; d.querySelectorAll(".sid-cgrp").forEach(g=>{ const any=[...g.querySelectorAll(".sid-citem")].some(x=>x.offsetParent!==null||getComputedStyle(x).display!=="none"); g.style.display=any?"":"none"; g.setAttribute("data-nlh",any?"":"1"); if(any) shown+=[...g.querySelectorAll(".sid-citem")].filter(x=>getComputedStyle(x).display!=="none").length; });
+    const nv=d.querySelector(".sid-cnav"); if(nv) nv.style.display=shown<=1?"none":"";
+  }catch(e){} }
+function applyCtx(force){
+  const h=document.documentElement, on=SID_LOOK.look()==="modules";
+  if(!on){ ["nlmod","nlg"].forEach(a=>h.removeAttribute("data-"+a)); frameFocus(); return; }
+  const old=h.dataset.nlg||"", mapView=typeof S!=="undefined"&&S.view==="inventory", g=mapView?(GROUP[NL.cur]||"core"):"";
+  h.dataset.nlmod=NL.cur||""; if(g) h.dataset.nlg=g; else h.removeAttribute("data-nlg");
+  renderBar(); frameFocus();
+  if(force||old!==g) setTimeout(()=>{ try{ window.dispatchEvent(new Event("resize")); }catch(e){} },160);
+}
+/* every way into a page (tiles, pills, Lara, links, "show on the map") keeps the context right */
+if(typeof go==="function"){ const g0=go; go=function(v){ const r=g0.apply(this,arguments); try{ if(!NL.opening&&SID_LOOK.look()==="modules") NL.cur=ctxForView(S.view); applyCtx(); }catch(e){} return r; }; }
 /* ---- the Today strip: only numbers already in the page; "—" when missing ---- */
 function today(){
   const out=[];
@@ -20603,58 +20736,80 @@ function today(){
   if(okMod("register")){ const t=(($q("#stampTxt")||{}).textContent||"").trim(); out.push(["MDS register",t?t.replace(/^MDS register\s*·\s*/i,""):"—","last saved","register"]); }
   return out;
 }
+const todayHtml=()=>today().map(c=>`<button class="nl-card" data-m="${c[3]}"><h4>${E(c[0])}</h4><div class="v${/^[\d,—]+$/.test(c[1])?"":" t"}">${E(c[1])}</div><div class="n">${E(c[2])}</div></button>`).join("");
 function rec(){ try{ return JSON.parse(sessionStorage.getItem("sid.nl.recent")||"[]").filter(okMod); }catch(e){ return []; } }
 function recPush(id){ if(id==="home") return; try{ const r=[id,...rec().filter(x=>x!==id)].slice(0,5); sessionStorage.setItem("sid.nl.recent",JSON.stringify(r)); }catch(e){} }
-function tile(m){ const c=TINT[m.id]||COL[m.tab]||"#636366", n=badge(m.id), fav=(SID_PREFS.get("fav")||[]).includes(m.id);
-  return `<div style="position:relative"><button class="nl-tile" data-m="${m.id}" title="${E(m.label+(m.hint?" — "+m.hint:""))}"><span class="nl-sq" style="background:linear-gradient(160deg,${c},${c}cc)">${P(IC[m.icon]||IC.grid)}</span>${n?`<span class="nl-badge">${n>99?"99+":n}</span>`:""}<b>${E(m.label)}</b>${m.hint?`<small>${E(m.hint)}</small>`:""}</button>${m.id!=="home"?`<button class="nl-star${fav?" on":""}" data-fav="${m.id}" title="${fav?"Remove from":"Add to"} favourites" aria-label="Favourite">★</button>`:""}</div>`; }
-function render(){
+function tile(m,i){ const c=TINT[m.id]||COL[m.tab]||"#636366", n=badge(m.id), fav=(SID_PREFS.get("fav")||[]).includes(m.id);
+  return `<div class="nl-tw" style="--i:${i||0}"><button class="nl-tile" data-m="${m.id}" title="${E(m.label+(m.hint?" — "+m.hint:""))}"><span class="nl-sq" style="background:linear-gradient(160deg,${c},${c}cc)">${P(IC[m.icon]||IC.grid)}</span>${n?`<span class="nl-badge">${n>99?"99+":n}</span>`:""}<b>${E(m.label)}</b>${m.hint?`<small>${E(m.hint)}</small>`:""}</button><button class="nl-star${fav?" on":""}" data-fav="${m.id}" title="${fav?"Remove from":"Add to"} favourites" aria-label="Favourite">★</button></div>`; }
+const tilesOf=T=>T.mods.filter(x=>!["home","notif","lara","me"].includes(x.id));
+function placeInk(){ const w=$q("#nlHome .nl-tabs"), ink=w&&w.querySelector(".nl-ink"), on=w&&w.querySelector(".nl-tab.on"); if(!ink||!on) return; ink.style.width=on.offsetWidth+"px"; ink.style.transform="translateX("+on.offsetLeft+"px)"; }
+function render(anim){
   const el=$q("#nlHome"); if(!el) return; const m=me()||{}, va=window.SID_VIEWAS;
-  const tabs=SID_MOD.tabs(); if(!tabs.length){ el.innerHTML=""; return; }
+  const tabs=homeTabs(); if(!tabs.length){ el.innerHTML=""; return; }
   if(!NL.tab||!tabs.some(t=>t.id===NL.tab)) NL.tab=(tabs.some(t=>t.id===SID_PREFS.get("tab"))?SID_PREFS.get("tab"):(tabs.find(t=>t.id==="land")||tabs[0]).id);
-  const T=tabs.find(t=>t.id===NL.tab), favs=(SID_PREFS.get("fav")||[]).map(id=>SID_MOD.get(id)).filter(x=>x&&okMod(x.id)), R=rec().map(id=>SID_MOD.get(id)).filter(Boolean);
-  const logo=($q(".brand .lockup img")||{}).src||"";
+  NL.tabIdx=Math.max(0,tabs.findIndex(t=>t.id===NL.tab));
+  const T=tabs.find(t=>t.id===NL.tab), favs=(SID_PREFS.get("fav")||[]).map(id=>SID_MOD.get(id)).filter(x=>x&&okMod(x.id)&&!["notif","lara","me"].includes(x.id)), R=rec().map(id=>SID_MOD.get(id)).filter(Boolean);
+  const logo=($q(".brand .lockup img")||{}).src||"", n=notifN(), cls=anim?" nl-enter":"";
   el.innerHTML=`<div class="nl-top">${logo?`<img class="nl-logo" src="${E(logo)}" alt="Elsewedy Industrial Development">`:"<b>SID</b>"}<span class="nl-sp"></span>
-    <button class="nl-ic" data-a="search" title="Find a module" aria-label="Find a module"><svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="6"/><path d="m15 15 4 4"/></svg></button>
-    ${okMod("notif")?`<button class="nl-ic" data-m="notif" title="Notifications" aria-label="Notifications"><svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 15V10a5 5 0 0 1 10 0v5l2 2H4z"/><path d="M9 19a2 2 0 0 0 4 0"/></svg>${notifN()?`<i>${notifN()}</i>`:""}</button>`:""}
-    <button class="nl-ic" data-a="look" title="Appearance" aria-label="Appearance"><svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="3"/><path d="M11 2v3M11 17v3M2 11h3M17 11h3M4.6 4.6l2.1 2.1M15.3 15.3l2.1 2.1M17.4 4.6l-2.1 2.1M6.7 15.3l-2.1 2.1"/></svg></button>
+    <button class="nl-ic" data-a="search" title="Find a module" aria-label="Find a module">${SEARCH}</button>
+    ${okMod("notif")?`<button class="nl-ic" data-a="bell" title="Notifications" aria-label="Notifications">${BELL}${n?`<i>${n>99?"99+":n}</i>`:""}</button>`:""}
+    <button class="nl-ic" data-a="theme" title="${isDark()?"Light":"Dark"} theme" aria-label="Switch theme">${isDark()?SUN:MOON}</button>
     <button class="nl-av" data-m="me" title="My Settings — ${E(m.name||m.email||"")}">${E(initials(m.name||m.email))}</button></div>
    <div class="nl-wrap">
-    ${va?`<div class="nl-va">👁 Viewing as <b>${E(va.name||va.email)}</b> · ${E(m.label||m.role||"")} — exactly the modules this person can open<span class="nl-sp"></span><button class="nl-chip" data-a="exitva">Back to my view</button></div>`:""}
-    <h1>${greet()}, ${E((m.name||"").trim()||"there")}</h1>
-    <div class="nl-sub"><span class="nl-role">${E(m.label||m.role||"")}</span>${new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
-    ${favs.length?`<div class="nl-lbl">Favourites</div><div class="nl-grid">${favs.map(tile).join("")}</div>`:""}
-    <div class="nl-tabs" role="tablist">${tabs.map(t=>`<button class="nl-tab${t.id===NL.tab?" on":""}" role="tab" aria-selected="${t.id===NL.tab}" data-t="${t.id}">${E(t.label)}</button>`).join("")}</div>
-    <div class="nl-lbl">Apps</div>
-    <div class="nl-grid">${T.mods.filter(x=>x.id!=="home").map(tile).join("")}</div>
-    <div class="nl-today">${today().map(c=>`<button class="nl-card" data-m="${c[3]}"><h4>${E(c[0])}</h4><div class="v${/^[\d,—]+$/.test(c[1])?"":" t"}">${E(c[1])}</div><div class="n">${E(c[2])}</div></button>`).join("")}</div>
-    ${R.length?`<div class="nl-lbl">Recent</div><div class="nl-recent">${R.map(x=>`<button class="nl-chip" data-m="${x.id}">${E(x.label)}</button>`).join("")}</div>`:""}
-    <div class="nl-note">New look — preview for administrators. Classic is one click away (Appearance).</div>
+    ${va?`<div class="nl-va${cls}" style="--e:0">👁 Viewing as <b>${E(va.name||va.email)}</b> · ${E(m.label||m.role||"")} — exactly the modules this person can open<span class="nl-sp"></span><button class="nl-chip" data-a="exitva">Back to my view</button></div>`:""}
+    <h1 class="${cls.trim()}" style="--e:1">${greet()}, ${E((m.name||"").trim()||"there")}</h1>
+    <div class="nl-sub${cls}" style="--e:2"><span class="nl-role">${E(m.label||m.role||"")}</span>${new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
+    ${favs.length?`<div class="${cls.trim()}" style="--e:3"><div class="nl-lbl">Favourites</div><div class="nl-grid" id="nlFav">${favs.map(tile).join("")}</div></div>`:""}
+    <div class="nl-tabs${cls}" style="--e:4" role="tablist">${tabs.map(t=>`<button class="nl-tab${t.id===NL.tab?" on":""}" role="tab" aria-selected="${t.id===NL.tab}" data-t="${t.id}">${E(t.label)}</button>`).join("")}<span class="nl-ink"></span></div>
+    <div class="${cls.trim()}" style="--e:5"><div class="nl-lbl">Apps</div>
+    <div class="nl-grid${anim?" in":""}" id="nlGrid">${tilesOf(T).map(tile).join("")}</div></div>
+    <div class="nl-today${cls}" style="--e:6" id="nlToday">${todayHtml()}</div>
+    ${R.length?`<div class="${cls.trim()}" style="--e:7"><div class="nl-lbl">Recent</div><div class="nl-recent">${R.map(x=>`<button class="nl-chip" data-m="${x.id}">${E(x.label)}</button>`).join("")}</div></div>`:""}
+    <div class="nl-note${cls}" style="--e:8">Classic is one click away: My Settings → Look.</div>
    </div>`;
+  NL.built=true; requestAnimationFrame(()=>{ const ink=$q("#nlHome .nl-ink"); if(ink){ ink.style.transition="none"; placeInk(); void ink.offsetWidth; ink.style.transition=""; } });
 }
-function show(){ const el=$q("#nlHome"); if(!el||SID_LOOK.look()!=="modules") return; NL.shown=true; render(); el.classList.add("on"); el.scrollTop=0; }
+/* tab change: the underline glides, the grid slides out and the new tiles come in one after the other */
+function switchTab(id){
+  const tabs=homeTabs(), ni=tabs.findIndex(t=>t.id===id); if(ni<0||id===NL.tab) return; const dir=ni>NL.tabIdx?1:-1; NL.tab=id; NL.tabIdx=ni; SID_PREFS.set("tab",id);
+  const el=$q("#nlHome"); if(!el) return; el.querySelectorAll(".nl-tab").forEach(b=>{ const on=b.dataset.t===id; b.classList.toggle("on",on); b.setAttribute("aria-selected",on); }); placeInk();
+  const g=$q("#nlGrid"); if(!g) return; const T=tabs[ni]; g.style.setProperty("--nl-dir",dir); const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const fill=()=>{ g.innerHTML=tilesOf(T).map(tile).join(""); g.classList.remove("out"); g.classList.remove("in"); void g.offsetWidth; g.classList.add("in"); };
+  if(reduce){ fill(); return; } g.classList.add("out"); setTimeout(fill,130);
+  const act=el.querySelector(".nl-tab.on"); if(act&&act.scrollIntoView) try{ act.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"}); }catch(e){}
+}
+function refresh(){ const t=$q("#nlToday"); if(t) t.innerHTML=todayHtml(); const n=notifN(); document.querySelectorAll("#nlHome .nl-ic i,#nlBar .b-ic i").forEach(i=>{ i.textContent=n>99?"99+":n; });
+  const ap=badge("approvals"); document.querySelectorAll('#nlHome [data-m="approvals"] .nl-badge').forEach(i=>{ i.textContent=ap>99?"99+":ap; }); }
+function show(){ const el=$q("#nlHome"); if(!el||SID_LOOK.look()!=="modules") return; NL.shown=true; const first=!NL.built; render(true); el.classList.add("on"); el.scrollTop=0; renderBar(); }
 function hide(){ const el=$q("#nlHome"); NL.shown=false; if(el) el.classList.remove("on"); }
 function lbTab(key){ const tid=typeof LB_TID!=="undefined"&&LB_TID[key]; if(!tid) return; let n=0;
-  const t=setInterval(()=>{ n++; try{ const f=$q("#lbwrap iframe"), d=f&&f.contentDocument, b=d&&d.getElementById(tid); if(b&&b.offsetParent!==null){ b.click(); clearInterval(t); } }catch(e){} if(n>60) clearInterval(t); },250); }
-function whenMap(fn){ let n=0; const t=setInterval(()=>{ n++; if((typeof S!=="undefined"&&S.mapReady)||n>40){ clearInterval(t); try{ fn(); }catch(e){ console.warn("nl tool",e); } } },250); }
+  const t=setInterval(()=>{ n++; try{ const f=$q("#lbwrap iframe"), d=f&&f.contentDocument, b=d&&d.getElementById(tid); if(b&&b.offsetParent!==null){ b.click(); clearInterval(t); frameFocus(); } else frameFocus(); }catch(e){} if(n>60) clearInterval(t); },250); }
+function whenMap(fn){ let n=0; const t=setInterval(()=>{ n++; if(((typeof S!=="undefined"&&S.mapReady)&&n>=3)||n>40){ clearInterval(t); try{ fn(); }catch(e){ console.warn("nl tool",e); } } },250); }   /* ~0.75 s: the map has finished redrawing its bar */
+/* tools: switching module on the map starts its tool and stops the previous one */
+function leave(prev){ if(!prev||prev===NL.cur) return; const g=GROUP[prev]||"";
+  try{ if(/levels/.test(g)&&!/levels/.test(GROUP[NL.cur]||"")&&window.SID_TOPO&&SID_TOPO.on) SID_TOPO.setOn(false);
+    if(/pipeline/.test(g)&&!/pipeline/.test(GROUP[NL.cur]||"")){ const b=document.querySelector("button.pp-mode"); if(b&&!b.classList.contains("on")) b.click(); }
+    if(/sketch/.test(g)&&!/sketch/.test(GROUP[NL.cur]||"")&&window.SID_SKETCH&&SID_SKETCH.state&&SID_SKETCH.state.on) SID_SKETCH.exit(); }catch(e){} }
 function tool(t){
   if(t==="sketch") whenMap(()=>window.SID_SKETCH&&SID_SKETCH.enter());
   else if(t==="planner") whenMap(()=>{ if(!window.SID_SKETCH) return; SID_SKETCH.enter(); setTimeout(()=>{ try{ SID_SKETCH.setMode("build"); }catch(e){} },350); });
   else if(t==="levels") whenMap(()=>window.SID_TOPO&&SID_TOPO.setOn(true));
-  else if(t==="pipeline") whenMap(()=>{ const b=[...document.querySelectorAll("button.pp-mode")].find(x=>/pipeline/i.test(x.textContent)); if(b) b.click(); });
+  else if(t==="pipeline") whenMap(()=>{ let k=0; const go2=()=>{ const b=[...document.querySelectorAll("button.pp-mode")].find(x=>/pipeline/i.test(x.textContent)); if(b&&!b.classList.contains("on")){ b.click(); if(++k<4) setTimeout(go2,500); } }; go2(); });
   else if(t==="logistics") whenMap(()=>{ const b=$q("#sitesBtn"); if(b&&!b.classList.contains("on")) b.click(); });
   else if(t==="tour") whenMap(()=>typeof toast==="function"&&toast("Tap a park's 360° pin on the map"));
-  else if(t==="explore") whenMap(()=>typeof toast==="function"&&toast("Open a park, then choose Explore"));
+  else if(t==="explore") whenMap(()=>typeof toast==="function"&&toast("Tap a park on the map, then choose Explore"));
+  else if(t==="share") whenMap(()=>typeof toast==="function"&&toast("Tap an available plot, then share it with a customer"));
 }
 function open(id){
   const m=SID_MOD.get(id); if(!m) return;
   if(!okMod(id)){ if(typeof toast==="function") toast("Your access does not include this module",true); return; }
   const o=m.open||{}; if(o.home){ show(); return; }
   if(o.panel==="me"&&window.SID_PANELS&&SID_PANELS.me){ SID_PANELS.me(); return; }
-  if(o.panel==="me"||o.panel==="look"){ sheet(); return; }
-  if(o.panel&&window.SID_PANELS&&typeof SID_PANELS[o.panel]==="function"){ recPush(id); hide(); SID_PANELS[o.panel](); return; }
-  recPush(id); hide();
-  if(o.view&&typeof go==="function") go(o.view);
-  if(o.view==="sales"&&LBT[id]) lbTab(LBT[id]);
+  if(o.panel==="me"||o.panel==="look"){ if(window.SID_PANELS&&SID_PANELS.me) SID_PANELS.me(); else sheet(); return; }
+  if(o.panel&&window.SID_PANELS&&typeof SID_PANELS[o.panel]==="function"){ recPush(id); hide(); if(o.panel==="access"&&typeof S!=="undefined"&&S.view!=="settings"){ NL.cur=id; if(typeof go==="function"){ NL.opening=true; go("settings"); NL.opening=false; } } NL.cur=id; applyCtx(); SID_PANELS[o.panel](); return; }
+  recPush(id); hide(); const prev=NL.cur;
+  if(o.view){ NL.opening=true; NL.cur=id; try{ leave(prev); if(typeof go==="function") go(o.view); }finally{ NL.opening=false; } applyCtx(true); }
+  if(o.view==="sales"){ const first=(FRAME[id]||[])[0]; if(first) lbTab(first); }
   if(o.tool) tool(o.tool);
   if(o.panel==="notif"){ const b=$q("#ntBell"); if(b) b.click(); }
   if(o.panel==="lara"){ const b=$q("#laraOrbBtn"); if(b) b.click(); }
@@ -20663,46 +20818,28 @@ function open(id){
   if(o.action==="viewas"&&window.sidViewAsPick) window.sidViewAsPick();
   if(o.action==="sync"){ const b=$q("#syncBtn"); if(b) b.click(); }
 }
-/* ---- Appearance sheet (phase 6 turns this into My Settings) ---- */
-function sheet(){
-  let s=$q("#nlSheet"); if(s){ s.remove(); return; }
-  s=document.createElement("div"); s.id="nlSheet"; s.className="nl-sheet"; s.setAttribute("role","dialog"); s.setAttribute("aria-label","Appearance");
-  const seg=(k,opts)=>`<div class="nl-seg" data-k="${k}">${opts.map(([v,l])=>`<button data-v="${v}" class="${SID_PREFS.get(k)===v?"on":""}">${l}</button>`).join("")}</div>`;
-  s.innerHTML=`<h3>Appearance</h3><p>Saved for you. Classic is exactly today's page.</p>
-    <div class="row"><b>Look</b>${seg("look",[["classic","Classic"],["modules","Modules (new)"]])}</div>
-    <div class="row"><b>Theme (new look)</b>${seg("theme",[["light","Glass Light"],["dark","Glass Dark"],["auto","Auto"]])}</div>
-    <div class="row"><b>Wallpaper</b><div class="nl-walls" data-k="wall">${[["sdm","SDM","linear-gradient(135deg,#f3a0ae,#c9b8ff 55%,#bfe3ff)"],["aurora","Aurora","linear-gradient(135deg,#8ec5ff,#d9a7ff 55%,#9be7d6)"],["sunset","Sunset","linear-gradient(135deg,#ffc38a,#ff9db8 55%,#b79bff)"],["ocean","Ocean","linear-gradient(135deg,#7fe0ff,#7fa8ff 55%,#7ff0d4)"],["graphite","Graphite","linear-gradient(135deg,#c9d3e6,#d9d2ee 55%,#cfdde0)"]].map(([v,l,bg])=>`<div><button data-v="${v}" class="${SID_PREFS.get("wall")===v?"on":""}" style="background:${bg}" aria-label="${l}" title="${l}"></button><span>${l}</span></div>`).join("")}</div></div>
-    <div class="row"><b>Reduce transparency</b>${seg("rt",[["auto","Auto"],["on","On"],["off","Off"]])}</div>
-    ${window.SID_VIEWAS?`<button class="nl-act" data-a="exitva">Back to my own view</button>`:""}<button class="nl-act" data-a="close">Close</button>`;
-  s.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; const g=b.closest(".nl-seg,.nl-walls");
-    if(g){ SID_PREFS.set(g.dataset.k,b.dataset.v); g.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); after(g.dataset.k); return; }
-    if(b.dataset.a==="exitva") exitVA();
-    if(b.dataset.a==="close") s.remove(); });
-  document.body.appendChild(s);
-}
-function after(k){ if(k!=="look") { if(NL.shown) render(); return; }
-  if(SID_LOOK.look()==="modules"){ railHome(); show(); } else { hide(); railHome(); const s=$q("#nlSheet"); if(s) s.remove(); } }
+function toggleTheme(){ SID_PREFS.set("theme",isDark()?"light":"dark"); renderBar(); if(NL.shown) render(false); placeInkSoon(); }
+const placeInkSoon=()=>setTimeout(placeInk,60);
+/* ---- Appearance sheet is now My Settings; kept only as a fallback ---- */
+function sheet(){ if(window.SID_PANELS&&SID_PANELS.me) return SID_PANELS.me(); }
+function after(k){ if(k!=="look") { if(NL.shown) render(false); return; }
+  if(SID_LOOK.look()==="modules"){ railHome(); NL.cur=ctxForView(typeof S!=="undefined"?S.view:"inventory"); applyCtx(true); show(); } else { hide(); railHome(); applyCtx(true); } }
 /* ---- quick find (⌘K / Ctrl+K and the search button): type a module name ---- */
 function find(){
-  let s=$q("#nlFind"); if(s){ s.remove(); return; } const old=$q("#nlSheet"); if(old) old.remove();
-  const all=SID_MOD.list().filter(m=>m.id!=="home"), tabL=Object.fromEntries(SID_MOD.TABS);
+  let s=$q("#nlFind"); if(s){ s.remove(); return; }
+  const all=SID_MOD.list().filter(m=>!["home"].includes(m.id)), tabL=Object.fromEntries(SID_MOD.TABS);
   s=document.createElement("div"); s.id="nlFind"; s.className="nl-sheet nl-find"; s.setAttribute("role","dialog"); s.setAttribute("aria-label","Find a module");
   s.innerHTML=`<h3>Find a module</h3><p>Type a name — Enter opens the first match. (⌘K / Ctrl+K)</p><input class="nl-in" type="search" placeholder="Levels, register, CEO…" autocomplete="off"><div class="nl-res"></div>`;
   const inp=s.querySelector("input"), res=s.querySelector(".nl-res");
-  const draw=()=>{ const t=inp.value.trim().toLowerCase(); const L=all.filter(m=>!t||(m.label+" "+(m.hint||"")+" "+tabL[m.tab]).toLowerCase().includes(t)).slice(0,9);
+  const draw=()=>{ const t=inp.value.trim().toLowerCase(); const L=all.filter(m=>!t||(m.label+" "+(m.hint||"")+" "+(tabL[m.tab]||"")).toLowerCase().includes(t)).slice(0,9);
     res.innerHTML=L.length?L.map(m=>`<button class="nl-act" data-m="${m.id}"><b>${E(m.label)}</b> <span style="opacity:.6">· ${E(tabL[m.tab]||"")}</span></button>`).join(""):`<p style="margin:8px 2px">No module matches.</p>`; };
   inp.addEventListener("input",draw);
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ const b=res.querySelector("[data-m]"); if(b){ s.remove(); open(b.dataset.m); } } if(e.key==="Escape") s.remove(); });
   res.addEventListener("click",e=>{ const b=e.target.closest("[data-m]"); if(b){ s.remove(); open(b.dataset.m); } });
   document.body.appendChild(s); draw(); setTimeout(()=>inp.focus(),30); }
-/* ---- Classic rail: Home item while the Modules look is on; "New look (preview)" for administrators ---- */
+/* ---- Classic rail: "New look (preview)" for administrators ---- */
 function railHome(){
-  const nav=$q("#nav"); if(!nav) return; const h=$q("#nlRailHome"), on=SID_LOOK.look()==="modules";
-  if(on&&!h){ const b=document.createElement("button"); b.type="button"; b.id="nlRailHome"; b.className="nav-item nl-homeitem"; b.title="Home — your modules";
-    b.innerHTML=`<span class="nav-i" aria-hidden="true"><span class="nav-ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5L8 2l6 4.5V13a1 1 0 01-1 1H3a1 1 0 01-1-1z"/><path d="M6.2 14V9h3.6v5"/></svg></span></span><span class="nav-t rail-open-only"><span class="nav-row"><span class="nav-l">Home</span></span><span class="nav-h">Your modules</span></span>`;
-    b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); show(); }; nav.prepend(b); }
-  if(!on&&h) h.remove();
-  const p=$q("#nlRailTry"), s=$q('#nav .nav-item[data-view="settings"]');
+  const p=$q("#nlRailTry"), s=$q('#nav .nav-item[data-view="settings"]'), on=SID_LOOK.look()==="modules";
   if(SID_LOOK.available&&!on&&!window.SID_VIEWAS&&s&&!p){ const b=document.createElement("button"); b.type="button"; b.id="nlRailTry"; b.className="nav-item nav-extra"; b.title="New look (preview) — the Modules home, administrators only";
     b.innerHTML=`<span class="nav-i" aria-hidden="true"><span class="nav-ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="5" height="5" rx="1.2"/><rect x="9" y="2" width="5" height="5" rx="1.2"/><rect x="2" y="9" width="5" height="5" rx="1.2"/><rect x="9" y="9" width="5" height="5" rx="1.2"/></svg></span></span><span class="nav-t rail-open-only"><span class="nav-row"><span class="nav-l">New look</span><span class="nav-badge">Preview</span></span><span class="nav-h">The Modules home (administrators only)</span></span>`;
     b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); SID_PREFS.set("look","modules"); after("look"); };
@@ -20712,27 +20849,30 @@ function railHome(){
 if(typeof buildNav==="function"){ const bn=buildNav; buildNav=function(){ const r=bn.apply(this,arguments); try{ railHome(); }catch(e){} return r; }; }
 /* ---- wiring ---- */
 const el=document.createElement("div"); el.id="nlHome"; el.setAttribute("aria-label","Home"); document.body.appendChild(el);
-el.addEventListener("click",e=>{
-  const f=e.target.closest("[data-fav]"); if(f){ e.stopPropagation(); const id=f.dataset.fav, L=SID_PREFS.get("fav")||[]; SID_PREFS.set("fav",L.includes(id)?L.filter(x=>x!==id):[...L,id]); render(); return; }
-  const t=e.target.closest("[data-t]"); if(t){ NL.tab=t.dataset.t; SID_PREFS.set("tab",NL.tab); render(); return; }
-  const a=e.target.closest("[data-a]"); if(a){ if(a.dataset.a==="look") sheet(); if(a.dataset.a==="search") find(); if(a.dataset.a==="exitva") exitVA(); return; }
-  const m=e.target.closest("[data-m]"); if(m) open(m.dataset.m); });
+const bar=document.createElement("div"); bar.id="nlBar"; bar.setAttribute("role","navigation"); bar.setAttribute("aria-label","Modules"); document.body.appendChild(bar);
+const clicks=e=>{
+  const f=e.target.closest("[data-fav]"); if(f){ e.stopPropagation(); const id=f.dataset.fav, L=SID_PREFS.get("fav")||[]; SID_PREFS.set("fav",L.includes(id)?L.filter(x=>x!==id):[...L,id]); render(false); return; }
+  const t=e.target.closest("[data-t]"); if(t){ switchTab(t.dataset.t); return; }
+  const a=e.target.closest("[data-a]"); if(a){ const k=a.dataset.a;
+    if(k==="home"){ show(); return; } if(k==="search") find(); if(k==="theme") toggleTheme(); if(k==="exitva") exitVA();
+    if(k==="bell"){ const b=$q("#ntBell"); if(b) b.click(); } return; }
+  const m=e.target.closest("[data-m]"); if(m) open(m.dataset.m); };
+el.addEventListener("click",clicks); bar.addEventListener("click",clicks);
 document.addEventListener("keydown",e=>{ if(SID_LOOK.look()!=="modules") return;
   if((e.metaKey||e.ctrlKey)&&String(e.key).toLowerCase()==="k"){ e.preventDefault(); find(); }
-  if(e.key==="Escape"){ const s=$q("#nlSheet"); if(s) s.remove(); } });
-document.addEventListener("click",e=>{ const s=$q("#nlSheet"); if(s&&!s.contains(e.target)&&!e.target.closest('[data-a="look"]')) s.remove();
-  const f=$q("#nlFind"); if(f&&!f.contains(e.target)&&!e.target.closest('[data-a="search"]')) f.remove(); });
-/* the brand logo goes Home in the Modules look */
-document.addEventListener("click",e=>{ if(SID_LOOK.look()==="modules"&&e.target.closest(".rail .brand")){ e.preventDefault(); show(); } },true);
+  if(e.key==="Escape"){ const f=$q("#nlFind"); if(f) f.remove(); } });
+document.addEventListener("click",e=>{ const f=$q("#nlFind"); if(f&&!f.contains(e.target)&&!e.target.closest('[data-a="search"]')) f.remove(); });
+window.addEventListener("resize",()=>{ if(NL.shown) placeInk(); });
 /* start: once signed in and the page is ready, apply the person's look; Modules opens on Home */
 let tries=0; const boot=setInterval(()=>{ tries++;
   if(window.__sidMeFinal&&document.body.classList.contains("sb-online")){ clearInterval(boot); try{ SID_LOOK.apply(); railHome(); const st=SID_PREFS.get("start"), hashView=(location.hash||"").replace("#","");
-      if(SID_LOOK.look()==="modules"&&st==="home"&&!hashView){ show(); [1500,4000,8000,15000].forEach(ms=>setTimeout(()=>{ if(NL.shown) render(); },ms)); }
+      if(SID_LOOK.look()==="modules"){ NL.cur=ctxForView(hashView||"inventory"); applyCtx(true); }
+      if(SID_LOOK.look()==="modules"&&st==="home"&&!hashView){ show(); [1500,4000,8000,15000].forEach(ms=>setTimeout(()=>{ if(NL.shown) refresh(); },ms)); }
       else if(st==="last"&&!hashView&&window.SID_LAST&&SID_LAST.get()&&typeof go==="function"){ go(SID_LAST.get()); } }catch(e){ console.warn("new look",e); } }
   if(tries>600) clearInterval(boot); },300);
-/* keep Home's numbers fresh while it is open (approvals, holds, notifications arrive live) */
-setInterval(()=>{ if(NL.shown&&document.visibilityState==="visible") try{ render(); }catch(e){} },20000);
-window.SID_NL={show,hide,open,render,sheet,railHome};
+/* keep Home's numbers and the bell fresh while it is open (approvals, holds, notifications arrive live) */
+setInterval(()=>{ if(document.visibilityState==="visible"&&SID_LOOK.look()==="modules") try{ if(NL.shown) refresh(); else { const n=notifN(); bar.querySelectorAll(".b-ic i").forEach(i=>{ i.textContent=n>99?"99+":n; }); } if(typeof S!=="undefined"&&S.view==="sales") frameFocus(); }catch(e){} },2500);
+window.SID_NL={show,hide,open,render,sheet,railHome,applyCtx,renderBar,ctx:()=>NL.cur,frameFocus};
 })();
 </script>
 <script>
@@ -20993,6 +21133,7 @@ function draw(){
    <div class="ms-cap">Favourites</div><div class="ms-grp"><div class="ms-row"><span>${favs.length?favs.map(f=>`<span class="ms-chip">${E(f.label)}<button data-unfav="${f.id}" aria-label="Remove ${E(f.label)}">×</button></span>`).join(""):`<small>Tap the ★ on a tile on Home to pin it here.</small>`}</span></div>
     <div class="ms-row"><span>Recent<small>${rec.length?rec.map(x=>E(x.label)).join(" · "):"nothing yet"}</small></span><button class="ms-link" data-a="clearRecent">Clear</button></div></div>
    <div class="ms-cap">Reset</div><div class="ms-grp"><div class="ms-row"><span>Use the company default for everything<small>${Object.keys(mine).filter(k=>k!=="v").length} personal choice(s) saved</small></span><button class="ms-link" data-a="reset">Reset</button></div></div>
+   <div class="ms-cap">Account</div><div class="ms-grp"><div class="ms-row"><span>Sign out<small>${E(m.email||"")}</small></span><button class="ms-link" data-a="signout">Sign out</button></div></div>
    ${adm?`<div class="ms-cap">Company appearance · administrators</div><div class="ms-grp">
     <div class="ms-row"><span>Default look<small>for people who have not chosen</small></span>${seg("look",[["classic","Classic"],["modules","Modules"]],C.look||"classic","data-ck")}</div>
     <div class="ms-row"><span>Default theme</span>${seg("theme",[["light","Light"],["dark","Dark"],["auto","Auto"]],C.theme||"light","data-ck")}</div>
@@ -21005,6 +21146,7 @@ function draw(){
 async function act(a){
   if(a==="close"){ $q("#msOv").remove(); return; }
   if(a==="clearRecent"){ try{ sessionStorage.removeItem("sid.nl.recent"); }catch(e){} draw(); if(window.SID_NL) SID_NL.render(); return; }
+  if(a==="signout"){ const b=document.getElementById("sbOutRail"); if(b){ $q("#msOv").remove(); b.click(); } else toast("Sign out is not available here",true); return; }
   if(a==="reset"){ if(!confirm("Remove your personal appearance choices and use the company default?")) return; SID_PREFS.reset(); draw(); return; }
   if(a==="saveCo"&&CO){ const v={look:CO.look||"classic",theme:CO.theme||"light",wall:CO.wall||"sdm",modules_off:!!CO.modules_off,lock:CO.lock&&CO.lock.theme?{theme:CO.lock.theme}:{}};
     const r=await SB.from("sid_kv").upsert({key:"ui_default",value:v,updated_at:new Date().toISOString()}); if(r.error){ toast("Not saved: "+r.error.message,true); return; }
@@ -21015,7 +21157,7 @@ function open(){
   ov.addEventListener("click",e=>{ if(e.target===ov){ ov.remove(); return; }
     const u=e.target.closest("[data-unfav]"); if(u){ const id=u.dataset.unfav; SID_PREFS.set("fav",(SID_PREFS.get("fav")||[]).filter(x=>x!==id)); draw(); if(window.SID_NL) SID_NL.render(); return; }
     const b=e.target.closest("button"); if(!b) return;
-    const g=b.closest("[data-k]"); if(g&&b.dataset.v!==undefined){ SID_PREFS.set(g.dataset.k,b.dataset.v); if(g.dataset.k==="look"&&window.SID_NL){ if(SID_LOOK.look()==="modules"){ SID_NL.railHome(); } else { SID_NL.hide(); SID_NL.railHome(); } } draw(); return; }
+    const g=b.closest("[data-k]"); if(g&&b.dataset.v!==undefined){ SID_PREFS.set(g.dataset.k,b.dataset.v); if(g.dataset.k==="look"&&window.SID_NL){ if(SID_LOOK.look()==="modules"){ SID_NL.railHome(); SID_NL.applyCtx(true); const o=$q("#msOv"); if(o) o.remove(); SID_NL.show(); return; } else { SID_NL.hide(); SID_NL.railHome(); SID_NL.applyCtx(true); } } if(g.dataset.k==="theme"&&window.SID_NL){ SID_NL.renderBar(); } draw(); return; }
     const c=b.closest("[data-ck]"); if(c&&b.dataset.v!==undefined){ CO=CO||JSON.parse(JSON.stringify(SID_PREFS.company()||{})); const k=c.dataset.ck, v=b.dataset.v;
       if(k==="lockTheme"){ CO.lock=v?{theme:v}:{}; } else if(k==="modules_off"){ CO.modules_off=v==="1"; } else CO[k]=v; draw(); return; }
     if(b.dataset.a) act(b.dataset.a); });
@@ -21027,54 +21169,83 @@ window.SID_MYSETTINGS={open};
 })();
 </script>
 <script>
-/* V109 — keep the Sales & Land Bank frame in the same look: copy the look attributes and the memo glass rules into it */
+/* ============================================================================
+   V111 — Glass Dark generated from the page's own style sheets (no flicker) + the Land Bank frame kept in the same look
+   ========================================================================== */
 (function(){
-const CSS="\nhtml[data-look=\"modules\"]{\n --g-surface:rgba(255,255,255,.56); --g-strong:rgba(255,255,255,.86); --g-sub:rgba(255,255,255,.34);\n --g-edge:rgba(255,255,255,.72); --g-line:rgba(60,60,67,.16);\n --g-shadow:0 10px 34px rgba(40,50,110,.14),inset 0 1px 0 rgba(255,255,255,.7);\n --g-shadow-s:0 4px 16px rgba(40,50,110,.10),inset 0 1px 0 rgba(255,255,255,.7);\n --g-blur:blur(24px) saturate(1.7); --g-r:16px; --g-r-lg:22px;\n --g-wall:radial-gradient(60% 55% at 12% 8%,#f3a0ae 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#c9b8ff 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#ffc9a8 0%,transparent 62%),radial-gradient(55% 55% at 8% 88%,#bfe3ff 0%,transparent 60%),linear-gradient(160deg,#fbe9ee,#efe9ff);\n}\nhtml[data-look=\"modules\"][data-wall=\"aurora\"]{--g-wall:radial-gradient(60% 55% at 12% 8%,#8ec5ff 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#d9a7ff 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#ffb3c7 0%,transparent 62%),radial-gradient(55% 55% at 8% 88%,#9be7d6 0%,transparent 60%),linear-gradient(160deg,#dfe9ff,#f3e6ff)}\nhtml[data-look=\"modules\"][data-wall=\"sunset\"]{--g-wall:radial-gradient(60% 55% at 10% 10%,#ffc38a 0%,transparent 62%),radial-gradient(55% 55% at 90% 12%,#ff9db8 0%,transparent 60%),\n   radial-gradient(65% 60% at 78% 92%,#b79bff 0%,transparent 62%),radial-gradient(55% 55% at 10% 90%,#ffd9a0 0%,transparent 60%),linear-gradient(160deg,#ffe9d6,#ffdce8)}\nhtml[data-look=\"modules\"][data-wall=\"ocean\"]{--g-wall:radial-gradient(60% 55% at 10% 8%,#7fe0ff 0%,transparent 62%),radial-gradient(55% 55% at 92% 16%,#7fa8ff 0%,transparent 60%),\n   radial-gradient(65% 60% at 82% 92%,#7ff0d4 0%,transparent 62%),radial-gradient(55% 55% at 8% 90%,#a6c8ff 0%,transparent 60%),linear-gradient(160deg,#d9f1ff,#dffaf1)}\nhtml[data-look=\"modules\"][data-wall=\"graphite\"]{--g-wall:radial-gradient(60% 55% at 12% 8%,#c9d3e6 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#d9d2ee 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#cfdde0 0%,transparent 62%),linear-gradient(160deg,#eceff5,#e3e6ee)}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"]{\n --g-surface:rgba(44,46,54,.56); --g-strong:rgba(34,36,44,.88); --g-sub:rgba(255,255,255,.08); --g-edge:rgba(255,255,255,.14); --g-line:rgba(255,255,255,.24);\n --g-shadow:0 10px 34px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.09); --g-blur:blur(26px) saturate(1.5);\n --g-wall:radial-gradient(60% 55% at 12% 8%,#5a1a28 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#43266f 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#1c3f78 0%,transparent 62%),radial-gradient(55% 55% at 8% 88%,#12463f 0%,transparent 60%),linear-gradient(160deg,#080a12,#12101d);\n}\n\n\nhtml[data-look=\"modules\"],html[data-look=\"modules\"] body{background:var(--g-wall)!important;background-attachment:fixed!important}\nhtml[data-look=\"modules\"] #root:not(#_g):not(#_g),html[data-look=\"modules\"] main:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-gray-100\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-slate-100\"]:not(#_g):not(#_g),\nhtml[data-look=\"modules\"] [class~=\"bg-[#EDEFF3]\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-[#f5f5f7]\"]:not(#_g):not(#_g){background-color:transparent!important}\nhtml[data-look=\"modules\"] [class~=\"bg-white\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-white/90\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-white/80\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-white/70\"]:not(#_g):not(#_g){\n background-color:var(--g-surface)!important;-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);box-shadow:var(--g-shadow)}\nhtml[data-look=\"modules\"] [class~=\"bg-white\"][class~=\"rounded-full\"]:not(#_g):not(#_g){background-color:#fff!important;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:0 1px 3px rgba(0,0,0,.25)}\nhtml[data-look=\"modules\"] [class~=\"bg-white\"][class~=\"rounded-lg\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-white\"][class~=\"rounded-md\"]:not(#_g):not(#_g),html[data-look=\"modules\"] button[class~=\"bg-white\"]:not(#_g):not(#_g){\n background-color:rgba(255,255,255,.66)!important;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}\nhtml[data-look=\"modules\"] [class~=\"bg-gray-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-slate-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-gray-50/50\"]:not(#_g):not(#_g){background-color:var(--g-sub)!important}\nhtml[data-look=\"modules\"] [class~=\"border-gray-200\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"border-gray-100\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"border-slate-200\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"border-slate-100\"]:not(#_g):not(#_g){border-color:var(--g-edge)!important}\nhtml[data-look=\"modules\"] [class~=\"rounded-xl\"]:not(#_g):not(#_g){border-radius:1.1rem}html[data-look=\"modules\"] [class~=\"rounded-2xl\"]:not(#_g):not(#_g){border-radius:1.35rem}\nhtml[data-look=\"modules\"] input:not([type=checkbox]):not([type=radio]):not([type=range]):not(#_g):not(#_g),html[data-look=\"modules\"] select:not(#_g):not(#_g),html[data-look=\"modules\"] textarea:not(#_g):not(#_g){background-color:rgba(255,255,255,.74)!important;border-color:var(--g-line)!important}\nhtml[data-look=\"modules\"] table:not(#_g):not(#_g){background:rgba(255,255,255,.55)}\n\n\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kpi-v:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-live:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-btn:not(.pri):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-phead h2:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-card-h h4:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tbl td:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-hl:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kvs b:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-bucket b:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-check b:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tip-t:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tip-f:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-seg button.on:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-seg button:hover:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-citem:hover:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-fx input:not(#_g):not(#_g){color:#f2f2f7!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-seg button:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-delta:not(.good):not(.bad):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-rowh h5:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tip-p:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-phead .sid-fx:not(#_g):not(#_g){color:#d1d1d6!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kpi-l:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kpi-s:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-ccap:not(.ceo *):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kicker:not(.light):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-phead p:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-card-h p:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tbl thead th:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kvs > div:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kvs p:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-bucket span:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-bucket em:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-check span:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-foot:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-info:not(.dark):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tip-k:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tip-s:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tip-s span:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-cico:not(#_g):not(#_g){color:#a1a1a8!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-delta.good:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-check.ok svg:not(#_g):not(#_g){color:#6fe39a!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-delta.bad:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-bucket.hot b:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-strong:not(#_g):not(#_g){color:#ff8f89!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kpi:not(.red):not(.dark):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-card:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-seg:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-btn:not(.pri):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tip:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-fx input:not(#_g):not(#_g){background:rgba(44,46,54,.62)!important;border-color:rgba(255,255,255,.14)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-seg button.on:not(#_g):not(#_g){background:rgba(255,255,255,.18)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tbl tbody tr:hover td:not(#_g):not(#_g){background:rgba(255,255,255,.05)!important}\n\nhtml[data-look=\"modules\"] .sid-cnav:not(#_g):not(#_g){background:var(--g-surface)!important;border:1px solid var(--g-edge)!important;box-shadow:var(--g-shadow)!important;-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur)}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-cnav:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-citem:not(#_g):not(#_g){color:#e5e5ea!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-citem.on:not(#_g):not(#_g){background:rgba(255,255,255,.16)!important;color:#fff!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"bg-gray-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"bg-gray-100\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"bg-slate-50\"]:not(#_g):not(#_g){background-color:rgba(255,255,255,.08)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"]{color-scheme:dark}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] body{color:#f5f5f7}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-900\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-800\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-900\"]:not(#_g):not(#_g),\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-800\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-black\"]:not(#_g):not(#_g){color:#f5f5f7!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-700\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-700\"]:not(#_g):not(#_g){color:#e5e5ea!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-600\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-600\"]:not(#_g):not(#_g){color:#c7c7cc!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-500\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-400\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-500\"]:not(#_g):not(#_g),\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-400\"]:not(#_g):not(#_g){color:#a1a1a8!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"bg-white\"][class~=\"rounded-lg\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"bg-white\"][class~=\"rounded-md\"]:not(#_g):not(#_g),\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] button[class~=\"bg-white\"]:not(#_g):not(#_g){background-color:rgba(255,255,255,.12)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] input:not([type=checkbox]):not([type=radio]):not([type=range]):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] select:not(#_g):not(#_g),\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] textarea:not(#_g):not(#_g){background-color:rgba(255,255,255,.1)!important;color:#f5f5f7!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] table:not(#_g):not(#_g){background:rgba(30,32,40,.6)}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-red-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-rose-50\"]:not(#_g):not(#_g){background-color:rgba(255,69,58,.16)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-green-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-emerald-50\"]:not(#_g):not(#_g){background-color:rgba(48,209,88,.16)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-amber-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-orange-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-yellow-50\"]:not(#_g):not(#_g){background-color:rgba(255,159,10,.16)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-blue-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-indigo-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-sky-50\"]:not(#_g):not(#_g){background-color:rgba(10,132,255,.16)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-red-600\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-red-700\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-rose-600\"]:not(#_g):not(#_g){color:#ff8f89!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-green-600\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-green-700\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-emerald-600\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-emerald-700\"]:not(#_g):not(#_g){color:#6fe39a!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-amber-600\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-amber-700\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-orange-600\"]:not(#_g):not(#_g){color:#ffc766!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-blue-600\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-blue-700\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-indigo-600\"]:not(#_g):not(#_g){color:#7cc0ff!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"border-gray-200\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"border-gray-100\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"border-slate-200\"]:not(#_g):not(#_g){border-color:var(--g-edge)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .recharts-cartesian-axis-tick-value:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .recharts-legend-item-text:not(#_g):not(#_g){fill:#c7c7cc!important;color:#c7c7cc!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .recharts-cartesian-grid line:not(#_g):not(#_g){stroke:rgba(255,255,255,.1)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .nl-dk:not(#_g):not(#_g){color:#f2f2f7!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .nl-dk2:not(#_g):not(#_g){color:#b8b8bf!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .nl-lt:not(#_g):not(#_g){color:#1d1d1f!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .nl-dbg:not(#_g):not(#_g){background:rgba(44,46,54,.62)!important;border-color:rgba(255,255,255,.14)!important;box-shadow:0 10px 34px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.08)!important}\n@media print{html[data-look=\"modules\"],html[data-look=\"modules\"] body{background:#fff!important}html[data-look=\"modules\"] *:not(#_g):not(#_g){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}}\n";
-function sync(){ try{
-  const f=document.querySelector("#lbwrap iframe"), d=f&&f.contentDocument; if(!d||!d.documentElement) return;
-  const H=document.documentElement, h=d.documentElement, on=H.dataset.look==="modules";
+const CSS="\nhtml[data-look=\"modules\"]{\n --g-surface:rgba(255,255,255,.56); --g-strong:rgba(255,255,255,.86); --g-sub:rgba(255,255,255,.34);\n --g-edge:rgba(255,255,255,.72); --g-line:rgba(60,60,67,.16);\n --g-shadow:0 10px 34px rgba(40,50,110,.14),inset 0 1px 0 rgba(255,255,255,.7);\n --g-shadow-s:0 4px 16px rgba(40,50,110,.10),inset 0 1px 0 rgba(255,255,255,.7);\n --g-blur:blur(24px) saturate(1.7); --g-r:16px; --g-r-lg:22px;\n --g-wall:radial-gradient(60% 55% at 12% 8%,#f3a0ae 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#c9b8ff 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#ffc9a8 0%,transparent 62%),radial-gradient(55% 55% at 8% 88%,#bfe3ff 0%,transparent 60%),linear-gradient(160deg,#fbe9ee,#efe9ff);\n}\nhtml[data-look=\"modules\"][data-wall=\"aurora\"]{--g-wall:radial-gradient(60% 55% at 12% 8%,#8ec5ff 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#d9a7ff 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#ffb3c7 0%,transparent 62%),radial-gradient(55% 55% at 8% 88%,#9be7d6 0%,transparent 60%),linear-gradient(160deg,#dfe9ff,#f3e6ff)}\nhtml[data-look=\"modules\"][data-wall=\"sunset\"]{--g-wall:radial-gradient(60% 55% at 10% 10%,#ffc38a 0%,transparent 62%),radial-gradient(55% 55% at 90% 12%,#ff9db8 0%,transparent 60%),\n   radial-gradient(65% 60% at 78% 92%,#b79bff 0%,transparent 62%),radial-gradient(55% 55% at 10% 90%,#ffd9a0 0%,transparent 60%),linear-gradient(160deg,#ffe9d6,#ffdce8)}\nhtml[data-look=\"modules\"][data-wall=\"ocean\"]{--g-wall:radial-gradient(60% 55% at 10% 8%,#7fe0ff 0%,transparent 62%),radial-gradient(55% 55% at 92% 16%,#7fa8ff 0%,transparent 60%),\n   radial-gradient(65% 60% at 82% 92%,#7ff0d4 0%,transparent 62%),radial-gradient(55% 55% at 8% 90%,#a6c8ff 0%,transparent 60%),linear-gradient(160deg,#d9f1ff,#dffaf1)}\nhtml[data-look=\"modules\"][data-wall=\"graphite\"]{--g-wall:radial-gradient(60% 55% at 12% 8%,#c9d3e6 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#d9d2ee 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#cfdde0 0%,transparent 62%),linear-gradient(160deg,#eceff5,#e3e6ee)}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"]{\n --g-surface:rgba(44,46,54,.56); --g-strong:rgba(34,36,44,.88); --g-sub:rgba(255,255,255,.08); --g-edge:rgba(255,255,255,.14); --g-line:rgba(255,255,255,.24);\n --g-shadow:0 10px 34px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.09); --g-blur:blur(26px) saturate(1.5);\n --g-wall:radial-gradient(60% 55% at 12% 8%,#5a1a28 0%,transparent 62%),radial-gradient(55% 50% at 92% 14%,#43266f 0%,transparent 60%),\n   radial-gradient(60% 60% at 80% 92%,#1c3f78 0%,transparent 62%),radial-gradient(55% 55% at 8% 88%,#12463f 0%,transparent 60%),linear-gradient(160deg,#080a12,#12101d);\n}\n\n\nhtml[data-look=\"modules\"],html[data-look=\"modules\"] body{background:var(--g-wall)!important;background-attachment:fixed!important}\nhtml[data-look=\"modules\"] #root:not(#_g):not(#_g),html[data-look=\"modules\"] main:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-gray-100\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-slate-100\"]:not(#_g):not(#_g),\nhtml[data-look=\"modules\"] [class~=\"bg-[#EDEFF3]\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-[#f5f5f7]\"]:not(#_g):not(#_g){background-color:transparent!important}\nhtml[data-look=\"modules\"] [class~=\"bg-white\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-white/90\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-white/80\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-white/70\"]:not(#_g):not(#_g){\n background-color:var(--g-surface)!important;-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);box-shadow:var(--g-shadow)}\nhtml[data-look=\"modules\"] [class~=\"bg-white\"][class~=\"rounded-full\"]:not(#_g):not(#_g){background-color:#fff!important;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:0 1px 3px rgba(0,0,0,.25)}\nhtml[data-look=\"modules\"] [class~=\"bg-white\"][class~=\"rounded-lg\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-white\"][class~=\"rounded-md\"]:not(#_g):not(#_g),html[data-look=\"modules\"] button[class~=\"bg-white\"]:not(#_g):not(#_g){\n background-color:rgba(255,255,255,.66)!important;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}\nhtml[data-look=\"modules\"] [class~=\"bg-gray-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-slate-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"bg-gray-50/50\"]:not(#_g):not(#_g){background-color:var(--g-sub)!important}\nhtml[data-look=\"modules\"] [class~=\"border-gray-200\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"border-gray-100\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"border-slate-200\"]:not(#_g):not(#_g),html[data-look=\"modules\"] [class~=\"border-slate-100\"]:not(#_g):not(#_g){border-color:var(--g-edge)!important}\nhtml[data-look=\"modules\"] [class~=\"rounded-xl\"]:not(#_g):not(#_g){border-radius:1.1rem}html[data-look=\"modules\"] [class~=\"rounded-2xl\"]:not(#_g):not(#_g){border-radius:1.35rem}\nhtml[data-look=\"modules\"] input:not([type=checkbox]):not([type=radio]):not([type=range]):not(#_g):not(#_g),html[data-look=\"modules\"] select:not(#_g):not(#_g),html[data-look=\"modules\"] textarea:not(#_g):not(#_g){background-color:rgba(255,255,255,.74)!important;border-color:var(--g-line)!important}\nhtml[data-look=\"modules\"] table:not(#_g):not(#_g){background:rgba(255,255,255,.55)}\n\n\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kpi-v:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-live:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-btn:not(.pri):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-phead h2:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-card-h h4:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tbl td:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-hl:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kvs b:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-bucket b:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-check b:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tip-t:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tip-f:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-seg button.on:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-seg button:hover:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-citem:hover:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-fx input:not(#_g):not(#_g){color:#f2f2f7!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-seg button:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-delta:not(.good):not(.bad):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-rowh h5:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tip-p:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-phead .sid-fx:not(#_g):not(#_g){color:#d1d1d6!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kpi-l:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kpi-s:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-ccap:not(.ceo *):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kicker:not(.light):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-phead p:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-card-h p:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tbl thead th:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kvs > div:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kvs p:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-bucket span:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-bucket em:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-check span:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-foot:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-info:not(.dark):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tip-k:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tip-s:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tip-s span:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-cico:not(#_g):not(#_g){color:#a1a1a8!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-delta.good:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-check.ok svg:not(#_g):not(#_g){color:#6fe39a!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-delta.bad:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-bucket.hot b:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-strong:not(#_g):not(#_g){color:#ff8f89!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-kpi:not(.red):not(.dark):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-card:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-seg:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-btn:not(.pri):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tip:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-fx input:not(#_g):not(#_g){background:rgba(44,46,54,.62)!important;border-color:rgba(255,255,255,.14)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-seg button.on:not(#_g):not(#_g){background:rgba(255,255,255,.18)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-tbl tbody tr:hover td:not(#_g):not(#_g){background:rgba(255,255,255,.05)!important}\n\nhtml[data-look=\"modules\"] .sid-cnav:not(#_g):not(#_g){background:var(--g-surface)!important;border:1px solid var(--g-edge)!important;box-shadow:var(--g-shadow)!important;-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur)}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-cnav:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-citem:not(#_g):not(#_g){color:#e5e5ea!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .sid-citem.on:not(#_g):not(#_g){background:rgba(255,255,255,.16)!important;color:#fff!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"bg-gray-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"bg-gray-100\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"bg-slate-50\"]:not(#_g):not(#_g){background-color:rgba(255,255,255,.08)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"]{color-scheme:dark}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] body{color:#f5f5f7}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-900\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-800\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-900\"]:not(#_g):not(#_g),\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-800\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-black\"]:not(#_g):not(#_g){color:#f5f5f7!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-700\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-700\"]:not(#_g):not(#_g){color:#e5e5ea!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-600\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-600\"]:not(#_g):not(#_g){color:#c7c7cc!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-500\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-gray-400\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-500\"]:not(#_g):not(#_g),\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-slate-400\"]:not(#_g):not(#_g){color:#a1a1a8!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"bg-white\"][class~=\"rounded-lg\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"bg-white\"][class~=\"rounded-md\"]:not(#_g):not(#_g),\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] button[class~=\"bg-white\"]:not(#_g):not(#_g){background-color:rgba(255,255,255,.12)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] input:not([type=checkbox]):not([type=radio]):not([type=range]):not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] select:not(#_g):not(#_g),\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] textarea:not(#_g):not(#_g){background-color:rgba(255,255,255,.1)!important;color:#f5f5f7!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] table:not(#_g):not(#_g){background:rgba(30,32,40,.6)}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-red-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-rose-50\"]:not(#_g):not(#_g){background-color:rgba(255,69,58,.16)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-green-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-emerald-50\"]:not(#_g):not(#_g){background-color:rgba(48,209,88,.16)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-amber-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-orange-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-yellow-50\"]:not(#_g):not(#_g){background-color:rgba(255,159,10,.16)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-blue-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-indigo-50\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class*=\"bg-sky-50\"]:not(#_g):not(#_g){background-color:rgba(10,132,255,.16)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-red-600\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-red-700\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-rose-600\"]:not(#_g):not(#_g){color:#ff8f89!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-green-600\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-green-700\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-emerald-600\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-emerald-700\"]:not(#_g):not(#_g){color:#6fe39a!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-amber-600\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-amber-700\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-orange-600\"]:not(#_g):not(#_g){color:#ffc766!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-blue-600\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-blue-700\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"text-indigo-600\"]:not(#_g):not(#_g){color:#7cc0ff!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"border-gray-200\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"border-gray-100\"]:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] [class~=\"border-slate-200\"]:not(#_g):not(#_g){border-color:var(--g-edge)!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .recharts-cartesian-axis-tick-value:not(#_g):not(#_g),html[data-look=\"modules\"][data-skin=\"glass-dark\"] .recharts-legend-item-text:not(#_g):not(#_g){fill:#c7c7cc!important;color:#c7c7cc!important}\nhtml[data-look=\"modules\"][data-skin=\"glass-dark\"] .recharts-cartesian-grid line:not(#_g):not(#_g){stroke:rgba(255,255,255,.1)!important}\n@media print{html[data-look=\"modules\"],html[data-look=\"modules\"] body{background:#fff!important}html[data-look=\"modules\"] *:not(#_g):not(#_g){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}}\n";
+/* ---- auto dark: every rule of the page that paints a light surface / dark text gets a dark twin, once, as plain CSS ---- */
+const AD=(function(){
+  const cv=document.createElement("canvas").getContext("2d"), SENT="#010203", cache=new Map();
+  function parse(v){ if(!v) return null; v=String(v).trim(); if(cache.has(v)) return cache.get(v); let r=null;
+    if(!/var\(|gradient|url\(|^(inherit|initial|unset|revert|currentcolor|transparent|none|auto)$/i.test(v)){
+      cv.fillStyle=SENT; cv.fillStyle=v; const s=String(cv.fillStyle);
+      if(s.toLowerCase()!==SENT||/^#010203$/i.test(v)){ let m=s.match(/^#([0-9a-f]{6})$/i);
+        if(m){ const n=parseInt(m[1],16); r={r:(n>>16)&255,g:(n>>8)&255,b:n&255,a:1}; }
+        else{ m=s.match(/^rgba?\(([^)]+)\)$/); if(m){ const p=m[1].split(",").map(x=>parseFloat(x)); r={r:p[0],g:p[1],b:p[2],a:p.length>3?p[3]:1}; } } } }
+    cache.set(v,r); return r; }
+  function hsl(c){ const r=c.r/255,g=c.g/255,b=c.b/255, mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2; let h=0,s=0;
+    if(mx!==mn){ const d=mx-mn; s=l>.5?d/(2-mx-mn):d/(mx+mn); h=mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4; h/=6; } return {h,s,l}; }
+  function rgbOf(h,s,l){ const f=(p,q,t)=>{ if(t<0)t+=1; if(t>1)t-=1; return t<1/6?p+(q-p)*6*t:t<1/2?q:t<2/3?p+(q-p)*(2/3-t)*6:p; };
+    if(s===0){ const v=Math.round(l*255); return [v,v,v]; } const q=l<.5?l*(1+s):l+s-l*s, p=2*l-q; return [Math.round(f(p,q,h+1/3)*255),Math.round(f(p,q,h)*255),Math.round(f(p,q,h-1/3)*255)]; }
+  const rgba=(a,al)=>"rgba("+a[0]+","+a[1]+","+a[2]+","+(+al).toFixed(3)+")";
+  function mapText(c){ const k=hsl(c); if(k.l>=.82) return null;
+    if(k.s<.18) return rgba(rgbOf(k.h,k.s,.97-.62*k.l),c.a);
+    if(k.l<.55) return rgba(rgbOf(k.h,Math.min(1,k.s),Math.min(.82,k.l+.32)),c.a); return null; }
+  function mapBg(c){ if(c.a<.04) return null; const k=hsl(c);
+    if(k.s<.18){ if(k.l>=.985) return "rgba(44,46,54,"+Math.max(.5,Math.min(1,c.a)*.66).toFixed(2)+")";
+      if(k.l>=.9) return "rgba(255,255,255,"+(.07*Math.min(1,c.a*1.2)).toFixed(3)+")";
+      if(k.l>=.75) return "rgba(255,255,255,"+(.16*c.a).toFixed(3)+")"; return null; }
+    if(k.l>=.85) return rgba(rgbOf(k.h,Math.min(1,k.s+.2),.5),.16*Math.min(1,c.a*1.3)); return null; }
+  function mapBorder(c){ if(c.a<.03) return null; const k=hsl(c);
+    if(k.s<.18){ if(k.l>=.55) return "rgba(255,255,255,.14)"; if(k.l<.3&&c.a<.5) return "rgba(255,255,255,"+Math.min(.2,c.a*1.4).toFixed(2)+")"; return null; }
+    if(k.l>=.8) return rgba(rgbOf(k.h,Math.min(1,k.s+.2),.5),.38); return null; }
+  function selectors(t){ const out=[]; let d=0,q="",cur=""; for(const ch of t){ if(q){ cur+=ch; if(ch===q) q=""; continue; } if(ch==='"'||ch==="'"){ q=ch; cur+=ch; continue; }
+    if(ch==="("||ch==="[") d++; if(ch===")"||ch==="]") d--; if(ch===","&&d===0){ out.push(cur.trim()); cur=""; continue; } cur+=ch; } if(cur.trim()) out.push(cur.trim()); return out; }
+  const SKIP=/maplibre|\.plogo|\.poi\b|\.tpin|\.rail\b|#nav\b|\.nav-|\.brand|\.lara|#lara|\.va-|#toast|\.toast|\.nl-|#nl|\.acc-|\.ms-|\.slo-(paper|pdf|page|sheet|prev)|\.sk-|\.tp-|\[data-look|\[data-skin|\.pdf|::-webkit-scrollbar|::selection|:fullscreen/;
+  const OWN=/^sid-(autodark|glass|glass-lb|shell|mysettings|access|nlmod|perm|maptools|newlook-tokens)$/;
+  const PRE='html[data-look="modules"][data-skin="glass-dark"] ';
+  function mapVar(c){ const k=hsl(c);
+    if(k.s<.18){ if(k.l>=.985) return "rgba(44,46,54,"+Math.max(.6,Math.min(1,c.a)*.9).toFixed(2)+")"; if(k.l>=.9) return "rgba(255,255,255,"+(.08*Math.min(1,c.a*1.2)).toFixed(3)+")"; return rgba(rgbOf(k.h,k.s,.97-.62*k.l),c.a); }
+    if(k.l>=.85) return rgba(rgbOf(k.h,Math.min(1,k.s+.2),.5),.18*Math.min(1,c.a*1.3));
+    if(k.l<.55) return rgba(rgbOf(k.h,Math.min(1,k.s),Math.min(.62,k.l+.14)),c.a); return null; }
+  function gen(doc,vars){ const out=[];
+    const rule=(r,conds)=>{ if(vars){ const vd=[]; for(let i=0;i<r.style.length;i++){ const nm=r.style[i]; if(nm.indexOf("--")!==0||/^--tw-/.test(nm)) continue; const c=parse(r.style.getPropertyValue(nm)), m=c&&mapVar(c); if(m) vd.push(nm+":"+m+"!important"); }
+        if(vd.length){ const vs=selectors(r.selectorText||"").filter(x=>x&&!SKIP.test(x)).map(x=>/^(html|body|:root)$/i.test(x)?PRE.trim():PRE+x); if(vs.length){ let t=vs.join(",")+"{"+vd.join(";")+"}"; for(let i=conds.length-1;i>=0;i--) t=conds[i]+"{"+t+"}"; out.push(t); } } }
+      const sels=selectors(r.selectorText||"").filter(s=>s&&!SKIP.test(s)&&!/^(html|body|:root)([.#:\[]|$)/i.test(s.split(/[\s>+~]+/).pop())); if(!sels.length) return; const st=r.style, d=[];
+      const bgc=parse(st.getPropertyValue("background-color")), nbg=bgc?mapBg(bgc):null; if(nbg) d.push("background-color:"+nbg+"!important");
+      const rawBg=(st.getPropertyValue("background-color")||"")+" "+(st.getPropertyValue("background")||""), inkBg=/var\(--(ink|n900|n800|n700)\)/.test(rawBg);
+      const keepLight=(!!bgc&&!nbg&&bgc.a>.5&&hsl(bgc).l>.5)||inkBg;
+      if(inkBg){ const tc=parse(st.getPropertyValue("color")); if(tc&&tc.r>200&&tc.g>200&&tc.b>200) d.push("color:#1d1d1f!important"); }
+      for(const p of ["color","-webkit-text-fill-color","caret-color","fill","stroke"]){ if(p==="color"&&keepLight) continue; const c=parse(st.getPropertyValue(p)), m=c&&mapText(c); if(m) d.push(p+":"+m+"!important"); }
+      const sd=["top","right","bottom","left"].map(x=>{ const c=parse(st.getPropertyValue("border-"+x+"-color")); return c?mapBorder(c):null; });
+      if(sd[0]&&sd.every(x=>x===sd[0])) d.push("border-color:"+sd[0]+"!important"); else ["top","right","bottom","left"].forEach((x,i)=>{ if(sd[i]) d.push("border-"+x+"-color:"+sd[i]+"!important"); });
+      const oc=parse(st.getPropertyValue("outline-color")), om=oc&&mapBorder(oc); if(om) d.push("outline-color:"+om+"!important");
+      if(!d.length) return; let t=sels.map(s=>PRE+s).join(",")+"{"+d.join(";")+"}"; for(let i=conds.length-1;i>=0;i--) t=conds[i]+"{"+t+"}"; out.push(t); };
+    const walk=(list,conds)=>{ for(const r of list){ if(r.type===1) rule(r,conds);
+      else if(r.type===4){ const mt=r.media.mediaText; if(/print/i.test(mt)) continue; walk(r.cssRules,[...conds,"@media "+mt]); }
+      else if(r.type===12) walk(r.cssRules,[...conds,"@supports "+r.conditionText]); } };
+    for(const sh of doc.styleSheets){ if(sh.ownerNode&&OWN.test(sh.ownerNode.id||"")) continue; let rs; try{ rs=sh.cssRules; }catch(e){ continue; } if(rs) walk(rs,[]); }
+    return out.join("\n"); }
+  function sig(doc,vars){ let n=vars?1000000:0; for(const sh of doc.styleSheets){ if(sh.ownerNode&&OWN.test(sh.ownerNode.id||"")) continue; try{ n+=sh.cssRules.length+1; }catch(e){} } return n+":"+doc.styleSheets.length; }
+  function ensure(doc,vars){ try{ const h=doc.documentElement, dk=h.dataset.look==="modules"&&h.dataset.skin==="glass-dark"; let st=doc.getElementById("sid-autodark");
+    if(!dk){ if(st) st.remove(); return; } const sg=sig(doc,vars); if(st&&st.dataset.sig===sg) return;
+    const css=gen(doc,vars); if(!st){ st=doc.createElement("style"); st.id="sid-autodark"; (doc.head||doc.documentElement).appendChild(st); } st.textContent=css; st.dataset.sig=sg; }catch(e){ console.warn("auto dark",e); } }
+  return {ensure,gen};
+})();
+window.SID_DARK=AD;
+/* the embedded tools (Sales & Land Bank, Industrial Codes) are same-origin frames: give each the look attributes, the glass rules and a dark twin */
+const CSS_GEN=`html[data-look="modules"]{background:transparent!important}html[data-look="modules"] body{background:transparent!important}
+html[data-look="modules"][data-skin="glass-dark"]{color-scheme:dark}html[data-look="modules"][data-skin="glass-dark"] body{color:#f2f2f7}`;
+function syncFrame(sel,css,vars){ const H=document.documentElement; const f=document.querySelector(sel), d=f&&f.contentDocument; if(!d||!d.documentElement) return;
+  const h=d.documentElement, on=H.dataset.look==="modules";
   ["look","skin","wall","rt","text"].forEach(a=>{ const v=H.getAttribute("data-"+a); if(on&&v!=null){ if(h.getAttribute("data-"+a)!==v) h.setAttribute("data-"+a,v); } else h.removeAttribute("data-"+a); });
-  let st=d.getElementById("sid-glass-lb"); if(on&&!st&&(d.head||d.body)){ st=d.createElement("style"); st.id="sid-glass-lb"; st.textContent=CSS; (d.head||d.body).appendChild(st); }
+  let st=d.getElementById("sid-glass-lb"); if(on&&!st&&(d.head||d.body)){ st=d.createElement("style"); st.id="sid-glass-lb"; st.textContent=css; (d.head||d.body).appendChild(st); }
   if(!on&&st) st.remove();
-  /* redraws inside the frame (switching views) re-run the Glass Dark contrast fixer at once */
-  if(on&&!d.__nlmo&&d.documentElement){ d.__nlmo=new MutationObserver(recs=>{ try{ if(recs.some(theirs)) queue(); }catch(e){} });
-    d.__nlmo.observe(d.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["class"],attributeOldValue:true}); }
-}catch(e){} }
-setInterval(sync,1200);
-/* Glass Dark contrast fixer: text the page paints near-black stays readable on dark glass (→ light), light text on a white
-   chip stays readable (→ dark). Coloured text (status, +/− %) is left alone. The register grid is a light sheet: skipped. */
-const lum=c=>{ const m=String(c).match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/); if(!m) return null; const a=m[4]===undefined?1:+m[4];
-  const f=v=>{ v/=255; return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4); }; return {l:.2126*f(+m[1])+.7152*f(+m[2])+.0722*f(+m[3]),a,sat:Math.max(+m[1],+m[2],+m[3])-Math.min(+m[1],+m[2],+m[3])}; };
-function ownLightBg(cs){ const b=lum(cs.backgroundColor); return b&&b.a>.55&&b.l>.6; }
-function fix(doc){ try{
-  const h=doc.documentElement, dark=h.dataset.look==="modules"&&h.dataset.skin==="glass-dark";
-  if(!dark){ doc.querySelectorAll(".nl-dk,.nl-dk2,.nl-lt,.nl-dbg").forEach(e=>e.classList.remove("nl-dk","nl-dk2","nl-lt","nl-dbg")); return; }
-  const W=doc.defaultView, all=doc.body?doc.body.querySelectorAll("*"):[]; let n=0;
-  /* pass 1: big light panels the page paints itself (cards, notes) become dark glass */
-  for(const e of all){ if(++n>6000) break; if(e.classList.contains("nl-dbg")) continue;
-    if(/^(INPUT|SELECT|TEXTAREA|BUTTON|IMG|svg|CANVAS|TD|TH|TR|THEAD|TBODY|OPTION|LABEL|A)$/i.test(e.tagName)) continue;
-    if(e.closest("svg,canvas,.ed-grid,.ed-head,.maplibregl-marker,.maplibregl-map,#nlHome,.ms-box,.acc-box,.slo-wrap,.plogo,.poi,.tpin,.lara-dock,[role=button]")) continue;
-    const cs=W.getComputedStyle(e); if(cs.backgroundImage&&cs.backgroundImage!=="none") continue;
-    const b=lum(cs.backgroundColor); if(!b||b.a<.5||b.l<.7||b.sat>40) continue;
-    const r=e.getBoundingClientRect(); if(r.width<140||r.height<56) continue;
-    e.classList.add("nl-dbg"); }
-  n=0;
-  for(const e of all){ if(++n>6000) break; if(e.closest("svg,canvas,.ed-grid,.ed-head,.maplibregl-canvas-container,#nlHome,.ms-box,.acc-box")) continue;
-    if(!e.firstChild||![...e.childNodes].some(x=>x.nodeType===3&&x.nodeValue.trim())) continue;
-    e.classList.remove("nl-dk","nl-dk2","nl-lt"); const cs=W.getComputedStyle(e), c=lum(cs.color); if(!c||c.sat>60) continue;
-    let p=e, light=false; for(let i=0;i<6&&p&&p!==doc.body;i++,p=p.parentElement){ const pc=W.getComputedStyle(p); const b=lum(pc.backgroundColor); if(b&&b.a>.55){ light=b.l>.6; break; } }
-    if(light){ if(c.l>.55) e.classList.add("nl-lt"); }
-    else if(c.l<.12) e.classList.add("nl-dk"); else if(c.l<.3) e.classList.add("nl-dk2");
-  } }catch(e){} }
-/* a change made by the page (not by the fixer's own nl-* marks) */
-const strip=v=>String(v||"").split(/\s+/).filter(c=>c&&!/^nl-(dk|dk2|lt|dbg)$/.test(c)).sort().join(" ");
-const theirs=r=>r.type!=="attributes"||strip(r.oldValue)!==strip(r.target.getAttribute("class"));
-let tq=null, dirty=false; const run=()=>{ tq=null; const dk=document.documentElement.dataset.skin==="glass-dark"&&document.documentElement.dataset.look==="modules";
-  if(dk&&document.body&&document.body.classList.contains("m-moving")){ tq=setTimeout(run,600); return; }   /* never while the map moves */
-  if(!dk&&!dirty) return; dirty=dk; fix(document); try{ const f=document.querySelector("#lbwrap iframe"); if(f&&f.contentDocument) fix(f.contentDocument); }catch(e){} };
-const queue=()=>{ if(tq) return; tq=setTimeout(run,250); };   /* throttle: runs at most every 0.7 s, also while the map keeps changing */
-new MutationObserver(recs=>{ if(recs.some(r=>r.attributeName==="data-skin"||r.attributeName==="data-look"||theirs(r))) queue(); }).observe(document.documentElement,{attributes:true,attributeFilter:["data-skin","data-look","class"],attributeOldValue:true,childList:true,subtree:true});
-setInterval(()=>{ if(document.documentElement.dataset.skin==="glass-dark") queue(); },4000);
+  AD.ensure(d,vars); }
+function sync(){ try{ AD.ensure(document); syncFrame("#lbwrap iframe",CSS,false); syncFrame("#codeswrap iframe",CSS_GEN,true); }catch(e){} }
+setInterval(sync,1000);
+new MutationObserver(()=>{ try{ AD.ensure(document); }catch(e){} }).observe(document.documentElement,{attributes:true,attributeFilter:["data-skin","data-look"]});
 })();
 </script>
 </body>
