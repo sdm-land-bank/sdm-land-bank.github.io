@@ -2540,6 +2540,79 @@ html[data-skin="contrast"]{--sg-ink:#000;--sg-mute:#333;--sg-line:#000;--sg-glas
 html[data-skin][data-rt="on"]{--sg-blur:none}
 html[data-skin][data-text="large"]{font-size:110%}
 </style>
+<style id="sid-shell">
+/* V106 Modules home - only under html[data-look="modules"] */
+#nlHome{display:none}
+html[data-look="modules"] #nlHome.on{display:block;position:fixed;inset:0;z-index:1200;overflow:auto;-webkit-overflow-scrolling:touch;
+ background:var(--sg-bg);color:var(--sg-ink);font-family:var(--sg-font);font-size:15px;line-height:1.4}
+#nlHome *{box-sizing:border-box}
+#nlHome .nl-top{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:14px 28px;
+ background:linear-gradient(to bottom,rgba(0,0,0,.18),transparent);backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur)}
+html[data-skin="glass-light"] #nlHome .nl-top{background:linear-gradient(to bottom,rgba(255,255,255,.5),transparent)}
+#nlHome .nl-logo{height:34px;width:auto;display:block;border-radius:9px;padding:4px 8px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+#nlHome .nl-card .v.t{font-size:17px;line-height:1.3;padding-top:6px}
+#nlHome .nl-sp{flex:1}
+#nlHome .nl-ic{position:relative;width:40px;height:40px;border-radius:12px;border:0;background:transparent;color:var(--sg-ink);display:grid;place-items:center;cursor:pointer}
+#nlHome .nl-ic:hover{background:var(--sg-glass-2)}
+#nlHome .nl-ic i{position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--sg-bad);color:#fff;font:600 10px/16px var(--sg-font);font-style:normal}
+#nlHome .nl-av{width:40px;height:40px;border-radius:12px;border:0;background:var(--sg-ink);color:var(--sg-glass);font:600 13px var(--sg-font);cursor:pointer}
+html[data-skin="glass-dark"] #nlHome .nl-av{background:#fff;color:#1C1C1E}
+#nlHome .nl-wrap{max-width:1180px;margin:0 auto;padding:26px 28px 120px}
+#nlHome .nl-va{display:flex;gap:10px;align-items:center;margin:0 0 18px;padding:9px 14px;border-radius:12px;background:rgba(255,214,10,.16);border:1px solid rgba(255,214,10,.4);font-size:13px}
+#nlHome h1{font-size:42px;font-weight:300;letter-spacing:-.02em;margin:0}
+#nlHome .nl-sub{color:var(--sg-mute);margin-top:6px}
+#nlHome .nl-role{display:inline-block;padding:2px 9px;border-radius:999px;background:rgba(179,38,61,.32);border:1px solid rgba(224,67,92,.5);font-size:12px;margin-right:8px;color:inherit}
+#nlHome .nl-tabs{display:flex;gap:30px;margin-top:34px;border-bottom:1px solid var(--sg-line);overflow-x:auto;scrollbar-width:none}
+#nlHome .nl-tabs::-webkit-scrollbar{display:none}
+#nlHome .nl-tab{padding:12px 0;font-size:19px;color:var(--sg-mute);cursor:pointer;white-space:nowrap;border:0;background:none;font-family:inherit;border-bottom:3px solid transparent;margin-bottom:-1px}
+#nlHome .nl-tab.on{color:var(--sg-ink);border-bottom-color:var(--sg-accent-2)}
+#nlHome .nl-lbl{margin:26px 0 16px;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--sg-mute);text-transform:uppercase}
+#nlHome .nl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:24px 18px}
+#nlHome .nl-tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:9px;text-align:center;cursor:pointer;border:0;background:none;color:inherit;font-family:inherit;padding:4px}
+#nlHome .nl-sq{width:88px;height:88px;border-radius:22px;display:grid;place-items:center;box-shadow:0 10px 26px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.25);transition:transform var(--sg-fast) var(--sg-ease)}
+#nlHome .nl-tile:hover .nl-sq,#nlHome .nl-tile:focus-visible .nl-sq{transform:translateY(-3px) scale(1.03)}
+#nlHome .nl-tile b{font-size:14.5px;font-weight:500}
+#nlHome .nl-tile small{font-size:11px;color:var(--sg-mute);margin-top:-5px}
+#nlHome .nl-badge{position:absolute;top:-4px;left:calc(50% + 30px);min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--sg-bad);color:#fff;font-size:12px;font-weight:600;display:grid;place-items:center}
+#nlHome .nl-star{position:absolute;top:-2px;left:calc(50% - 52px);width:26px;height:26px;border-radius:13px;border:0;background:var(--sg-glass);color:var(--sg-mute);font-size:14px;cursor:pointer;opacity:0;transition:opacity var(--sg-fast)}
+#nlHome .nl-tile:hover .nl-star,#nlHome .nl-star.on{opacity:1}#nlHome .nl-star.on{color:#FFD60A}
+#nlHome .nl-today{margin-top:42px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+#nlHome .nl-card{background:var(--sg-glass);border:1px solid var(--sg-line);border-radius:var(--sg-r);padding:16px;backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur);box-shadow:var(--sg-shadow);text-align:left;color:inherit;font-family:inherit;cursor:pointer}
+#nlHome .nl-card h4{margin:0;font-size:11.5px;color:var(--sg-mute);font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+#nlHome .nl-card .v{font-size:28px;font-weight:600;margin-top:6px;font-variant-numeric:tabular-nums}
+#nlHome .nl-card .n{font-size:12px;color:var(--sg-mute)}
+#nlHome .nl-recent{display:flex;gap:8px;flex-wrap:wrap}
+#nlHome .nl-chip{padding:7px 12px;border-radius:999px;border:1px solid var(--sg-line);background:var(--sg-glass);color:inherit;font:13px var(--sg-font);cursor:pointer}
+#nlHome .nl-note{margin-top:22px;font-size:12px;color:var(--sg-mute)}
+.nl-sheet{position:fixed;z-index:1300;top:64px;right:20px;width:330px;max-width:calc(100% - 32px);padding:16px;border-radius:20px;border:1px solid var(--sg-line);
+ background:var(--sg-glass);backdrop-filter:saturate(185%) blur(28px);-webkit-backdrop-filter:saturate(185%) blur(28px);box-shadow:var(--sg-shadow);color:var(--sg-ink);font-family:var(--sg-font)}
+html:not([data-skin]) .nl-sheet{--sg-ink:#1C1C1E;--sg-mute:#6b6b70;--sg-line:rgba(0,0,0,.1);--sg-glass:rgba(255,255,255,.92);--sg-accent:#B3263D;--sg-font:Inter,-apple-system,system-ui,sans-serif;--sg-shadow:0 12px 40px rgba(0,0,0,.25)}
+html[data-skin="glass-dark"] .nl-sheet{background:rgba(40,40,48,.82)}
+.nl-sheet h3{margin:0 0 2px;font-size:17px}.nl-sheet p{margin:0 0 10px;font-size:12px;color:var(--sg-mute)}
+.nl-sheet .row{margin:10px 0}.nl-sheet .row b{display:block;font-size:11.5px;color:var(--sg-mute);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.nl-seg{display:flex;background:rgba(127,127,127,.18);border-radius:10px;padding:2px}
+.nl-seg button{flex:1;border:0;background:none;color:inherit;font:13px var(--sg-font);padding:7px 4px;border-radius:8px;cursor:pointer}
+.nl-seg button.on{background:var(--sg-accent);color:#fff}
+.nl-sheet .nl-act{display:block;width:100%;text-align:left;margin-top:6px;padding:9px 10px;border-radius:10px;border:0;background:rgba(127,127,127,.12);color:inherit;font:13px var(--sg-font);cursor:pointer}
+.nl-find{top:70px;left:50%;right:auto;transform:translateX(-50%);width:420px}
+.nl-find .nl-in{width:100%;box-sizing:border-box;margin:2px 0 8px;padding:10px 12px;border-radius:12px;border:1px solid var(--sg-line);background:rgba(127,127,127,.12);color:inherit;font:15px var(--sg-font);outline:none}
+.nl-find .nl-res{max-height:50vh;overflow:auto}
+#nav .nav-item.nl-homeitem .nav-ico{background:var(--sg-accent,#B3263D);color:#fff}
+html[data-look="modules"] #toast{z-index:1400}
+@media (max-width:820px){
+ #nlHome .nl-top{padding:12px 16px}#nlHome .nl-wrap{padding:18px 16px 110px}#nlHome h1{font-size:29px}
+ #nlHome .nl-tabs{gap:8px;border:0;margin-top:20px}
+ #nlHome .nl-tab{font-size:14px;padding:7px 14px;border:1px solid var(--sg-line);border-radius:999px;margin:0}
+ #nlHome .nl-tab.on{background:var(--sg-accent);border-color:var(--sg-accent);color:#fff}
+ #nlHome .nl-grid{grid-template-columns:repeat(3,1fr);gap:18px 6px}
+ #nlHome .nl-sq{width:66px;height:66px;border-radius:17px}#nlHome .nl-sq svg{width:30px;height:30px}
+ #nlHome .nl-tile b{font-size:12px}#nlHome .nl-tile small{display:none}#nlHome .nl-badge{left:calc(50% + 20px)}
+ #nlHome .nl-star{display:none}
+ #nlHome .nl-today{grid-template-columns:1fr 1fr}
+}
+@media (max-width:380px){#nlHome .nl-grid{grid-template-columns:repeat(2,1fr)}}
+@media (prefers-reduced-motion:reduce){#nlHome .nl-sq{transition:none}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -20266,6 +20339,191 @@ async function planPass(PL,cb,force){ const tz=PL&&PL.tz; if(!tz||!(tz.avoid||tz
 const planTxt=p=>{ try{ if(!p||!p.tz) return ""; const t=p.tz; return " · slope "+(t.slope==null?"—":t.slope+" %")+" · level "+t.min+"–"+t.max+" m"+(t.low?" · ▼ low spot":""); }catch(e){ return ""; } };
 const planCaption=()=>lastPlan?("Levels "+nf(lastPlan.min,1)+"–"+nf(lastPlan.max,1)+" m"+(lastPlan.maxSlope?" · slopes ≤ "+lastPlan.maxSlope+" %":"")+(lastPlan.low?" · "+lastPlan.low+" low spot(s)":"")+" · "+lastPlan.src):"";
 window.SID_TOPO2={startUp:()=>startUp(),upRead:f=>upRead(f),get UP(){ return UP; },svUi,planPass,planTxt,planCaption,stats:levels,plotLevels,svList,svEnsure,SV,_t:{levels,cutFill,readCSV,readDXF,makeGrid,gridAt,packGrid,unpackGrid,suggestCrs,toLL,needProj4,CRS,depressions,SUM,ST,bindRows,rowKey,ensureParks,addXlsxCols,gridFromRaster,parkStats,sigOf,offerStats}};
+})();
+</script>
+<script>
+/* ============================================================================
+   V106 — NEW LOOK phase 2: Modules home (administrators only, preview)
+   ========================================================================== */
+(function(){
+if(typeof SID_LOOK==="undefined"||typeof SID_MOD==="undefined") return;
+const $q=s=>document.querySelector(s), E=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const me=()=>(typeof SBME!=="undefined"&&SBME)||null;
+/* who may use the preview: a signed-in administrator, also while using View as */
+Object.defineProperty(SID_LOOK,"available",{configurable:true,get(){ const m=me(); return !!m&&!!window.__sidMeFinal&&(!!m.is_admin||!!window.SID_VIEWAS); }});
+const P=(d)=>'<svg width="40" height="40" viewBox="0 0 36 36" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'+d+'</svg>';
+const IC={home:'<path d="M5 15 18 5l13 10v15H5z"/><path d="M14 30v-8h8v8"/>',bell:'<path d="M10 23v-7a8 8 0 0 1 16 0v7l3 3H7z"/><path d="M15 29a3 3 0 0 0 6 0"/>',
+ lara:'<circle cx="18" cy="18" r="10"/><path d="M13 18c2-3 3-3 5 0s3 3 5 0"/>',gear:'<circle cx="18" cy="18" r="4.5"/><path d="M18 4v5M18 27v5M4 18h5M27 18h5M8 8l3.5 3.5M24.5 24.5 28 28M28 8l-3.5 3.5M11.5 24.5 8 28"/>',
+ map:'<path d="M4 9l9-4 10 4 9-4v22l-9 4-10-4-9 4z"/><path d="M13 5v22M23 9v22"/>',approve:'<circle cx="18" cy="18" r="13"/><path d="m12 18 4 4 8-9"/>',
+ plan:'<rect x="5" y="5" width="26" height="26" rx="2"/><path d="M5 16h26M16 5v26M22 16v15"/>',pencil:'<path d="M7 29l3-9L24 6l6 6-14 14z"/><path d="m21 9 6 6"/>',
+ levels:'<path d="M3 28l9-12 6 7 5-6 10 11z"/><circle cx="25" cy="9" r="3"/>',survey:'<path d="M18 4v18M11 15l7 7 7-7"/><path d="M5 26v5h26v-5"/>',
+ pipe:'<path d="M5 30V10l13-5 13 5v20"/><path d="M11 30v-9h14v9"/>',truck:'<rect x="3" y="11" width="18" height="13" rx="1.5"/><path d="M21 15h6l5 5v4H21z"/><circle cx="9" cy="27" r="2.5"/><circle cx="26" cy="27" r="2.5"/>',
+ tour:'<circle cx="18" cy="18" r="13"/><ellipse cx="18" cy="18" rx="13" ry="5"/><path d="M18 5v26"/>',cockpit:'<path d="M5 30V18M13 30V10M21 30V15M29 30V6"/>',
+ grid:'<rect x="5" y="5" width="11" height="11" rx="1.5"/><rect x="20" y="5" width="11" height="11" rx="1.5"/><rect x="5" y="20" width="11" height="11" rx="1.5"/><rect x="20" y="20" width="11" height="11" rx="1.5"/>',
+ funnel:'<path d="M4 8h28l-10 11v10l-8 3V19z"/>',demand:'<path d="M5 26l8-8 6 5 12-13"/><path d="M24 10h7v7"/>',
+ offer:'<path d="M9 4h13l6 6v22H9z"/><path d="M22 4v6h6M13 17h11M13 22h11M13 27h7"/>',match:'<circle cx="18" cy="18" r="13"/><circle cx="18" cy="18" r="7"/><circle cx="18" cy="18" r="1.5" fill="#fff"/>',
+ money:'<rect x="4" y="9" width="28" height="18" rx="3"/><circle cx="18" cy="18" r="4"/>',present:'<rect x="4" y="6" width="28" height="18" rx="2"/><path d="m15 11 6 4-6 4zM18 24v6M12 31h12"/>',
+ explore:'<circle cx="18" cy="18" r="13"/><path d="m23 13-3 7-7 3 3-7z"/>',share:'<circle cx="9" cy="18" r="4"/><circle cx="27" cy="9" r="4"/><circle cx="27" cy="27" r="4"/><path d="m13 16 10-5M13 20l10 5"/>',
+ road:'<path d="M12 31 16 5M24 31 20 5M18 9v3M18 16v3M18 23v3"/>',codes:'<path d="M13 10 5 18l8 8M23 10l8 8-8 8"/>',ceo:'<path d="M5 12l6 5 7-9 7 9 6-5-3 16H8z"/>',
+ engine:'<circle cx="18" cy="18" r="5"/><path d="M18 4v5M18 27v5M4 18h5M27 18h5M8 8l4 4M24 24l4 4M28 8l-4 4M12 24l-4 4"/>',lock:'<rect x="8" y="16" width="20" height="15" rx="3"/><path d="M12 16v-4a6 6 0 0 1 12 0v4"/>',
+ sheet:'<rect x="4" y="5" width="28" height="26" rx="2"/><path d="M4 13h28M4 21h28M14 5v26M23 5v26"/>',health:'<path d="M4 18h7l3-8 5 16 3-8h10"/>',
+ log:'<circle cx="18" cy="18" r="13"/><path d="M18 10v8l5 4"/>',sync:'<path d="M29 15A11 11 0 0 0 9 10"/><path d="M8 4v6h6"/><path d="M7 21a11 11 0 0 0 20 5"/><path d="M28 32v-6h-6"/>',
+ users:'<circle cx="13" cy="13" r="5"/><path d="M4 30c0-6 4-9 9-9s9 3 9 9"/><circle cx="25" cy="11" r="4"/><path d="M24 20c5 0 8 3 8 8"/>',
+ eye:'<path d="M3 18s6-10 15-10 15 10 15 10-6 10-15 10S3 18 3 18z"/><circle cx="18" cy="18" r="4"/>',team:'<circle cx="18" cy="11" r="5"/><path d="M8 31c0-6 4-10 10-10s10 4 10 10"/>',
+ brush:'<path d="M27 4 14 17l5 5L32 9z"/><path d="M13 19c-4 0-7 3-7 7 0 2-1 3-3 4 6 1 13 0 14-6z"/>',key:'<circle cx="12" cy="18" r="6"/><path d="M18 18h14M27 18v5M31 18v4"/>',
+ gauge:'<path d="M5 26a13 13 0 1 1 26 0"/><path d="m18 26 6-9"/>'};
+const COL={work:"#B3263D",land:"#2E9E5B",sales:"#E0435C",inv:"#2F80ED",exec:"#C8961E",data:"#14A3B0",admin:"#6B5FC7"};
+const TINT={"map.planner":"#2F80ED","map.levels":"#8DAE2C","map.sketch":"#5B5FC7","map.survey":"#636366","map.pipeline":"#E07A1F","map.logistics":"#7A6A58","map.tour":"#14B8C4",
+ "approvals":"#2E9E5B","demand":"#8E44AD","offer":"#5B5FC7","sales.pipeline":"#FF9F0A","notif":"#5B5FC7","lara":"#14B8C4","me":"#636366","present":"#B3263D","codes":"#14B8C4",
+ "roadshow":"#E07A1F","map.explore":"#B3263D","map.share":"#2E9E5B","cost":"#B3263D","register":"#2E9E5B","audit":"#8E44AD","sync":"#2E9E5B","admin.viewas":"#E07A1F"};
+const LBT={"sales.cockpits":"lb.dashboard","sales.inventory":"lb.inventory_breakdown","sales.pipeline":"lb.sales","ceo":"lb.ceo_brief","exec.fin":"lb.executive","exec.engine":"lb.financial_engine","lb.settings":"lb.settings"};
+const NL={tab:null,shown:false};
+/* same as the View as banner's Exit (web_roadshow.py): forget the person, reload as myself */
+const exitVA=()=>{ try{ sessionStorage.removeItem("sid.viewas"); }catch(e){} location.reload(); };
+const fmt=n=>typeof n==="number"&&isFinite(n)?n.toLocaleString("en-US"):"—";
+function greet(){ const h=new Date().getHours(); return h<12?"Good morning":h<17?"Good afternoon":"Good evening"; }
+function initials(n){ const p=String(n||"").trim().split(/\s+/).filter(Boolean); return ((p[0]||"?")[0]+(p[1]?p[1][0]:"")).toUpperCase(); }
+function firstAct(m){ return m.acts.includes("view")?"view":m.acts[0]; }
+function okMod(id){ const m=SID_MOD.get(id); return !!m&&SID_MOD.can(id,firstAct(m)); }
+function notifN(){ try{ const t=(($q("#ntBell")||{}).textContent||"").match(/(\d+)\s*$/); return t?+t[1]:0; }catch(e){ return 0; } }
+function badge(id){ try{ if(id==="approvals"&&typeof wfTodo==="function"&&WF.ready) return wfTodo().length||0; if(id==="notif") return notifN(); }catch(e){} return 0; }
+/* ---- the Today strip: only numbers already in the page; "—" when missing ---- */
+function today(){
+  const out=[];
+  if(okMod("approvals")){ let v="—"; try{ if(WF.ready) v=fmt(wfTodo().length); }catch(e){} out.push(["My approvals",v,"waiting for my decision","approvals"]); }
+  if(okMod("map")){
+    let h="—"; try{ if(WF.ready){ const now=Date.now(), wk=now+7*864e5; h=fmt([...WF.live.values()].filter(x=>x.status==="hold"&&x.hold_until&&+new Date(x.hold_until)>=now&&+new Date(x.hold_until)<=wk).length); } }catch(e){}
+    out.push(["Holds ending",h,"in the next 7 days","map"]);
+    let a="—"; try{ if(S.rows&&S.rows.length) a=fmt(totals(S.rows).byStatus.ats.p); }catch(e){}
+    out.push(["Available plots",a,"all parks, as on the map","map"]); }
+  if(okMod("register")){ const t=(($q("#stampTxt")||{}).textContent||"").trim(); out.push(["MDS register",t?t.replace(/^MDS register\s*·\s*/i,""):"—","last saved","register"]); }
+  return out;
+}
+function rec(){ try{ return JSON.parse(sessionStorage.getItem("sid.nl.recent")||"[]").filter(okMod); }catch(e){ return []; } }
+function recPush(id){ if(id==="home") return; try{ const r=[id,...rec().filter(x=>x!==id)].slice(0,5); sessionStorage.setItem("sid.nl.recent",JSON.stringify(r)); }catch(e){} }
+function tile(m){ const c=TINT[m.id]||COL[m.tab]||"#636366", n=badge(m.id), fav=(SID_PREFS.get("fav")||[]).includes(m.id);
+  return `<div style="position:relative"><button class="nl-tile" data-m="${m.id}" title="${E(m.label+(m.hint?" — "+m.hint:""))}"><span class="nl-sq" style="background:linear-gradient(160deg,${c},${c}cc)">${P(IC[m.icon]||IC.grid)}</span>${n?`<span class="nl-badge">${n>99?"99+":n}</span>`:""}<b>${E(m.label)}</b>${m.hint?`<small>${E(m.hint)}</small>`:""}</button>${m.id!=="home"?`<button class="nl-star${fav?" on":""}" data-fav="${m.id}" title="${fav?"Remove from":"Add to"} favourites" aria-label="Favourite">★</button>`:""}</div>`; }
+function render(){
+  const el=$q("#nlHome"); if(!el) return; const m=me()||{}, va=window.SID_VIEWAS;
+  const tabs=SID_MOD.tabs(); if(!tabs.length){ el.innerHTML=""; return; }
+  if(!NL.tab||!tabs.some(t=>t.id===NL.tab)) NL.tab=(tabs.some(t=>t.id===SID_PREFS.get("tab"))?SID_PREFS.get("tab"):(tabs.find(t=>t.id==="land")||tabs[0]).id);
+  const T=tabs.find(t=>t.id===NL.tab), favs=(SID_PREFS.get("fav")||[]).map(id=>SID_MOD.get(id)).filter(x=>x&&okMod(x.id)), R=rec().map(id=>SID_MOD.get(id)).filter(Boolean);
+  const logo=($q(".brand .lockup img")||{}).src||"";
+  el.innerHTML=`<div class="nl-top">${logo?`<img class="nl-logo" src="${E(logo)}" alt="Elsewedy Industrial Development">`:"<b>SID</b>"}<span class="nl-sp"></span>
+    <button class="nl-ic" data-a="search" title="Find a module" aria-label="Find a module"><svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="6"/><path d="m15 15 4 4"/></svg></button>
+    ${okMod("notif")?`<button class="nl-ic" data-m="notif" title="Notifications" aria-label="Notifications"><svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 15V10a5 5 0 0 1 10 0v5l2 2H4z"/><path d="M9 19a2 2 0 0 0 4 0"/></svg>${notifN()?`<i>${notifN()}</i>`:""}</button>`:""}
+    <button class="nl-ic" data-a="look" title="Appearance" aria-label="Appearance"><svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="3"/><path d="M11 2v3M11 17v3M2 11h3M17 11h3M4.6 4.6l2.1 2.1M15.3 15.3l2.1 2.1M17.4 4.6l-2.1 2.1M6.7 15.3l-2.1 2.1"/></svg></button>
+    <button class="nl-av" data-a="look" title="${E(m.name||m.email||"")}">${E(initials(m.name||m.email))}</button></div>
+   <div class="nl-wrap">
+    ${va?`<div class="nl-va">👁 Viewing as <b>${E(va.name||va.email)}</b> · ${E(m.label||m.role||"")} — exactly the modules this person can open<span class="nl-sp"></span><button class="nl-chip" data-a="exitva">Back to my view</button></div>`:""}
+    <h1>${greet()}, ${E((m.name||"").trim()||"there")}</h1>
+    <div class="nl-sub"><span class="nl-role">${E(m.label||m.role||"")}</span>${new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
+    ${favs.length?`<div class="nl-lbl">Favourites</div><div class="nl-grid">${favs.map(tile).join("")}</div>`:""}
+    <div class="nl-tabs" role="tablist">${tabs.map(t=>`<button class="nl-tab${t.id===NL.tab?" on":""}" role="tab" aria-selected="${t.id===NL.tab}" data-t="${t.id}">${E(t.label)}</button>`).join("")}</div>
+    <div class="nl-lbl">Apps</div>
+    <div class="nl-grid">${T.mods.filter(x=>x.id!=="home").map(tile).join("")}</div>
+    <div class="nl-today">${today().map(c=>`<button class="nl-card" data-m="${c[3]}"><h4>${E(c[0])}</h4><div class="v${/^[\d,—]+$/.test(c[1])?"":" t"}">${E(c[1])}</div><div class="n">${E(c[2])}</div></button>`).join("")}</div>
+    ${R.length?`<div class="nl-lbl">Recent</div><div class="nl-recent">${R.map(x=>`<button class="nl-chip" data-m="${x.id}">${E(x.label)}</button>`).join("")}</div>`:""}
+    <div class="nl-note">New look — preview for administrators. Classic is one click away (Appearance).</div>
+   </div>`;
+}
+function show(){ const el=$q("#nlHome"); if(!el||SID_LOOK.look()!=="modules") return; NL.shown=true; render(); el.classList.add("on"); el.scrollTop=0; }
+function hide(){ const el=$q("#nlHome"); NL.shown=false; if(el) el.classList.remove("on"); }
+function lbTab(key){ const tid=typeof LB_TID!=="undefined"&&LB_TID[key]; if(!tid) return; let n=0;
+  const t=setInterval(()=>{ n++; try{ const f=$q("#lbwrap iframe"), d=f&&f.contentDocument, b=d&&d.getElementById(tid); if(b&&b.offsetParent!==null){ b.click(); clearInterval(t); } }catch(e){} if(n>60) clearInterval(t); },250); }
+function whenMap(fn){ let n=0; const t=setInterval(()=>{ n++; if((typeof S!=="undefined"&&S.mapReady)||n>40){ clearInterval(t); try{ fn(); }catch(e){ console.warn("nl tool",e); } } },250); }
+function tool(t){
+  if(t==="sketch") whenMap(()=>window.SID_SKETCH&&SID_SKETCH.enter());
+  else if(t==="planner") whenMap(()=>{ if(!window.SID_SKETCH) return; SID_SKETCH.enter(); setTimeout(()=>{ try{ SID_SKETCH.setMode("build"); }catch(e){} },350); });
+  else if(t==="levels") whenMap(()=>window.SID_TOPO&&SID_TOPO.setOn(true));
+  else if(t==="pipeline") whenMap(()=>{ const b=[...document.querySelectorAll("button.pp-mode")].find(x=>/pipeline/i.test(x.textContent)); if(b) b.click(); });
+  else if(t==="logistics") whenMap(()=>{ const b=$q("#sitesBtn"); if(b&&!b.classList.contains("on")) b.click(); });
+  else if(t==="tour") whenMap(()=>typeof toast==="function"&&toast("Tap a park's 360° pin on the map"));
+  else if(t==="explore") whenMap(()=>typeof toast==="function"&&toast("Open a park, then choose Explore"));
+}
+function open(id){
+  const m=SID_MOD.get(id); if(!m) return;
+  if(!okMod(id)){ if(typeof toast==="function") toast("Your access does not include this module",true); return; }
+  const o=m.open||{}; if(o.home){ show(); return; }
+  if(o.panel==="me"||o.panel==="look"){ sheet(); return; }
+  recPush(id); hide();
+  if(o.view&&typeof go==="function") go(o.view);
+  if(o.view==="sales"&&LBT[id]) lbTab(LBT[id]);
+  if(o.tool) tool(o.tool);
+  if(o.panel==="notif"){ const b=$q("#ntBell"); if(b) b.click(); }
+  if(o.panel==="lara"){ const b=$q("#laraOrbBtn"); if(b) b.click(); }
+  if(o.action==="present"&&typeof startPresentation==="function") startPresentation();
+  if(o.action==="roadshow"&&window.sidRoadshowSummary) window.sidRoadshowSummary();
+  if(o.action==="viewas"&&window.sidViewAsPick) window.sidViewAsPick();
+  if(o.action==="sync"){ const b=$q("#syncBtn"); if(b) b.click(); }
+}
+/* ---- Appearance sheet (phase 6 turns this into My Settings) ---- */
+function sheet(){
+  let s=$q("#nlSheet"); if(s){ s.remove(); return; }
+  s=document.createElement("div"); s.id="nlSheet"; s.className="nl-sheet"; s.setAttribute("role","dialog"); s.setAttribute("aria-label","Appearance");
+  const seg=(k,opts)=>`<div class="nl-seg" data-k="${k}">${opts.map(([v,l])=>`<button data-v="${v}" class="${SID_PREFS.get(k)===v?"on":""}">${l}</button>`).join("")}</div>`;
+  s.innerHTML=`<h3>Appearance</h3><p>Saved for you. Classic is exactly today's page.</p>
+    <div class="row"><b>Look</b>${seg("look",[["classic","Classic"],["modules","Modules (new)"]])}</div>
+    <div class="row"><b>Theme (new look)</b>${seg("theme",[["dark","Glass Dark"],["light","Glass Light"],["auto","Auto"]])}</div>
+    <div class="row"><b>Reduce transparency</b>${seg("rt",[["auto","Auto"],["on","On"],["off","Off"]])}</div>
+    ${window.SID_VIEWAS?`<button class="nl-act" data-a="exitva">Back to my own view</button>`:""}<button class="nl-act" data-a="close">Close</button>`;
+  s.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; const g=b.closest(".nl-seg");
+    if(g){ SID_PREFS.set(g.dataset.k,b.dataset.v); g.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); after(g.dataset.k); return; }
+    if(b.dataset.a==="exitva") exitVA();
+    if(b.dataset.a==="close") s.remove(); });
+  document.body.appendChild(s);
+}
+function after(k){ if(k!=="look") { if(NL.shown) render(); return; }
+  if(SID_LOOK.look()==="modules"){ railHome(); show(); } else { hide(); railHome(); const s=$q("#nlSheet"); if(s) s.remove(); } }
+/* ---- quick find (⌘K / Ctrl+K and the search button): type a module name ---- */
+function find(){
+  let s=$q("#nlFind"); if(s){ s.remove(); return; } const old=$q("#nlSheet"); if(old) old.remove();
+  const all=SID_MOD.list().filter(m=>m.id!=="home"), tabL=Object.fromEntries(SID_MOD.TABS);
+  s=document.createElement("div"); s.id="nlFind"; s.className="nl-sheet nl-find"; s.setAttribute("role","dialog"); s.setAttribute("aria-label","Find a module");
+  s.innerHTML=`<h3>Find a module</h3><p>Type a name — Enter opens the first match. (⌘K / Ctrl+K)</p><input class="nl-in" type="search" placeholder="Levels, register, CEO…" autocomplete="off"><div class="nl-res"></div>`;
+  const inp=s.querySelector("input"), res=s.querySelector(".nl-res");
+  const draw=()=>{ const t=inp.value.trim().toLowerCase(); const L=all.filter(m=>!t||(m.label+" "+(m.hint||"")+" "+tabL[m.tab]).toLowerCase().includes(t)).slice(0,9);
+    res.innerHTML=L.length?L.map(m=>`<button class="nl-act" data-m="${m.id}"><b>${E(m.label)}</b> <span style="opacity:.6">· ${E(tabL[m.tab]||"")}</span></button>`).join(""):`<p style="margin:8px 2px">No module matches.</p>`; };
+  inp.addEventListener("input",draw);
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ const b=res.querySelector("[data-m]"); if(b){ s.remove(); open(b.dataset.m); } } if(e.key==="Escape") s.remove(); });
+  res.addEventListener("click",e=>{ const b=e.target.closest("[data-m]"); if(b){ s.remove(); open(b.dataset.m); } });
+  document.body.appendChild(s); draw(); setTimeout(()=>inp.focus(),30); }
+/* ---- Classic rail: Home item while the Modules look is on; "New look (preview)" for administrators ---- */
+function railHome(){
+  const nav=$q("#nav"); if(!nav) return; const h=$q("#nlRailHome"), on=SID_LOOK.look()==="modules";
+  if(on&&!h){ const b=document.createElement("button"); b.type="button"; b.id="nlRailHome"; b.className="nav-item nl-homeitem"; b.title="Home — your modules";
+    b.innerHTML=`<span class="nav-i" aria-hidden="true"><span class="nav-ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5L8 2l6 4.5V13a1 1 0 01-1 1H3a1 1 0 01-1-1z"/><path d="M6.2 14V9h3.6v5"/></svg></span></span><span class="nav-t rail-open-only"><span class="nav-row"><span class="nav-l">Home</span></span><span class="nav-h">Your modules</span></span>`;
+    b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); show(); }; nav.prepend(b); }
+  if(!on&&h) h.remove();
+  const p=$q("#nlRailTry"), s=$q('#nav .nav-item[data-view="settings"]');
+  if(SID_LOOK.available&&!on&&!window.SID_VIEWAS&&s&&!p){ const b=document.createElement("button"); b.type="button"; b.id="nlRailTry"; b.className="nav-item nav-extra"; b.title="New look (preview) — the Modules home, administrators only";
+    b.innerHTML=`<span class="nav-i" aria-hidden="true"><span class="nav-ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="5" height="5" rx="1.2"/><rect x="9" y="2" width="5" height="5" rx="1.2"/><rect x="2" y="9" width="5" height="5" rx="1.2"/><rect x="9" y="9" width="5" height="5" rx="1.2"/></svg></span></span><span class="nav-t rail-open-only"><span class="nav-row"><span class="nav-l">New look</span><span class="nav-badge">Preview</span></span><span class="nav-h">The Modules home (administrators only)</span></span>`;
+    b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); SID_PREFS.set("look","modules"); after("look"); };
+    const last=$q("#navRsSum")||$q("#navViewAs")||s; last.after(b); }
+  if((on||!SID_LOOK.available)&&p) p.remove();
+}
+if(typeof buildNav==="function"){ const bn=buildNav; buildNav=function(){ const r=bn.apply(this,arguments); try{ railHome(); }catch(e){} return r; }; }
+/* ---- wiring ---- */
+const el=document.createElement("div"); el.id="nlHome"; el.setAttribute("aria-label","Home"); document.body.appendChild(el);
+el.addEventListener("click",e=>{
+  const f=e.target.closest("[data-fav]"); if(f){ e.stopPropagation(); const id=f.dataset.fav, L=SID_PREFS.get("fav")||[]; SID_PREFS.set("fav",L.includes(id)?L.filter(x=>x!==id):[...L,id]); render(); return; }
+  const t=e.target.closest("[data-t]"); if(t){ NL.tab=t.dataset.t; SID_PREFS.set("tab",NL.tab); render(); return; }
+  const a=e.target.closest("[data-a]"); if(a){ if(a.dataset.a==="look") sheet(); if(a.dataset.a==="search") find(); if(a.dataset.a==="exitva") exitVA(); return; }
+  const m=e.target.closest("[data-m]"); if(m) open(m.dataset.m); });
+document.addEventListener("keydown",e=>{ if(SID_LOOK.look()!=="modules") return;
+  if((e.metaKey||e.ctrlKey)&&String(e.key).toLowerCase()==="k"){ e.preventDefault(); find(); }
+  if(e.key==="Escape"){ const s=$q("#nlSheet"); if(s) s.remove(); } });
+document.addEventListener("click",e=>{ const s=$q("#nlSheet"); if(s&&!s.contains(e.target)&&!e.target.closest('[data-a="look"]')) s.remove();
+  const f=$q("#nlFind"); if(f&&!f.contains(e.target)&&!e.target.closest('[data-a="search"]')) f.remove(); });
+/* the brand logo goes Home in the Modules look */
+document.addEventListener("click",e=>{ if(SID_LOOK.look()==="modules"&&e.target.closest(".rail .brand")){ e.preventDefault(); show(); } },true);
+/* start: once signed in and the page is ready, apply the person's look; Modules opens on Home */
+let tries=0; const boot=setInterval(()=>{ tries++;
+  if(window.__sidMeFinal&&document.body.classList.contains("sb-online")){ clearInterval(boot); try{ SID_LOOK.apply(); railHome(); if(SID_LOOK.look()==="modules"){ show(); [1500,4000,8000,15000].forEach(ms=>setTimeout(()=>{ if(NL.shown) render(); },ms)); } }catch(e){ console.warn("new look",e); } }
+  if(tries>600) clearInterval(boot); },300);
+/* keep Home's numbers fresh while it is open (approvals, holds, notifications arrive live) */
+setInterval(()=>{ if(NL.shown&&document.visibilityState==="visible") try{ render(); }catch(e){} },20000);
+window.SID_NL={show,hide,open,render,sheet,railHome};
 })();
 </script>
 </body>
