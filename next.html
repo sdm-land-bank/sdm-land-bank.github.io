@@ -2642,6 +2642,7 @@ html[data-skin="glass-dark"] .acc-st.modules{color:#7be39a}html[data-skin="glass
 .acc-grid th,.acc-grid td{padding:6px 8px;border-bottom:1px solid var(--a-line);text-align:center}
 .acc-grid th:first-child,.acc-grid td:first-child{text-align:left}
 .acc-grid th{font-size:11px;color:var(--a-mute);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.acc-grid tr.subp td{font-size:12.5px;color:var(--a-mute);padding-top:3px;padding-bottom:3px}
 .acc-grid tr.tab td{background:var(--a-soft);font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--a-mute)}
 .acc-grid td small{display:block;color:var(--a-mute);font-size:11px}
 .acc-grid input{width:17px;height:17px;accent-color:#B3263D;cursor:pointer}
@@ -13169,7 +13170,7 @@ const SID_MOD=(function(){
   const me=()=>(typeof SBME!=="undefined"&&SBME)||null;
   const adm=()=>{ const m=me(); return !m||!!m.is_admin; };            /* offline file / not signed in = today's behaviour (all) */
   const pub=()=>{ const m=me(); return !!m&&/roadshow|public/i.test(String(m.role||"")); };
-  const see=id=>{ const f=window.__sidCanSeeLegacy||(typeof canSee==="function"?canSee:null); return f?!!f(id):true; };   /* today's page rules (kept even when phase 3 overrides canSee) */
+  const see=id=>{ const f=window.__sidCanSeeLegacy||(typeof canSee==="function"?canSee:null); if(!f) return true; if(String(id).startsWith("lb.")&&!f("sales")) return false; return !!f(id); };   /* a Land Bank view only counts when its door page (Sales & Land Bank) opens */   /* today's page rules (kept even when phase 3 overrides canSee) */
   const any=ids=>ids.some(see);
   const edit=()=>{ const m=me(); return !m||!!(m.can_edit||m.is_admin); };
   const wf=()=>{ const m=me(); return m?(m.is_admin?"ops":(m.wf||null)):"ops"; };
@@ -13211,7 +13212,7 @@ const SID_MOD=(function(){
     {id:"register",tab:"data",label:"MDS register",icon:"sheet",acts:["view","edit","export"],pages:["editor"],rule:{view:()=>see("editor"),edit:()=>see("editor")&&edit(),export:()=>see("editor")&&!pub()},open:{view:"editor"}},
     {id:"health",tab:"data",label:"Data health",icon:"health",acts:["view"],pages:["health"],rule:{view:()=>see("health")},open:{view:"health"}},
     {id:"audit",tab:"data",label:"Change log",icon:"log",acts:["view"],pages:["audit"],rule:{view:()=>see("audit")},open:{view:"audit"}},
-    {id:"lb.settings",tab:"data",label:"Land Bank settings",icon:"gear",acts:["edit"],pages:["lb.settings","lb.changelog","lb.excel-grid"],rule:{view:()=>any(["lb.settings","lb.changelog","lb.excel-grid"]),edit:()=>any(["lb.settings"])},open:{view:"sales"}},
+    {id:"lb.settings",tab:"data",label:"Land Bank settings",hint:"Settings, change log, grid",icon:"gear",acts:["view","edit"],pages:["lb.settings","lb.changelog","lb.excel-grid"],rule:{view:()=>any(["lb.settings","lb.changelog","lb.excel-grid"]),edit:()=>any(["lb.settings"])},open:{view:"sales"}},
     {id:"sync",tab:"data",label:"Sync with online sheet",icon:"sync",acts:["edit"],rule:{view:()=>adm(),edit:()=>adm()},open:{action:"sync"}},
     {id:"admin.users",tab:"admin",label:"Users & access",icon:"users",acts:["view","edit"],pages:["settings"],rule:{view:()=>adm(),edit:()=>adm()},open:{view:"settings"}},
     {id:"admin.viewas",tab:"admin",label:"View as",icon:"eye",acts:["view"],rule:{view:()=>adm()},open:{action:"viewas"}},
@@ -20587,8 +20588,16 @@ const me=()=>(typeof SBME!=="undefined"&&SBME)||null;
 const likeEsc=v=>String(v||"").replace(/[\\%_]/g,c=>"\\"+c);   /* e-mail in ilike: _ and % are wildcards */
 const ACTS=[["view","View"],["edit","Edit"],["approve","Approve"],["export","Export"]];
 const ALWAYS=new Set(["home","me"]);          /* everybody keeps Home and My Settings */
+/* a module made of several pages (CEO Suite = 6 views …) can be limited to some of them: key "<module>/pages" = the pages it opens
+   (no key = all its pages). Only the role grid uses it; it keeps today's page-by-page rights exact. */
+const SUBP=m=>(m.pages||[]).filter(p=>p!=="sales"&&p!=="portfolio");
+const MULTI=SID_MOD.MODULES.filter(m=>SUBP(m).length>1);
+const PAGE_LABEL=(()=>{ const o={"lb.changelog":"Land Bank change log","lb.excel-grid":"Land Bank grid"}; try{ SID_PAGES.forEach(p=>{ o[p.id]=p.label; (p.subs||[]).forEach(g=>g.items.forEach(([id,l])=>{ o[id]=l; })); }); }catch(e){} return o; })();
 const clean=o=>{ const r={}; if(!o||typeof o!=="object") return r;
-  Object.keys(o).forEach(k=>{ const m=SID_MOD.get(k); if(!m||!Array.isArray(o[k])) return; const a=o[k].filter(x=>m.acts.includes(x)); if(a.length) r[k]=[...new Set(a)]; }); return r; };
+  Object.keys(o).forEach(k=>{ if(!Array.isArray(o[k])) return;
+    if(k.endsWith("/pages")){ const m=SID_MOD.get(k.slice(0,-6)); if(!m) return; r[k]=[...new Set(o[k].filter(p=>SUBP(m).includes(p)))]; return; }
+    const m=SID_MOD.get(k); if(!m) return; const a=o[k].filter(x=>m.acts.includes(x)); if(a.length) r[k]=[...new Set(a)]; });
+  Object.keys(r).filter(k=>k.endsWith("/pages")).forEach(k=>{ if(!r[k.slice(0,-6)]) delete r[k]; }); return r; };
 const modeOn=()=>{ const m=me(); return !!m&&m.access_mode==="modules"&&!!m.access&&typeof m.access==="object"; };
 /* the grid answer for the signed-in person (or the person shown by View as) */
 function gridCan(id,act){ const m=me(); if(!m) return undefined; if(m.is_admin) return true; if(ALWAYS.has(id)) return true;
@@ -20596,6 +20605,7 @@ function gridCan(id,act){ const m=me(); if(!m) return undefined; if(m.is_admin) 
   return (has(m.access)||has(m.access_add))&&!has(m.access_remove); }
 SID_MOD.setHook((id,act)=>modeOn()?gridCan(id,act):undefined);
 /* ---- pages follow the grid in modules mode: every page id belongs to one module ---- */
+const NOPUB=new Set(["sales","audit","codes","approvals","demand","offer","editor","health","usage","settings","match.fin"]);
 const PAGE2MOD={}; SID_MOD.MODULES.forEach(m=>(m.pages||[]).forEach(p=>{ PAGE2MOD[p]=m.id; }));
 if(typeof canSee==="function"&&!window.__sidCanSeeLegacy){
   const legacy=canSee; window.__sidCanSeeLegacy=legacy;
@@ -20603,10 +20613,12 @@ if(typeof canSee==="function"&&!window.__sidCanSeeLegacy){
     if(!modeOn()) return legacy(id);
     const m=me(); if(!m) return true; if(m.is_admin) return true;
     if(id==="settings"||id==="usage") return false;
+    if(/roadshow|public/i.test(String(m.role||""))&&NOPUB.has(String(id))) return false;   /* the public screen stays locked (web_roadshow3.py) */
     if(id==="sales") return SID_MOD.MODULES.some(x=>(x.pages||[]).some(p=>String(p).startsWith("lb."))&&SID_MOD.can(x.id,"view"));
     if(id==="approvals") return SID_MOD.can("approvals","view")&&!!m.wf;
     const mod=PAGE2MOD[id]||PAGE2MOD[String(id).split(".")[0]]; if(!mod) return legacy(id);
-    return SID_MOD.can(mod,"view"); };
+    if(!SID_MOD.can(mod,"view")) return false;
+    const sub=m.access&&m.access[mod+"/pages"]; return !Array.isArray(sub)||!SUBP(SID_MOD.get(mod)).includes(id)||sub.includes(id); };
 }
 /* ---- View as: also apply the viewed person's grid and exceptions (not the administrator's) ---- */
 if(typeof window.sidViewAs==="function"&&!window.__sidVaAcc){ window.__sidVaAcc=1; const orig=window.sidViewAs;
@@ -20616,7 +20628,7 @@ if(typeof window.sidViewAs==="function"&&!window.__sidVaAcc){ window.__sidVaAcc=
       r.access=ro.data&&ro.data.access||null; r.access_add=us.data&&us.data.access_add||{}; r.access_remove=us.data&&us.data.access_remove||{};
       if(us.data&&us.data.team!==undefined) r.team=us.data.team;
       if(real&&real.access_mode) r.access_mode=real.access_mode;
-      if(r.access_mode==="modules") r.can_edit=!!gridCan("register","edit");
+      if(r.access_mode==="modules"){ const h=o=>!!(o&&Array.isArray(o.register)&&o.register.includes("edit")); r.can_edit=!!r.is_admin||((h(r.access)||h(r.access_add))&&!h(r.access_remove)); }
     }catch(e){ console.warn("view as access",e); }
     return r; }; }
 /* ---- the panel ---- */
@@ -20624,11 +20636,17 @@ const A={tab:"roles",roles:null,users:null,ex:{},cur:null,person:null,draft:null
 const tabOf=Object.fromEntries(SID_MOD.TABS);
 /* today's rules for a role, worked out with today's code (the same answers people get today) */
 function legacySnap(role){ const save=SBME; try{ SBME={email:"x",name:"x",role:role.role,label:role.label,pages:role.pages||[],can_edit:!!role.can_edit||!!role.is_admin,is_admin:!!role.is_admin,wf:role.is_admin?"ops":(role.wf||null)};
-    const o=SID_MOD.snapshot(SID_MOD.legacy); ALWAYS.forEach(id=>{ if(!o[id]) o[id]=["view"]; }); return o; } finally{ SBME=save; } }
-function effective(roleAcc,add,rem){ const o={}; SID_MOD.MODULES.forEach(m=>{ const a=m.acts.filter(x=>ALWAYS.has(m.id)&&x==="view"||(((roleAcc||{})[m.id]||[]).includes(x)||((add||{})[m.id]||[]).includes(x))&&!((rem||{})[m.id]||[]).includes(x)); if(a.length) o[m.id]=a; }); return o; }
-const same=(a,b)=>{ const k=new Set([...Object.keys(a),...Object.keys(b)]); for(const x of k){ const p=(a[x]||[]).slice().sort().join(), q=(b[x]||[]).slice().sort().join(); if(p!==q) return false; } return true; };
-function diff(a,b){ const out=[]; const k=new Set([...Object.keys(a),...Object.keys(b)]); k.forEach(x=>{ const p=a[x]||[], q=b[x]||[]; const lost=p.filter(y=>!q.includes(y)), got=q.filter(y=>!p.includes(y)); const L=(SID_MOD.get(x)||{}).label||x;
-  if(lost.length) out.push(`<span class="acc-bad">−</span> ${E(L)} (${lost.join(", ")})`); if(got.length) out.push(`<span class="acc-ok">+</span> ${E(L)} (${got.join(", ")})`); }); return out; }
+    const o=SID_MOD.snapshot(SID_MOD.legacy); ALWAYS.forEach(id=>{ if(!o[id]) o[id]=["view"]; });
+    const see=window.__sidCanSeeLegacy||canSee;
+    MULTI.forEach(m=>{ if(!o[m.id]) return; const all=SUBP(m), vis=all.filter(p=>!!see(p)); if(vis.length<all.length) o[m.id+"/pages"]=vis; });
+    return o; } finally{ SBME=save; } }
+function effective(roleAcc,add,rem){ const o={}; Object.keys(roleAcc||{}).filter(k=>k.endsWith("/pages")).forEach(k=>{ o[k]=roleAcc[k].slice(); }); SID_MOD.MODULES.forEach(m=>{ const a=m.acts.filter(x=>ALWAYS.has(m.id)&&x==="view"||(((roleAcc||{})[m.id]||[]).includes(x)||((add||{})[m.id]||[]).includes(x))&&!((rem||{})[m.id]||[]).includes(x)); if(a.length) o[m.id]=a; }); return o; }
+/* compare with "no page list" read as "all its pages" */
+const norm=o=>{ const r={...o}; MULTI.forEach(m=>{ const k=m.id+"/pages"; if(r[m.id]&&!r[k]) r[k]=SUBP(m); if(!r[m.id]) delete r[k]; }); return r; };
+const same=(a,b)=>{ a=norm(a); b=norm(b); const k=new Set([...Object.keys(a),...Object.keys(b)]); for(const x of k){ const p=(a[x]||[]).slice().sort().join(), q=(b[x]||[]).slice().sort().join(); if(p!==q) return false; } return true; };
+function diff(a,b){ a=norm(a); b=norm(b); const out=[]; const k=new Set([...Object.keys(a),...Object.keys(b)]); k.forEach(x=>{ const p=a[x]||[], q=b[x]||[]; const lost=p.filter(y=>!q.includes(y)), got=q.filter(y=>!p.includes(y));
+  const pg=x.endsWith("/pages"), L=pg?((SID_MOD.get(x.slice(0,-6))||{}).label||x)+" pages":((SID_MOD.get(x)||{}).label||x), nm=y=>pg?(PAGE_LABEL[y]||y):y;
+  if(lost.length) out.push(`<span class="acc-bad">−</span> ${E(L)} (${lost.map(nm).map(E).join(", ")})`); if(got.length) out.push(`<span class="acc-ok">+</span> ${E(L)} (${got.map(nm).map(E).join(", ")})`); }); return out; }
 async function load(){
   A.busy=true; draw();
   try{
@@ -20644,8 +20662,8 @@ async function load(){
 }
 const roleOf=r=>A.roles&&A.roles.find(x=>x.role===r);
 function roleGrid(role){ return role&&role.access&&typeof role.access==="object"?clean(role.access):null; }
-function gridRows(cell){ return SID_MOD.TABS.map(([t,tl])=>{ const ms=SID_MOD.MODULES.filter(m=>m.tab===t&&!ALWAYS.has(m.id)); if(!ms.length) return "";
-  return `<tr class="tab"><td colspan="5">${E(tl)}</td></tr>`+ms.map(m=>`<tr><td>${E(m.label)}${m.hint?`<small>${E(m.hint)}</small>`:""}</td>${ACTS.map(([a])=>`<td>${m.acts.includes(a)?cell(m,a):""}</td>`).join("")}</tr>`).join(""); }).join(""); }
+function gridRows(cell,sub){ return SID_MOD.TABS.map(([t,tl])=>{ const ms=SID_MOD.MODULES.filter(m=>m.tab===t&&!ALWAYS.has(m.id)); if(!ms.length) return "";
+  return `<tr class="tab"><td colspan="5">${E(tl)}</td></tr>`+ms.map(m=>`<tr><td>${E(m.label)}${m.hint?`<small>${E(m.hint)}</small>`:""}</td>${ACTS.map(([a])=>`<td>${m.acts.includes(a)?cell(m,a):""}</td>`).join("")}</tr>`+(sub&&SUBP(m).length>1?SUBP(m).map(pg=>`<tr class="subp"><td style="padding-left:26px">↳ ${E(PAGE_LABEL[pg]||pg)}</td><td>${sub(m,pg)}</td><td></td><td></td><td></td></tr>`).join(""):"")).join(""); }).join(""); }
 function rolesHtml(){
   const R=roleOf(A.cur); if(!R) return `<p>No roles.</p>`;
   const today=legacySnap(R), saved=roleGrid(R); if(!A.draft||A.draft.role!==R.role) A.draft={role:R.role,acc:saved?{...saved}:{...today}};
@@ -20654,7 +20672,8 @@ function rolesHtml(){
    <div><div class="acc-card"><h3>${E(R.label||R.role)}</h3><p>${R.is_admin?"Administrators always have every module and every action.":saved?"Saved grid. Changes apply the next time a person with this role opens the dashboard.":"Not saved yet — showing what this role can do today."}</p>
      ${dToday.length?`<p class="acc-diff"><b>Compared with today:</b> ${dToday.join(" · ")}</p>`:`<p class="acc-diff acc-ok">Same as today's rules.</p>`}
      <table class="acc-grid"><thead><tr><th>Module</th>${ACTS.map(a=>`<th>${a[1]}</th>`).join("")}</tr></thead><tbody>
-     ${gridRows((m,a)=>`<input type="checkbox" data-gm="${m.id}" data-ga="${a}" ${R.is_admin||(D[m.id]||[]).includes(a)?"checked":""} ${dis?"disabled":""}>`)}</tbody></table>
+     ${gridRows((m,a)=>`<input type="checkbox" data-gm="${m.id}" data-ga="${a}" ${R.is_admin||(D[m.id]||[]).includes(a)?"checked":""} ${dis?"disabled":""}>`,
+       (m,pg)=>{ const on=R.is_admin||((D[m.id]||[]).includes("view")&&(!D[m.id+"/pages"]||D[m.id+"/pages"].includes(pg))); return `<input type="checkbox" data-gp="${m.id}|${pg}" ${on?"checked":""} ${dis||!(D[m.id]||[]).includes("view")?"disabled":""}>`; })}</tbody></table>
      <div class="acc-btns"><button class="acc-btn p" data-a="saveRole" ${dis||!ch?"disabled":""}>Save this role</button><button class="acc-btn" data-a="todayRole" ${dis?"disabled":""}>Reset to today's rules</button>
        ${A.nosql?`<span class="acc-diff">Saving needs the database step (sql_17).</span>`:""}</div></div></div></div>`;
 }
@@ -20730,6 +20749,8 @@ function open(){ const m=me(); if(!m||!m.is_admin||window.SID_VIEWAS){ if(typeof
       const r=e.target.closest("[data-role]"); if(r){ A.cur=r.dataset.role; A.draft=null; draw(); return; }
       const p=e.target.closest("[data-person]"); if(p){ A.person=p.dataset.person; A.pdraft=null; draw(); return; }
       const g=e.target.closest("[data-gm]"); if(g&&A.draft){ toggle(A.draft.acc,g.dataset.gm,g.dataset.ga,g.checked); if(g.dataset.ga!=="view"&&g.checked) toggle(A.draft.acc,g.dataset.gm,"view",true); if(g.dataset.ga==="view"&&!g.checked) delete A.draft.acc[g.dataset.gm]; draw(); return; }
+      const gp=e.target.closest("[data-gp]"); if(gp&&A.draft){ const [m,pg]=gp.dataset.gp.split("|"), mod=SID_MOD.get(m), k=m+"/pages", D=A.draft.acc; const L=new Set(D[k]||SUBP(mod)); gp.checked?L.add(pg):L.delete(pg);
+        if(L.size>=SUBP(mod).length) delete D[k]; else D[k]=[...L]; draw(); return; }
       const x=e.target.closest("[data-pm]"); if(x&&A.pdraft){ const m=x.dataset.pm, a=x.dataset.pa, D=A.pdraft; const s=(D.add[m]||[]).includes(a)?"allow":(D.rem[m]||[]).includes(a)?"deny":"inh";
         toggle(D.add,m,a,false); toggle(D.rem,m,a,false); if(s==="inh") toggle(D.add,m,a,true); else if(s==="allow") toggle(D.rem,m,a,true); draw(); return; }
       const b=e.target.closest("button[data-a]"); if(b) act(b.dataset.a,b); });
