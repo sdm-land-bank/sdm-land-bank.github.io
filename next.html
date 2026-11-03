@@ -2541,19 +2541,19 @@ html[data-skin][data-rt="on"]{--sg-blur:none}
 html[data-skin][data-text="large"]{font-size:110%}
 </style>
 <style id="sid-shell">
-/* V111 Modules shell — only under html[data-look="modules"]. Home, module bar, layout, map focus. */
+
 #nlHome,#nlBar{display:none}
 html[data-look="modules"]{--nl-bar:56px}
-/* ---- layout: the old rail / bottom bar are gone; the module bar carries the navigation ---- */
-html[data-look="modules"] .rail{display:none!important}
-html[data-look="modules"] .app{grid-template-columns:minmax(0,1fr)!important;height:calc(100dvh - var(--nl-bar))!important;margin-top:var(--nl-bar)!important;padding:0!important}
-html[data-look="modules"] main{padding-bottom:0!important;min-width:0}
+
+html[data-look="modules"] .rail:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"] .app:not(#_g):not(#_g){grid-template-columns:minmax(0,1fr)!important;height:calc(100dvh - var(--nl-bar))!important;margin-top:var(--nl-bar)!important;padding:0!important}
+html[data-look="modules"] main:not(#_g):not(#_g){padding-bottom:0!important;min-width:0}
 html[data-look="modules"]{--tab:0px}
-html[data-look="modules"] .nt-panel{left:auto!important;right:14px!important;top:calc(var(--nl-bar) + 8px)!important;bottom:auto!important}
-html[data-look="modules"] .va-bar{top:auto!important;bottom:0!important;border-radius:12px 12px 0 0!important}
-html[data-look="modules"] #toast{z-index:1400;bottom:22px!important}
-/* ---- the module bar ---- */
-html[data-look="modules"] #nlBar{display:flex;position:fixed;top:0;left:0;right:0;height:var(--nl-bar);z-index:1100;align-items:center;gap:8px;padding:0 14px;
+html[data-look="modules"] .nt-panel:not(#_g):not(#_g){left:auto!important;right:14px!important;top:calc(var(--nl-bar) + 8px)!important;bottom:auto!important}
+html[data-look="modules"] .va-bar:not(#_g):not(#_g){top:auto!important;bottom:0!important;border-radius:12px 12px 0 0!important}
+html[data-look="modules"] #toast:not(#_g):not(#_g){z-index:1400;bottom:22px!important}
+
+html[data-look="modules"] #nlBar:not(#_g):not(#_g){display:flex;position:fixed;top:0;left:0;right:0;height:var(--nl-bar);z-index:1100;align-items:center;gap:8px;padding:0 14px;
  background:var(--g-surface);-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);border-bottom:1px solid var(--g-edge);box-shadow:var(--g-shadow-s);
  color:var(--sg-ink);font-family:var(--sg-font);font-size:14px}
 #nlBar *{box-sizing:border-box}
@@ -2574,10 +2574,10 @@ html[data-look="modules"] #nlBar{display:flex;position:fixed;top:0;left:0;right:
 #nlBar .b-ic i{position:absolute;top:3px;right:3px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--sg-bad);color:#fff;font:600 10px/16px var(--sg-font);font-style:normal;text-align:center}
 #nlBar .b-av{flex:0 0 auto;width:38px;height:38px;border-radius:12px;border:0;background:var(--sg-ink);color:var(--sg-bg-solid,#fff);font:600 13px var(--sg-font);cursor:pointer}
 html[data-skin="glass-dark"] #nlBar .b-av{background:#fff;color:#1C1C1E}
-/* ---- Home overlay ---- */
-html[data-look="modules"] #nlHome{display:block;position:fixed;inset:0;z-index:1200;overflow:auto;-webkit-overflow-scrolling:touch;opacity:0;visibility:hidden;pointer-events:none;
+
+html[data-look="modules"] #nlHome:not(#_g):not(#_g){display:block;position:fixed;inset:0;z-index:1200;overflow:auto;-webkit-overflow-scrolling:touch;opacity:0;visibility:hidden;pointer-events:none;
  transition:opacity .24s ease,visibility 0s .24s;background:var(--sg-bg);color:var(--sg-ink);font-family:var(--sg-font);font-size:15px;line-height:1.4}
-html[data-look="modules"] #nlHome.on{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .24s ease}
+html[data-look="modules"] #nlHome.on:not(#_g):not(#_g){opacity:1;visibility:visible;pointer-events:auto;transition:opacity .24s ease}
 #nlHome *{box-sizing:border-box}
 #nlHome .nl-top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:12px 28px;background:linear-gradient(to bottom,rgba(0,0,0,.14),transparent);backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur)}
 html[data-skin="glass-light"] #nlHome .nl-top{background:linear-gradient(to bottom,rgba(255,255,255,.5),transparent)}
@@ -2623,14 +2623,14 @@ html[data-skin="glass-dark"] #nlHome .nl-av{background:#fff;color:#1C1C1E}
 #nlHome .nl-chip{padding:7px 12px;border-radius:999px;border:1px solid var(--sg-line);background:var(--sg-glass);color:inherit;font:13px var(--sg-font);cursor:pointer;transition:transform .18s}
 #nlHome .nl-chip:hover{transform:translateY(-2px)}
 #nlHome .nl-note{margin-top:22px;font-size:12px;color:var(--sg-mute)}
-/* animation: tab change = the grid slides out/in, tiles enter one after the other; the underline glides */
+
 @keyframes nlTileIn{from{opacity:0;transform:translate3d(calc(var(--nl-dir,1)*26px),12px,0) scale(.9)}to{opacity:1;transform:none}}
 @keyframes nlUp{from{opacity:0;transform:translate3d(0,14px,0)}to{opacity:1;transform:none}}
 #nlHome .nl-grid.in .nl-tw{animation:nlTileIn .42s var(--sg-ease) both;animation-delay:calc(var(--i,0)*45ms)}
 #nlHome .nl-grid.out{opacity:0;transform:translateX(calc(var(--nl-dir,1)*-22px));transition:opacity .13s ease,transform .13s ease}
 #nlHome.on .nl-wrap>.nl-enter{animation:nlUp .5s var(--sg-ease) both;animation-delay:calc(var(--e,0)*70ms)}
 @media (prefers-reduced-motion:reduce){#nlHome *,#nlBar *{animation:none!important;transition:none!important}}
-/* ---- sheets (find a module) ---- */
+
 .nl-sheet{position:fixed;z-index:1300;top:calc(var(--nl-bar,56px) + 8px);right:16px;width:330px;max-width:calc(100% - 32px);padding:16px;border-radius:20px;border:1px solid var(--sg-line);
  background:var(--sg-glass);backdrop-filter:saturate(185%) blur(28px);-webkit-backdrop-filter:saturate(185%) blur(28px);box-shadow:var(--sg-shadow);color:var(--sg-ink);font-family:var(--sg-font)}
 html:not([data-skin]) .nl-sheet{--sg-ink:#1C1C1E;--sg-mute:#6b6b70;--sg-line:rgba(0,0,0,.1);--sg-glass:rgba(255,255,255,.92);--sg-accent:#B3263D;--sg-font:Inter,-apple-system,system-ui,sans-serif;--sg-shadow:0 12px 40px rgba(0,0,0,.25)}
@@ -2641,34 +2641,34 @@ html[data-skin="glass-dark"] .nl-sheet{background:rgba(40,40,48,.9)}
 .nl-find .nl-in{width:100%;margin:2px 0 8px;padding:10px 12px;border-radius:12px;border:1px solid var(--sg-line);background:rgba(127,127,127,.12);color:inherit;font:15px var(--sg-font);outline:none}
 .nl-find .nl-res{max-height:50vh;overflow:auto}
 #nav .nav-item.nl-homeitem{display:none}
-/* ---- one map, one job: each map module shows only its own controls (data-nlg on <html>) ---- */
-html[data-look="modules"][data-nlg]:not([data-nlg~="core"]) header.top #fbar,
-html[data-look="modules"][data-nlg]:not([data-nlg~="core"]) header.top .legend{display:none!important}
-html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="pipeline"]) .kpis{display:none!important}
-html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="levels"]) header.top{display:none!important}
-html[data-look="modules"][data-nlg]:not([data-nlg~="logistics"]) #sitesBtn,
-html[data-look="modules"][data-nlg]:not([data-nlg~="logistics"]) #pfSites,
-html[data-look="modules"][data-nlg]:not([data-nlg~="logistics"]) .poi,
-html[data-look="modules"][data-nlg]:not([data-nlg~="logistics"]) .map-note{display:none!important}
-html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="logistics"]):not([data-nlg~="pipeline"]) #lblBtn{display:none!important}
-html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="levels"]) #p3Btn{display:none!important}
-html[data-look="modules"][data-nlg]:not([data-nlg~="pipeline"]) .mapbtns .pp-seg{display:none!important}
-html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="pipeline"]) #ppBdBtn,
-html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="pipeline"]) #pfBtn{display:none!important}
-html[data-look="modules"][data-nlg]:not([data-nlg~="core"]) #slHeatBtn,
-html[data-look="modules"][data-nlg]:not([data-nlg~="core"]) .mapbtns .cmp-btn{display:none!important}
-html[data-look="modules"][data-nlg]:not([data-nlg~="levels"]) .tp-ctl{display:none!important}
-html[data-look="modules"][data-nlg]:not([data-nlg~="sketch"]) .sk-ctl{display:none!important}
-html[data-look="modules"][data-nlg]:not([data-nlg~="tour"]) .tpin{display:none!important}
-html[data-look="modules"][data-nlg]:not([data-nlg~="explore"]):not([data-nlg~="share"]) .pc-ex{display:none!important}
-html[data-look="modules"][data-nlg~="share"]:not([data-nlg~="explore"]) .pc-ex .pc-ex-b:not(.pc-sh),
-html[data-look="modules"][data-nlg~="share"]:not([data-nlg~="explore"]) .pc-ex .pc-ex-l{display:none!important}
-html[data-look="modules"][data-nlg~="explore"]:not([data-nlg~="share"]) .pc-ex .pc-sh{display:none!important}
-html[data-look="modules"][data-nlg~="explore"]:not([data-nlg~="share"]) .pc-ex .pc-ex-i[data-k="share"]{display:none!important}
-/* ---- phone ---- */
+
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]) header.top #fbar:not(#_g):not(#_g),
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]) header.top .legend:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="pipeline"]) .kpis:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="levels"]) header.top:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="logistics"]) #sitesBtn:not(#_g):not(#_g),
+html[data-look="modules"][data-nlg]:not([data-nlg~="logistics"]) #pfSites:not(#_g):not(#_g),
+html[data-look="modules"][data-nlg]:not([data-nlg~="logistics"]) .poi:not(#_g):not(#_g),
+html[data-look="modules"][data-nlg]:not([data-nlg~="logistics"]) .map-note:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="logistics"]):not([data-nlg~="pipeline"]) #lblBtn:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="levels"]) #p3Btn:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="pipeline"]) .mapbtns .pp-seg:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="pipeline"]) #ppBdBtn:not(#_g):not(#_g),
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]):not([data-nlg~="pipeline"]) #pfBtn:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]) #slHeatBtn:not(#_g):not(#_g),
+html[data-look="modules"][data-nlg]:not([data-nlg~="core"]) .mapbtns .cmp-btn:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="levels"]) .tp-ctl:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="sketch"]) .sk-ctl:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="tour"]) .tpin:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg]:not([data-nlg~="explore"]):not([data-nlg~="share"]) .pc-ex:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg~="share"]:not([data-nlg~="explore"]) .pc-ex .pc-ex-b:not(.pc-sh):not(#_g):not(#_g),
+html[data-look="modules"][data-nlg~="share"]:not([data-nlg~="explore"]) .pc-ex .pc-ex-l:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg~="explore"]:not([data-nlg~="share"]) .pc-ex .pc-sh:not(#_g):not(#_g){display:none!important}
+html[data-look="modules"][data-nlg~="explore"]:not([data-nlg~="share"]) .pc-ex .pc-ex-i[data-k="share"]:not(#_g):not(#_g){display:none!important}
+
 @media (max-width:820px){
  html[data-look="modules"]{--nl-bar:52px}
- html[data-look="modules"] #nlBar{padding:0 8px;gap:4px}
+ html[data-look="modules"] #nlBar:not(#_g):not(#_g){padding:0 8px;gap:4px}
  #nlBar .b-tab,#nlBar .b-search,#nlBar .b-theme{display:none}
  #nlBar .b-p{height:32px;padding:0 12px;font-size:13px}
  #nlHome .nl-top{padding:10px 14px}#nlHome .nl-wrap{padding:16px 16px 110px}#nlHome h1{font-size:29px}
@@ -13406,7 +13406,7 @@ const SID_MOD=(function(){
   const wf=()=>{ const m=me(); return m?(m.is_admin?"ops":(m.wf||null)):"ops"; };
   const LB_SALES=["lb.dashboard","lb.overview","lb.strategic_bento","lb.intelligence"];
   const LB_CEO=["lb.ceo_brief","lb.ceo_cash","lb.ceo_value","lb.ceo_runway","lb.ceo_customers","lb.ceo_governance"];
-  const TABS=[["work","Workspace"],["land","Land"],["sales","Sales"],["inv","Investors"],["exec","Executive"],["data","Data"],["admin","Admin"]];
+  const TABS=[["work","General (top bar)"],["land","Land"],["sales","Sales"],["inv","Investors"],["exec","Executive"],["data","Data"],["admin","Admin"]];
   /* id, tab, label, hint, icon, actions, pages (today's page ids it covers), rules {view,edit,approve,export}, open */
   const M=[
     {id:"home",tab:"work",label:"Home",icon:"home",acts:["view"],rule:{view:()=>true},open:{home:1}},
@@ -20787,7 +20787,7 @@ function show(){ const el=$q("#nlHome"); if(!el||SID_LOOK.look()!=="modules") re
 function hide(){ const el=$q("#nlHome"); NL.shown=false; if(el) el.classList.remove("on"); }
 function lbTab(key){ const tid=typeof LB_TID!=="undefined"&&LB_TID[key]; if(!tid) return; let n=0;
   const t=setInterval(()=>{ n++; try{ const f=$q("#lbwrap iframe"), d=f&&f.contentDocument, b=d&&d.getElementById(tid); if(b&&b.offsetParent!==null){ b.click(); clearInterval(t); frameFocus(); } else frameFocus(); }catch(e){} if(n>60) clearInterval(t); },250); }
-function whenMap(fn){ let n=0; const t=setInterval(()=>{ n++; if((typeof S!=="undefined"&&S.mapReady)||n>40){ clearInterval(t); try{ fn(); }catch(e){ console.warn("nl tool",e); } } },250); }
+function whenMap(fn){ let n=0; const t=setInterval(()=>{ n++; if(((typeof S!=="undefined"&&S.mapReady)&&n>=3)||n>40){ clearInterval(t); try{ fn(); }catch(e){ console.warn("nl tool",e); } } },250); }   /* ~0.75 s: the map has finished redrawing its bar */
 /* tools: switching module on the map starts its tool and stops the previous one */
 function leave(prev){ if(!prev||prev===NL.cur) return; const g=GROUP[prev]||"";
   try{ if(/levels/.test(g)&&!/levels/.test(GROUP[NL.cur]||"")&&window.SID_TOPO&&SID_TOPO.on) SID_TOPO.setOn(false);
@@ -20797,7 +20797,7 @@ function tool(t){
   if(t==="sketch") whenMap(()=>window.SID_SKETCH&&SID_SKETCH.enter());
   else if(t==="planner") whenMap(()=>{ if(!window.SID_SKETCH) return; SID_SKETCH.enter(); setTimeout(()=>{ try{ SID_SKETCH.setMode("build"); }catch(e){} },350); });
   else if(t==="levels") whenMap(()=>window.SID_TOPO&&SID_TOPO.setOn(true));
-  else if(t==="pipeline") whenMap(()=>{ const b=[...document.querySelectorAll("button.pp-mode")].find(x=>/pipeline/i.test(x.textContent)); if(b&&!b.classList.contains("on")) b.click(); });
+  else if(t==="pipeline") whenMap(()=>{ let k=0; const go2=()=>{ const b=[...document.querySelectorAll("button.pp-mode")].find(x=>/pipeline/i.test(x.textContent)); if(b&&!b.classList.contains("on")){ b.click(); if(++k<4) setTimeout(go2,500); } }; go2(); });
   else if(t==="logistics") whenMap(()=>{ const b=$q("#sitesBtn"); if(b&&!b.classList.contains("on")) b.click(); });
   else if(t==="tour") whenMap(()=>typeof toast==="function"&&toast("Tap a park's 360° pin on the map"));
   else if(t==="explore") whenMap(()=>typeof toast==="function"&&toast("Tap a park on the map, then choose Explore"));
@@ -21231,15 +21231,16 @@ const AD=(function(){
   return {ensure,gen};
 })();
 window.SID_DARK=AD;
-function sync(){ try{
-  const H=document.documentElement; AD.ensure(document);
-  const f=document.querySelector("#lbwrap iframe"), d=f&&f.contentDocument; if(!d||!d.documentElement) return;
+/* the embedded tools (Sales & Land Bank, Industrial Codes) are same-origin frames: give each the look attributes, the glass rules and a dark twin */
+const CSS_GEN=`html[data-look="modules"]{background:transparent!important}html[data-look="modules"] body{background:transparent!important}
+html[data-look="modules"][data-skin="glass-dark"]{color-scheme:dark}html[data-look="modules"][data-skin="glass-dark"] body{color:#f2f2f7}`;
+function syncFrame(sel,css){ const H=document.documentElement; const f=document.querySelector(sel), d=f&&f.contentDocument; if(!d||!d.documentElement) return;
   const h=d.documentElement, on=H.dataset.look==="modules";
   ["look","skin","wall","rt","text"].forEach(a=>{ const v=H.getAttribute("data-"+a); if(on&&v!=null){ if(h.getAttribute("data-"+a)!==v) h.setAttribute("data-"+a,v); } else h.removeAttribute("data-"+a); });
-  let st=d.getElementById("sid-glass-lb"); if(on&&!st&&(d.head||d.body)){ st=d.createElement("style"); st.id="sid-glass-lb"; st.textContent=CSS; (d.head||d.body).appendChild(st); }
+  let st=d.getElementById("sid-glass-lb"); if(on&&!st&&(d.head||d.body)){ st=d.createElement("style"); st.id="sid-glass-lb"; st.textContent=css; (d.head||d.body).appendChild(st); }
   if(!on&&st) st.remove();
-  AD.ensure(d);
-}catch(e){} }
+  AD.ensure(d); }
+function sync(){ try{ AD.ensure(document); syncFrame("#lbwrap iframe",CSS); syncFrame("#codeswrap iframe",CSS_GEN); }catch(e){} }
 setInterval(sync,1000);
 new MutationObserver(()=>{ try{ AD.ensure(document); }catch(e){} }).observe(document.documentElement,{attributes:true,attributeFilter:["data-skin","data-look"]});
 })();
