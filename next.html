@@ -21036,6 +21036,8 @@ function sync(){ try{
   ["look","skin","wall","rt","text"].forEach(a=>{ const v=H.getAttribute("data-"+a); if(on&&v!=null){ if(h.getAttribute("data-"+a)!==v) h.setAttribute("data-"+a,v); } else h.removeAttribute("data-"+a); });
   let st=d.getElementById("sid-glass-lb"); if(on&&!st&&(d.head||d.body)){ st=d.createElement("style"); st.id="sid-glass-lb"; st.textContent=CSS; (d.head||d.body).appendChild(st); }
   if(!on&&st) st.remove();
+  /* redraws inside the frame (switching views) re-run the Glass Dark contrast fixer at once */
+  if(on&&!d.__nlmo&&d.documentElement){ d.__nlmo=new MutationObserver(()=>{ try{ queue(); }catch(e){} }); d.__nlmo.observe(d.documentElement,{childList:true,subtree:true}); }
 }catch(e){} }
 setInterval(sync,1200);
 /* Glass Dark contrast fixer: text the page paints near-black stays readable on dark glass (→ light), light text on a white
