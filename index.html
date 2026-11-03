@@ -2524,6 +2524,22 @@ window.sidSatInfo=async()=>{ try{ const c=await box(), k=await c.keys(), e=navig
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
+<style id="sid-newlook-tokens">
+/* V105 new look - design tokens. Only active under html[data-skin]; Classic never sets it. */
+html[data-skin]{--sg-font:Inter,-apple-system,"SF Pro Text",system-ui,sans-serif;--sg-r-sm:10px;--sg-r:16px;--sg-r-lg:22px;
+ --sg-blur:saturate(185%) blur(22px);--sg-accent:#B3263D;--sg-accent-2:#E0435C;--sg-ok:#34C759;--sg-warn:#FF9F0A;--sg-bad:#FF3B30;
+ --sg-sold:#B3263D;--sg-reserved:#FF9F0A;--sg-eoi:#FFD60A;--sg-ats:#34C759;--sg-hold:#8E8E93;--sg-nfs:#3A3A3C;--sg-unknown:#D1D1D6;
+ --sg-ease:cubic-bezier(.2,.8,.2,1);--sg-fast:.15s;--sg-slow:.32s}
+html[data-skin="glass-dark"]{--sg-ink:#F5F5F7;--sg-mute:rgba(245,245,247,.62);--sg-line:rgba(255,255,255,.12);--sg-glass:rgba(44,44,52,.62);
+ --sg-glass-2:rgba(255,255,255,.07);--sg-shadow:0 10px 30px rgba(0,0,0,.35);
+ --sg-bg:radial-gradient(1200px 600px at 85% -10%,rgba(179,38,61,.55),transparent 60%),linear-gradient(160deg,#141418,#1d1d24 55%,#121216)}
+html[data-skin="glass-light"]{--sg-ink:#1C1C1E;--sg-mute:rgba(28,28,30,.6);--sg-line:rgba(0,0,0,.08);--sg-glass:rgba(255,255,255,.62);
+ --sg-glass-2:rgba(255,255,255,.5);--sg-shadow:0 8px 30px rgba(0,0,0,.08);
+ --sg-bg:radial-gradient(1100px 600px at 85% -10%,rgba(224,67,92,.28),transparent 60%),linear-gradient(160deg,#F4F4F7,#E9E9EF)}
+html[data-skin="contrast"]{--sg-ink:#000;--sg-mute:#333;--sg-line:#000;--sg-glass:#fff;--sg-glass-2:#fff;--sg-shadow:none;--sg-blur:none;--sg-bg:#fff}
+html[data-skin][data-rt="on"]{--sg-blur:none}
+html[data-skin][data-text="large"]{font-size:110%}
+</style>
 </head>
 <body>
 <div class="app">
@@ -12759,6 +12775,7 @@ async function sbGate(){
   if(v){ gateMsg("Loading the latest MDS…"); const buf=await sbCached(v.path,"v"+v.id,"buf"), el=document.getElementById("mds-workbook");
     el.textContent=b64buf(buf); el.dataset.date=new Date(v.sheet_saved||v.created_at).toISOString(); el.dataset.kept=new Date(v.created_at).toISOString(); el.dataset.fresh="1"; SBV=v; }
   const K=Object.fromEntries((kv.data||[]).map(x=>[x.key,x]));
+  try{ SID_PREFS.boot(SBU,K); }catch(e){ console.warn("prefs",e); }
   try{
     if(K.live&&K.live.value) localStorage.setItem("sid.live2",JSON.stringify(K.live.value));
     if(K.fp&&K.fp.value){ localStorage.setItem("sid.fp",JSON.stringify(K.fp.value)); Object.assign(FPL.cfg,K.fp.value); }
@@ -13026,6 +13043,113 @@ const SID_PAGES=[
   {id:"lara",label:"Lara — voice assistant (button, wake word, microphone)"}
 ];
 const ALL_PAGE_IDS=SID_PAGES.flatMap(p=>[p.id,...(p.subs||[]).flatMap(g=>g.items.map(i=>i[0]))]);
+/* ============================================================================
+   V105 — NEW LOOK phase 1: module catalogue, preferences, look switch (nothing visible yet)
+   ========================================================================== */
+const SID_MOD=(function(){
+  const me=()=>(typeof SBME!=="undefined"&&SBME)||null;
+  const adm=()=>{ const m=me(); return !m||!!m.is_admin; };            /* offline file / not signed in = today's behaviour (all) */
+  const pub=()=>{ const m=me(); return !!m&&/roadshow|public/i.test(String(m.role||"")); };
+  const see=id=>typeof canSee==="function"?!!canSee(id):true;
+  const any=ids=>ids.some(see);
+  const edit=()=>{ const m=me(); return !m||!!(m.can_edit||m.is_admin); };
+  const wf=()=>{ const m=me(); return m?(m.is_admin?"ops":(m.wf||null)):"ops"; };
+  const LB_SALES=["lb.dashboard","lb.overview","lb.strategic_bento","lb.intelligence"];
+  const LB_CEO=["lb.ceo_brief","lb.ceo_cash","lb.ceo_value","lb.ceo_runway","lb.ceo_customers","lb.ceo_governance"];
+  const TABS=[["work","Workspace"],["land","Land"],["sales","Sales"],["inv","Investors"],["exec","Executive"],["data","Data"],["admin","Admin"]];
+  /* id, tab, label, hint, icon, actions, pages (today's page ids it covers), rules {view,edit,approve,export}, open */
+  const M=[
+    {id:"home",tab:"work",label:"Home",icon:"home",acts:["view"],rule:{view:()=>true},open:{home:1}},
+    {id:"notif",tab:"work",label:"Notifications",icon:"bell",acts:["view"],rule:{view:()=>true},open:{panel:"notif"}},
+    {id:"lara",tab:"work",label:"Lara",hint:"Voice assistant",icon:"lara",acts:["view"],pages:["lara"],rule:{view:()=>see("lara")},open:{panel:"lara"}},
+    {id:"me",tab:"work",label:"My Settings",icon:"gear",acts:["view"],rule:{view:()=>true},open:{panel:"me"}},
+    {id:"map",tab:"land",label:"Map",hint:"Projects & plots",icon:"map",acts:["view","export"],pages:["inventory","portfolio"],rule:{view:()=>see("inventory"),export:()=>see("inventory")&&!pub()},open:{view:"inventory"}},
+    {id:"map.status",tab:"land",label:"Plot status & holds",icon:"approve",acts:["view","edit","approve"],rule:{view:()=>see("inventory"),edit:()=>!!wf(),approve:()=>wf()==="manager"||wf()==="ops"},open:{view:"inventory"}},
+    {id:"map.planner",tab:"land",label:"Planner",hint:"Master plan, Smart fill",icon:"plan",acts:["view","edit","export"],rule:{view:()=>see("inventory")&&!pub(),edit:()=>see("inventory")&&!pub(),export:()=>see("inventory")&&!pub()},open:{view:"inventory",tool:"planner"}},
+    {id:"map.sketch",tab:"land",label:"Sketch & measure",icon:"pencil",acts:["view","export"],rule:{view:()=>see("inventory"),export:()=>see("inventory")&&!pub()},open:{view:"inventory",tool:"sketch"}},
+    {id:"map.levels",tab:"land",label:"Land Levels",hint:"Heights, sections",icon:"levels",acts:["view","export"],rule:{view:()=>see("inventory"),export:()=>see("inventory")&&!pub()},open:{view:"inventory",tool:"levels"}},
+    {id:"map.survey",tab:"land",label:"Survey uploads",icon:"survey",acts:["view","edit"],rule:{view:()=>see("inventory"),edit:()=>edit()&&!pub()},open:{view:"inventory",tool:"levels"}},
+    {id:"map.pipeline",tab:"land",label:"Pipeline lands",icon:"pipe",acts:["view"],rule:{view:()=>see("inventory")},open:{view:"inventory",tool:"pipeline"}},
+    {id:"map.logistics",tab:"land",label:"Logistics",hint:"Dry ports, trucks to port",icon:"truck",acts:["view"],rule:{view:()=>see("inventory")},open:{view:"inventory",tool:"logistics"}},
+    {id:"map.tour",tab:"land",label:"360 tour",icon:"tour",acts:["view"],rule:{view:()=>see("inventory")},open:{view:"inventory",tool:"tour"}},
+    {id:"sales.cockpits",tab:"sales",label:"Sales cockpits",hint:"Overview, intelligence",icon:"cockpit",acts:["view","export"],pages:["sales",...LB_SALES],rule:{view:()=>any(LB_SALES),export:()=>any(LB_SALES)&&!pub()},open:{view:"sales"}},
+    {id:"sales.inventory",tab:"sales",label:"Inventory & land bank",icon:"grid",acts:["view","export"],pages:["lb.inventory_breakdown","lb.landbank"],rule:{view:()=>any(["lb.inventory_breakdown","lb.landbank"]),export:()=>any(["lb.inventory_breakdown","lb.landbank"])&&!pub()},open:{view:"sales"}},
+    {id:"sales.pipeline",tab:"sales",label:"Pipeline & forecast",icon:"funnel",acts:["view","export"],pages:["lb.sales"],rule:{view:()=>see("lb.sales"),export:()=>see("lb.sales")&&!pub()},open:{view:"sales"}},
+    {id:"approvals",tab:"sales",label:"Approvals",hint:"Status requests and holds",icon:"approve",acts:["view","approve"],pages:["approvals"],rule:{view:()=>see("approvals"),approve:()=>see("approvals")&&(wf()==="manager"||wf()==="ops")},open:{view:"approvals"}},
+    {id:"demand",tab:"sales",label:"Offer demand",hint:"From Sales Leads",icon:"demand",acts:["view"],pages:["demand"],rule:{view:()=>see("demand")},open:{view:"demand"}},
+    {id:"offer",tab:"sales",label:"Sales offer",hint:"PDF",icon:"offer",acts:["view","export"],pages:["offer"],rule:{view:()=>see("offer"),export:()=>see("offer")&&!pub()},open:{view:"offer"}},
+    {id:"match",tab:"inv",label:"Investor match",icon:"match",acts:["view","export"],pages:["match"],rule:{view:()=>see("match"),export:()=>see("match")&&!pub()},open:{view:"match"}},
+    {id:"match.fin",tab:"inv",label:"Initial financial offer",icon:"money",acts:["view","export"],pages:["match.fin"],rule:{view:()=>see("match.fin"),export:()=>see("match.fin")&&!pub()},open:{view:"match"}},
+    {id:"present",tab:"inv",label:"Present to investors",icon:"present",acts:["view"],pages:["portfolio.present"],rule:{view:()=>see("portfolio.present")},open:{action:"present"}},
+    {id:"map.explore",tab:"inv",label:"Explore",hint:"Orbit, film, time machine, AR",icon:"explore",acts:["view"],rule:{view:()=>see("inventory")},open:{view:"inventory",tool:"explore"}},
+    {id:"map.share",tab:"inv",label:"Share a plot",hint:"Link + QR",icon:"share",acts:["export"],rule:{view:()=>see("inventory")&&!pub(),export:()=>see("inventory")&&!pub()},open:{view:"inventory"}},
+    {id:"roadshow",tab:"inv",label:"Roadshow summary",icon:"road",acts:["view"],rule:{view:()=>adm()},open:{action:"roadshow"}},
+    {id:"codes",tab:"inv",label:"Industrial Codes",icon:"codes",acts:["view"],pages:["codes"],rule:{view:()=>see("codes")},open:{view:"codes"}},
+    {id:"ceo",tab:"exec",label:"CEO Suite",hint:"6 views",icon:"ceo",acts:["view","export"],pages:LB_CEO,rule:{view:()=>any(LB_CEO),export:()=>any(LB_CEO)&&!pub()},open:{view:"sales"}},
+    {id:"exec.fin",tab:"exec",label:"Executive financials",icon:"money",acts:["view","export"],pages:["lb.executive"],rule:{view:()=>see("lb.executive"),export:()=>see("lb.executive")&&!pub()},open:{view:"sales"}},
+    {id:"exec.engine",tab:"exec",label:"Financial engine",icon:"engine",acts:["view","export"],pages:["lb.financial_engine"],rule:{view:()=>see("lb.financial_engine"),export:()=>see("lb.financial_engine")&&!pub()},open:{view:"sales"}},
+    {id:"cost",tab:"exec",label:"Cost & GP",hint:"Protected",icon:"lock",acts:["view"],rule:{view:()=>see("editor")&&!pub()},open:{view:"editor"}},
+    {id:"register",tab:"data",label:"MDS register",icon:"sheet",acts:["view","edit","export"],pages:["editor"],rule:{view:()=>see("editor"),edit:()=>see("editor")&&edit(),export:()=>see("editor")&&!pub()},open:{view:"editor"}},
+    {id:"health",tab:"data",label:"Data health",icon:"health",acts:["view"],pages:["health"],rule:{view:()=>see("health")},open:{view:"health"}},
+    {id:"audit",tab:"data",label:"Change log",icon:"log",acts:["view"],pages:["audit"],rule:{view:()=>see("audit")},open:{view:"audit"}},
+    {id:"lb.settings",tab:"data",label:"Land Bank settings",icon:"gear",acts:["edit"],pages:["lb.settings","lb.changelog","lb.excel-grid"],rule:{view:()=>any(["lb.settings","lb.changelog","lb.excel-grid"]),edit:()=>any(["lb.settings"])},open:{view:"sales"}},
+    {id:"sync",tab:"data",label:"Sync with online sheet",icon:"sync",acts:["edit"],rule:{view:()=>adm(),edit:()=>adm()},open:{action:"sync"}},
+    {id:"admin.users",tab:"admin",label:"Users & access",icon:"users",acts:["view","edit"],pages:["settings"],rule:{view:()=>adm(),edit:()=>adm()},open:{view:"settings"}},
+    {id:"admin.viewas",tab:"admin",label:"View as",icon:"eye",acts:["view"],rule:{view:()=>adm()},open:{action:"viewas"}},
+    {id:"admin.teams",tab:"admin",label:"Teams",icon:"team",acts:["view","edit"],rule:{view:()=>adm(),edit:()=>adm()},open:{view:"settings"}},
+    {id:"admin.look",tab:"admin",label:"Company appearance",icon:"brush",acts:["view","edit"],rule:{view:()=>adm(),edit:()=>adm()},open:{panel:"look"}},
+    {id:"admin.keys",tab:"admin",label:"AI keys",icon:"key",acts:["view","edit"],rule:{view:()=>adm(),edit:()=>adm()},open:{view:"settings"}},
+    {id:"admin.usage",tab:"admin",label:"Usage & limits",icon:"gauge",acts:["view"],pages:["usage"],rule:{view:()=>adm()},open:{view:"settings"}}
+  ];
+  const BY=Object.fromEntries(M.map(m=>[m.id,m]));
+  function can(id,act){ act=act||"view"; const m=BY[id]; if(!m) return false; if(adm()) return true;
+    const f=m.rule[act]; if(!f) return false; try{ return !!f(); }catch(e){ return false; } }
+  function list(){ return M.filter(m=>can(m.id,"view")); }
+  function tabs(){ const L=list(); return TABS.filter(([t])=>L.some(m=>m.tab===t)&&(t!=="admin"||adm())).map(([id,label])=>({id,label,mods:L.filter(m=>m.tab===id)})); }
+  /* every page id that a role can be given today must belong to a module (phase 3 compare relies on it) */
+  function check(){ const have=new Set(M.flatMap(m=>m.pages||[]));
+    const ids=(typeof ALL_PAGE_IDS!=="undefined"?ALL_PAGE_IDS:[]).filter(id=>!have.has(id)); return ids; }
+  /* a snapshot of one person's effective access, for the phase 3 before/after compare */
+  function snapshot(){ const o={}; M.forEach(m=>{ o[m.id]=m.acts.filter(a=>can(m.id,a)); if(!o[m.id].length) delete o[m.id]; }); return o; }
+  return {TABS,MODULES:M,get:id=>BY[id]||null,can,list,tabs,check,snapshot};
+})();
+
+const SID_PREFS=(function(){
+  const DEF={v:1,look:"classic",theme:"dark",accent:"crimson",rt:"auto",text:"normal",start:"map",fav:[],tab:""};
+  const OK={look:["classic","modules"],theme:["dark","light","auto","contrast"],accent:["crimson","blue","green","graphite"],rt:["auto","on","off"],text:["normal","large"],start:["home","map","last"]};
+  let P={...DEF}, CO={}, uid=null;
+  const lk=()=>"sid.prefs.v1."+(uid||"anon");
+  function clean(o){ const r={}; if(!o||typeof o!=="object") return r;
+    Object.keys(OK).forEach(k=>{ if(OK[k].includes(o[k])) r[k]=o[k]; });
+    if(Array.isArray(o.fav)) r.fav=o.fav.filter(x=>typeof x==="string"&&SID_MOD.get(x)).slice(0,24);
+    if(typeof o.tab==="string"&&SID_MOD.TABS.some(t=>t[0]===o.tab)) r.tab=o.tab; return r; }
+  function eff(){ const lock=CO.lock&&typeof CO.lock==="object"?CO.lock:{}; const o={...DEF,...clean(CO),...P};
+    Object.keys(lock).forEach(k=>{ if(lock[k]&&OK[k]&&OK[k].includes(lock[k])) o[k]=lock[k]; });
+    if(CO.modules_off) o.look="classic"; return o; }
+  function loadLocal(){ try{ P={...clean(JSON.parse(localStorage.getItem(lk())||"{}"))}; }catch(e){ P={}; } }
+  function saveLocal(){ try{ localStorage.setItem(lk(),JSON.stringify(P)); }catch(e){} }
+  /* called once at sign-in with the sid_kv rows already loaded (no extra request) */
+  function boot(user,K){ uid=user&&user.id||null; loadLocal();
+    try{ const s=K&&K["pref:"+uid]; if(s&&s.value){ P={...P,...clean(s.value)}; saveLocal(); } }catch(e){}
+    try{ const d=K&&K.ui_default; CO=d&&d.value&&typeof d.value==="object"?d.value:{}; }catch(e){ CO={}; }
+    SID_LOOK.apply(); }
+  function set(k,v){ const c=clean({[k]:v}); if(!(k in c)) return false; P[k]=c[k]; saveLocal();
+    if(uid&&typeof sbKv==="function"&&!window.SID_VIEWAS) sbKv("pref:"+uid,P,1200); SID_LOOK.apply(); return true; }
+  function reset(){ P={}; saveLocal(); if(uid&&typeof sbKv==="function"&&!window.SID_VIEWAS) sbKv("pref:"+uid,P,600); SID_LOOK.apply(); }
+  return {DEF,OK,boot,get:k=>eff()[k],all:eff,mine:()=>({...P}),company:()=>({...CO}),set,reset};
+})();
+
+const SID_LOOK={
+  available:false,      /* phase 1: the Modules look does not exist yet, so Classic always renders exactly as before */
+  look(){ return this.available&&SID_PREFS.get("look")==="modules"?"modules":"classic"; },
+  skin(){ const t=SID_PREFS.get("theme"); if(t==="contrast") return "contrast";
+    if(t==="auto") return (window.matchMedia&&matchMedia("(prefers-color-scheme: light)").matches)?"glass-light":"glass-dark";
+    return t==="light"?"glass-light":"glass-dark"; },
+  apply(){ const h=document.documentElement;
+    if(this.look()!=="modules"){ ["look","skin","rt","text"].forEach(a=>h.removeAttribute("data-"+a)); return; }
+    h.dataset.look="modules"; h.dataset.skin=this.skin(); h.dataset.rt=SID_PREFS.get("rt"); h.dataset.text=SID_PREFS.get("text"); }
+};
+
 function canSee(id){
   if(!SBME) return true; if(SBME.is_admin) return true;
   if(id==="approvals"){ const A=SBME.pages||[]; return !!SBME.wf&&(A.includes("*")||A.includes("approvals")); }
