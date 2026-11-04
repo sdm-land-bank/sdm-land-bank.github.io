@@ -21673,6 +21673,8 @@ function panel(){
     <div class="h2"><span>MDS rows not drawn on the map</span><b>${fmt(nd.length)}</b></div>
     <div class="nd">${Object.entries(byPark).map(([pk,rs])=>`<div class="g">${esc(pname(pk))} · ${rs.length}</div><div class="cs">${rs.slice(0,80).map(r=>`<button data-id="${r._id}" title="Open in the MDS register">${esc(r.unit)}</button>`).join("")}${rs.length>80?`<span class="g">+${rs.length-80}</span>`:""}</div>`).join("")||'<div class="g">None</div>'}</div>
     <div class="nt">Click a plot, then <b>Assign MDS row…</b> or <b>Fix map issue…</b> on its card. Every fix is a draft in the MDS register until Save changes.</div>`;
+  try{ const pr=el.getBoundingClientRect(), tb=document.getElementById("fitBtn"), top=tb?tb.getBoundingClientRect().bottom+8:0;
+    if(top) el.style.maxHeight=Math.max(140,Math.min(520,Math.round(pr.bottom-top)))+"px"; }catch(e){}
   el.querySelector(".h button").onclick=()=>toggle(false);
   el.querySelectorAll(".leg button").forEach(b=>b.onclick=()=>{ const ks=new Set(S.geo.features.filter(f=>f.properties.mlc===b.dataset.c&&scopeOk(f.properties.park)).map(f=>f.properties.k)); if(ks.size) fitKeys(ks); else toast("None here"); });
   el.querySelectorAll(".nd button[data-id]").forEach(b=>b.onclick=()=>openRow(+b.dataset.id)); }
