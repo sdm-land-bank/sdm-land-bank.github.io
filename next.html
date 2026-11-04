@@ -22292,6 +22292,9 @@ const PC_JS="https://cdn.jsdelivr.net/npm/polygon-clipping@0.15.7/dist/polygon-c
 const loadJS=(src,sri)=>new Promise((res,rej)=>{ const x=document.createElement("script"); x.src=src; x.integrity=sri; x.crossOrigin="anonymous"; x.onload=res; x.onerror=()=>rej(new Error("could not load the drawing tools — check the connection")); document.head.appendChild(x); });
 let pcP=null; const needPC=()=>typeof polygonClipping!=="undefined"?Promise.resolve():(pcP||(pcP=loadJS(PC_JS,PC_SRI).catch(e=>{ pcP=null; throw e; })));
 function featOf(k){ return S.geo.features.find(f=>f.properties.k===k); }
+/* CAD neighbours rarely share vertices to the millimetre: pull B's corners onto A's edges when they are within tol metres */
+function snapTo(A,B,tol){ const k=G.kx(A[0][1]), toM=p=>[p[0]*k,p[1]*G.KY], toD=q=>[q[0]/k,q[1]/G.KY], a=A.map(toM);
+  return B.map(p=>{ const q=toM(p); let best=null,bd=tol; for(let i=0;i<a.length-1;i++){ const s0=a[i],e=a[i+1],dx=e[0]-s0[0],dy=e[1]-s0[1],L=dx*dx+dy*dy; let t=L?((q[0]-s0[0])*dx+(q[1]-s0[1])*dy)/L:0; t=Math.max(0,Math.min(1,t)); const pr=[s0[0]+t*dx,s0[1]+t*dy], d=Math.hypot(q[0]-pr[0],q[1]-pr[1]); if(d<bd){ bd=d; best=pr; } } return best?toD(best):p; }); }
 function rekey(f){ const p=f.properties, sh=p.sheet||sheetFor(p.park); p.k=p.unit?ckey(sh,p.unit):norm(sh)+"|#"+Math.random().toString(36).slice(2,7); }
 function afterEdit(sel){ MP.test.dirty=true; bind(); repaint(); S.sel=new Set(sel||[]); try{ showSelection(); }catch(e){} banner(); }
 function editBox(keys){ const fs=keys.map(featOf).filter(Boolean); if(!MP.test||!fs.length||fs.some(f=>f.properties.park!==MP.test.park)) return "";
@@ -22302,13 +22305,15 @@ function wireEdit(el,keys){ const box=el.querySelector(".mp-edit"); if(!box) ret
     if(a==="ren"){ const f=featOf(keys[0]), v=box.querySelector("#mpeName").value.trim(); if(!v){ toast("Write the plot number",true); return; }
       if(S.geo.features.some(x=>x!==f&&x.properties.park===f.properties.park&&x.properties.unit&&ukey(x.properties.unit)===ukey(v))){ toast(v+" is already used in this project",true); return; }
       f.properties.unit=v; delete f.properties.unitAr; rekey(f); afterEdit([f.properties.k]); toast("Renamed to "+v+" in the draft"); }
-    if(a==="merge"){ await needPC(); const fs=keys.map(featOf); const u=polygonClipping.union(...fs.map(f=>f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates));
+    if(a==="merge"){ await needPC(); const fs=keys.map(featOf); let acc=[fs[0].geometry.type==="Polygon"?fs[0].geometry.coordinates[0]:fs[0].geometry.coordinates[0][0]];
+      for(const f of fs.slice(1)){ const r=f.geometry.type==="Polygon"?f.geometry.coordinates[0]:f.geometry.coordinates[0][0]; const u0=polygonClipping.union([acc[0]],[snapTo(acc[0],r,.3)]); acc=u0.length===1?[u0[0][0]]:null; if(!acc) break; }
+      const u=acc?[[acc[0]]]:[1,2];
       if(u.length!==1){ toast("These plots do not touch — merge only neighbouring plots",true); return; }
       const keep=fs[0]; keep.geometry={type:"Polygon",coordinates:[u[0][0]]}; keep.properties.gis=Math.round(G.ringArea(u[0][0])); keep.properties.c=G.ringCentroid(u[0][0]);
       S.geo.features=S.geo.features.filter(f=>!fs.slice(1).includes(f)); afterEdit([keep.properties.k]); toast(`Merged into ${keep.properties.unit||"one plot"} · ${fmt(keep.properties.gis)} sqm — rename it if needed`); }
     if(a==="split"){ await needPC(); toast("Click two points on the map across the plot"); const pts=[]; const f=featOf(keys[0]);
       const on=e=>{ pts.push([e.lngLat.lng,e.lngLat.lat]); if(pts.length<2) return; map.off("click",on); map.getCanvas().style.cursor="";
-        const [a,c]=pts, k=G.kx(a[1]), dx=(c[0]-a[0])*k, dy=(c[1]-a[1])*G.KY, L=Math.hypot(dx,dy)||1, ux=dx/L, uy=dy/L, ext=2000, w=.05;
+        const [a,c]=pts, k=G.kx(a[1]), dx=(c[0]-a[0])*k, dy=(c[1]-a[1])*G.KY, L=Math.hypot(dx,dy)||1, ux=dx/L, uy=dy/L, ext=2000, w=.01;
         const P=(t,s)=>[a[0]+(ux*t-uy*s)/k, a[1]+(uy*t+ux*s)/G.KY]; const strip=[[P(-ext,-w),P(ext,-w),P(ext,w),P(-ext,w),P(-ext,-w)]];
         const parts=polygonClipping.difference([f.geometry.coordinates[0]],strip); if(parts.length<2){ toast("The line does not cross the plot — try again",true); return; }
         const base=f.properties.unit||"P"; const nf=parts.map((pg,i)=>{ const r=pg[0], g={type:"Feature",geometry:{type:"Polygon",coordinates:[r]},properties:Object.assign({},f.properties,{unit:base+String.fromCharCode(65+i),gis:Math.round(G.ringArea(r)),c:G.ringCentroid(r)})}; delete g.properties.unitAr; rekey(g); return g; });
