@@ -3394,6 +3394,53 @@ function parseMDS(wb){
   return {rows, unknown:rep.unknown, report:rep};
 }
 
+
+/* V114 — smart match for units whose code is not on the map, and why a unit is not on the map */
+const ML_K=u=>ukey(u).replace(/\|/g,"");
+function mlLev(a,b){ if(a===b) return 0; const m=a.length,n=b.length; if(Math.abs(m-n)>2) return 9;
+  let p=Array.from({length:n+1},(_,j)=>j); for(let i=1;i<=m;i++){ const c=[i]; for(let j=1;j<=n;j++) c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1)); p=c; } return p[n]; }
+function mlSmart(live,link,add,P){
+  const free=new Map();
+  S.geo.features.forEach(f=>{ const p=f.properties; if(link.has(p.k)) return; (free.get(p.park)||free.set(p.park,[]).get(p.park)).push(p); });
+  const okc=c=>c.d===null?c.ad<=.01:c.d<=1;
+  const C=new Map(), hits=new Map();
+  live.filter(r=>!r._plots.length&&r.unit&&r.area>0&&free.has(r.park)).forEach(r=>{ const k=ML_K(r.unit), L=[];
+    free.get(r.park).forEach(p=>{ const g=p.gis||0; if(!(g>0)) return; const ad=Math.abs(r.area-g)/r.area; if(ad>.02) return;
+      const pk=p.unit?ML_K(p.unit):""; L.push({p,ad,d:pk?mlLev(k,pk):null}); });
+    C.set(r,L); L.filter(okc).forEach(c=>hits.set(c.p.k,(hits.get(c.p.k)||0)+1)); });
+  C.forEach((L,r)=>{
+    const s=P(r.park), ok=L.filter(okc);
+    if(ok.length===1&&hits.get(ok[0].p.k)===1&&!link.has(ok[0].p.k)){
+      const c=ok[0]; add(c.p,r,"smart");
+      r._ml={kind:"smart",plot:c.p.unit||"",why:c.p.unit
+        ?`Smart match: the map calls it “${c.p.unit}” (same area${c.ad>.001?", ±"+(c.ad*100).toFixed(1)+"%":""}) — correct the Unit Code in the MDS`
+        :`Smart match: an unnumbered map plot with the same area (${fInt(c.p.gis)} sqm) — the plot needs its code in the survey`};
+      s.smartL.push(`${r.unit} → ${c.p.unit||"unnumbered plot"} · ${fInt(r.area)} vs ${fInt(c.p.gis)} sqm`);
+      s.rejected=s.rejected.filter(x=>!x.startsWith(r.unit+" ("));
+      return; }
+    const best=L.slice().sort((a,b)=>a.ad-b.ad)[0];
+    if(best){ r._ml={kind:"suggest",plot:best.p.unit||"",why:`Not found on map — map plot “${best.p.unit||"unnumbered"}” has the same area (${fInt(best.p.gis)} sqm) but another code: check which code is right`};
+      s.suggestU.push(r.unit); s.suggestL.push(`${r.unit} ≈ ${best.p.unit||"unnumbered plot"} · ${fInt(r.area)} vs ${fInt(best.p.gis)} sqm`); }
+  });
+}
+function mlWhy(r,idxs,link){
+  if(r._ml) return r._ml.why;
+  if(!r.unit) return "No unit code in the MDS";
+  const idx=idxs.get(r.park);
+  if(!idx||!idx.size) return "No map survey for this park yet";
+  for(const u of expandUnits(r.unit,r.park)){
+    const k=ukey(u), ps=idx.get(k);
+    if(ps){ const taken=ps.filter(p=>link.has(p.k)); return taken.length?`Map plot “${ps[0].unit}” is already linked to another MDS row (${link.get(taken[0].k).rows.map(x=>x.unit).join(", ")})`:`Map plot “${ps[0].unit}” found but its area does not fit this row`; }
+    const kids=[]; idx.forEach((v,kk)=>{ if(kk.startsWith(k+"|")) kids.push(...v); });
+    if(kids.length){ const g=kids.reduce((a,p)=>a+(p.gis||0),0); return `The map splits “${u}” into ${kids.length} plots (${fInt(g)} sqm) — the MDS area ${fInt(r.area)} sqm does not agree`; }
+  }
+  // same block on the map (E1-13 when the map has E1-1 … E1-12)?
+  const t=ukey(r.unit).split("|"), last=t.length>1?t[t.length-1]:null;
+  if(last&&/^\d+$/.test(last)){ const pre=t.slice(0,-1).join("|")+"|"; const sib=[]; idx.forEach((ps,kk)=>{ if(kk.startsWith(pre)&&/^\d+$/.test(kk.slice(pre.length))) sib.push(ps[0].unit); });
+    if(sib.length){ sib.sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true})); return `Not drawn on the map — block ${String(r.unit).replace(/[\s\-]*\d+\s*$/,"")} on the map has ${sib.length} plots (${sib[0]} … ${sib[sib.length-1]})`; } }
+  let blank=0; S.geo.features.forEach(f=>{ const p=f.properties; if(p.park===r.park&&!p.unit&&!link.has(p.k)) blank++; });
+  return "Code not on the map — the plot is not drawn in the survey"+(blank?` (the park has ${blank} unnumbered shape${blank>1?"s":""} on the map with no MDS unit)`:"");
+}
 /* ---- linking rows to surveyed plots ---- */
 function pairByArea(ps,rows){
   const out=[], used=new Set();
@@ -3409,7 +3456,7 @@ function bind(){
   if(!S.geo) return;
   const L={parks:{},conflicts:[]}; S.link=L;
   const P=park=>L.parks[park]||(L.parks[park]={rows:0,plots:0,linked:0,exact:0,combined:0,block:0,sub:0,area:0,
-    rowsNo:[],plotsNo:[],dups:[],partial:[],rejected:[]});
+    rowsNo:[],plotsNo:[],dups:[],partial:[],rejected:[],smartL:[],suggestL:[],suggestU:[],rowsWhy:[]});
   const idxs=new Map();
   S.geo.features.forEach(f=>{ const p=f.properties; P(p.park).plots++;
     if(!p.unit) return; const k=ukey(p.unit); let m=idxs.get(p.park); if(!m){ m=new Map(); idxs.set(p.park,m); }
@@ -3417,7 +3464,7 @@ function bind(){
   const link=new Map();
   const add=(p,r,how)=>{ let x=link.get(p.k); if(!x){ x={rows:[],how}; link.set(p.k,x); }
     if(!x.rows.includes(r)) x.rows.push(r); if(how!=="exact") x.how=how; if(!r._plots.includes(p.k)) r._plots.push(p.k); };
-  S.rows.forEach(r=>{ r._plots=[]; });
+  S.rows.forEach(r=>{ r._plots=[]; r._ml=null; });
   const live=S.rows.filter(r=>!r.dup);
   S.rows.filter(r=>r.dup).forEach(r=>P(r.park).dups.push(r.unit));
   const claims=new Map();
@@ -3463,6 +3510,7 @@ function bind(){
       else P(park).rejected.push(`${ps[0].unit}: ${parts.length} units with different statuses fill ${Math.round(cov*100)}% of it — not linked`);
     });
   });
+  try{ mlSmart(live,link,add,P); }catch(e){ console.error("smart match",e); }
   // Resolved status is written to feature PROPERTIES — app metadata, never geometry.
   S.geo.features.forEach(f=>{
     const p=f.properties, x=link.get(p.k), s=P(p.park);
@@ -3475,7 +3523,7 @@ function bind(){
       if(rows.length>1&&x.how!=="sub"&&x.how!=="area") L.conflicts.push({park:p.park,unit:p.unit,rows:rows.map(r=>r.unit)}); }
     else if(p.unit) s.plotsNo.push(p.unit);
   });
-  live.forEach(r=>{ if(!r._plots.length) P(r.park).rowsNo.push(r.unit||"(no unit)"); });
+  live.forEach(r=>{ if(!r._plots.length){ let w=""; try{ w=mlWhy(r,idxs,link); }catch(e){} if(!r._ml) r._ml={kind:"none",why:w}; P(r.park).rowsNo.push(r.unit||"(no unit)"); P(r.park).rowsWhy.push((r.unit||"(no unit)")+(w?" — "+w:"")); } });
 }
 /* Put a parsed workbook in place of the register, re-join, repaint, and remember it. */
 function adoptWorkbook(out,label,date){
@@ -7738,6 +7786,7 @@ function linkReport(){
   const list=(arr,cls="")=>arr.length?`<div class="lk-list ${cls}">${arr.slice(0,400).map(u=>`<span>${esc(u)}</span>`).join("")}${arr.length>400?`<span>+${arr.length-400} more</span>`:""}</div>`:"";
   return `<section class="card wide">
     <h3>MDS → plots link <span class="sub">how every register row found its surveyed plot</span></h3>
+    ${window.SID_MAPLINK?SID_MAPLINK.healthHead():""}
     <div class="lk-sum">
       <div><b>${fInt(tot.linked)}</b><span>of ${fInt(tot.plots)} surveyed plots linked</span></div>
       <div><b>${fInt(tot.rows)}</b><span>register units</span></div>
@@ -7765,7 +7814,7 @@ function linkReport(){
     </tbody></table></div>
     <div class="lk-det">${parks.map(([id,s])=>{
       const cf=R&&R.curFix?R.curFix.filter(x=>x.park===id):[], pc=R&&R.priceCheck?R.priceCheck.filter(x=>x.park===id):[];
-      const flags=s.dups.length+s.partial.length+s.rejected.length+L.conflicts.filter(c=>c.park===id).length+cf.length+pc.length;
+      const flags=(s.smartL||[]).length+(s.suggestL||[]).length+s.dups.length+s.partial.length+s.rejected.length+L.conflicts.filter(c=>c.park===id).length+cf.length+pc.length;
       if(!s.rowsNo.length&&!s.plotsNo.length&&!flags) return "";
       return `<details><summary>${esc(S.reg.parks[id]?.name||id)} <em>${s.rowsNo.length} units without a plot · ${s.plotsNo.length} plots without a unit${flags?` · <span style="color:var(--signal)">${flags} to review</span>`:""}</em></summary>
         ${s.dups.length?`<div class="lk-h">Entered twice in the MDS — counted once</div>${list(s.dups,"b")}`:""}
@@ -7774,7 +7823,9 @@ function linkReport(){
         ${L.conflicts.filter(c=>c.park===id).length?`<div class="lk-h">Plots claimed by more than one unit</div>${list(L.conflicts.filter(c=>c.park===id).map(c=>c.unit+" ← "+c.rows.join(" + ")),"b")}`:""}
         ${cf.length?`<div class="lk-h">Currency corrected from the price level</div>${list(cf.map(x=>`${x.unit}: ${x.from}→${x.to} (${fInt(x.perSqm)}/sqm)`),"w")}`:""}
         ${pc.length?`<div class="lk-h">Price × area differs from the cash value by more than 10% — check in the MDS</div>${list(pc.map(x=>`${x.unit}: ${fInt(x.price)} × ${fInt(x.area)} ≠ ${fInt(x.cash)}`),"w")}`:""}
-        ${s.rowsNo.length?`<div class="lk-h">MDS units with no surveyed plot</div>${list(s.rowsNo)}`:""}
+        ${(s.smartL||[]).length?`<div class="lk-h">Linked by the smart check (same area, code differs by one character or the plot has no code) — correct the code in the MDS or the survey</div>${list(s.smartL,"w")}`:""}
+        ${(s.suggestL||[]).length?`<div class="lk-h">NOT linked — a map plot has the same area but another code: check which is right</div>${list(s.suggestL,"w")}`:""}
+        ${s.rowsNo.length?`<div class="lk-h">MDS units not found on map — and why</div>${list(s.rowsWhy||s.rowsNo)}`:""}
         ${s.plotsNo.length?`<div class="lk-h">Surveyed plots with no MDS unit</div>${list(s.plotsNo)}`:""}
       </details>`; }).join("")}</div>
     <p class="note">Multi-plot deals: one MDS row covering several plots (“41,40,37,36”, “W-003 to 030”). Blocks: a row such as “S-1”
@@ -8069,7 +8120,10 @@ function healthWhy(){
     if(notPlot.length) G.push({k:"np",t:"Rows that are not plot codes",p:"These MDS rows name a road, a facility or an authority rather than a plot, so there is nothing to draw.",todo:"Nothing to fix on the map. If they are real plots, give them their plot code in the MDS.",codes:notPlot});
     // 2) MDS rows whose block is drawn with fewer plots (re-plotted in the MDS)
     const rejU=new Set(s.rejected.map(x=>String(x).split(" (")[0]));
-    const rest=s.rowsNo.filter(u=>!notPlot.includes(u)&&!rejU.has(u)), byBlock={};
+    const sugU=new Set(s.suggestU||[]);
+    if((s.smartL||[]).length) G.push({k:"sm",t:"Linked by the smart check — fix the code",p:"Not found by their code, but one free plot of this park has the same area and a code one character away (or no code at all). They now show on the map; correct the code so the link does not depend on the area.",todo:"Correct the Unit Code in the MDS, or the plot label in the CAD.",codes:s.smartL});
+    if((s.suggestL||[]).length) G.push({k:"sg",t:"Same area as a free map plot, but another code — NOT linked",p:"A plot on the map has exactly this area and no MDS row, but the codes are different, so the dashboard does not guess.",todo:"Check which code is right and correct the MDS or the CAD.",codes:s.suggestL});
+    const rest=s.rowsNo.filter(u=>!notPlot.includes(u)&&!rejU.has(u)&&!sugU.has(u)), byBlock={};
     rest.forEach(u=>{ const b=blockOf(u); (byBlock[b||"—"]=byBlock[b||"—"]||[]).push(u); });
     const replot=[], missingBlock=[], missingNo=[];
     Object.entries(byBlock).forEach(([b,us])=>{
@@ -8101,6 +8155,8 @@ function healthWhy(){
     if(big.length) G.push({k:"sz",t:"Same code, different size (more than 10%)",
       p:"The code matches but the drawn plot and the MDS area disagree — usually a plot re-divided in the MDS or merged in the drawing. The map colours it from the MDS row.",
       todo:"Check these plots' areas in the MDS against the CAD.",codes:big.map(x=>`${x.u} (${fInt(x.a)} vs ${fInt(x.g)} drawn)`),rows:big});
+    const sw=[], bigU=new Set(big.map(x=>x.u)); big.forEach(x=>{ const b=blockOf(x.u); const m=feats.filter(p=>p.unit!==x.u&&bigU.has(p.unit)&&b&&blockOf(p.unit)===b&&p.gis&&Math.abs(p.gis-x.a)/x.a<=.03).sort((p,q)=>Math.abs(p.gis-x.a)-Math.abs(q.gis-x.a)); if(m.length) sw.push(`${x.u}: MDS ${fInt(x.a)} sqm = drawn “${m[0].unit||"unnumbered"}” (${fInt(m[0].gis)} sqm)`); });
+    if(sw.length) G.push({k:"sw",t:"Codes look swapped — the MDS area matches another drawn plot",p:"The code is on the map, but the MDS area is exactly the area of a neighbouring drawn plot. The labels are probably shifted, so these plots show each other's status and price.",todo:"Check the plot labels in the CAD (or the codes in the MDS) and correct them.",codes:sw});
     // 5) the link's own review items
     if(s.rejected.length) G.push({k:"rj",t:"Not linked — the drawn area does not agree",p:"A block code in the MDS covers sub-plots on the map whose total area is very different, so it was not linked.",todo:"Check the area of this row in the MDS.",codes:s.rejected});
     const cnt=G.reduce((a,g)=>a+g.codes.length,0); n+=cnt;
@@ -12130,6 +12186,7 @@ const EDCOLS=[
   if(!have.has("dateOfCost")) EDCOLS.push({k:"dateOfCost",label:"Date of cost",type:"int",w:92});
   [["lvMin","Level min (m)","num",96],["lvMax","Level max (m)","num",96],["lvMean","Level mean (m)","num",100],["lvSlope","Mean slope (%)","num",96],["lvFall","Falls toward","text",96],["lvSrc","Level source","text",168]].forEach(([k,l,t,w])=>{ if(!have.has(k)) EDCOLS.push({k,label:l,type:t,w,calc:true}); });
   EDCOLS.sort((a,b)=>(pos.has(a.k)?pos.get(a.k):1000)-(pos.has(b.k)?pos.get(b.k):1000));
+  if(!EDCOLS.some(c=>c.k==="onMap")){ const ui=EDCOLS.findIndex(c=>c.k==="unit"); EDCOLS.splice(ui<0?EDCOLS.length:ui+1,0,{k:"onMap",label:"On map",type:"text",w:150,calc:true},{k:"mapWhy",label:"Map issue",type:"text",w:300,calc:true}); }
   EDCOLS.forEach(c=>{ if(lab.has(c.k)) c.label=lab.get(c.k); else if(EX[c.k]) c.label=EX[c.k]; c.w=Math.max(c.w,Math.ceil(c.label.length*7.6)+30); }); }
 const colLetter=n=>{ let s=""; n++; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; };
 const colOf=k=>EDCOLS.find(c=>c.k===k);
@@ -12466,7 +12523,7 @@ function viewEditor(){
       <div class="field"><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="5.5" cy="5.5" r="4"/><path d="M8.5 8.5L12 12"/></svg>
         <input id="edQ" type="search" placeholder="Search every field — unit, client, company, sector…" value="${esc(ED.q)}"></div>
       <select class="esel" id="edShow" title="Which rows to show">
-        ${[["all","All rows"],["changed","Changed, not saved"],["new","Added rows"],["deleted","Marked for delete"],["unmapped","Not on the map"]]
+        ${[["all","All rows"],["changed","Changed, not saved"],["new","Added rows"],["deleted","Marked for delete"],["unmapped","Not found on map"+(window.SID_MAPLINK?" ("+SID_MAPLINK.count()+")":"")]]
           .map(([v,l])=>`<option value="${v}" ${ED.show===v?"selected":""}>${l}</option>`).join("")}</select>
       <button class="ebtn" id="edClearF">Clear filters</button>
       <span class="ed-tip">Filter any column in the row under the headings · numbers take <b>&gt;5000</b> or <b>1000-3000</b> · click a heading to sort</span>
@@ -21288,6 +21345,72 @@ function syncFrame(sel,css,vars){ const H=document.documentElement; const f=docu
 function sync(){ try{ AD.ensure(document); syncFrame("#lbwrap iframe",CSS,false); syncFrame("#codeswrap iframe",CSS_GEN,true); }catch(e){} }
 setInterval(sync,1000);
 new MutationObserver(()=>{ try{ AD.ensure(document); }catch(e){} }).observe(document.documentElement,{attributes:true,attributeFilter:["data-skin","data-look"]});
+})();
+</script>
+
+<style id="mlCss">
+/* V114 register ↔ map link */
+.ml-go{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 9px;border-radius:99px;border:1px solid rgba(10,132,255,.35);background:rgba(10,132,255,.08);color:#0a64c8;font:600 11px/1 inherit;cursor:pointer;white-space:nowrap}
+.ml-go:hover{background:rgba(10,132,255,.18)}
+.ml-go.sm{border-color:rgba(255,159,10,.55);background:rgba(255,159,10,.12);color:#9a5b00}
+.ml-no{display:inline-flex;align-items:center;gap:5px;color:#B3263D;font-weight:600;font-size:11px;white-space:nowrap}
+.ml-no i{width:7px;height:7px;border-radius:50%;background:#B3263D;display:inline-block}
+.ml-ns{color:var(--mute,#8E8E93);font-size:11px}
+.ml-why{font-size:11px;color:var(--ink-2,#555)}
+.ml-head{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:0 0 12px;padding:10px 12px;border-radius:12px;background:rgba(179,38,61,.05);border:1px solid rgba(179,38,61,.18);font-size:12.5px}
+.ml-head b{font-variant-numeric:tabular-nums}
+.ml-head .ebtn,.ml-head button{margin-left:auto}
+</style>
+<script id="mlJs">
+(function(){
+const COLS=new Set(["onMap","mapWhy"]);
+const srcRow=()=>{ const m=new Map(); (S.rows||[]).forEach(r=>m.set(r._id,r)); return m; };
+const pin='<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 11s4-3.6 4-6.6A4 4 0 0 0 2 4.4C2 7.4 6 11 6 11z"/><circle cx="6" cy="4.6" r="1.3"/></svg>';
+function vals(r,s,added){
+  if(added) return ["Not saved yet","Saved rows are matched to the map"];
+  if(!s) return ["Not found on map","—"];
+  if(s.dup) return ["Duplicate row","Entered twice in the MDS — counted once"];
+  if(s._plots&&s._plots.length){ if(s._ml&&s._ml.kind==="smart") return ["On map (smart match)",s._ml.why];
+    let why=""; try{ const x=s._plots.length===1?S.plots.get(s._plots[0]):null;
+      if(x&&x.how==="exact"&&x.rows.length===1&&x.props.gis&&s.area){ const d=(x.props.gis-s.area)/s.area;
+        if(Math.abs(d)>.1){ const blk=u=>ukey(u).split("|").slice(0,-1).join("|"), b=blk(x.props.unit||"");
+          const tw=b?(S.geo.features.find(f=>{ const q=f.properties; if(q.park!==s.park||q.k===x.props.k||!q.gis||!q.unit||blk(q.unit)!==b||Math.abs(q.gis-s.area)/s.area>.03) return false; const y=S.plots.get(q.k); return !!(y&&y.row&&y.row.area&&Math.abs(q.gis-y.row.area)/y.row.area>.1); })||{}).properties:null;
+          why=`Drawn plot is ${fInt(x.props.gis)} sqm vs MDS ${fInt(s.area)} sqm (${d>0?"+":""}${Math.round(d*100)}%)`+(tw?` — the MDS area fits drawn plot “${tw.unit||"unnumbered"}”: labels may be swapped`:" — check the area or the plot label"); } } }catch(e){}
+    return ["On map",why]; }
+  return ["Not found on map",(s._ml&&s._ml.why)||"—"];
+}
+function define(){
+  if(typeof ED==="undefined"||!ED||!ED.rows) return; const m=srcRow();
+  const def=(o,k,v)=>{ try{ Object.defineProperty(o,k,{value:v,enumerable:false,writable:true,configurable:true}); }catch(e){} };
+  ED.rows.forEach(r=>{ const v=vals(r,m.get(r._id),ED.added&&ED.added.has(r._id)); def(r,"onMap",v[0]); def(r,"mapWhy",v[1]); });
+}
+function keysOf(id){ const s=srcRow().get(id); return s&&s._plots&&s._plots.length?s._plots.slice():null; }
+function goMap(id){ const k=keysOf(id); if(!k){ const r=ED.byId&&ED.byId.get(id); toast((r&&r.mapWhy)||"Not found on map",true); return; }
+  const src=srcRow().get(id); try{ if(src&&S.park!=="all"&&S.park!==src.park){ S.park=src.park; const sel=$("#parkSel"); if(sel) sel.value=src.park; } }catch(e){}
+  showPlots(k); try{ if(typeof filterCount==="function"&&filterCount()) setTimeout(()=>toast("Map filters are on — clear them if the plot is hidden"),600); }catch(e){} }
+const count=()=>(S.rows||[]).filter(r=>!(r._plots&&r._plots.length)).length;   // same rows as the "Not found on map" filter (a duplicate row is never drawn)
+if(typeof edFilter==="function"){ const f0=edFilter; window.edFilter=function(){ try{ define(); }catch(e){ console.error("map link",e); } return f0.apply(this,arguments); }; }
+if(typeof edShow==="function"){ const s0=edShow; window.edShow=function(c,v){
+  if(c&&c.k==="onMap"){ if(v==null) return "";
+    if(v==="On map") return `<button type="button" class="ml-go" title="Open the map at this plot">${pin}Show on map</button>`;
+    if(v==="On map (smart match)") return `<button type="button" class="ml-go sm" title="Linked by the smart check (same area, near code) — see Map issue">${pin}Show on map ≈</button>`;
+    if(v==="Not found on map") return `<span class="ml-no" title="See the Map issue column"><i></i>Not found on map</span>`;
+    return `<span class="ml-ns">${esc(v)}</span>`; }
+  if(c&&c.k==="mapWhy") return v?`<span class="ml-why" title="${esc(v)}">${esc(v)}</span>`:"";
+  return s0.apply(this,arguments); }; }
+if(typeof edStartEdit==="function"){ const e0=edStartEdit; window.edStartEdit=function(){ try{ const c=ED.cur&&EDCOLS[ED.cur.c]; if(c&&COLS.has(c.k)){ goMap(ED.cur.id); return; } }catch(e){} return e0.apply(this,arguments); }; }
+if(typeof edSetG==="function"){ const g0=edSetG; window.edSetG=function(r,k){ if(COLS.has(k)) return; return g0.apply(this,arguments); }; }
+if(typeof linkNote==="function"){ const n0=linkNote; window.linkNote=function(info){ if(info&&info.how==="smart"&&info.row&&info.row._ml) return `<div class="tn" style="color:#9a5b00">MDS unit “${esc(info.row.unit)}” — ${esc(info.row._ml.why)}.</div>`; return n0.apply(this,arguments); }; }
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".ml-go"); if(!b) return; const row=b.closest(".er"); if(!row) return; e.preventDefault(); e.stopPropagation(); goMap(+row.dataset.id); },true);
+function healthHead(){
+  const L=S.link; if(!L) return ""; let smart=0,sug=0,plotsNo=0; Object.values(L.parks).forEach(s=>{ smart+=(s.smartL||[]).length; sug+=(s.suggestL||[]).length; plotsNo+=s.plotsNo.length; });
+  const n=count();
+  return `<div class="ml-head"><span><b>${fInt(n)}</b> MDS rows not found on map</span><span><b>${fInt(sug)}</b> of them have a same-area plot to check</span>
+    <span><b>${fInt(smart)}</b> linked by the smart check (fix their code)</span><span><b>${fInt(plotsNo)}</b> map plots with no MDS unit</span>
+    ${n?`<button type="button" class="ebtn" onclick="SID_MAPLINK.openUnmapped()">Open the ${fInt(n)} in the MDS register</button>`:""}</div>`;
+}
+function openUnmapped(){ try{ if(typeof edInit==="function") edInit(); ED.q=""; ED.cf={}; ED.vs={}; ED.sort=null; ED.show="unmapped"; }catch(e){} go("editor"); }
+window.SID_MAPLINK={count,healthHead,openUnmapped,goMap,define};
 })();
 </script>
 </body>
