@@ -21440,7 +21440,7 @@ window.SID_MAPLINK={count,healthHead,openUnmapped,goMap,define,srcRow,willLink,p
 
 <style id="mfCss">
 /* V115 map-link fixes */
-.mf-pop{position:fixed;z-index:9000;background:var(--card,#fff);color:var(--ink,#1d1f24);border:1px solid rgba(0,0,0,.14);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.22);font-size:12.5px;max-height:min(78vh,640px);overflow:auto;display:flex;flex-direction:column}
+.mf-pop{position:fixed;z-index:2147483001;background:var(--card,#fff);color:var(--ink,#1d1f24);border:1px solid rgba(0,0,0,.14);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.22);font-size:12.5px;max-height:min(78vh,640px);overflow:auto;display:flex;flex-direction:column}
 .mf-hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px 10px;border-bottom:1px solid rgba(0,0,0,.08);position:sticky;top:0;background:inherit;z-index:1}
 .mf-hd b{font:600 14px/1.2 ui-monospace,Menlo,monospace}
 .mf-hd .mf-x{margin-left:auto;border:0;background:none;font-size:18px;line-height:1;cursor:pointer;color:inherit;opacity:.6}
@@ -21497,8 +21497,6 @@ window.SID_MAPLINK={count,healthHead,openUnmapped,goMap,define,srcRow,willLink,p
 #mlPanel .nt{padding:8px 12px 10px;color:var(--mute,#7c818b);font-size:11px;border-top:1px solid rgba(0,0,0,.08)}
 .sp-mlfix{display:flex;width:100%;justify-content:center;align-items:center;gap:6px;margin-top:6px;padding:7px;border-radius:10px;border:1px dashed rgba(10,100,200,.5);background:rgba(10,100,200,.06);color:#0a64c8;font:600 12px/1 inherit;cursor:pointer}
 body.sid-public .sp-mlfix,body.sid-public #mlChkBtn,body.sid-public #mlPanel{display:none!important}
-@media (prefers-color-scheme: dark){ html:not([data-theme="light"]) .mf-pop, html:not([data-theme="light"]) #mlPanel{background:#1f2227;color:#eceae5;border-color:rgba(255,255,255,.14)} }
-html[data-theme="dark"] .mf-pop, html[data-theme="dark"] #mlPanel{background:#1f2227;color:#eceae5;border-color:rgba(255,255,255,.14)}
 </style>
 <script id="mfJs">
 (function(){
@@ -21738,7 +21736,7 @@ window.SID_MLFIX={acc,accSet,accLoad,fixCount,rowPop,plotPop,classify,toggle,swa
 .mp-cb{display:flex;gap:6px;flex-wrap:wrap}
 .mp-vt{width:100%;border-collapse:collapse;font-size:12px}.mp-vt th,.mp-vt td{text-align:left;padding:6px;border-bottom:1px solid rgba(0,0,0,.07);vertical-align:top}.mp-vt th{font-size:10.5px;text-transform:uppercase;color:var(--mute,#7c818b)}
 .mp-vl{overflow-x:auto}.mp-va{white-space:nowrap}
-.mp-ov{position:fixed;inset:0;z-index:9500;background:rgba(10,12,16,.45);display:grid;place-items:center;padding:16px}
+.mp-ov{position:fixed;inset:0;z-index:2147483000;background:rgba(10,12,16,.45);display:grid;place-items:center;padding:16px}
 .mp-dlg{background:var(--card,#fff);color:var(--ink,#1d1f24);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.35);width:min(980px,100%);max-height:min(92vh,900px);display:flex;flex-direction:column;overflow:hidden}
 .mp-dlg.mp-pub,.mp-dlg.mp-chk{width:min(720px,100%)}
 .mpd-h{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid rgba(0,0,0,.08);flex-wrap:wrap}.mpd-h b{font-size:16px}
@@ -21769,12 +21767,16 @@ window.SID_MLFIX={acc,accSet,accLoad,fixCount,rowPop,plotPop,classify,toggle,swa
 .mp-bands{display:flex;flex-direction:column;gap:3px}.mp-bands div{display:grid;grid-template-columns:120px 1fr 40px;gap:8px;align-items:center;font-size:12px}.mp-bands i{height:9px;border-radius:4px;background:#2F6DB5;min-width:2px}.mp-bands b{text-align:right;font-variant-numeric:tabular-nums}
 .mp-cl{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px;font-size:13px}.mp-cl li{display:flex;flex-direction:column;gap:5px}.mp-cl li.bad>b{color:#B3263D}.mp-cl li.ok>b{color:#1f7a4c}
 .mp-ul{display:flex;flex-direction:column;gap:6px;font-size:13px}.mp-ul small{color:var(--mute,#7c818b)}
-#mpBanner{position:fixed;top:0;left:0;right:0;z-index:9000;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px max(12px,env(safe-area-inset-left,0px));background:#FF6A00;color:#fff;font-size:12.5px;box-shadow:0 4px 18px rgba(0,0,0,.25)}
+#mpBanner{position:fixed;top:0;left:0;right:0;z-index:2147482000;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px max(12px,env(safe-area-inset-left,0px));background:#FF6A00;color:#fff;font-size:12.5px;box-shadow:0 4px 18px rgba(0,0,0,.25)}
 #mpBanner>b{background:#fff;color:#FF6A00;padding:2px 8px;border-radius:6px;letter-spacing:.06em}#mpBanner em{font-style:normal;font-weight:700;text-decoration:underline}
 #mpBanner label{display:flex;align-items:center;gap:4px}#mpBanner .mpb-n{display:flex;align-items:center;gap:3px}#mpBanner .mpb-n button{border:1px solid rgba(255,255,255,.6);background:rgba(255,255,255,.15);color:#fff;border-radius:6px;width:24px;height:22px;cursor:pointer}
 #mpBanner select{font:inherit;font-size:11.5px;border-radius:6px;border:0;padding:2px 4px}#mpBanner small{opacity:.9}
 .mpb-b{border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.12);color:#fff;border-radius:8px;padding:5px 10px;font:600 12px inherit;cursor:pointer}.mpb-b.pri{background:#fff;color:#C2410C}.mpb-b:disabled{opacity:.5;cursor:not-allowed}
-html.mp-testing body{padding-top:44px}
+html.mp-testing body{padding-top:var(--mpb,44px)}html.mp-testing .app{height:calc(100% - var(--mpb,44px))}
+.mpb-fit{position:relative}.mpb-fit summary{cursor:pointer;border:1px solid rgba(255,255,255,.7);border-radius:8px;padding:4px 10px;font-weight:600;list-style:none}.mpb-fit summary::-webkit-details-marker{display:none}
+.mpb-fit>div{position:absolute;top:calc(100% + 6px);left:0;background:#fff;color:#1d1f24;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.25);padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-width:260px;z-index:2}
+.mpb-fit>div .mpb-n button{border-color:#FF6A00;background:#fff;color:#C2410C}.mpb-fit>div small{color:#555}
+#mpBanner select{color:#1d1f24;background:#fff}
 .mp-edit{border:1px dashed #FF6A00;border-radius:10px;padding:8px 10px;margin:0 0 8px;font-size:12px;background:rgba(255,106,0,.06)}.mp-edit>div{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .mp-edit input{flex:1;min-width:90px;padding:5px 7px;border:1px solid rgba(0,0,0,.2);border-radius:7px;font:inherit}.mp-edit button{border:1px solid #FF6A00;background:#fff;color:#C2410C;border-radius:7px;padding:5px 9px;font:600 11.5px inherit;cursor:pointer}
 .ck-acts{display:flex;gap:8px;align-items:center}.ck-acts select{font:inherit;padding:6px 8px;border-radius:8px}
@@ -21794,8 +21796,6 @@ i.ckd{vertical-align:-2px;margin:0 3px}
 @media(max-width:640px){.ck-it{grid-template-columns:1fr}.ck-pk{white-space:normal}}
 .eh[data-own="dev"]{box-shadow:inset 0 3px 0 #2F6DB5}.eh[data-own="sales"]{box-shadow:inset 0 3px 0 #C46A00}.eh[data-own="fin"]{box-shadow:inset 0 3px 0 #2E7D4F}
 body.sid-public .mp-page,body.sid-public .ck-page{display:none}
-@media (prefers-color-scheme: dark){ html:not([data-theme="light"]) .mp-dlg, html:not([data-theme="light"]) .mp-card{background:#1f2227;color:#eceae5;border-color:rgba(255,255,255,.12)} html:not([data-theme="light"]) #mpCv{background:#15171b} }
-html[data-theme="dark"] .mp-dlg, html[data-theme="dark"] .mp-card{background:#1f2227;color:#eceae5;border-color:rgba(255,255,255,.12)} html[data-theme="dark"] #mpCv{background:#15171b}
 </style>
 <script id="mpcJs">
 /* V116 Master Plan Center — file readers and geometry helpers (window.SID_MPR).
@@ -21980,7 +21980,8 @@ async function seedPublishers(){ if(!isAdm()) return; const idx=await idxLoad();
 async function usersLoad(){ if(MP.users||!isAdm()) return MP.users; const u=await SB.from("sid_users").select("email,name,role"); MP.users=(u.data||[]); return MP.users; }
 
 /* ---------- plans ---------- */
-function liveFeats(park){ return S.geo.features.filter(f=>f.properties.park===park); }
+function liveFeats(park){ if(MP.test&&MP.test.park===park) return MP.test.live; return S.geo.features.filter(f=>f.properties.park===park); }
+function mapFeats(park){ return S.geo.features.filter(f=>f.properties.park===park); }
 function sheetFor(park,plan){ const c={}; liveFeats(park).forEach(f=>{ const s=f.properties.sheet; if(s) c[s]=(c[s]||0)+1; }); const best=Object.entries(c).sort((a,b)=>b[1]-a[1])[0];
   return best?best[0]:(plan&&plan.sheet)||pname(park); }
 function outer(f){ const g=f.geometry; return g.type==="Polygon"?g.coordinates[0]:g.type==="MultiPolygon"?g.coordinates[0][0]:null; }
@@ -22030,22 +22031,26 @@ function planCheck(plan){ const P=plan.plots.map(p=>({u:p.u,g:p.g,r:p.r,b:G.bbox
   if(plan.boundary&&plan.boundary.length>3) P.forEach(p=>{ if(!G.inRing(p.c,plan.boundary)) out.outside.push(p.u||"unnumbered"); });
   const lv=liveFeats(plan.park); if(lv.length&&P.length){ const a=lv.reduce((t,f)=>[t[0]+f.properties.c[0],t[1]+f.properties.c[1]],[0,0]).map(v=>v/lv.length), b=P.reduce((t,p)=>[t[0]+p.c[0],t[1]+p.c[1]],[0,0]).map(v=>v/P.length); out.far=G.dist(a,b)>3000?Math.round(G.dist(a,b)/1000):false; }
   out.blockers=out.dup.length+out.overlap.length; return out; }
-function changeCheck(plan){ const old=liveFeats(plan.park).map(f=>{ const r=outer(f); return {u:f.properties.unitAr||f.properties.unit||"",g:f.properties.gis||(r?G.ringArea(r):0),r,c:f.properties.c}; }).filter(o=>o.r);
+function changeCheck(plan){ const old=liveFeats(plan.park).map(f=>{ const r=outer(f); return {u:f.properties.unitAr||f.properties.unit||"",g:f.properties.gis||(r?G.ringArea(r):0),r,c:r?G.ringCentroid(r):f.properties.c}; }).filter(o=>o.r);
   const nw=plan.plots.map(p=>({u:p.u,g:p.g,r:p.r,c:G.ringCentroid(p.r)}));
   const om=new Map(), nm=new Map(); old.forEach(o=>{ if(o.u) om.set(ukey(o.u),o); }); nw.forEach(n=>{ if(n.u) nm.set(ukey(n.u),n); });
   const res={same:0,resized:[],moved:[],added:[],removed:[],renamed:[],merged:[],split:[]}; const usedO=new Set(), usedN=new Set();
   nm.forEach((n,k)=>{ const o=om.get(k); if(!o) return; usedO.add(o); usedN.add(n); const d=o.g?Math.abs(n.g-o.g)/o.g:0; if(d>.02) res.resized.push(`${n.u}: ${fmt(o.g)} → ${fmt(n.g)} sqm`); else if(G.dist(o.c,n.c)>5) res.moved.push(n.u); else res.same++; });
   const freeO=old.filter(o=>!usedO.has(o)), freeN=nw.filter(n=>!usedN.has(n));
   freeN.forEach(n=>{ const inside=freeO.filter(o=>!usedO.has(o)&&G.inRing(o.c,n.r)); if(inside.length>=2){ inside.forEach(o=>usedO.add(o)); usedN.add(n); res.merged.push(`${inside.map(o=>o.u||"?").join(" + ")} → ${n.u||"unnumbered"}`); return; }
-    const o=inside[0]; if(o&&Math.abs(n.g-o.g)/(o.g||1)<=.02){ usedO.add(o); usedN.add(n); res.renamed.push(`${o.u||"?"} → ${n.u||"unnumbered"}`); } });
+    const o=inside[0]; if(o&&Math.abs(n.g-o.g)/(o.g||1)<=.02){ usedO.add(o); usedN.add(n); if(!o.u&&!n.u) res.same++; else res.renamed.push(`${o.u||"unnumbered"} → ${n.u||"unnumbered"}`); } });
   freeO.filter(o=>!usedO.has(o)).forEach(o=>{ const parts=freeN.filter(n=>!usedN.has(n)&&G.inRing(n.c,o.r)); if(parts.length>=2){ parts.forEach(n=>usedN.add(n)); usedO.add(o); res.split.push(`${o.u||"?"} → ${parts.map(n=>n.u||"?").join(" + ")}`); } });
   freeN.filter(n=>!usedN.has(n)).forEach(n=>res.added.push(n.u||"unnumbered")); freeO.filter(o=>!usedO.has(o)).forEach(o=>res.removed.push(o.u||"unnumbered"));
   return res; }
 /* what the MDS link would look like: swap the project's plots in, re-link, read, put the live plots back */
-function linkStats(park){ const L=S.link&&S.link.parks[park]; if(!L) return {rows:0,plots:0,linked:0,rowsNo:[],plotsNo:[],smart:[],sale:[]};
+function linkStats(park){ const L=S.link&&S.link.parks[park]; if(!L) return {rows:0,plots:0,linked:0,rowsNo:[],plotsNo:[],smart:[],sale:[],size:0};
+  let size=0; S.plots.forEach(x=>{ if(x.park===park&&x.row&&x.how==="exact"&&x.rows.length===1&&x.props.gis&&x.row.area&&Math.abs(x.props.gis-x.row.area)/x.row.area>.1) size++; });
   const sale=S.rows.filter(r=>!r.dup&&r.park===park&&(r.status==="sold"||r.status==="reserved")&&!(r._plots&&r._plots.length)).map(r=>r.unit);
-  return {rows:L.rows,plots:L.plots,linked:L.linked,rowsNo:L.rowsNo.slice(),plotsNo:L.plotsNo.slice(),smart:(L.smartL||[]).slice(),sale}; }
-function simulate(park,feats){ const save=S.geo.features, before=linkStats(park); let after;
+  return {rows:L.rows,plots:L.plots,linked:L.linked,rowsNo:L.rowsNo.slice(),plotsNo:L.plotsNo.slice(),smart:(L.smartL||[]).slice(),sale,size}; }
+/* the link as it is with the LIVE plan (while the test map is open the map holds the draft) */
+function liveStats(park){ if(!(MP.test&&MP.test.park===park)) return linkStats(park); const save=S.geo.features; let o;
+  try{ S.geo.features=save.filter(f=>f.properties.park!==park).concat(forPage(MP.test.live.map(f=>JSON.parse(JSON.stringify(f))))); bind(); o=linkStats(park); } finally{ S.geo.features=save; bind(); } return o; }
+function simulate(park,feats){ const before=liveStats(park), save=S.geo.features; let after;
   try{ S.geo.features=save.filter(f=>f.properties.park!==park).concat(forPage(feats.map(f=>JSON.parse(JSON.stringify(f))))); bind(); after=linkStats(park); }
   finally{ S.geo.features=save; bind(); }
   const lostSale=after.sale.filter(u=>!before.sale.includes(u)); return {before,after,lostSale}; }
@@ -22065,7 +22070,7 @@ async function enterTest(park,plan,ver){
   closeWiz(); go("inventory"); setTimeout(()=>{ repaint(); liveLayer(true); const ks=new Set(S.geo.features.filter(f=>f.properties.park===park).map(f=>f.properties.k)); if(ks.size) fitKeys(ks); banner(); },400);
   toast("Test map: only you see this draft. Everyone else still sees the live plan."); }
 function exitTest(quiet){ if(!MP.test) return; S.geo.features=MP.test.saved; MP.test=null; document.documentElement.classList.remove("mp-testing");
-  const b=document.getElementById("mpBanner"); if(b) b.remove(); liveLayer(false); bind(); try{ render(); }catch(e){} repaint(); if(!quiet) toast("Back to the live map"); }
+  const b=document.getElementById("mpBanner"); if(b) b.remove(); document.documentElement.style.removeProperty("--mpb"); liveLayer(false); bind(); try{ render(); }catch(e){} repaint(); if(!quiet) toast("Back to the live map"); }
 function syncDraftFromMap(){ if(!MP.test) return; const park=MP.test.park; MP.test.feats=S.geo.features.filter(f=>f.properties.park===park).map(f=>{ const c=JSON.parse(JSON.stringify(f)); if(c.properties.unitAr){ c.properties.unit=c.properties.unitAr; delete c.properties.unitAr; } delete c.properties.st; delete c.properties.mlc; return c; });
   MP.test.plan.plots=MP.test.feats.map(f=>({u:f.properties.unit||"",g:f.properties.gis||G.ringArea(outer(f)),r:outer(f)})); }
 function nudge(dx,dy,rot){ if(!MP.test) return; const park=MP.test.park, fs=S.geo.features.filter(f=>f.properties.park===park); if(!fs.length) return;
@@ -22076,14 +22081,16 @@ function nudge(dx,dy,rot){ if(!MP.test) return; const park=MP.test.park, fs=S.ge
 function banner(){ if(!MP.test) return; let b=document.getElementById("mpBanner"); if(!b){ b=document.createElement("div"); b.id="mpBanner"; document.body.appendChild(b); }
   const t=MP.test, s=t.plan.shift; const n=S.geo.features.filter(f=>f.properties.park===t.park).length;
   b.innerHTML=`<b>TEST MAP</b><span>${esc(pname(t.park))} · ${t.ver?"draft of "+day(t.ver.at)+" by "+esc(t.ver.by||"—"):"new draft, not saved"} · ${fmt(n)} plots · only you see this${t.dirty?" · <em>changed — save it as a draft</em>":""}</span>
-    <label><input type="checkbox" id="mpbLive" ${t.showLive?"checked":""}> Live outline</label>
-    <span class="mpb-n" title="Move or turn the whole drawing when it does not sit right on the satellite">Fit <button data-n="-1,0,0">←</button><button data-n="1,0,0">→</button><button data-n="0,1,0">↑</button><button data-n="0,-1,0">↓</button><button data-n="0,0,-0.1">⟲</button><button data-n="0,0,0.1">⟳</button>
-      <select id="mpbStep"><option value="0.25">0.25 m</option><option value="1" selected>1 m</option><option value="5">5 m</option></select>${s&&(s.dx||s.dy||s.rot)?`<small>moved ${s.dx.toFixed(2)} m E, ${s.dy.toFixed(2)} m N, ${s.rot.toFixed(2)}°</small>`:""}</span>
+    <details class="mpb-fit"${MP.fitOpen?" open":""}><summary>Fit ▾</summary><div><label><input type="checkbox" id="mpbLive" ${t.showLive?"checked":""}> Show the live plan's outline (orange dashes)</label>
+      <span class="mpb-n" title="Move or turn the whole drawing when it does not sit right on the satellite"><button data-n="-1,0,0" aria-label="West">←</button><button data-n="1,0,0" aria-label="East">→</button><button data-n="0,1,0" aria-label="North">↑</button><button data-n="0,-1,0" aria-label="South">↓</button><button data-n="0,0,-0.1" aria-label="Turn left">⟲</button><button data-n="0,0,0.1" aria-label="Turn right">⟳</button>
+      <select id="mpbStep" aria-label="Step"><option value="0.25">0.25 m</option><option value="1" selected>1 m</option><option value="5">5 m</option></select></span>${s&&(s.dx||s.dy||s.rot)?`<small>moved ${s.dx.toFixed(2)} m east, ${s.dy.toFixed(2)} m north, turned ${s.rot.toFixed(2)}°</small>`:""}</div></details>
     <button class="mpb-b" id="mpbSave" ${t.dirty&&canUpload()?"":"disabled"}>Save as new draft</button>
     <button class="mpb-b" id="mpbChk">Checks</button>
     <button class="mpb-b pri" id="mpbPub" ${canPublish()?"":"disabled title='Only the publisher (Dina Rizk) or an administrator'"}>Publish to live…</button>
     <button class="mpb-b" id="mpbOut">Back to live</button>`;
   b.querySelector("#mpbLive").onchange=e=>{ t.showLive=e.target.checked; liveLayer(t.showLive); };
+  const fd=b.querySelector(".mpb-fit"); fd.ontoggle=()=>{ MP.fitOpen=fd.open; };
+  const fit=()=>document.documentElement.style.setProperty("--mpb",b.getBoundingClientRect().height+"px"); fit(); setTimeout(fit,50);
   b.querySelectorAll("[data-n]").forEach(x=>x.onclick=()=>{ const st=+b.querySelector("#mpbStep").value, [a,c,r]=x.dataset.n.split(",").map(Number); nudge(a*st,c*st,r*(st>=1?1:.25)); });
   b.querySelector("#mpbOut").onclick=()=>{ if(t.dirty&&!confirm("Leave the test map? The changes made here are not saved as a draft.")) return; exitTest(); };
   b.querySelector("#mpbSave").onclick=()=>saveDraftFromTest();
@@ -22107,12 +22114,14 @@ async function publish(park,plan,ver,note){
   if(!P.v.some(v=>v.status==="live")){ const cur=base.features.filter(f=>f.properties.park===park);
     if(cur.length){ const id="before-"+Date.now().toString(36), file="mp/"+park+"/"+id+".json", txt=JSON.stringify({v:1,park,raw:cur,at:new Date().toISOString(),by:"(the drawing before the Master Plan Center)"});
       await upload(file,txt); await idxSave(i=>{ const Q=i.parks[park]||(i.parks[park]={v:[]}); Q.v.unshift({id,at:new Date().toISOString(),by:"Original drawing",file,status:"archived",src:"The plan that was live before the first publish",size:txt.length,stats:{plots:cur.length,plotArea:Math.round(cur.reduce((a,f)=>a+(f.properties.gis||0),0))}}); }); } }
-  const feats=planFeatures(plan); base.features=base.features.filter(f=>f.properties.park!==park).concat(feats);
+  const feats=planFeatures(plan), old=base.features.filter(f=>f.properties.park===park&&!f.properties.unit);
+  feats.forEach(f=>{ if(f.properties.unit) return; const c=G.ringCentroid(outer(f)); const o=old.find(q=>{ const r=outer(q); return r&&G.dist(G.ringCentroid(r),c)<2; }); if(o) f.properties.k=o.properties.k; });
+  base.features=base.features.filter(f=>f.properties.park!==park).concat(feats);
   await upload("base/geometry.json",JSON.stringify(base));
   const np=plan.newPark||(MP.idx.newParks&&MP.idx.newParks[park]);
   if(np){ const reg=JSON.parse(await (await sbDl("base/register.json")).text()); reg.parks=reg.parks||{};
     reg.parks[park]=Object.assign({},reg.parks[park]||{},{name:np.name,where:np.where||""},np.aliases&&np.aliases.length?{aliases:np.aliases}:{}); await upload("base/register.json",JSON.stringify(reg)); }
-  await idxSave(i=>{ const Q=i.parks[park]||(i.parks[park]={v:[]}); Q.v.forEach(v=>{ if(v.status==="live") v.status="archived"; }); const me=Q.v.find(v=>v.id===ver.id); if(me){ me.status="live"; me.pubAt=new Date().toISOString(); me.pubBy=myName(); me.note=note||""; } }); }
+  await idxSave(i=>{ const Q=i.parks[park]||(i.parks[park]={v:[]}); Q.v.forEach(v=>{ if(v.status==="live") v.status="archived"; }); let me=Q.v.find(v=>v.id===ver.id); if(!me){ me=Object.assign({},ver); Q.v.push(me); } me.status="live"; me.pubAt=new Date().toISOString(); me.pubBy=myName(); me.note=note||""; }); }
 function publishDlg(park,plan,ver){
   const chk=planCheck(plan), ch=plan.raw?null:changeCheck(plan), sim=simulate(park,planFeatures(plan));
   const sale=sim.lostSale, blockers=chk.blockers;
@@ -22122,7 +22131,7 @@ function publishDlg(park,plan,ver){
     <li class="${blockers?"bad":"ok"}"><b>Plan check</b> ${blockers?`${chk.dup.length} duplicate number(s), ${chk.overlap.length} overlap(s)`:"no duplicate numbers, no overlaps"}${chk.noCode.length?` · ${chk.noCode.length} plot(s) without number`:""}
       ${blockers?`<textarea id="mpcBlk" rows="2" placeholder="Why it can go live anyway (required)"></textarea>`:""}</li>
     <li><label><input type="checkbox" id="mpcFit"> <b>Fit</b> — I checked on the test map that the drawing sits right on the satellite</label></li>
-    <li><b>MDS link after publishing</b>: ${fmt(sim.after.linked)} of ${fmt(sim.after.plots)} plots linked (now ${fmt(sim.before.linked)} of ${fmt(sim.before.plots)}) · MDS rows not on the map ${sim.after.rowsNo.length} (now ${sim.before.rowsNo.length})
+    <li><b>MDS link after publishing</b>: ${fmt(sim.after.linked)} of ${fmt(sim.after.plots)} plots linked (now ${fmt(sim.before.linked)} of ${fmt(sim.before.plots)}) · MDS rows not on the map ${sim.after.rowsNo.length} (now ${sim.before.rowsNo.length}) · area differs over 10%: ${sim.after.size} (now ${sim.before.size})
       <label><input type="checkbox" id="mpcSync"> I reviewed this</label></li>
     <li class="${sale.length?"bad":"ok"}"><b>Sold and reserved plots</b> ${sale.length?`${sale.length} would lose their plot on the map: ${esc(sale.slice(0,20).join(", "))}${sale.length>20?"…":""}<input id="mpcSales" placeholder="Name of the Sales Operation person who agreed (required)">`:"none affected"}</li>
    </ol>
@@ -22148,11 +22157,10 @@ function checksHtml(chk,ch,sim){ const L=(t,a,cls)=>a&&a.length?`<details class=
     ${!chk.blockers&&!chk.noCode.length&&!chk.tiny.length&&!chk.outside.length?'<p class="mp-ok">Clean: every plot numbered, no duplicates, no overlaps.</p>':""}
     ${L("Duplicate plot numbers",chk.dup,"bad")}${L("Overlapping plots",chk.overlap,"bad")}${L("Plots without a number",chk.noCode)}${L("Very small shapes (under 50 sqm)",chk.tiny)}${L("Plots outside the project boundary",chk.outside)}</div>
    ${ch?`<div class="mp-sec"><h4>Compared with the live plan</h4><p class="mp-n">${fmt(ch.same)} unchanged</p>${L("New plots",ch.added)}${L("Removed plots",ch.removed,"bad")}${L("Resized (more than 2%)",ch.resized)}${L("Moved more than 5 m",ch.moved)}${L("Renamed (same shape, new number)",ch.renamed)}${L("Merged",ch.merged)}${L("Split",ch.split)}</div>`:""}
-   ${sim?`<div class="mp-sec"><h4>Compared with the MDS register</h4><div class="mp-tiles"><div><b>${fmt(sim.after.linked)}</b><span>of ${fmt(sim.after.plots)} plots linked (now ${fmt(sim.before.linked)})</span></div><div><b>${sim.after.rowsNo.length}</b><span>MDS rows not on the map (now ${sim.before.rowsNo.length})</span></div><div><b>${sim.after.plotsNo.length}</b><span>plots with no MDS row (now ${sim.before.plotsNo.length})</span></div><div class="${sim.lostSale.length?"bad":""}"><b>${sim.lostSale.length}</b><span>sold / reserved rows that would lose their plot</span></div></div>
+   ${sim?`<div class="mp-sec"><h4>Compared with the MDS register</h4><div class="mp-tiles"><div><b>${fmt(sim.after.linked)}</b><span>of ${fmt(sim.after.plots)} plots linked (now ${fmt(sim.before.linked)})</span></div><div><b>${sim.after.rowsNo.length}</b><span>MDS rows not on the map (now ${sim.before.rowsNo.length})</span></div><div><b>${sim.after.plotsNo.length}</b><span>plots with no MDS row (now ${sim.before.plotsNo.length})</span></div><div><b>${sim.after.size}</b><span>plots whose drawn area differs from the MDS by over 10% (now ${sim.before.size})</span></div><div class="${sim.lostSale.length?"bad":""}"><b>${sim.lostSale.length}</b><span>sold / reserved rows that would lose their plot</span></div></div>
      ${L("MDS rows that would not be on the map",sim.after.rowsNo)}${L("Plots that would have no MDS row",sim.after.plotsNo)}${L("Sold / reserved rows that would lose their plot — agree with Sales Operation",sim.lostSale,"bad")}
      <p class="mp-n">Fixes in the MDS register (rename codes, add rows, merge deals) are done with the register's Fix panel — on the test map the register already shows the draft.</p></div>`:""}`; }
-function openChecks(park,plan){ const chk=planCheck(plan), ch=plan.raw?null:changeCheck(plan); const sim=MP.test?{before:linkStats(park),after:linkStats(park),lostSale:[]}:simulate(park,planFeatures(plan));
-  if(MP.test){ const s2=MP.test.live; const save=S.geo.features; try{ S.geo.features=save.filter(f=>f.properties.park!==park).concat(forPage(s2.map(f=>JSON.parse(JSON.stringify(f))))); bind(); sim.before=linkStats(park); }finally{ S.geo.features=save; bind(); } sim.lostSale=sim.after.sale.filter(u=>!sim.before.sale.includes(u)); }
+function openChecks(park,plan){ const chk=planCheck(plan), ch=plan.raw?null:changeCheck(plan); const sim=simulate(park,planFeatures(plan));
   modal(`<div class="mpd-h"><b>Checks — ${esc(pname(park))}</b><button class="mp-x" aria-label="Close">×</button></div><div class="mpd-b">${checksHtml(chk,ch,sim)}</div><div class="mpd-f"><button class="ebtn" data-close>Close</button></div>`,"mp-chk"); }
 
 /* ---------- the wizard ---------- */
@@ -22281,14 +22289,16 @@ async function refreshPage(){ try{ await idxLoad(true); await usersLoad(); if(on
 
 /* ---------- edits on the test map: rename, merge, split (polygon-clipping, loaded only here) ---------- */
 const PC_JS="https://cdn.jsdelivr.net/npm/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js", PC_SRI="sha384-2gzcIyrtB96QDjrxsFcJ1O461CWiXJ8fiHgIkJLwTgy4WTktHXTOXt4dviXz9Y5Q";
-let pcP=null; const needPC=()=>typeof polygonClipping!=="undefined"?Promise.resolve():(pcP||(pcP=loadScript(PC_JS,PC_SRI)));
+const loadJS=(src,sri)=>new Promise((res,rej)=>{ const x=document.createElement("script"); x.src=src; x.integrity=sri; x.crossOrigin="anonymous"; x.onload=res; x.onerror=()=>rej(new Error("could not load the drawing tools — check the connection")); document.head.appendChild(x); });
+let pcP=null; const needPC=()=>typeof polygonClipping!=="undefined"?Promise.resolve():(pcP||(pcP=loadJS(PC_JS,PC_SRI).catch(e=>{ pcP=null; throw e; })));
 function featOf(k){ return S.geo.features.find(f=>f.properties.k===k); }
 function rekey(f){ const p=f.properties, sh=p.sheet||sheetFor(p.park); p.k=p.unit?ckey(sh,p.unit):norm(sh)+"|#"+Math.random().toString(36).slice(2,7); }
 function afterEdit(sel){ MP.test.dirty=true; bind(); repaint(); S.sel=new Set(sel||[]); try{ showSelection(); }catch(e){} banner(); }
 function editBox(keys){ const fs=keys.map(featOf).filter(Boolean); if(!MP.test||!fs.length||fs.some(f=>f.properties.park!==MP.test.park)) return "";
   return `<div class="mp-edit"><b>Edit the draft</b> <small>(test map only)</small><div>${fs.length===1?`<input id="mpeName" value="${esc(fs[0].properties.unit||"")}" placeholder="Plot number"><button data-e="ren">Rename</button><button data-e="split">Split with a line</button>`:`<button data-e="merge">Merge the ${fs.length} plots into one</button>`}</div></div>`; }
 function wireEdit(el,keys){ const box=el.querySelector(".mp-edit"); if(!box) return;
-  box.querySelectorAll("[data-e]").forEach(b=>b.onclick=async()=>{ const a=b.dataset.e;
+  box.querySelectorAll("[data-e]").forEach(b=>b.onclick=async()=>{ try{ await doEdit(b.dataset.e); }catch(e){ toast(String(e&&e.message||e),true); } });
+  async function doEdit(a){
     if(a==="ren"){ const f=featOf(keys[0]), v=box.querySelector("#mpeName").value.trim(); if(!v){ toast("Write the plot number",true); return; }
       if(S.geo.features.some(x=>x!==f&&x.properties.park===f.properties.park&&x.properties.unit&&ukey(x.properties.unit)===ukey(v))){ toast(v+" is already used in this project",true); return; }
       f.properties.unit=v; delete f.properties.unitAr; rekey(f); afterEdit([f.properties.k]); toast("Renamed to "+v+" in the draft"); }
@@ -22303,7 +22313,7 @@ function wireEdit(el,keys){ const box=el.querySelector(".mp-edit"); if(!box) ret
         const parts=polygonClipping.difference([f.geometry.coordinates[0]],strip); if(parts.length<2){ toast("The line does not cross the plot — try again",true); return; }
         const base=f.properties.unit||"P"; const nf=parts.map((pg,i)=>{ const r=pg[0], g={type:"Feature",geometry:{type:"Polygon",coordinates:[r]},properties:Object.assign({},f.properties,{unit:base+String.fromCharCode(65+i),gis:Math.round(G.ringArea(r)),c:G.ringCentroid(r)})}; delete g.properties.unitAr; rekey(g); return g; });
         S.geo.features=S.geo.features.filter(x=>x!==f).concat(nf); afterEdit(nf.map(x=>x.properties.k)); toast(`Split into ${nf.map(x=>x.properties.unit+" ("+fmt(x.properties.gis)+" sqm)").join(", ")} — rename them as needed`); };
-      map.getCanvas().style.cursor="crosshair"; map.on("click",on); } }); }
+      map.getCanvas().style.cursor="crosshair"; map.on("click",on); } } }
 
 /* ---------- hooks ---------- */
 if(typeof showSelection==="function"){ const s0=showSelection; window.showSelection=function(){ const out=s0.apply(this,arguments);
@@ -22311,7 +22321,7 @@ if(typeof showSelection==="function"){ const s0=showSelection; window.showSelect
   return out; }; }
 let styleHooked=false; function hookStyle(){ if(styleHooked||typeof map==="undefined"||!map||!map.on) return; styleHooked=true; map.on("styledata",()=>{ if(MP.test) setTimeout(()=>liveLayer(MP.test&&MP.test.showLive),80); }); }
 if(typeof render==="function"){ const r0=render; window.render=function(){ const out=r0.apply(this,arguments);
-  try{ if(S.view==="masterplan"){ const c=document.getElementById("content"); if(c){ c.innerHTML=view(); wire(); } if(!MP.idx||Date.now()-MP.idxAt>30000) refreshPage(); }
+  try{ if(S.view==="masterplan"){ const c=document.getElementById("content"); if(c){ c.innerHTML=view(); wire(); } if(!MP.idx||!MP.loaded||Date.now()-MP.idxAt>30000){ MP.loaded=true; refreshPage(); } }
     hookStyle(); if(MP.test){ banner(); if(S.view==="inventory") setTimeout(()=>liveLayer(MP.test&&MP.test.showLive),50); } }catch(e){ console.error("master plan page",e); } return out; }; }
 /* the team sees what was published since their last visit */
 async function whatsNew(){ try{ const idx=await idxLoad(); let seen=""; try{ seen=localStorage.getItem("sid.mp.seen")||""; }catch(e){}
@@ -22363,7 +22373,7 @@ function issues(){ const out=[], R=S.rows.filter(r=>!r.dup), add=(dept,rule,sev,
       if(blank(r.soldBy)) add("sales","noSoldBy",1,r.park,`${r.unit} — no “Sold by”`,rk(r,"noSoldBy"),{row:r});
       if(r.status==="sold"&&blank(r.contractDate)) add("sales","noContract",2,r.park,`${r.unit} — sold, no contract date`,rk(r,"noContract"),{row:r});
       if(r.status==="reserved"&&blank(r.reserveDate)) add("sales","noReserve",1,r.park,`${r.unit} — reserved, no reservation date`,rk(r,"noReserve"),{row:r}); }
-    else if((r.status==="ats"||r.status==="nfs")&&(!blank(r.client)||!blank(r.company))) add("sales","freeWithClient",2,r.park,`${r.unit} — ${(STATUS[r.status]||{}).label||r.status} but carries client “${r.company||r.client}”`,rk(r,"freeWithClient"),{row:r});
+    else if(r.status==="ats"&&(!blank(r.client)||!blank(r.company))) add("sales","freeWithClient",2,r.park,`${r.unit} — available but carries client “${r.company||r.client}”`,rk(r,"freeWithClient"),{row:r});   // not-for-sale land kept for a holder (e.g. Army) is normal
     if(linked&&r._ml&&r._ml.kind==="smart"&&(sale(r))) add("sales","codeFix",1,r.park,`${r.unit} — sold/reserved under a code the map calls “${r._ml.plot||"?"}”: confirm the code`,rk(r,"codeFix"),{row:r});
     /* Finance DEV: the money */
     if(sale(r)){ if(blank(r.cash)&&blank(r.price)) add("fin","noPrice",2,r.park,`${r.unit} — ${r.status} with no price and no cash value`,rk(r,"noPrice"),{row:r});
@@ -22375,7 +22385,7 @@ function issues(){ const out=[], R=S.rows.filter(r=>!r.dup), add=(dept,rule,sev,
   S.geo.features.forEach(f=>{ const p=f.properties, x=S.plots.get(p.k); if(x&&x.row) return; add("dev","noRow",1,p.park,`${p.unit||"Unnumbered plot"} — drawn (${fmt(p.gis)} sqm), no MDS row`,"p|"+p.k,{plot:p}); });
   return out; }
 const RULES={notDrawn:"MDS row not drawn on the map",smart:"Linked only by the smart check — fix the code",size:"Drawn area differs from the MDS by more than 10%",swap:"Codes look swapped in the block",noRow:"Drawn plot with no MDS row",
-  noClient:"Sold / reserved without client",noClientId:"No Client ID",noSoldBy:"No “Sold by”",noContract:"Sold without contract date",noReserve:"Reserved without reservation date",freeWithClient:"Available / not for sale but carries a client",codeFix:"Sold under a code the map does not use",
+  noClient:"Sold / reserved without client",noClientId:"No Client ID",noSoldBy:"No “Sold by”",noContract:"Sold without contract date",noReserve:"Reserved without reservation date",freeWithClient:"Available but carries a client",codeFix:"Sold under a code the map does not use",
   noPrice:"Sold / reserved without price",priceArea:"Price × area ≠ cash value",overCollected:"Collected more than the total",tpiBelow:"Total plus interest below cash value",noPlanned:"Available without planned price"};
 /* fingerprint of one department's columns in one project (dev also covers the drawing) */
 function sig(park,dept){ const ks=OWN[dept]; let s=""; S.rows.filter(r=>r.park===park&&!r.dup).sort((a,b)=>String(a.unit).localeCompare(String(b.unit))).forEach(r=>{ s+=ks.map(k=>r[k]??"").join("\u0001")+"\u0002"; });
