@@ -3394,6 +3394,53 @@ function parseMDS(wb){
   return {rows, unknown:rep.unknown, report:rep};
 }
 
+
+/* V114 — smart match for units whose code is not on the map, and why a unit is not on the map */
+const ML_K=u=>ukey(u).replace(/\|/g,"");
+function mlLev(a,b){ if(a===b) return 0; const m=a.length,n=b.length; if(Math.abs(m-n)>2) return 9;
+  let p=Array.from({length:n+1},(_,j)=>j); for(let i=1;i<=m;i++){ const c=[i]; for(let j=1;j<=n;j++) c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1)); p=c; } return p[n]; }
+function mlSmart(live,link,add,P){
+  const free=new Map();
+  S.geo.features.forEach(f=>{ const p=f.properties; if(link.has(p.k)) return; (free.get(p.park)||free.set(p.park,[]).get(p.park)).push(p); });
+  const okc=c=>c.d===null?c.ad<=.01:c.d<=1;
+  const C=new Map(), hits=new Map();
+  live.filter(r=>!r._plots.length&&r.unit&&r.area>0&&free.has(r.park)).forEach(r=>{ const k=ML_K(r.unit), L=[];
+    free.get(r.park).forEach(p=>{ const g=p.gis||0; if(!(g>0)) return; const ad=Math.abs(r.area-g)/r.area; if(ad>.02) return;
+      const pk=p.unit?ML_K(p.unit):""; L.push({p,ad,d:pk?mlLev(k,pk):null}); });
+    C.set(r,L); L.filter(okc).forEach(c=>hits.set(c.p.k,(hits.get(c.p.k)||0)+1)); });
+  C.forEach((L,r)=>{
+    const s=P(r.park), ok=L.filter(okc);
+    if(ok.length===1&&hits.get(ok[0].p.k)===1&&!link.has(ok[0].p.k)){
+      const c=ok[0]; add(c.p,r,"smart");
+      r._ml={kind:"smart",plot:c.p.unit||"",why:c.p.unit
+        ?`Smart match: the map calls it “${c.p.unit}” (same area${c.ad>.001?", ±"+(c.ad*100).toFixed(1)+"%":""}) — correct the Unit Code in the MDS`
+        :`Smart match: an unnumbered map plot with the same area (${fInt(c.p.gis)} sqm) — the plot needs its code in the survey`};
+      s.smartL.push(`${r.unit} → ${c.p.unit||"unnumbered plot"} · ${fInt(r.area)} vs ${fInt(c.p.gis)} sqm`);
+      s.rejected=s.rejected.filter(x=>!x.startsWith(r.unit+" ("));
+      return; }
+    const best=L.slice().sort((a,b)=>a.ad-b.ad)[0];
+    if(best){ r._ml={kind:"suggest",plot:best.p.unit||"",why:`Not found on map — map plot “${best.p.unit||"unnumbered"}” has the same area (${fInt(best.p.gis)} sqm) but another code: check which code is right`};
+      s.suggestU.push(r.unit); s.suggestL.push(`${r.unit} ≈ ${best.p.unit||"unnumbered plot"} · ${fInt(r.area)} vs ${fInt(best.p.gis)} sqm`); }
+  });
+}
+function mlWhy(r,idxs,link){
+  if(r._ml) return r._ml.why;
+  if(!r.unit) return "No unit code in the MDS";
+  const idx=idxs.get(r.park);
+  if(!idx||!idx.size) return "No map survey for this park yet";
+  for(const u of expandUnits(r.unit,r.park)){
+    const k=ukey(u), ps=idx.get(k);
+    if(ps){ const taken=ps.filter(p=>link.has(p.k)); return taken.length?`Map plot “${ps[0].unit}” is already linked to another MDS row (${link.get(taken[0].k).rows.map(x=>x.unit).join(", ")})`:`Map plot “${ps[0].unit}” found but its area does not fit this row`; }
+    const kids=[]; idx.forEach((v,kk)=>{ if(kk.startsWith(k+"|")) kids.push(...v); });
+    if(kids.length){ const g=kids.reduce((a,p)=>a+(p.gis||0),0); return `The map splits “${u}” into ${kids.length} plots (${fInt(g)} sqm) — the MDS area ${fInt(r.area)} sqm does not agree`; }
+  }
+  // same block on the map (E1-13 when the map has E1-1 … E1-12)?
+  const t=ukey(r.unit).split("|"), last=t.length>1?t[t.length-1]:null;
+  if(last&&/^\d+$/.test(last)){ const pre=t.slice(0,-1).join("|")+"|"; const sib=[]; idx.forEach((ps,kk)=>{ if(kk.startsWith(pre)&&/^\d+$/.test(kk.slice(pre.length))) sib.push(ps[0].unit); });
+    if(sib.length){ sib.sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true})); return `Not drawn on the map — block ${String(r.unit).replace(/[\s\-]*\d+\s*$/,"")} on the map has ${sib.length} plots (${sib[0]} … ${sib[sib.length-1]})`; } }
+  let blank=0; S.geo.features.forEach(f=>{ const p=f.properties; if(p.park===r.park&&!p.unit&&!link.has(p.k)) blank++; });
+  return "Code not on the map — the plot is not drawn in the survey"+(blank?` (the park has ${blank} unnumbered shape${blank>1?"s":""} on the map with no MDS unit)`:"");
+}
 /* ---- linking rows to surveyed plots ---- */
 function pairByArea(ps,rows){
   const out=[], used=new Set();
@@ -3409,7 +3456,7 @@ function bind(){
   if(!S.geo) return;
   const L={parks:{},conflicts:[]}; S.link=L;
   const P=park=>L.parks[park]||(L.parks[park]={rows:0,plots:0,linked:0,exact:0,combined:0,block:0,sub:0,area:0,
-    rowsNo:[],plotsNo:[],dups:[],partial:[],rejected:[]});
+    rowsNo:[],plotsNo:[],dups:[],partial:[],rejected:[],smartL:[],suggestL:[],suggestU:[],rowsWhy:[]});
   const idxs=new Map();
   S.geo.features.forEach(f=>{ const p=f.properties; P(p.park).plots++;
     if(!p.unit) return; const k=ukey(p.unit); let m=idxs.get(p.park); if(!m){ m=new Map(); idxs.set(p.park,m); }
@@ -3417,7 +3464,7 @@ function bind(){
   const link=new Map();
   const add=(p,r,how)=>{ let x=link.get(p.k); if(!x){ x={rows:[],how}; link.set(p.k,x); }
     if(!x.rows.includes(r)) x.rows.push(r); if(how!=="exact") x.how=how; if(!r._plots.includes(p.k)) r._plots.push(p.k); };
-  S.rows.forEach(r=>{ r._plots=[]; });
+  S.rows.forEach(r=>{ r._plots=[]; r._ml=null; });
   const live=S.rows.filter(r=>!r.dup);
   S.rows.filter(r=>r.dup).forEach(r=>P(r.park).dups.push(r.unit));
   const claims=new Map();
@@ -3463,6 +3510,7 @@ function bind(){
       else P(park).rejected.push(`${ps[0].unit}: ${parts.length} units with different statuses fill ${Math.round(cov*100)}% of it — not linked`);
     });
   });
+  try{ mlSmart(live,link,add,P); }catch(e){ console.error("smart match",e); }
   // Resolved status is written to feature PROPERTIES — app metadata, never geometry.
   S.geo.features.forEach(f=>{
     const p=f.properties, x=link.get(p.k), s=P(p.park);
@@ -3475,7 +3523,7 @@ function bind(){
       if(rows.length>1&&x.how!=="sub"&&x.how!=="area") L.conflicts.push({park:p.park,unit:p.unit,rows:rows.map(r=>r.unit)}); }
     else if(p.unit) s.plotsNo.push(p.unit);
   });
-  live.forEach(r=>{ if(!r._plots.length) P(r.park).rowsNo.push(r.unit||"(no unit)"); });
+  live.forEach(r=>{ if(!r._plots.length){ let w=""; try{ w=mlWhy(r,idxs,link); }catch(e){} if(!r._ml) r._ml={kind:"none",why:w}; P(r.park).rowsNo.push(r.unit||"(no unit)"); P(r.park).rowsWhy.push((r.unit||"(no unit)")+(w?" — "+w:"")); } });
 }
 /* Put a parsed workbook in place of the register, re-join, repaint, and remember it. */
 function adoptWorkbook(out,label,date){
@@ -7738,6 +7786,7 @@ function linkReport(){
   const list=(arr,cls="")=>arr.length?`<div class="lk-list ${cls}">${arr.slice(0,400).map(u=>`<span>${esc(u)}</span>`).join("")}${arr.length>400?`<span>+${arr.length-400} more</span>`:""}</div>`:"";
   return `<section class="card wide">
     <h3>MDS → plots link <span class="sub">how every register row found its surveyed plot</span></h3>
+    ${window.SID_MAPLINK?SID_MAPLINK.healthHead():""}
     <div class="lk-sum">
       <div><b>${fInt(tot.linked)}</b><span>of ${fInt(tot.plots)} surveyed plots linked</span></div>
       <div><b>${fInt(tot.rows)}</b><span>register units</span></div>
@@ -7765,7 +7814,7 @@ function linkReport(){
     </tbody></table></div>
     <div class="lk-det">${parks.map(([id,s])=>{
       const cf=R&&R.curFix?R.curFix.filter(x=>x.park===id):[], pc=R&&R.priceCheck?R.priceCheck.filter(x=>x.park===id):[];
-      const flags=s.dups.length+s.partial.length+s.rejected.length+L.conflicts.filter(c=>c.park===id).length+cf.length+pc.length;
+      const flags=(s.smartL||[]).length+(s.suggestL||[]).length+s.dups.length+s.partial.length+s.rejected.length+L.conflicts.filter(c=>c.park===id).length+cf.length+pc.length;
       if(!s.rowsNo.length&&!s.plotsNo.length&&!flags) return "";
       return `<details><summary>${esc(S.reg.parks[id]?.name||id)} <em>${s.rowsNo.length} units without a plot · ${s.plotsNo.length} plots without a unit${flags?` · <span style="color:var(--signal)">${flags} to review</span>`:""}</em></summary>
         ${s.dups.length?`<div class="lk-h">Entered twice in the MDS — counted once</div>${list(s.dups,"b")}`:""}
@@ -7774,7 +7823,9 @@ function linkReport(){
         ${L.conflicts.filter(c=>c.park===id).length?`<div class="lk-h">Plots claimed by more than one unit</div>${list(L.conflicts.filter(c=>c.park===id).map(c=>c.unit+" ← "+c.rows.join(" + ")),"b")}`:""}
         ${cf.length?`<div class="lk-h">Currency corrected from the price level</div>${list(cf.map(x=>`${x.unit}: ${x.from}→${x.to} (${fInt(x.perSqm)}/sqm)`),"w")}`:""}
         ${pc.length?`<div class="lk-h">Price × area differs from the cash value by more than 10% — check in the MDS</div>${list(pc.map(x=>`${x.unit}: ${fInt(x.price)} × ${fInt(x.area)} ≠ ${fInt(x.cash)}`),"w")}`:""}
-        ${s.rowsNo.length?`<div class="lk-h">MDS units with no surveyed plot</div>${list(s.rowsNo)}`:""}
+        ${(s.smartL||[]).length?`<div class="lk-h">Linked by the smart check (same area, code differs by one character or the plot has no code) — correct the code in the MDS or the survey</div>${list(s.smartL,"w")}`:""}
+        ${(s.suggestL||[]).length?`<div class="lk-h">NOT linked — a map plot has the same area but another code: check which is right</div>${list(s.suggestL,"w")}`:""}
+        ${s.rowsNo.length?`<div class="lk-h">MDS units not found on map — and why</div>${list(s.rowsWhy||s.rowsNo)}`:""}
         ${s.plotsNo.length?`<div class="lk-h">Surveyed plots with no MDS unit</div>${list(s.plotsNo)}`:""}
       </details>`; }).join("")}</div>
     <p class="note">Multi-plot deals: one MDS row covering several plots (“41,40,37,36”, “W-003 to 030”). Blocks: a row such as “S-1”
@@ -8069,7 +8120,10 @@ function healthWhy(){
     if(notPlot.length) G.push({k:"np",t:"Rows that are not plot codes",p:"These MDS rows name a road, a facility or an authority rather than a plot, so there is nothing to draw.",todo:"Nothing to fix on the map. If they are real plots, give them their plot code in the MDS.",codes:notPlot});
     // 2) MDS rows whose block is drawn with fewer plots (re-plotted in the MDS)
     const rejU=new Set(s.rejected.map(x=>String(x).split(" (")[0]));
-    const rest=s.rowsNo.filter(u=>!notPlot.includes(u)&&!rejU.has(u)), byBlock={};
+    const sugU=new Set(s.suggestU||[]);
+    if((s.smartL||[]).length) G.push({k:"sm",t:"Linked by the smart check — fix the code",p:"Not found by their code, but one free plot of this park has the same area and a code one character away (or no code at all). They now show on the map; correct the code so the link does not depend on the area.",todo:"Correct the Unit Code in the MDS, or the plot label in the CAD.",codes:s.smartL});
+    if((s.suggestL||[]).length) G.push({k:"sg",t:"Same area as a free map plot, but another code — NOT linked",p:"A plot on the map has exactly this area and no MDS row, but the codes are different, so the dashboard does not guess.",todo:"Check which code is right and correct the MDS or the CAD.",codes:s.suggestL});
+    const rest=s.rowsNo.filter(u=>!notPlot.includes(u)&&!rejU.has(u)&&!sugU.has(u)), byBlock={};
     rest.forEach(u=>{ const b=blockOf(u); (byBlock[b||"—"]=byBlock[b||"—"]||[]).push(u); });
     const replot=[], missingBlock=[], missingNo=[];
     Object.entries(byBlock).forEach(([b,us])=>{
@@ -8101,6 +8155,8 @@ function healthWhy(){
     if(big.length) G.push({k:"sz",t:"Same code, different size (more than 10%)",
       p:"The code matches but the drawn plot and the MDS area disagree — usually a plot re-divided in the MDS or merged in the drawing. The map colours it from the MDS row.",
       todo:"Check these plots' areas in the MDS against the CAD.",codes:big.map(x=>`${x.u} (${fInt(x.a)} vs ${fInt(x.g)} drawn)`),rows:big});
+    const sw=[], bigU=new Set(big.map(x=>x.u)); big.forEach(x=>{ const b=blockOf(x.u); const m=feats.filter(p=>p.unit!==x.u&&bigU.has(p.unit)&&b&&blockOf(p.unit)===b&&p.gis&&Math.abs(p.gis-x.a)/x.a<=.03).sort((p,q)=>Math.abs(p.gis-x.a)-Math.abs(q.gis-x.a)); if(m.length) sw.push(`${x.u}: MDS ${fInt(x.a)} sqm = drawn “${m[0].unit||"unnumbered"}” (${fInt(m[0].gis)} sqm)`); });
+    if(sw.length) G.push({k:"sw",t:"Codes look swapped — the MDS area matches another drawn plot",p:"The code is on the map, but the MDS area is exactly the area of a neighbouring drawn plot. The labels are probably shifted, so these plots show each other's status and price.",todo:"Check the plot labels in the CAD (or the codes in the MDS) and correct them.",codes:sw});
     // 5) the link's own review items
     if(s.rejected.length) G.push({k:"rj",t:"Not linked — the drawn area does not agree",p:"A block code in the MDS covers sub-plots on the map whose total area is very different, so it was not linked.",todo:"Check the area of this row in the MDS.",codes:s.rejected});
     const cnt=G.reduce((a,g)=>a+g.codes.length,0); n+=cnt;
@@ -12130,6 +12186,7 @@ const EDCOLS=[
   if(!have.has("dateOfCost")) EDCOLS.push({k:"dateOfCost",label:"Date of cost",type:"int",w:92});
   [["lvMin","Level min (m)","num",96],["lvMax","Level max (m)","num",96],["lvMean","Level mean (m)","num",100],["lvSlope","Mean slope (%)","num",96],["lvFall","Falls toward","text",96],["lvSrc","Level source","text",168]].forEach(([k,l,t,w])=>{ if(!have.has(k)) EDCOLS.push({k,label:l,type:t,w,calc:true}); });
   EDCOLS.sort((a,b)=>(pos.has(a.k)?pos.get(a.k):1000)-(pos.has(b.k)?pos.get(b.k):1000));
+  if(!EDCOLS.some(c=>c.k==="onMap")){ const ui=EDCOLS.findIndex(c=>c.k==="unit"); EDCOLS.splice(ui<0?EDCOLS.length:ui+1,0,{k:"onMap",label:"On map",type:"text",w:150,calc:true},{k:"mapWhy",label:"Map issue",type:"text",w:300,calc:true}); }
   EDCOLS.forEach(c=>{ if(lab.has(c.k)) c.label=lab.get(c.k); else if(EX[c.k]) c.label=EX[c.k]; c.w=Math.max(c.w,Math.ceil(c.label.length*7.6)+30); }); }
 const colLetter=n=>{ let s=""; n++; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; };
 const colOf=k=>EDCOLS.find(c=>c.k===k);
@@ -12466,7 +12523,7 @@ function viewEditor(){
       <div class="field"><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="5.5" cy="5.5" r="4"/><path d="M8.5 8.5L12 12"/></svg>
         <input id="edQ" type="search" placeholder="Search every field — unit, client, company, sector…" value="${esc(ED.q)}"></div>
       <select class="esel" id="edShow" title="Which rows to show">
-        ${[["all","All rows"],["changed","Changed, not saved"],["new","Added rows"],["deleted","Marked for delete"],["unmapped","Not on the map"]]
+        ${[["all","All rows"],["changed","Changed, not saved"],["new","Added rows"],["deleted","Marked for delete"],["unmapped","Not found on map"+(window.SID_MAPLINK?" ("+SID_MAPLINK.count()+")":"")],["mlfix","Map issues to fix"+(window.SID_MLFIX?" ("+SID_MLFIX.fixCount()+")":"")]]
           .map(([v,l])=>`<option value="${v}" ${ED.show===v?"selected":""}>${l}</option>`).join("")}</select>
       <button class="ebtn" id="edClearF">Clear filters</button>
       <span class="ed-tip">Filter any column in the row under the headings · numbers take <b>&gt;5000</b> or <b>1000-3000</b> · click a heading to sort</span>
@@ -21288,6 +21345,365 @@ function syncFrame(sel,css,vars){ const H=document.documentElement; const f=docu
 function sync(){ try{ AD.ensure(document); syncFrame("#lbwrap iframe",CSS,false); syncFrame("#codeswrap iframe",CSS_GEN,true); }catch(e){} }
 setInterval(sync,1000);
 new MutationObserver(()=>{ try{ AD.ensure(document); }catch(e){} }).observe(document.documentElement,{attributes:true,attributeFilter:["data-skin","data-look"]});
+})();
+</script>
+
+<style id="mlCss">
+/* V114 register ↔ map link */
+.ml-go{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 9px;border-radius:99px;border:1px solid rgba(10,132,255,.35);background:rgba(10,132,255,.08);color:#0a64c8;font:600 11px/1 inherit;cursor:pointer;white-space:nowrap}
+.ml-go:hover{background:rgba(10,132,255,.18)}
+.ml-go.sm{border-color:rgba(255,159,10,.55);background:rgba(255,159,10,.12);color:#9a5b00}
+.ml-no{display:inline-flex;align-items:center;gap:5px;color:#B3263D;font-weight:600;font-size:11px;white-space:nowrap;background:none;border:0;padding:0;cursor:pointer;font-family:inherit}
+.ml-no:hover{text-decoration:underline}
+.ml-ok{color:#2e7d4f;font-weight:600;font-size:11px}
+.ml-why.ml-fix{cursor:pointer;text-decoration:underline dotted rgba(0,0,0,.3);text-underline-offset:2px}
+button.ml-ns{background:none;border:0;padding:0;cursor:pointer;font-family:inherit}
+.ml-no i{width:7px;height:7px;border-radius:50%;background:#B3263D;display:inline-block}
+.ml-ns{color:var(--mute,#8E8E93);font-size:11px}
+.ml-why{font-size:11px;color:var(--ink-2,#555)}
+.ml-head{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:0 0 12px;padding:10px 12px;border-radius:12px;background:rgba(179,38,61,.05);border:1px solid rgba(179,38,61,.18);font-size:12.5px}
+.ml-head b{font-variant-numeric:tabular-nums}
+.ml-head .ebtn,.ml-head button{margin-left:auto}
+</style>
+<script id="mlJs">
+(function(){
+const COLS=new Set(["onMap","mapWhy"]);
+const srcRow=()=>{ const m=new Map(); (S.rows||[]).forEach(r=>m.set(r._id,r)); return m; };
+const pin='<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 11s4-3.6 4-6.6A4 4 0 0 0 2 4.4C2 7.4 6 11 6 11z"/><circle cx="6" cy="4.6" r="1.3"/></svg>';
+/* plot codes on the map per park (ukey), to tell whether an edited code will link */
+let PIX=null, PIXg=null;
+function pix(){ if(PIXg!==S.geo||!PIX){ PIX=new Map(); (S.geo&&S.geo.features||[]).forEach(f=>{ const p=f.properties; if(!p.unit) return; let m=PIX.get(p.park); if(!m) PIX.set(p.park,m=new Set()); m.add(ukey(p.unit)); }); PIXg=S.geo; } return PIX; }
+function willLink(park,unit){ const m=pix().get(park); if(!m||!unit) return false; const us=expandUnits(unit,park); return !!us.length&&us.every(u=>m.has(ukey(u))); }
+const accOf=s=>{ try{ return window.SID_MLFIX&&s?SID_MLFIX.acc("r|"+s.park+"|"+s.unit):null; }catch(e){ return null; } };
+function vals(r,s,added){
+  if(added) return ["Not saved yet","Saved rows are matched to the map"];
+  if(!s) return ["Not found on map","—"];
+  if(s.dup) return ["Duplicate row","Entered twice in the MDS — counted once"];
+  if(r&&String(r.unit??"")!==String(s.unit??"")) return willLink(r.park,r.unit)?["Links on save",`Code changed to “${r.unit}” — it is on the map; the link updates when you Save changes`]:["Not found on map",`New code “${r.unit??""}” is not on the map either`];
+  const v=vals0(s), a=accOf(s);
+  if(a&&v[1]) return [v[0]==="Not found on map"?"Not found (accepted)":v[0],`Accepted: ${a.why} — ${a.by}`];
+  return v;
+}
+function vals0(s){
+  if(s._plots&&s._plots.length){ if(s._ml&&s._ml.kind==="smart") return ["On map (smart match)",s._ml.why];
+    let why=""; try{ const x=s._plots.length===1?S.plots.get(s._plots[0]):null;
+      if(x&&x.how==="exact"&&x.rows.length===1&&x.props.gis&&s.area){ const d=(x.props.gis-s.area)/s.area;
+        if(Math.abs(d)>.1){ const blk=u=>ukey(u).split("|").slice(0,-1).join("|"), b=blk(x.props.unit||"");
+          const tw=b?(S.geo.features.find(f=>{ const q=f.properties; if(q.park!==s.park||q.k===x.props.k||!q.gis||!q.unit||blk(q.unit)!==b||Math.abs(q.gis-s.area)/s.area>.03) return false; const y=S.plots.get(q.k); return !!(y&&y.row&&y.row.area&&Math.abs(q.gis-y.row.area)/y.row.area>.1); })||{}).properties:null;
+          why=`Drawn plot is ${fInt(x.props.gis)} sqm vs MDS ${fInt(s.area)} sqm (${d>0?"+":""}${Math.round(d*100)}%)`+(tw?` — the MDS area fits drawn plot “${tw.unit||"unnumbered"}”: labels may be swapped`:" — check the area or the plot label"); } } }catch(e){}
+    return ["On map",why]; }
+  return ["Not found on map",(s._ml&&s._ml.why)||"—"];
+}
+function define(){
+  if(typeof ED==="undefined"||!ED||!ED.rows) return; const m=srcRow();
+  const def=(o,k,v)=>{ try{ Object.defineProperty(o,k,{value:v,enumerable:false,writable:true,configurable:true}); }catch(e){} };
+  ED.rows.forEach(r=>{ const s=m.get(r._id), v=vals(r,s,ED.added&&ED.added.has(r._id)); def(r,"onMap",v[0]); def(r,"mapWhy",v[1]); def(r,"mlAcc",/^Accepted:/.test(v[1]||"")); });
+}
+function keysOf(id){ const s=srcRow().get(id); return s&&s._plots&&s._plots.length?s._plots.slice():null; }
+function goMap(id){ const k=keysOf(id); if(!k){ const r=ED.byId&&ED.byId.get(id); toast((r&&r.mapWhy)||"Not found on map",true); return; }
+  const src=srcRow().get(id); try{ if(src&&S.park!=="all"&&S.park!==src.park){ S.park=src.park; const sel=$("#parkSel"); if(sel) sel.value=src.park; } }catch(e){}
+  showPlots(k); try{ if(typeof filterCount==="function"&&filterCount()) setTimeout(()=>toast("Map filters are on — clear them if the plot is hidden"),600); }catch(e){} }
+const count=()=>(S.rows||[]).filter(r=>!(r._plots&&r._plots.length)).length;   // same rows as the "Not found on map" filter (a duplicate row is never drawn)
+if(typeof edFilter==="function"){ const f0=edFilter; window.edFilter=function(){ try{ define(); }catch(e){ console.error("map link",e); } return f0.apply(this,arguments); }; }
+if(typeof edShow==="function"){ const s0=edShow; window.edShow=function(c,v){
+  if(c&&c.k==="onMap"){ if(v==null) return "";
+    if(v==="On map") return `<button type="button" class="ml-go" title="Open the map at this plot">${pin}Show on map</button>`;
+    if(v==="On map (smart match)") return `<button type="button" class="ml-go sm" title="Linked by the smart check (same area, near code) — see Map issue">${pin}Show on map ≈</button>`;
+    if(v==="Not found on map") return `<button type="button" class="ml-no ml-fix" title="Link this row to a plot on the map"><i></i>Not found on map ▾</button>`;
+    if(v==="Not found (accepted)") return `<button type="button" class="ml-ns ml-fix" title="Accepted — click to see or change">Not found · accepted ▾</button>`;
+    if(v==="Links on save") return `<span class="ml-ok">✓ Links on save</span>`;
+    return `<span class="ml-ns">${esc(v)}</span>`; }
+  if(c&&c.k==="mapWhy") return v&&v!=="—"?`<span class="ml-why ml-fix" title="${esc(v)} — click to fix">${esc(v)}</span>`:(v?`<span class="ml-why">${esc(v)}</span>`:"");
+  return s0.apply(this,arguments); }; }
+if(typeof edStartEdit==="function"){ const e0=edStartEdit; window.edStartEdit=function(){ try{ const c=ED.cur&&EDCOLS[ED.cur.c]; if(c&&COLS.has(c.k)){ goMap(ED.cur.id); return; } }catch(e){} return e0.apply(this,arguments); }; }
+if(typeof edSetG==="function"){ const g0=edSetG; window.edSetG=function(r,k){ if(COLS.has(k)) return; return g0.apply(this,arguments); }; }
+if(typeof linkNote==="function"){ const n0=linkNote; window.linkNote=function(info){ if(info&&info.how==="smart"&&info.row&&info.row._ml) return `<div class="tn" style="color:#9a5b00">MDS unit “${esc(info.row.unit)}” — ${esc(info.row._ml.why)}.</div>`; return n0.apply(this,arguments); }; }
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".ml-go"); if(!b) return; const row=b.closest(".er"); if(!row) return; e.preventDefault(); e.stopPropagation(); goMap(+row.dataset.id); },true);
+function healthHead(){
+  const L=S.link; if(!L) return ""; let smart=0,sug=0,plotsNo=0; Object.values(L.parks).forEach(s=>{ smart+=(s.smartL||[]).length; sug+=(s.suggestL||[]).length; plotsNo+=s.plotsNo.length; });
+  const n=count();
+  return `<div class="ml-head"><span><b>${fInt(n)}</b> MDS rows not found on map</span><span><b>${fInt(sug)}</b> of them have a same-area plot to check</span>
+    <span><b>${fInt(smart)}</b> linked by the smart check (fix their code)</span><span><b>${fInt(plotsNo)}</b> map plots with no MDS unit</span>
+    ${n?`<button type="button" class="ebtn" onclick="SID_MAPLINK.openUnmapped()">Open the ${fInt(n)} in the MDS register</button>`:""}</div>`;
+}
+function openUnmapped(){ try{ if(typeof edInit==="function") edInit(); ED.q=""; ED.cf={}; ED.vs={}; ED.sort=null; ED.show="unmapped"; }catch(e){} go("editor"); }
+window.SID_MAPLINK={count,healthHead,openUnmapped,goMap,define,srcRow,willLink,pix};
+})();
+</script>
+
+<style id="mfCss">
+/* V115 map-link fixes */
+.mf-pop{position:fixed;z-index:9000;background:var(--card,#fff);color:var(--ink,#1d1f24);border:1px solid rgba(0,0,0,.14);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.22);font-size:12.5px;max-height:min(78vh,640px);overflow:auto;display:flex;flex-direction:column}
+.mf-hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px 10px;border-bottom:1px solid rgba(0,0,0,.08);position:sticky;top:0;background:inherit;z-index:1}
+.mf-hd b{font:600 14px/1.2 ui-monospace,Menlo,monospace}
+.mf-hd .mf-x{margin-left:auto;border:0;background:none;font-size:18px;line-height:1;cursor:pointer;color:inherit;opacity:.6}
+.mf-st{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;color:#fff}
+.mf-sub{color:var(--mute,#7c818b);font-size:11.5px;width:100%;order:4}
+.mf-hd .mf-x{order:3}
+.mf-b{padding:10px 14px 14px;display:flex;flex-direction:column;gap:8px}
+.mf-warn{background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.4);color:#8a5200;border-radius:9px;padding:6px 9px;font-size:11.5px}
+.mf-h{font-weight:650;font-size:12px;margin-top:4px;display:flex;justify-content:space-between;gap:8px}
+.mf-h small{font-weight:400;color:var(--mute,#7c818b)}
+.mf-n{margin:0;color:var(--ink-2,#555);font-size:11.5px;line-height:1.45}
+.mf-pri{align-self:flex-start;border:0;background:#0a64c8;color:#fff;font:600 12px/1 inherit;padding:8px 12px;border-radius:9px;cursor:pointer}
+.mf-pri:disabled{opacity:.45;cursor:not-allowed}
+.mf-q{width:100%;padding:7px 9px;border:1px solid rgba(0,0,0,.15);border-radius:8px;font:inherit;background:transparent;color:inherit}
+.mf-list{display:flex;flex-direction:column;border:1px solid rgba(0,0,0,.08);border-radius:9px;max-height:260px;overflow:auto}
+.mf-it{display:grid;grid-template-columns:18px minmax(64px,auto) 1fr auto;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid rgba(0,0,0,.06)}
+.mf-it:last-child{border-bottom:0}
+.mf-it.top{background:rgba(48,164,108,.09)}
+.mf-it.dis{opacity:.5}
+.mf-it .c{font:600 12px ui-monospace,Menlo,monospace}
+.mf-it .a{color:var(--ink-2,#555);font-size:11.5px;font-variant-numeric:tabular-nums}
+.mf-tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:99px;background:rgba(10,100,200,.1);color:#0a64c8;margin-left:4px}
+.mf-tag.g{background:rgba(48,164,108,.14);color:#1f7a4c}
+.mf-it button{border:1px solid rgba(10,100,200,.4);background:rgba(10,100,200,.07);color:#0a64c8;border-radius:7px;font:600 11px/1 inherit;padding:5px 9px;cursor:pointer}
+.mf-it button:disabled{opacity:.4;cursor:not-allowed}
+.mf-merge{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mf-sw{margin:0;padding-left:18px}
+.mf-sw small{color:var(--mute,#7c818b)}
+.mf-acc{background:rgba(142,142,147,.12);border-radius:9px;padding:7px 9px;font-size:11.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mf-acc button,.mf-ok button{border:1px solid rgba(0,0,0,.18);background:transparent;color:inherit;border-radius:7px;padding:4px 9px;font:600 11px/1 inherit;cursor:pointer}
+.mf-ok summary{cursor:pointer;font-weight:600;font-size:12px}
+.mf-ok[open]{display:flex;flex-direction:column;gap:6px}
+.mf-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.mf-chips span{font-size:11px;padding:3px 8px;border-radius:99px;border:1px solid rgba(0,0,0,.15);cursor:pointer}
+.mf-chips span:hover{background:rgba(0,0,0,.05)}
+.mf-ok textarea{width:100%;font:inherit;padding:6px 8px;border:1px solid rgba(0,0,0,.15);border-radius:8px;background:transparent;color:inherit;resize:vertical}
+.mf-ro{font-size:11.5px;color:#8a5200}
+#mlChkBtn.on{background:#1d1f24;color:#fff}
+#mlPanel{position:absolute;left:12px;bottom:92px;z-index:6;width:min(300px,calc(100% - 24px));max-height:min(62vh,520px);overflow:auto;background:var(--card,#fff);color:var(--ink,#1d1f24);border:1px solid rgba(0,0,0,.12);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.18);font-size:12px}
+#mlPanel .h{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid rgba(0,0,0,.08);position:sticky;top:0;background:inherit}
+#mlPanel .h b{font-size:13px}
+#mlPanel .h span{color:var(--mute,#7c818b);font-size:11px}
+#mlPanel .h button{margin-left:auto;border:0;background:none;font-size:17px;cursor:pointer;color:inherit;opacity:.6}
+#mlPanel .leg{display:flex;flex-direction:column;padding:6px 6px}
+#mlPanel .leg button{display:grid;grid-template-columns:12px 1fr auto;gap:8px;align-items:center;border:0;background:none;color:inherit;text-align:left;padding:5px 6px;border-radius:7px;cursor:pointer;font:inherit}
+#mlPanel .leg button:hover{background:rgba(0,0,0,.05)}
+#mlPanel .leg i{width:12px;height:12px;border-radius:3px}
+#mlPanel .leg b{font-variant-numeric:tabular-nums}
+#mlPanel .h2{padding:8px 12px 4px;font-weight:650;border-top:1px solid rgba(0,0,0,.08);display:flex;justify-content:space-between}
+#mlPanel .nd{padding:2px 12px 8px;display:flex;flex-direction:column;gap:6px}
+#mlPanel .nd .g{font-size:11px;color:var(--mute,#7c818b)}
+#mlPanel .nd .cs{display:flex;flex-wrap:wrap;gap:4px}
+#mlPanel .nd .cs button{font:600 10.5px ui-monospace,Menlo,monospace;border:1px solid rgba(229,72,77,.45);color:#c22d33;background:rgba(229,72,77,.06);border-radius:6px;padding:2px 6px;cursor:pointer}
+#mlPanel .nt{padding:8px 12px 10px;color:var(--mute,#7c818b);font-size:11px;border-top:1px solid rgba(0,0,0,.08)}
+.sp-mlfix{display:flex;width:100%;justify-content:center;align-items:center;gap:6px;margin-top:6px;padding:7px;border-radius:10px;border:1px dashed rgba(10,100,200,.5);background:rgba(10,100,200,.06);color:#0a64c8;font:600 12px/1 inherit;cursor:pointer}
+body.sid-public .sp-mlfix,body.sid-public #mlChkBtn,body.sid-public #mlPanel{display:none!important}
+@media (prefers-color-scheme: dark){ html:not([data-theme="light"]) .mf-pop, html:not([data-theme="light"]) #mlPanel{background:#1f2227;color:#eceae5;border-color:rgba(255,255,255,.14)} }
+html[data-theme="dark"] .mf-pop, html[data-theme="dark"] #mlPanel{background:#1f2227;color:#eceae5;border-color:rgba(255,255,255,.14)}
+</style>
+<script id="mfJs">
+(function(){
+const MF={acc:{},accAt:0,on:false,pop:null,sw:null};
+const CAT=[["norow","#E5484D","Drawn, no MDS row"],["swap","#8E4EC6","Codes look swapped"],["size","#FFB224","Area differs over 10%"],["smart","#0091FF","Linked by the smart check"],["acc","#A0A4AB","Accepted (not an issue)"],["ok","#30A46C","Linked and clean"]];
+const me=()=>{ try{ return (typeof SBME!=="undefined"&&SBME&&SBME.name)||(typeof SBU!=="undefined"&&SBU&&SBU.email)||"—"; }catch(e){ return "—"; } };
+const canFix=()=>{ try{ return !!sbCanWrite(); }catch(e){ return false; } };
+const online=()=>{ try{ return !!sbReady(); }catch(e){ return false; } };
+const pname=p=>(S.reg.parks[p]&&S.reg.parks[p].name)||p;
+const blk=u=>ukey(u||"").split("|").slice(0,-1).join("|");
+const K=u=>ML_K(u||"");
+const fmt=n=>n==null||n===""?"—":fInt(n);
+const stOf=r=>STATUS[r.status]||STATUS.unknown;
+const day=iso=>{ try{ return new Date(iso).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}); }catch(e){ return ""; } };
+
+/* ---- "not an issue" notes, shared through sid_kv ---- */
+async function accLoad(force){ if(!online()) return; if(!force&&MF.accAt&&Date.now()-MF.accAt<60000) return;
+  try{ const r=await SB.from("sid_kv").select("value").eq("key","maplink_ok").maybeSingle(); MF.acc=(r.data&&r.data.value&&r.data.value.items)||{}; MF.accAt=Date.now(); }catch(e){ console.warn("maplink_ok",e); } }
+async function accSet(key,why){
+  if(!online()) throw new Error("sign in first"); if(!canFix()) throw new Error("your role cannot change the register");
+  await accLoad(true);
+  if(why) MF.acc[key]={why:String(why).trim().slice(0,300),by:me(),at:new Date().toISOString()}; else delete MF.acc[key];
+  const r=await SB.from("sid_kv").upsert({key:"maplink_ok",value:{items:MF.acc},updated_at:new Date().toISOString()}); if(r.error) throw r.error;
+  refreshAll(); }
+const acc=k=>MF.acc[k]||null;
+
+/* ---- register helpers ---- */
+function edReady(){ try{ if(typeof edInit==="function") edInit(); }catch(e){} return typeof ED!=="undefined"&&ED&&ED.rows; }
+function edRowOf(src){ return edReady()&&src?ED.byId.get(src._id)||null:null; }
+function inEditor(){ return !!document.getElementById("edGrid"); }
+function setUnits(pairs,label){
+  if(!canFix()){ toast("Your role can see the register but not change it — ask an administrator for edit rights",true); return false; }
+  pairs=pairs.filter(([r])=>r); const g=[]; pairs.forEach(([r,c])=>edSetG(r,"unit",c,g));
+  if(!g.length){ toast("Nothing changed"); return false; }
+  ED.undo.push(g);
+  if(inEditor()){ try{ edFilter(); edPaint(true); edChrome(); }catch(e){} }
+  else { ED.q=""; ED.cf={}; ED.vs={}; ED.sort=null; ED.show="changed"; go("editor"); }
+  toast(label+" — press Save changes to publish (Undo with Ctrl+Z)"); return true; }
+function refreshAll(){ try{ classify(); }catch(e){} try{ if(map&&map.getSource("plots")) map.getSource("plots").setData(S.geo); }catch(e){}
+  try{ if(inEditor()){ edFilter(); edPaint(true); edChrome(); } }catch(e){} panel(); }
+
+/* ---- what is free, how close it is ---- */
+function draftCodes(park){ const s=new Set(); if(!edReady()) return s; const m=SID_MAPLINK.srcRow();
+  ED.rows.forEach(r=>{ const o=m.get(r._id); if(r.park===park&&o&&String(r.unit??"")!==String(o.unit??"")) expandUnits(r.unit,park).forEach(u=>s.add(ukey(u))); }); return s; }
+function freePlots(park){ return S.geo.features.map(f=>f.properties).filter(p=>p.park===park&&!(S.plots.get(p.k)&&S.plots.get(p.k).row)); }
+function rank(code,area,items,codeOf,areaOf){ const k=K(code), b=blk(code), a=+area||0;
+  return items.map(it=>{ const c=codeOf(it), g=areaOf(it), ad=a&&g?Math.abs(g-a)/a:null, cd=c&&k?mlLev(k,K(c)):null, sb=!!(b&&c&&blk(c)===b);
+    const sc=(ad==null?3:Math.min(ad,1)*10)+(cd==null?1.5:Math.min(cd,6)*.5)-(sb?1.5:0);
+    const tags=[]; if(ad!=null&&ad<=.02) tags.push(["same area","g"]); else if(ad!=null&&ad<=.1) tags.push(["close area",""]); if(sb) tags.push(["same block",""]); if(cd!=null&&cd>0&&cd<=1) tags.push(["similar code",""]);
+    return {it,ad,sc,tags}; }).sort((x,y)=>x.sc-y.sc); }
+const tagHtml=t=>t.map(([l,c])=>`<span class="mf-tag ${c}">${l}</span>`).join("");
+const dPct=ad=>ad==null?"":ad<.0005?" · exact":" · ±"+(ad*100).toFixed(ad<.1?1:0)+"%";
+
+/* codes swapped inside one block: follow MDS area -> drawn plot until it closes */
+function swapGroup(src){
+  const x=src&&src._plots&&src._plots.length===1?S.plots.get(src._plots[0]):null; if(!x||!x.props.unit) return null; const b=blk(x.props.unit); if(!b) return null;
+  const mism=y=>y.row&&y.row.area&&y.props.gis&&Math.abs(y.props.gis-y.row.area)/y.row.area>.1;
+  const G=[]; S.plots.forEach(y=>{ if(y.park===src.park&&y.row&&y.rows.length===1&&y.how==="exact"&&y.props.unit&&blk(y.props.unit)===b&&mism(y)) G.push(y); });
+  const start=G.find(y=>y.row===src); if(G.length<2||!start) return null;
+  const tgt=y=>G.filter(z=>z!==y&&Math.abs(z.props.gis-y.row.area)/y.row.area<=.03).sort((m,n)=>Math.abs(m.props.gis-y.row.area)-Math.abs(n.props.gis-y.row.area))[0];
+  const cyc=[], seen=new Set(); let cur=start;
+  while(cur&&!seen.has(cur)){ seen.add(cur); const t=tgt(cur); if(!t) return null; cyc.push({row:cur.row,from:cur.props.unit,to:t.props.unit,area:cur.row.area,gis:t.props.gis}); cur=t; }
+  return cur===start&&cyc.length>1?cyc:null; }
+
+/* ---- popover ---- */
+function closePop(){ if(!MF.pop) return; MF.pop.remove(); MF.pop=null; document.removeEventListener("mousedown",outside,true); document.removeEventListener("keydown",onKey,true); }
+function outside(e){ if(MF.pop&&!MF.pop.contains(e.target)) closePop(); }
+function onKey(e){ if(e.key==="Escape"){ e.stopPropagation(); closePop(); } }
+function openPop(anchor,html,wire){ closePop(); const d=document.createElement("div"); d.className="mf-pop"; d.setAttribute("role","dialog"); d.innerHTML=html; document.body.appendChild(d); MF.pop=d;
+  const W=Math.min(410,innerWidth-16); d.style.width=W+"px"; const r=anchor.getBoundingClientRect(), h=d.offsetHeight;
+  let top=r.bottom+6; if(top+h>innerHeight-8) top=Math.max(8,Math.min(r.top-h-6,innerHeight-h-8)); d.style.top=top+"px"; d.style.left=Math.min(Math.max(8,r.left),innerWidth-W-8)+"px";
+  setTimeout(()=>{ document.addEventListener("mousedown",outside,true); document.addEventListener("keydown",onKey,true); },0);
+  d.querySelector(".mf-x").onclick=closePop; if(wire) wire(d); return d; }
+function accHtml(key,kind){ if(!key) return ""; const a=acc(key);
+  if(a) return `<div class="mf-acc"><span>Accepted by <b>${esc(a.by)}</b>, ${day(a.at)}: ${esc(a.why)}</span>${canFix()?'<button data-act="unacc">Remove note</button>':""}</div>`;
+  const chips=kind==="plot"?["Not for sale (services, green, road)","Kept by the developer","Row to be added to the MDS","Drawing to be corrected — Development"]
+    :["Not a plot (road, facility)","Plot not drawn yet — CAD pending","Contract area differs from the survey","Drawing labels wrong — Development"];
+  return `<details class="mf-ok"><summary>Not an issue…</summary><div class="mf-chips">${chips.map(c=>`<span>${esc(c)}</span>`).join("")}</div>
+    <textarea id="mfWhy" rows="2" placeholder="Reason, for the team"></textarea><button data-act="acc" ${canFix()?"":"disabled"}>Save note</button></details>`; }
+function wireAcc(d,key){ d.querySelectorAll(".mf-chips span").forEach(c=>c.onclick=()=>{ d.querySelector("#mfWhy").value=c.textContent; });
+  const s=d.querySelector('[data-act="acc"]'); if(s) s.onclick=()=>{ const w=d.querySelector("#mfWhy").value.trim(); if(!w){ toast("Write a short reason first",true); return; }
+    s.disabled=true; accSet(key,w).then(()=>{ toast("Note saved for the team"); closePop(); }).catch(e=>{ s.disabled=false; toast("Not saved: "+(e.message||e),true); }); };
+  const u=d.querySelector('[data-act="unacc"]'); if(u) u.onclick=()=>accSet(key,null).then(()=>{ toast("Note removed"); closePop(); }).catch(e=>toast("Not saved: "+(e.message||e),true)); }
+const roNote=()=>canFix()?"":`<div class="mf-ro">View only — your role cannot change the register.</div>`;
+
+function rowPop(anchor,id){
+  if(!edReady()) return; const r=ED.byId.get(id), src=SID_MAPLINK.srcRow().get(id); if(!r) return;
+  const park=r.park, linked=!!(src&&src._plots&&src._plots.length), ml=src&&src._ml, st=stOf(r), key=src?"r|"+src.park+"|"+src.unit:null;
+  let b="";
+  if(r.status==="sold"||r.status==="reserved") b+=`<div class="mf-warn">${st.label}${r.client||r.company?" to "+esc(r.company||r.client):""} — a code change moves the customer to another plot. Agree it with Sales Operation.</div>`;
+  if(src&&String(r.unit??"")!==String(src.unit??"")) b+=`<p class="mf-n">Code changed in this session from <b>${esc(src.unit)}</b> to <b>${esc(r.unit)}</b> (not saved yet).</p>`;
+  if(linked&&ml&&ml.kind==="smart"){
+    b+=ml.plot?`<button class="mf-pri" data-act="code" data-code="${esc(ml.plot)}" ${canFix()?"":"disabled"}>Use the map code “${esc(ml.plot)}”</button><p class="mf-n">Shown on the map today through the smart check (same area). Using the map's code makes the link permanent.</p>`
+      :`<p class="mf-n">Linked by area to a plot that has no number in the drawing. The plot needs its number in the CAD — a job for Development.</p>`;
+  } else if(linked){
+    const sw=swapGroup(src); MF.sw=sw;
+    if(sw){ b+=`<div class="mf-h">Codes look swapped in this block</div><ul class="mf-sw">${sw.map(x=>`<li><b>${esc(x.from)}</b> → <b>${esc(x.to)}</b> <small>MDS ${fmt(x.area)} sqm = drawn ${esc(x.to)} ${fmt(x.gis)} sqm</small></li>`).join("")}</ul>
+      <button class="mf-pri" data-act="swap" ${canFix()?"":"disabled"}>Correct the ${sw.length} codes in the MDS</button><p class="mf-n">Use this when the drawing is right. If the drawing labels are wrong, save the note “Drawing labels wrong — Development” below instead.</p>`; }
+    else b+=r.mapWhy?`<p class="mf-n">${esc(r.mapWhy)}</p>`:`<p class="mf-n">Linked and clean.</p>`;
+  } else {
+    const fr=freePlots(park), taken=draftCodes(park), num=fr.filter(p=>p.unit), un=fr.length-num.length;
+    const R=rank(r.unit,r.area,num,p=>p.unit,p=>p.gis);
+    MF.rows=R;
+    b+=(ml&&ml.why?`<p class="mf-n">${esc(ml.why)}</p>`:"")+`<div class="mf-h">Link to a free plot of ${esc(pname(park))} <small>${num.length} free${un?` · ${un} without number`:""}</small></div>`;
+    b+=num.length?`<input class="mf-q" id="mfQ" placeholder="Search a plot number…" autocomplete="off"><div class="mf-list" id="mfList">${R.map((x,i)=>{ const p=x.it, tk=taken.has(ukey(p.unit));
+        return `<div class="mf-it ${i===0&&x.tags.length&&x.tags[0][1]==="g"?"top":""} ${tk?"dis":""}" data-c="${esc(p.unit)}"><input type="checkbox" data-c="${esc(p.unit)}" ${tk||!canFix()?"disabled":""} aria-label="Tick ${esc(p.unit)} to merge"><span class="c">${esc(p.unit)}</span><span class="a">${fmt(p.gis)} sqm${dPct(x.ad)}${tagHtml(x.tags)}${tk?' <span class="mf-tag">taken by a draft</span>':""}</span><button data-act="link" data-code="${esc(p.unit)}" ${tk||!canFix()?"disabled":""}>Link</button></div>`; }).join("")}</div>
+      <div class="mf-merge" hidden id="mfMerge"><button class="mf-pri" data-act="merge">Link the ticked plots as one deal</button><small id="mfSum"></small></div>`
+      :`<p class="mf-n">No free numbered plot in this project. The plot has to be drawn (Development) or this row is not a plot.</p>`;
+  }
+  b+=accHtml(key,"row")+roNote();
+  const html=`<div class="mf-hd"><b>${esc(r.unit||"(no code)")}</b><span class="mf-st" style="background:${st.color}">${st.label}</span><span class="mf-sub">${fmt(r.area)} sqm · ${esc(pname(park))}${r.company||r.client?" · "+esc(r.company||r.client):""}</span><button class="mf-x" aria-label="Close">×</button></div><div class="mf-b">${b}</div>`;
+  openPop(anchor,html,d=>{
+    wireAcc(d,key);
+    d.querySelectorAll('[data-act="code"],[data-act="link"]').forEach(x=>x.onclick=()=>{ const c=x.dataset.code; if(setUnits([[r,c]],`${r.unit} → ${c}`)) closePop(); });
+    const sw=d.querySelector('[data-act="swap"]'); if(sw) sw.onclick=()=>{ const pairs=MF.sw.map(x=>[edRowOf(x.row),x.to]); if(setUnits(pairs,"Codes corrected: "+MF.sw.map(x=>x.from+"→"+x.to).join(", "))) closePop(); };
+    const q=d.querySelector("#mfQ"); if(q){ q.oninput=()=>{ const t=q.value.trim().toLowerCase().replace(/[\s\-]/g,""); d.querySelectorAll(".mf-it").forEach(it=>{ it.hidden=!!t&&!it.dataset.c.toLowerCase().replace(/[\s\-]/g,"").includes(t); }); }; setTimeout(()=>q.focus(),30); }
+    const upd=()=>{ const ck=[...d.querySelectorAll('.mf-it input:checked')].map(i=>i.dataset.c), m=d.querySelector("#mfMerge"); if(!m) return; m.hidden=ck.length<2;
+      const g=ck.reduce((a,c)=>a+((S.geo.features.find(f=>f.properties.park===park&&f.properties.unit===c)||{properties:{}}).properties.gis||0),0);
+      d.querySelector("#mfSum").textContent=ck.length>1?`${ck.length} plots · drawn ${fmt(g)} sqm vs MDS ${fmt(r.area)} sqm`:""; };
+    d.querySelectorAll('.mf-it input').forEach(i=>i.onchange=upd);
+    const mg=d.querySelector('[data-act="merge"]'); if(mg) mg.onclick=()=>{ const ck=[...d.querySelectorAll('.mf-it input:checked')].map(i=>i.dataset.c); if(ck.length<2) return; if(setUnits([[r,ck.join(",")]],`${r.unit} → one deal over ${ck.length} plots`)) closePop(); };
+  }); }
+
+function plotPop(anchor,k){
+  const f=S.geo.features.find(x=>x.properties.k===k); if(!f) return; const p=f.properties, x=S.plots.get(k);
+  if(x&&x.row){ if(edReady()) return rowPop(anchor,x.row._id); return; }
+  edReady(); const park=p.park, key="p|"+k;
+  const orph=S.rows.filter(r=>!r.dup&&r.park===park&&!(r._plots&&r._plots.length));
+  const R=rank(p.unit||"",p.gis,orph,r=>r.unit,r=>r.area);
+  let b=p.unit?"":`<div class="mf-warn">This plot has no number in the drawing, so a row cannot be linked by code. Development adds the number; until then the smart check links it when one MDS row has the same area.</div>`;
+  b+=`<div class="mf-h">MDS rows of ${esc(pname(park))} with no plot <small>${orph.length}</small></div>`;
+  b+=orph.length?`<div class="mf-list">${R.slice(0,60).map((y,i)=>{ const r=y.it, st=stOf(r); return `<div class="mf-it ${i===0&&y.tags.length&&y.tags[0][1]==="g"?"top":""}" style="grid-template-columns:minmax(64px,auto) 1fr auto"><span class="c">${esc(r.unit)}</span><span class="a"><span class="mf-st" style="background:${st.color};font-size:9.5px;padding:1px 6px">${st.label}</span> ${fmt(r.area)} sqm${dPct(y.ad)}${tagHtml(y.tags)}</span><button data-act="assign" data-id="${r._id}" ${p.unit&&canFix()?"":"disabled"}>Assign</button></div>`; }).join("")}</div>`
+    :`<p class="mf-n">Every MDS row of this project is already on the map. If this plot is sold or for sale, add its row (button below the card) or add it to an existing deal.</p>`;
+  if(p.unit) b+=`<div class="mf-h">Or add it to an existing deal</div><input class="mf-q" id="mfDeal" placeholder="Type the deal's unit code…" autocomplete="off"><div class="mf-list" id="mfDealL" hidden></div>`;
+  b+=accHtml(key,"plot")+roNote();
+  const html=`<div class="mf-hd"><b>${esc(p.unit||"Unnumbered plot")}</b><span class="mf-st" style="background:#E5484D">No MDS row</span><span class="mf-sub">${fmt(p.gis)} sqm drawn · ${esc(pname(park))}</span><button class="mf-x" aria-label="Close">×</button></div><div class="mf-b">${b}</div>`;
+  openPop(anchor,html,d=>{
+    wireAcc(d,key);
+    d.querySelectorAll('[data-act="assign"]').forEach(btn=>btn.onclick=()=>{ const src=S.rows.find(r=>r._id===+btn.dataset.id), er=edRowOf(src); if(er&&setUnits([[er,p.unit]],`${src.unit} → ${p.unit}`)) closePop(); });
+    const q=d.querySelector("#mfDeal"), L=d.querySelector("#mfDealL");
+    if(q) q.oninput=()=>{ const t=q.value.trim().toLowerCase(); if(t.length<1){ L.hidden=true; return; }
+      const hits=S.rows.filter(r=>!r.dup&&r.park===park&&String(r.unit||"").toLowerCase().includes(t)).slice(0,25);
+      L.hidden=false; L.innerHTML=hits.length?hits.map(r=>`<div class="mf-it" style="grid-template-columns:minmax(64px,auto) 1fr auto"><span class="c">${esc(r.unit)}</span><span class="a">${stOf(r).label} · ${fmt(r.area)} sqm</span><button data-id="${r._id}" ${canFix()?"":"disabled"}>Add plot</button></div>`).join(""):`<div class="mf-it" style="grid-template-columns:1fr"><span class="a">No row with that code</span></div>`;
+      L.querySelectorAll("button[data-id]").forEach(btn=>btn.onclick=()=>{ const src=S.rows.find(r=>r._id===+btn.dataset.id), er=edRowOf(src); if(er&&setUnits([[er,String(er.unit)+","+p.unit]],`${p.unit} added to deal ${src.unit}`)) closePop(); }); };
+  }); }
+
+/* register: open the panel from the On map / Map issue cells */
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".ml-fix"); if(!b) return; const row=b.closest(".er"); if(!row) return; e.preventDefault(); e.stopPropagation(); rowPop(b,+row.dataset.id); },true);
+
+/* row filter "Map issues to fix" */
+const isIssue=x=>!x.mlAcc&&x.onMap!=="Links on save"&&x.onMap!=="Not saved yet"&&(x.onMap==="Not found on map"||x.onMap==="On map (smart match)"||x.onMap==="Duplicate row"||!!(x.mapWhy&&x.mapWhy!=="—"));
+function fixCount(){ try{ if(!edReady()) return 0; SID_MAPLINK.define(); return ED.rows.filter(r=>!ED.deleted.has(r._id)&&isIssue(r)).length; }catch(e){ return 0; } }
+if(typeof edFilter==="function"){ const f1=edFilter; window.edFilter=function(){ const want=ED.show==="mlfix"; if(want) ED.show="all"; let out; try{ out=f1.apply(this,arguments); } finally{ if(want) ED.show="mlfix"; }
+  if(want){ ED.view=ED.view.filter(isIssue); ED.idx=new Map(ED.view.map((x,i)=>[x._id,i])); } return out; }; }
+
+/* ---- map: Check mode ---- */
+function classify(){
+  if(!S.geo) return; const swaps=new Set();
+  S.plots.forEach(y=>{ if(y.row&&y.how==="exact"&&y.rows.length===1&&y.props.gis&&y.row.area&&Math.abs(y.props.gis-y.row.area)/y.row.area>.1){ const g=swapGroup(y.row); if(g) swaps.add(y.props.k); } });
+  S.geo.features.forEach(f=>{ const p=f.properties, x=S.plots.get(p.k); let c="ok";
+    if(!x||!x.row) c=acc("p|"+p.k)?"acc":"norow";
+    else if(x.how==="smart") c="smart";
+    else if(x.how==="exact"&&x.rows.length===1&&p.gis&&x.row.area&&Math.abs(p.gis-x.row.area)/x.row.area>.1) c=acc("r|"+x.row.park+"|"+x.row.unit)?"acc":swaps.has(p.k)?"swap":"size";
+    p.mlc=c; }); }
+function ensureLayers(){ try{ if(!map||!map.getSource("plots")||!map.getLayer("fill")) return false;
+  CAT.forEach(([c,col])=>{ const id="mlc-"+c; if(!map.getLayer(id)) map.addLayer({id,type:"fill",source:"plots",filter:["==",["get","mlc"],c],layout:{visibility:"none"},paint:{"fill-color":col,"fill-opacity":.9}},"fill"); try{ map.setLayerZoomRange(id,PLOT_MIN,24); }catch(e){} });
+  return true; }catch(e){ console.warn("check layers",e); return false; } }
+function showLayers(on){ CAT.forEach(([c])=>{ try{ if(map&&map.getLayer("mlc-"+c)) map.setLayoutProperty("mlc-"+c,"visibility",on?"visible":"none"); }catch(e){} }); }
+function scopeOk(park){ return !S.park||S.park==="all"||S.park===park; }
+function panel(){
+  let el=document.getElementById("mlPanel"); if(!MF.on){ if(el) el.remove(); return; }
+  const wrap=document.getElementById("mapwrap"); if(!wrap) return;
+  if(!el){ el=document.createElement("div"); el.id="mlPanel"; wrap.appendChild(el); }
+  const n={}; S.geo.features.forEach(f=>{ const p=f.properties; if(scopeOk(p.park)) n[p.mlc]=(n[p.mlc]||0)+1; });
+  const nd=S.rows.filter(r=>!r.dup&&scopeOk(r.park)&&!(r._plots&&r._plots.length)&&!acc("r|"+r.park+"|"+r.unit));
+  const byPark={}; nd.forEach(r=>{ (byPark[r.park]=byPark[r.park]||[]).push(r); });
+  el.innerHTML=`<div class="h"><b>Check mode</b><span>${S.park&&S.park!=="all"?esc(pname(S.park)):"All projects"}</span><button aria-label="Close check mode">×</button></div>
+    <div class="leg">${CAT.map(([c,col,l])=>`<button data-c="${c}" title="Zoom to these plots"><i style="background:${col}"></i><span>${l}</span><b>${fmt(n[c]||0)}</b></button>`).join("")}</div>
+    <div class="h2"><span>MDS rows not drawn on the map</span><b>${fmt(nd.length)}</b></div>
+    <div class="nd">${Object.entries(byPark).map(([pk,rs])=>`<div class="g">${esc(pname(pk))} · ${rs.length}</div><div class="cs">${rs.slice(0,80).map(r=>`<button data-id="${r._id}" title="Open in the MDS register">${esc(r.unit)}</button>`).join("")}${rs.length>80?`<span class="g">+${rs.length-80}</span>`:""}</div>`).join("")||'<div class="g">None</div>'}</div>
+    <div class="nt">Click a plot, then <b>Assign MDS row…</b> or <b>Fix map issue…</b> on its card. Every fix is a draft in the MDS register until Save changes.</div>`;
+  el.querySelector(".h button").onclick=()=>toggle(false);
+  el.querySelectorAll(".leg button").forEach(b=>b.onclick=()=>{ const ks=new Set(S.geo.features.filter(f=>f.properties.mlc===b.dataset.c&&scopeOk(f.properties.park)).map(f=>f.properties.k)); if(ks.size) fitKeys(ks); else toast("None here"); });
+  el.querySelectorAll(".nd button[data-id]").forEach(b=>b.onclick=()=>openRow(+b.dataset.id)); }
+function openRow(id){ const src=S.rows.find(r=>r._id===id); if(!src||!edReady()) return; ED.q=String(src.unit||""); ED.cf={}; ED.vs={}; ED.sort=null; ED.show="all"; go("editor");
+  setTimeout(()=>{ const c=document.querySelector(`#edBody .er[data-id="${id}"] .ml-fix`); if(c) rowPop(c,id); },500); }
+function toggle(on){ MF.on=on==null?!MF.on:on; const b=document.getElementById("mlChkBtn"); if(b) b.classList.toggle("on",MF.on);
+  if(MF.on){ classify(); try{ map.getSource("plots").setData(S.geo); }catch(e){} if(!ensureLayers()){ toast("Open the map first",true); MF.on=false; return; } showLayers(true); accLoad().then(()=>{ classify(); try{ map.getSource("plots").setData(S.geo); }catch(e){} panel(); }); }
+  else showLayers(false);
+  panel(); }
+function ensureBtn(){ const fit=document.getElementById("fitBtn"); if(!fit||document.getElementById("mlChkBtn")) return;
+  const b=document.createElement("button"); b.id="mlChkBtn"; b.type="button"; b.className=fit.className; b.textContent="Check"; b.title="Colour plots by map-link problem (Development · Sales Op · Finance)";
+  if(MF.on) b.classList.add("on"); b.onclick=()=>toggle(); fit.insertAdjacentElement("afterend",b); }
+let styleHooked=false;
+function hookStyle(){ if(styleHooked||typeof map==="undefined"||!map||!map.on) return; styleHooked=true;
+  map.on("styledata",()=>{ if(!MF.on) return; setTimeout(()=>{ if(ensureLayers()) showLayers(true); },60); }); }
+if(typeof render==="function"){ const r0=render; window.render=function(){ const out=r0.apply(this,arguments); try{ ensureBtn(); hookStyle(); if(MF.on){ panel(); if(ensureLayers()) showLayers(true); } }catch(e){} return out; }; }
+if(typeof bind==="function"){ const b0=bind; window.bind=function(){ const out=b0.apply(this,arguments); try{ classify(); }catch(e){ console.error("check classes",e); } return out; }; }
+
+/* plot card: Assign MDS row… / Fix map issue… */
+if(typeof showSelection==="function"){ const s0=showSelection; window.showSelection=function(){ const out=s0.apply(this,arguments);
+  try{ const el=document.getElementById("selpanel"); if(el&&!el.hidden&&S.sel&&S.sel.size===1){ const k=[...S.sel][0], x=S.plots.get(k), f=S.geo.features.find(q=>q.properties.k===k);
+    const c=f&&f.properties.mlc, need=!x||!x.row||c==="smart"||c==="size"||c==="swap"||c==="acc";
+    const old=el.querySelector(".sp-mlfix"); if(old) old.remove();
+    if(need){ const btn=document.createElement("button"); btn.type="button"; btn.className="sp-mlfix"; btn.textContent=!x||!x.row?"Assign MDS row…":"Fix map issue…";
+      const at=el.querySelector(".sp-edit"); if(at) at.insertAdjacentElement("afterend",btn); else (el.querySelector(".sp-item")||el).appendChild(btn);
+      btn.onclick=()=>plotPop(btn,k); } } }catch(e){ console.warn("card fix",e); }
+  return out; }; }
+
+/* start: load the notes once the data is in */
+(function boot(n){ if(typeof S!=="undefined"&&S.rows&&S.rows.length&&S.link&&online()){ accLoad().then(()=>{ classify(); refreshAll(); }); try{ ensureBtn(); hookStyle(); }catch(e){} return; } if(n<240) setTimeout(()=>boot(n+1),500); else { try{ classify(); ensureBtn(); }catch(e){} } })(0);
+window.SID_MLFIX={acc,accSet,accLoad,fixCount,rowPop,plotPop,classify,toggle,swapGroup,get state(){ return MF; }};
 })();
 </script>
 </body>
