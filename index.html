@@ -20639,8 +20639,10 @@ window.SID_TOPO2={startUp:()=>startUp(),upRead:f=>upRead(f),get UP(){ return UP;
 if(typeof SID_LOOK==="undefined"||typeof SID_MOD==="undefined") return;
 const $q=s=>document.querySelector(s), E=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const me=()=>(typeof SBME!=="undefined"&&SBME)||null;
-/* who may use the preview: a signed-in administrator, also while using View as */
-Object.defineProperty(SID_LOOK,"available",{configurable:true,get(){ const m=me(); return !!m&&!!window.__sidMeFinal&&(!!m.is_admin||!!window.SID_VIEWAS); }});
+/* who may use the preview: ONLY the owner while testing, also while using View as. Widen later by removing the hash check. */
+const NL_OWNER="be27be0be0a04a65"; /* hash of the owner e-mail (the build audit forbids the address itself) */
+const nlHash=t=>{ t=String(t||"").trim().toLowerCase(); let a=0x811c9dc5,b=5381; for(let i=0;i<t.length;i++){ const c=t.charCodeAt(i); a=Math.imul(a^c,0x01000193)>>>0; b=((Math.imul(b,33))^c)>>>0; } return (("0000000"+a.toString(16)).slice(-8)+("0000000"+b.toString(16)).slice(-8)); };
+Object.defineProperty(SID_LOOK,"available",{configurable:true,get(){ const m=me(); return !!m&&!!window.__sidMeFinal&&nlHash((window.SID_VIEWAS&&window.SID_VIEWAS.realEmail)||m.email)===NL_OWNER&&(!!m.is_admin||!!window.SID_VIEWAS); }});
 const P=(d)=>'<svg width="40" height="40" viewBox="0 0 36 36" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'+d+'</svg>';
 const IC={home:'<path d="M5 15 18 5l13 10v15H5z"/><path d="M14 30v-8h8v8"/>',bell:'<path d="M10 23v-7a8 8 0 0 1 16 0v7l3 3H7z"/><path d="M15 29a3 3 0 0 0 6 0"/>',
  lara:'<circle cx="18" cy="18" r="10"/><path d="M13 18c2-3 3-3 5 0s3 3 5 0"/>',gear:'<circle cx="18" cy="18" r="4.5"/><path d="M18 4v5M18 27v5M4 18h5M27 18h5M8 8l3.5 3.5M24.5 24.5 28 28M28 8l-3.5 3.5M11.5 24.5 8 28"/>',
