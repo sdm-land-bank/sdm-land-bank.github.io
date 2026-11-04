@@ -20085,13 +20085,34 @@ function baseLayers(){ const sat=hasL("e"), ls=layersAll(), I=lv("img"), S1=lv("
   }catch(e){ console.error("land levels base",e); } }
 function restoreBase(){ try{ unwrapAll(); if(hasL("e")){ setVis("e",true); map.setPaintProperty("e","raster-opacity",1); }
   layersAll().filter(l=>isLb(l)||isPlot(l)||roadLike(l)).forEach(l=>{ if(isLb(l)) setVis(l.id,typeof LBL_ON==="undefined"||LBL_ON); else setVis(l.id,true); }); }catch(e){} }
-function teardown(){ imageWorkerStop(); cancelAnimationFrame(hovRaf); hovRaf=0; hovE=null; clearTimeout(hovDelay); clearTimeout(hovRetry); restoreBase(); try{ if(map.getTerrain&&map.getTerrain()) map.setTerrain(null); if(TP.pixel0!=null&&map.setPixelRatio){ map.setPixelRatio(TP.pixel0); TP.pixel0=null; } }catch(e){} pitchBack();
+function teardown(){ guardMarkers(false); imageWorkerStop(); cancelAnimationFrame(hovRaf); hovRaf=0; hovE=null; clearTimeout(hovDelay); clearTimeout(hovRetry); restoreBase(); try{ if(map.getTerrain&&map.getTerrain()) map.setTerrain(null); if(TP.pixel0!=null&&map.setPixelRatio){ map.setPixelRatio(TP.pixel0); TP.pixel0=null; } }catch(e){} pitchBack();
   ["sidtopo-pt","sidtopo-pp","sidtopo-pl","sidtopo-ct-lbl","sidtopo-ct-major","sidtopo-ct-minor",ID.slp,ID.col,"sidtopo-hs"].forEach(id=>{ try{ if(hasL(id)) map.removeLayer(id); }catch(e){} });
   [ID.pts,ID.ct,ID.slp,ID.col,ID.dem,ID.terrain].forEach(id=>{ try{ if(hasS(id)) map.removeSource(id); }catch(e){} }); }
 
+/* MapLibre 4.7.1 checks DOM-marker occlusion with synchronous GPU depth reads.
+   During camera movement retain the last opacity; moveend performs the exact check.
+   Markers outside the viewport cannot be seen and need no depth read at all.
+   Keep this adapter scoped to this map/terrain mode and restore the original method. */
+let markerGuard=null, markerOriginal=null;
+function guardMarkers(on){ const proto=maplibregl.Marker&&maplibregl.Marker.prototype; if(!proto) return;
+  if(on){ if(markerGuard||typeof proto._updateOpacity!=="function") return;
+    markerOriginal=proto._updateOpacity;
+    const original=markerOriginal;
+    markerGuard=function(force){
+      if(this._map===map&&TP.on&&map.getTerrain&&map.getTerrain()){
+        if(!force&&map.isMoving()) return;
+        const p=this._pos, c=map.getContainer();
+        if(p&&(p.x<0||p.y<0||p.x>c.clientWidth||p.y>c.clientHeight)) return;
+      }
+      return original.call(this,force);
+    };
+    proto._updateOpacity=markerGuard;
+  }else if(markerGuard){ if(proto._updateOpacity===markerGuard) proto._updateOpacity=markerOriginal; markerGuard=null; markerOriginal=null; }
+}
+
 /* ---------- 3D terrain (preview) ---------- */
 function pitchBack(){ if(TP.pitch0!=null){ try{ map.easeTo({pitch:TP.pitch0,duration:500}); }catch(e){} TP.pitch0=null; } }
-function terrain(){ if(!TP.on||!hasS(ID.dem)) return; try{ if(PREF.ter[0]){ if(!hasS(ID.terrain)) map.addSource(ID.terrain,{type:"raster-dem",tiles:[HK.has&&HK.has()?"sidtopodem://{z}/{x}/{y}":DEM_URL],tileSize:256,maxzoom:MAXZ,encoding:"terrarium",attribution:ATTR}); const ex=+PREF.ter[1]||1, cur=map.getTerrain(); if(!cur||cur.source!==ID.terrain||cur.exaggeration!==ex) map.setTerrain({source:ID.terrain,exaggeration:ex}); if(map.getPixelRatio&&map.setPixelRatio){ if(TP.pixel0==null) TP.pixel0=map.getPixelRatio(); if(map.getPixelRatio()>1.25) map.setPixelRatio(1.25); } if(map.getPitch()<20&&TP.pitch0==null){ TP.pitch0=map.getPitch(); map.easeTo({pitch:40,duration:500}); } } else { if(map.getTerrain()) map.setTerrain(null); if(TP.pixel0!=null&&map.setPixelRatio){ map.setPixelRatio(TP.pixel0); TP.pixel0=null; } pitchBack(); } }catch(e){ console.error("terrain",e); } }
+function terrain(){ if(!TP.on||!hasS(ID.dem)) return; try{ if(PREF.ter[0]){ guardMarkers(true); if(!hasS(ID.terrain)) map.addSource(ID.terrain,{type:"raster-dem",tiles:[HK.has&&HK.has()?"sidtopodem://{z}/{x}/{y}":DEM_URL],tileSize:256,maxzoom:MAXZ,encoding:"terrarium",attribution:ATTR}); const ex=+PREF.ter[1]||1, cur=map.getTerrain(); if(!cur||cur.source!==ID.terrain||cur.exaggeration!==ex) map.setTerrain({source:ID.terrain,exaggeration:ex}); if(map.getPixelRatio&&map.setPixelRatio){ if(TP.pixel0==null) TP.pixel0=map.getPixelRatio(); if(map.getPixelRatio()>1.25) map.setPixelRatio(1.25); } if(map.getPitch()<20&&TP.pitch0==null){ TP.pitch0=map.getPitch(); map.easeTo({pitch:40,duration:500}); } } else { guardMarkers(false); if(map.getTerrain()) map.setTerrain(null); if(TP.pixel0!=null&&map.setPixelRatio){ map.setPixelRatio(TP.pixel0); TP.pixel0=null; } pitchBack(); } }catch(e){ console.error("terrain",e); } }
 
 /* ---------- move / resize / fold helpers shared by the panel and the section window ---------- */
 function pinEl(el){ if(el.dataset.pin) return; const r=el.getBoundingClientRect(); el.style.left=r.left+"px"; el.style.top=r.top+"px"; el.style.width=r.width+"px"; el.style.right="auto"; el.style.bottom="auto"; el.style.boxSizing="border-box"; el.dataset.pin="1"; }
