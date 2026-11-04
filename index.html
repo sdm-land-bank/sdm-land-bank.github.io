@@ -19933,7 +19933,7 @@ const TC=new Map(), TR=new Map();
 function demTile(z,x,y){ const k=z+"/"+x+"/"+y; let p=TC.get(k); if(p){ TC.delete(k); TC.set(k,p); return p; }
   p=fetch(DEM_URL.replace("{z}",z).replace("{x}",x).replace("{y}",y)).then(r=>{ if(!r.ok) throw new Error("tile "+r.status); return r.blob(); })
    .then(b=>createImageBitmap(b,{premultiplyAlpha:"none",colorSpaceConversion:"none"})).then(bm=>{
-     const c=cvs(256,256), g=c.getContext("2d",{willReadFrequently:true}); g.drawImage(bm,0,0); const d=g.getImageData(0,0,256,256).data, H=new Float32Array(65536);
+     const c=cvs(256,256), g=c.getContext("2d",{willReadFrequently:true}); g.drawImage(bm,0,0); const d=g.getImageData(0,0,256,256).data, H=new Float32Array(65536); bm.close();
      for(let i=0;i<65536;i++){ const v=d[i*4]*256+d[i*4+1]+d[i*4+2]/256-32768; H[i]=v<SENTINEL?NaN:v; } if(HK.merge){ try{ HK.merge(z,x,y,H); }catch(e){ console.error("survey merge",e); } } TR.set(k,H); return H; })
    .catch(()=>{ TC.delete(k); return null; });
   TC.set(k,p); if(TC.size>90){ const o=TC.keys().next().value; TC.delete(o); TR.delete(o); } return p; }
@@ -19953,7 +19953,7 @@ function elevSync(lon,lat){ if(HK.at){ const s=HK.at(lon,lat); if(s) return s.h;
 /* ---------- own coloured tiles: height ramp and slope classes, made from the same heights ---------- */
 const LUT=(()=>{ const a=RAMP.map(hexRGB), o=new Uint8Array(256*3); for(let i=0;i<256;i++){ const t=i/255*(a.length-1), j=Math.min(a.length-2,Math.floor(t)), f=t-j; for(let c=0;c<3;c++) o[i*3+c]=Math.round(a[j][c]*(1-f)+a[j+1][c]*f); } return o; })();
 const SLC=SLP.map(s=>hexRGB(s[1]));
-async function tileImage(kind,z,x,y,lo,hi){ const H=await demTile(z,x,y), c=cvs(256,256), g=c.getContext("2d"), im=g.createImageData(256,256), d=im.data;
+async function paintImage(kind,z,x,y,lo,hi,H){ const c=cvs(256,256), g=c.getContext("2d"), im=g.createImageData(256,256), d=im.data;
   if(H){ if(kind==="h"){ const sp=Math.max(1e-6,hi-lo); for(let i=0;i<65536;i++){ const v=H[i]; if(!(v===v)) continue; const t=Math.max(0,Math.min(255,Math.round((v-lo)/sp*255))); d[i*4]=LUT[t*3]; d[i*4+1]=LUT[t*3+1]; d[i*4+2]=LUT[t*3+2]; d[i*4+3]=255; } }
     else { const n=Math.pow(2,z), lat=Math.atan(Math.sinh(Math.PI*(1-2*(y+.5)/n)))*180/Math.PI, cell=40075016.686*Math.cos(lat*Math.PI/180)/(256*n);
       for(let j=0;j<256;j++){ const j0=Math.max(0,j-1), j1=Math.min(255,j+1); for(let i=0;i<256;i++){ const i0=Math.max(0,i-1), i1=Math.min(255,i+1), r0=j0*256, r1=j*256, r2=j1*256;
@@ -19961,6 +19961,48 @@ async function tileImage(kind,z,x,y,lo,hi){ const H=await demTile(z,x,y), c=cvs(
         const dx=((cc+2*ff+ii)-(a+2*dd+gg))/(8*cell*(i1-i0)/2), dy=((gg+2*hh+ii)-(a+2*b+cc))/(8*cell*(j1-j0)/2), sl=100*Math.hypot(dx,dy); let k=0; while(k<SLP.length-1&&sl>=SLP[k][0]) k++;
         d[p*4]=SLC[k][0]; d[p*4+1]=SLC[k][1]; d[p*4+2]=SLC[k][2]; d[p*4+3]=255; } } } }
   g.putImageData(im,0,0); const blob=c.convertToBlob?await c.convertToBlob({type:"image/png"}):await new Promise(r=>c.toBlob(r,"image/png")); return blob.arrayBuffer(); }
+/* A small worker for slope/height colouring. Copies keep the shared elevation cache intact.
+   Cache final images too: camera/terrain changes must not regenerate the same PNGs. */
+let imageWorker=null, imageSeq=0, imageFailed=false, imageGeneration=0;
+const imageJobs=new Map(), imageCache=new Map();
+function imageWorkerStop(reason=new DOMException("Tile cancelled","AbortError")){ if(reason.name==="AbortError") imageGeneration++; if(imageWorker) imageWorker.terminate(); imageWorker=null;
+  imageJobs.forEach(j=>{ j.reject(reason); }); imageJobs.clear(); }
+function getImageWorker(){ if(imageWorker||imageFailed) return imageWorker;
+  if(typeof Worker==="undefined"||typeof OffscreenCanvas==="undefined"){ imageFailed=true; return null; }
+  try{ const src='const cvs='+cvs.toString()+';const SLP='+JSON.stringify(SLP)+';const SLC='+JSON.stringify(SLC)+';const LUT=new Uint8Array('+JSON.stringify(Array.from(LUT))+');'+paintImage.toString()+
+    ';onmessage=async e=>{const {id,args,H}=e.data;try{const data=await paintImage(...args,H);postMessage({id,data},[data]);}catch(e){postMessage({id,error:String(e.message||e)});}};';
+    const url=URL.createObjectURL(new Blob([src],{type:"text/javascript"})); try{ imageWorker=new Worker(url); } finally{ URL.revokeObjectURL(url); }
+    imageWorker.onmessage=e=>{ const j=imageJobs.get(e.data.id); if(!j) return; e.data.error?j.reject(new Error(e.data.error)):j.resolve(e.data.data); };
+    imageWorker.onerror=()=>{ imageFailed=true; imageWorkerStop(new Error("Tile worker failed")); }; return imageWorker;
+  }catch(e){ imageFailed=true; return null; } }
+async function tileImage(kind,z,x,y,lo,hi,signal){
+  const generation=imageGeneration;
+  const aborted=()=>{ if(generation!==imageGeneration||(signal&&signal.aborted)) throw new DOMException("Tile cancelled","AbortError"); }; aborted();
+  const key=[kind,z,x,y,lo,hi].join('/'); let result=imageCache.get(key);
+  if(!result){ const H=await demTile(z,x,y); aborted(); if(!H) throw new Error("Elevation tile unavailable");
+    const w=getImageWorker();
+    if(w){ const copy=H.slice(), id=++imageSeq;
+      try{ result=await new Promise((resolve,reject)=>{
+        const finish=(err,data)=>{ const j=imageJobs.get(id); if(!j) return; imageJobs.delete(id); clearTimeout(j.timer); if(signal) signal.removeEventListener("abort",cancel); err?reject(err):resolve(data); };
+        const cancel=()=>finish(new DOMException("Tile cancelled","AbortError"));
+        const timer=setTimeout(()=>{ imageFailed=true; imageWorkerStop(new Error("Tile worker timed out")); },20000);
+        imageJobs.set(id,{timer,resolve:data=>finish(null,data),reject:err=>finish(err)});
+        if(signal) signal.addEventListener("abort",cancel,{once:true});
+        if(signal&&signal.aborted){ cancel(); return; }
+        try{ w.postMessage({id,args:[kind,z,x,y,lo,hi],H:copy},[copy.buffer]); }catch(e){ finish(e); }
+      }); }catch(e){
+        // Real cancellation stays cancelled. A failed worker must not leave a blank map tile.
+        if(e.name==="AbortError") throw e;
+        // Worker failure invalidates its jobs, but does not change the elevation dataset.
+        if(generation!==imageGeneration) throw e;
+        await new Promise(r=>setTimeout(r,0)); aborted(); result=await paintImage(kind,z,x,y,lo,hi,H);
+      }
+    }else{ await new Promise(r=>setTimeout(r,0)); aborted(); result=await paintImage(kind,z,x,y,lo,hi,H); }
+    aborted(); imageCache.set(key,result); if(imageCache.size>64) imageCache.delete(imageCache.keys().next().value);
+  }else{ imageCache.delete(key); imageCache.set(key,result); }
+  aborted(); return result.slice(0); // MapLibre may transfer/detach the returned buffer.
+}
+
 /* a terrarium tile with the survey burnt in (only used while a survey exists) */
 async function mergedPng(z,x,y){ const H=await demTile(z,x,y); const c=cvs(256,256), g=c.getContext("2d"), im=g.createImageData(256,256), d=im.data;
   for(let i=0;i<65536;i++){ const v=H&&H[i]===H[i]?H[i]:-32768; const w=Math.max(0,Math.min(65535.99,v+32768)), r=Math.floor(w/256), gg=Math.floor(w)%256, b=Math.floor((w-Math.floor(w))*256); d[i*4]=r; d[i*4+1]=gg; d[i*4+2]=b; d[i*4+3]=255; }
@@ -19968,8 +20010,8 @@ async function mergedPng(z,x,y){ const H=await demTile(z,x,y); const c=cvs(256,2
 /* maplibre-contour 0.1.0 hands back its whole write buffer (zero padded): cut the tile at its last layer so MapLibre can read it */
 function trimPbf(buf){ const u=new Uint8Array(buf); let p=0; while(p<u.length&&u[p]===26){ p++; let l=0,sh=0,b; do{ b=u[p++]; l+=(b&127)*Math.pow(2,sh); sh+=7; }while(b&128); p+=l; } return p>0&&p<=u.length?buf.slice(0,p):buf; }
 let protoOn=false;
-function addProto(){ if(protoOn) return; protoOn=true; maplibregl.addProtocol("sidtopo",async(p)=>{ const m=/sidtopo:\/\/([hs])\/(\d+)\/(\d+)\/(\d+)(?:\?r=(-?[\d.]+),(-?[\d.]+))?/.exec(p.url); if(!m) throw new Error("bad tile url");
-  return {data:await tileImage(m[1],+m[2],+m[3],+m[4],+m[5],+m[6])}; });
+function addProto(){ if(protoOn) return; protoOn=true; maplibregl.addProtocol("sidtopo",async(p,ac)=>{ const m=/sidtopo:\/\/([hs])\/(\d+)\/(\d+)\/(\d+)(?:\?r=(-?[\d.]+),(-?[\d.]+))?/.exec(p.url); if(!m) throw new Error("bad tile url");
+  return {data:await tileImage(m[1],+m[2],+m[3],+m[4],+m[5],+m[6],ac&&ac.signal)}; });
   maplibregl.addProtocol("sidtopodem",async(p)=>{ const m=/sidtopodem:\/\/(\d+)\/(\d+)\/(\d+)/.exec(p.url); if(!m) throw new Error("bad tile url"); return {data:await mergedPng(+m[1],+m[2],+m[3])}; });
   maplibregl.addProtocol("sidct",async(p,ac)=>{ const r=await TP.lib.contourProtocolV4({url:p.url.replace(/^sidct:/,"dem-contour:")},ac); return {data:trimPbf(r.data)}; }); }
 
@@ -19982,7 +20024,7 @@ async function fitRange(){ const b=map.getBounds(); let z=MAXZ; const tl=gpx(b.g
   if(hi-lo<4){ const m=(lo+hi)/2; lo=Math.floor(m-2); hi=lo+4; } return [lo,hi]; }
 
 /* ---------- map layers (each added only while the mode is on; hidden layers load no tiles) ---------- */
-const ID={dem:"sidtopo-dem",col:"sidtopo-col",slp:"sidtopo-slp",ct:"sidtopo-ct",pts:"sidtopo-pts"};
+const ID={terrain:"sidtopo-terrain",dem:"sidtopo-dem",col:"sidtopo-col",slp:"sidtopo-slp",ct:"sidtopo-ct",pts:"sidtopo-pts"};
 const hasL=id=>{ try{ return !!map.getLayer(id); }catch(e){ return false; } };
 const hasS=id=>{ try{ return !!map.getSource(id); }catch(e){ return false; } };
 const layersAll=()=>{ try{ return map.getStyle().layers||[]; }catch(e){ return []; } };
@@ -20043,13 +20085,13 @@ function baseLayers(){ const sat=hasL("e"), ls=layersAll(), I=lv("img"), S1=lv("
   }catch(e){ console.error("land levels base",e); } }
 function restoreBase(){ try{ unwrapAll(); if(hasL("e")){ setVis("e",true); map.setPaintProperty("e","raster-opacity",1); }
   layersAll().filter(l=>isLb(l)||isPlot(l)||roadLike(l)).forEach(l=>{ if(isLb(l)) setVis(l.id,typeof LBL_ON==="undefined"||LBL_ON); else setVis(l.id,true); }); }catch(e){} }
-function teardown(){ restoreBase(); try{ if(map.getTerrain&&map.getTerrain()) map.setTerrain(null); }catch(e){} pitchBack();
+function teardown(){ imageWorkerStop(); cancelAnimationFrame(hovRaf); hovRaf=0; hovE=null; clearTimeout(hovDelay); clearTimeout(hovRetry); restoreBase(); try{ if(map.getTerrain&&map.getTerrain()) map.setTerrain(null); if(TP.pixel0!=null&&map.setPixelRatio){ map.setPixelRatio(TP.pixel0); TP.pixel0=null; } }catch(e){} pitchBack();
   ["sidtopo-pt","sidtopo-pp","sidtopo-pl","sidtopo-ct-lbl","sidtopo-ct-major","sidtopo-ct-minor",ID.slp,ID.col,"sidtopo-hs"].forEach(id=>{ try{ if(hasL(id)) map.removeLayer(id); }catch(e){} });
-  [ID.pts,ID.ct,ID.slp,ID.col,ID.dem].forEach(id=>{ try{ if(hasS(id)) map.removeSource(id); }catch(e){} }); }
+  [ID.pts,ID.ct,ID.slp,ID.col,ID.dem,ID.terrain].forEach(id=>{ try{ if(hasS(id)) map.removeSource(id); }catch(e){} }); }
 
 /* ---------- 3D terrain (preview) ---------- */
 function pitchBack(){ if(TP.pitch0!=null){ try{ map.easeTo({pitch:TP.pitch0,duration:500}); }catch(e){} TP.pitch0=null; } }
-function terrain(){ if(!TP.on||!hasS(ID.dem)) return; try{ if(PREF.ter[0]){ map.setTerrain({source:ID.dem,exaggeration:+PREF.ter[1]||1}); if(map.getPitch()<20&&TP.pitch0==null){ TP.pitch0=map.getPitch(); map.easeTo({pitch:55,duration:700}); } } else { if(map.getTerrain()) map.setTerrain(null); pitchBack(); } }catch(e){ console.error("terrain",e); } }
+function terrain(){ if(!TP.on||!hasS(ID.dem)) return; try{ if(PREF.ter[0]){ if(!hasS(ID.terrain)) map.addSource(ID.terrain,{type:"raster-dem",tiles:[HK.has&&HK.has()?"sidtopodem://{z}/{x}/{y}":DEM_URL],tileSize:256,maxzoom:MAXZ,encoding:"terrarium",attribution:ATTR}); const ex=+PREF.ter[1]||1, cur=map.getTerrain(); if(!cur||cur.source!==ID.terrain||cur.exaggeration!==ex) map.setTerrain({source:ID.terrain,exaggeration:ex}); if(map.getPixelRatio&&map.setPixelRatio){ if(TP.pixel0==null) TP.pixel0=map.getPixelRatio(); if(map.getPixelRatio()>1.25) map.setPixelRatio(1.25); } if(map.getPitch()<20&&TP.pitch0==null){ TP.pitch0=map.getPitch(); map.easeTo({pitch:40,duration:500}); } } else { if(map.getTerrain()) map.setTerrain(null); if(TP.pixel0!=null&&map.setPixelRatio){ map.setPixelRatio(TP.pixel0); TP.pixel0=null; } pitchBack(); } }catch(e){ console.error("terrain",e); } }
 
 /* ---------- move / resize / fold helpers shared by the panel and the section window ---------- */
 function pinEl(el){ if(el.dataset.pin) return; const r=el.getBoundingClientRect(); el.style.left=r.left+"px"; el.style.top=r.top+"px"; el.style.width=r.width+"px"; el.style.right="auto"; el.style.bottom="auto"; el.style.boxSizing="border-box"; el.dataset.pin="1"; }
@@ -20111,14 +20153,32 @@ async function colOn(){ if(TP.range&&hasS(ID.col)) return; const r=await fitRang
 async function colRefit(){ const r=await fitRange(); if(!r) return; TP.range=r; try{ if(hasL(ID.col)) map.removeLayer(ID.col); if(hasS(ID.col)) map.removeSource(ID.col); }catch(e){} build(); }
 
 /* ---------- height under the pointer ---------- */
-let hovRaf=0, hovE=null;
+let hovRaf=0, hovE=null, hovDelay=0, hovRetry=0;
 function pointLL(e){ const r=map.getContainer().getBoundingClientRect(); const ll=map.unproject([e.clientX-r.left,e.clientY-r.top]); return [ll.lng,ll.lat]; }
 function showRd(ll,x,y){ const rd=q("#tpRd"); if(!rd) return; const h=elevSync(ll[0],ll[1]);
   if(h===undefined){ rd.innerHTML="<span>Height …</span>"; if(tag) tag.hidden=true; return; }
   if(h===null){ rd.innerHTML="<span>Height —</span><small>no data here</small>"; if(tag) tag.hidden=true; return; }
   rd.innerHTML=`<span>${h.toFixed(1)} m</span><small>${esc(sourceOf(ll[0],ll[1]).txt)}</small>`;
   if(tag&&x!=null&&matchMedia("(hover:hover)").matches&&!panel.contains(document.elementFromPoint(x,y)||panel)){ tag.hidden=false; tag.textContent=h.toFixed(1)+" m"; tag.style.left=(x+14)+"px"; tag.style.top=(y+14)+"px"; } else if(tag) tag.hidden=true; }
-const onMove=e=>{ if(!TP.on||(e.target&&e.target.closest&&e.target.closest("#tpPanel,#tpSec"))){ if(tag) tag.hidden=true; return; } hovE=e; if(hovRaf) return; hovRaf=requestAnimationFrame(()=>{ hovRaf=0; if(!hovE) return; try{ const ll=pointLL(hovE); showRd(ll,hovE.clientX,hovE.clientY); if(TP.tool==="prof"){ const P=TP.pts; if(P.length&&!SC.fin){ let tot=0; for(let i=1;i<P.length;i++) tot+=hav(P[i-1],P[i]); const l=P[P.length-1]; drawPts({c:ll,t:fmtD(tot+hav(l,ll)),line:[[l[0],l[1]],ll],hov:0}); } else if(SC.fin||!P.length) nearLine(hovE); } if(elevSync(ll[0],ll[1])===undefined) setTimeout(()=>{ if(TP.on&&hovE) showRd(pointLL(hovE),hovE.clientX,hovE.clientY); },350); }catch(x){} }); };
+const onMove=e=>{
+  // UI controls and camera motion are not height samples. Terrain unproject performs a GPU readback.
+  if(!TP.on||!inMap(e)||map.isMoving()){
+    hovE=null; clearTimeout(hovDelay); clearTimeout(hovRetry); if(tag) tag.hidden=true; return;
+  }
+  hovE=e;
+  const sample=()=>{ hovRaf=0; if(!TP.on||!hovE||map.isMoving()) return;
+    try{ const ll=pointLL(hovE); showRd(ll,hovE.clientX,hovE.clientY);
+      if(TP.tool==="prof"){ const P=TP.pts;
+        if(P.length&&!SC.fin){ let tot=0; for(let i=1;i<P.length;i++) tot+=hav(P[i-1],P[i]); const l=P[P.length-1]; drawPts({c:ll,t:fmtD(tot+hav(l,ll)),line:[[l[0],l[1]],ll],hov:0}); }
+        else if(SC.fin||!P.length) nearLine(hovE);
+      }
+      clearTimeout(hovRetry);
+      if(elevSync(ll[0],ll[1])===undefined){ const ev=hovE; hovRetry=setTimeout(()=>{ if(TP.on&&hovE===ev&&!map.isMoving()) showRd(ll,ev.clientX,ev.clientY); },350); }
+    }catch(x){}
+  };
+  if(map.getTerrain&&map.getTerrain()){ clearTimeout(hovDelay); hovDelay=setTimeout(sample,120); }
+  else if(!hovRaf) hovRaf=requestAnimationFrame(sample);
+};
 const onCentre=()=>{ if(!TP.on||matchMedia("(hover:hover)").matches) return; const c=map.getCenter(); showRd([c.lng,c.lat]); };
 const onZoomEnd=()=>{ if(TP.on) legend(); };
 let styleT=0; const onStyle=()=>{ if(!TP.on) return; clearTimeout(styleT); styleT=setTimeout(()=>{ if(!TP.on||!map.isStyleLoaded()) return; if(!hasS(ID.dem)){ WR.clear(); build(); } },80); };
@@ -20268,13 +20328,13 @@ function bind(on){ if(on===TP.bound) return; TP.bound=on; const f=on?"addEventLi
 /* ---------- switch the mode on / off ---------- */
 function loadScript(src,sri){ return new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src; s.integrity=sri; s.crossOrigin="anonymous"; s.onload=res; s.onerror=()=>rej(new Error("could not load "+src)); document.head.appendChild(s); }); }
 async function loadLib(){ if(TP.lib) return true; try{ if(typeof mlcontour==="undefined") await loadScript(CT_JS,CT_SRI);
-    TP.lib=new mlcontour.DemSource({url:DEM_URL,encoding:"terrarium",maxzoom:MAXZ,worker:false,cacheSize:40,timeoutMs:15000}); TP.lib.setupMaplibre(maplibregl);
+    TP.lib=new mlcontour.DemSource({url:DEM_URL,encoding:"terrarium",maxzoom:MAXZ,worker:!(HK.has&&HK.has()),cacheSize:80,timeoutMs:15000}); TP.lib.setupMaplibre(maplibregl);
     TP.lib.manager.getTile=async(url,ac)=>{ const m=/\/(\d+)\/(\d+)\/(\d+)\.png/.exec(url); if(m&&HK.has&&HK.has()) return {data:new Blob([await mergedPng(+m[1],+m[2],+m[3])],{type:"image/png"})};
       const r=await fetch(url,{signal:ac&&ac.signal}); if(!r.ok) throw new Error("tile "+r.status); return {data:await r.blob()}; }; return true; }
   catch(e){ console.error("contour library",e); say("Contours are not available (the contour library did not load); the other layers work",true); return false; } }
 async function setOn(v){ if(v===TP.on) return; if(!ok()){ say("The map is still loading",true); return; }
   if(v){ loadPref(); TP.on=true; ui(); syncUi(); panel.hidden=false; btnState(); bind(true); if(typeof SID_PLAN!=="undefined"&&SID_PLAN&&SID_PLAN.on&&map.getTerrain&&PREF.ter[0]) PREF.ter[0]=0;
-    await loadLib(); if(HK.ready){ try{ await HK.ready(); }catch(e){ console.error(e); } } if(!TP.on) return; if(lv("col").on&&!TP.range){ TP.range=await fitRange(); } build(); onCentre(); legend(); avoidSoon(); }
+    if(HK.ready){ try{ await HK.ready(); }catch(e){ console.error(e); } } if(!TP.on) return; await loadLib(); if(!TP.on) return; if(lv("col").on&&!TP.range){ TP.range=await fitRange(); } build(); onCentre(); legend(); avoidSoon(); }
   else { TP.on=false; setTool(null); secHide(); bind(false); teardown(); TP.range=null; if(panel) panel.hidden=true; if(tag) tag.hidden=true; document.body.classList.remove("tp-pick"); btnState(); } }
 /* keep the panel and the section window off the drawing-mode boxes (plot card, plan options, hint ...): when the default spot is taken, slide to the nearest free spot; if the screen is full, fold the panel to its title bar and try again */
 let avT=0, avT2=0; const avoidRun=()=>{ try{ avoid(panel); avoid(dock()); }catch(e){ console.error("avoid",e); } }; const avoidSoon=()=>{ clearTimeout(avT); clearTimeout(avT2); avT=setTimeout(avoidRun,120); avT2=setTimeout(avoidRun,520); };
@@ -20297,7 +20357,7 @@ setInterval(()=>{ try{ cardWatch(); if(ok()&&map.addControl&&!map.getContainer()
     const top=document.querySelector("#skUI .sk-top"); if(top&&!document.getElementById("tpSkBtn")){ const b=document.createElement("button"); b.type="button"; b.id="tpSkBtn"; b.className="sk-tb"; b.title="Land Levels — heights, hillshade, contours, slope and profile";
       b.innerHTML=TOPO_ICON.replace("<svg","<svg width='19' height='19'")+"<span>Land Levels</span>"; b.addEventListener("click",e=>{ e.stopPropagation(); setOn(!TP.on); }); const done=document.getElementById("skDone"); top.insertBefore(b,done||null); btnState(); } }catch(e){} },1500);
 /* the survey changed: forget decoded tiles, rebuild the layers that read heights */
-async function refresh(){ TC.clear(); TR.clear(); if(!TP.on){ TP.lib=null; return; } teardown(); TP.lib=null; TP.range=null; await loadLib(); if(lv("col").on) TP.range=await fitRange(); build(); legend(); }
+async function refresh(){ imageWorkerStop(); imageCache.clear(); TC.clear(); TR.clear(); if(!TP.on){ TP.lib=null; return; } teardown(); TP.lib=null; TP.range=null; await loadLib(); if(lv("col").on) TP.range=await fitRange(); build(); legend(); }
 window.SID_TOPO={get on(){ return TP.on; },setOn,elevAt,elevSync,sourceOf,refresh,
   api:{demTile,elevSync,elevAt,gpx,hav,MAXZ,ERR,TP,HK,loadScript,sourceOf,fmtD,esc,say,ok:ok},
   _t:{TP,fitRange,tileImage,demTile,lv,PREF,ctStep}};
