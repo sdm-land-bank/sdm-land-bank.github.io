@@ -22054,7 +22054,7 @@ function assign(items,texts){ items.forEach(it=>{ it.code=""; it.a=area(it.rings
 function clusters(items){ const cell=700, m=new Map(); items.forEach((it,i)=>{ const k=Math.floor(it.c[0]/cell)+","+Math.floor(it.c[1]/cell); if(!m.has(k)) m.set(k,[]); m.get(k).push(i); });
   const seen=new Set(), out=[]; m.forEach((_,k0)=>{ if(seen.has(k0)) return; const comp=[], q=[k0]; seen.add(k0);
     while(q.length){ const k=q.pop(); comp.push(...m.get(k)); const [x,y]=k.split(",").map(Number); for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++){ const kk=(x+dx)+","+(y+dy); if(m.has(kk)&&!seen.has(kk)){ seen.add(kk); q.push(kk); } } }
-    const its=comp.map(i=>items[i]); const b=bb(its.map(it=>it.c)); out.push({idx:comp,coded:its.filter(it=>it.code).length,n:its.length,box:b,c:[(b[0]+b[2])/2,(b[1]+b[3])/2]}); });
+    const its=comp.map(i=>items[i]); const b=bb(its.map(it=>it.c)); out.push({idx:comp,codes:new Set(its.filter(it=>it.code).map(it=>String(it.code).toUpperCase().replace(/\s+/g,""))),coded:its.filter(it=>it.code).length,n:its.length,box:b,c:[(b[0]+b[2])/2,(b[1]+b[3])/2]}); });
   return out.sort((a,b)=>b.coded-a.coded||b.n-a.n); }
 /* plain line work → enclosed faces (planar graph); keeps faces that hold an orphan number */
 function polygonize(segs,orph,maxSegs){
@@ -22093,8 +22093,14 @@ async function prepare(R,near,opts){ opts=opts||{}; if(!R._orig) R._orig={items:
   if(C.length>1||near){ if(T) await T.needProj4(); for(const c of C){ try{ const crs=T?T.suggestCrs([[c.c[0],c.c[1],0]],near):"wgs"; c.crs=crs; const ll=crs==="wgs"?c.c:T.toLL(crs)(c.c[0],c.c[1]); c.ll=ll; if(near){ const k=111320*Math.cos(near[1]*Math.PI/180); c.km=Math.hypot((ll[0]-near[0])*k,(ll[1]-near[1])*110574)/1000; } }catch(e){} }
     if(near){ const ok=C.map((c,i)=>[c,i]).filter(([c])=>c.km!=null).sort((a,b)=>a[0].km-b[0].km); if(ok.length&&ok[0][0].km<15) pick=ok[0][1]; } }
   if(opts.copy!=null&&C[opts.copy]) pick=opts.copy;
-  rep.copies=C.map((c,i)=>({i,n:c.n,coded:c.coded,km:c.km,used:i===pick})); const keep=C[pick];
-  if(keep&&C.length>1){ const pad=200, b=[keep.box[0]-pad,keep.box[1]-pad,keep.box[2]+pad,keep.box[3]+pad], inside=p=>p[0]>=b[0]&&p[0]<=b[2]&&p[1]>=b[1]&&p[1]<=b[3];
+  /* parts of the same project bring new plot numbers; sheet copies repeat numbers already taken */
+  const keep=C[pick], use=new Set(keep?[pick]:[]), taken=new Set(keep?keep.codes:[]);
+  if(keep) C.map((c,i)=>[c,i]).filter(([c,i])=>i!==pick).sort((a,b)=>Math.hypot(a[0].c[0]-keep.c[0],a[0].c[1]-keep.c[1])-Math.hypot(b[0].c[0]-keep.c[0],b[0].c[1]-keep.c[1])).forEach(([c,i])=>{
+    if(Math.hypot(c.c[0]-keep.c[0],c.c[1]-keep.c[1])>5000) return; let rep_=0; c.codes.forEach(k=>{ if(taken.has(k)) rep_++; }); if(c.codes.size&&rep_/c.codes.size>.3) return; if(!c.codes.size&&c.n<3) return;
+    use.add(i); c.codes.forEach(k=>taken.add(k)); });
+  rep.copies=C.map((c,i)=>({i,n:c.n,coded:c.coded,km:c.km,used:i===pick,part:use.has(i)&&i!==pick})).filter(c=>c.used||c.part||c.coded>=3);
+  const boxes=[...use].map(i=>C[i].box);
+  if(keep&&C.length>1){ const pad=200, inside=p=>boxes.some(b=>p[0]>=b[0]-pad&&p[0]<=b[2]+pad&&p[1]>=b[1]-pad&&p[1]<=b[3]+pad);
     const n0=R.items.length; R.items=R.items.filter(it=>inside(it.c)); R.texts=R.texts.filter(t=>inside([t.x,t.y])); R.segs=R.segs.filter(s=>inside([s[0],s[1]])||inside([s[2],s[3]])); orph=orph.filter(t=>inside([t.x,t.y])); rep.dropped=n0-R.items.length; }
   R.crsHint=keep&&keep.crs||null;
   // plots from lines where numbers sit in no closed shape
@@ -22422,10 +22428,10 @@ async function renderStep(){ const W=MP.wiz; const dlg=document.querySelector(".
 function restoreR(R){ if(R._orig){ R.items=R._orig.items.slice(); R.texts=R._orig.texts.slice(); R.segs=R._orig.segs.slice(); R.prepared=null; R.crsHint=null; } }
 function nearOf(park){ const lf=liveFeats(park); if(!lf.length) return null; return lf.reduce((t,f)=>[t[0]+f.properties.c[0],t[1]+f.properties.c[1]],[0,0]).map(v=>v/lf.length); }
 /* what the system understood in an AutoCAD file, with the two choices a person may need */
-function cadHtml(R){ const r=R.prepared; if(!r) return ""; const cp=r.copies||[]; const used=cp.find(c=>c.used);
+function cadHtml(R){ const r=R.prepared; if(!r) return ""; const cp=(r.copies||[]).filter(c=>!c.part); const used=cp.find(c=>c.used); const parts=(r.copies||[]).filter(c=>c.part).length;
   const L=Object.entries(r.byLayer).filter(([l,o])=>o.coded).sort((a,b)=>b[1].coded-a[1].coded).slice(0,8);
   return `<div class="mp-cad"><h4>What the system found in the drawing</h4><ul>
-    ${cp.length>1?`<li>The drawing holds <b>${cp.length} copies</b> of the plan (sheet copies, details). Using the one ${used&&used.km!=null?`<b>${used.km<1?"on":used.km.toFixed(1)+" km from"}</b> the project`:"with the most numbered plots"} (${fmt(used&&used.coded)} numbered plots). ${cp.filter(c=>!c.used).slice(0,3).map(c=>`<button class="mp-link" data-copy="${c.i}">Use the other copy (${fmt(c.coded)} plots${c.km!=null?", "+c.km.toFixed(0)+" km away":""})</button>`).join(" ")}</li>`:""}
+    ${cp.length>1?`<li>The drawing holds <b>${cp.length} copies</b> of the plan (sheet copies, details). Using the one ${used&&used.km!=null?`<b>${used.km<1?"on":used.km.toFixed(1)+" km from"}</b> the project`:"with the most numbered plots"} (${fmt(used&&used.coded)} numbered plots${parts?`, plus ${parts} nearby part${parts>1?"s":""} of the same project`:""}). ${cp.filter(c=>!c.used).slice(0,3).map(c=>`<button class="mp-link" data-copy="${c.i}">Use the other copy (${fmt(c.coded)} plots${c.km!=null?", "+c.km.toFixed(0)+" km away":""})</button>`).join(" ")}</li>`:""}
     <li><b>${fmt(r.numbers)}</b> plot numbers read · <b>${fmt(r.numbers-r.orphans)}</b> placed in a plot outline${r.fromLines?` · <b>${fmt(r.fromLines)}</b> outlines built from plain lines`:""}${r.orphans?` · <span class="bad">${fmt(r.orphans)} numbers have no outline</span>`:""}</li>
     ${L.length?`<li>Plots are on: ${L.map(([l,o])=>`<b>${esc(l)}</b> (${fmt(o.coded)})`).join(", ")}</li>`:""}
     ${r.orphans&&r.lineLayerChoices&&r.lineLayerChoices.length?`<li>Build the missing outlines from the lines on: <span class="mp-ll">${r.lineLayerChoices.map(x=>`<label><input type="checkbox" value="${esc(x.l)}" ${(r.lineLayers||[]).includes(x.l)?"checked":""}> ${esc(x.l)} <small>(${x.near})</small></label>`).join("")}</span> <button class="mp-link" id="mpReLines">Build again</button>${r.orphanList&&r.orphanList.length?`<details><summary>Numbers without an outline</summary><div class="mp-chips">${r.orphanList.map(c=>`<span>${esc(c)}</span>`).join("")}</div></details>`:""}</li>`:(r.orphanList&&r.orphanList.length?`<li><details><summary>Numbers without an outline (${r.orphans})</summary><div class="mp-chips">${r.orphanList.map(c=>`<span>${esc(c)}</span>`).join("")}</div></details></li>`:"")}
