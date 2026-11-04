@@ -22044,10 +22044,14 @@ function assign(items,texts){ items.forEach(it=>{ it.code=""; it.a=area(it.rings
   const rank={}; texts.forEach(t=>{ if(t.isCode) rank[t.layer]=(rank[t.layer]||0)+1; });
   texts.filter(t=>t.isCode).forEach(t=>{ const L=G.get(Math.floor(t.x/200)+","+Math.floor(t.y/200))||[]; let best=null;
     L.forEach(i=>{ const it=cand[i]; if(t.x<it.b[0]||t.x>it.b[2]||t.y<it.b[1]||t.y>it.b[3]) return; if(!inR([t.x,t.y],it.rings[0])) return; if(!best||it.a<best.a) best=it; });
-    if(best){ best.nTxt++; const d=Math.hypot(t.x-best.c[0],t.y-best.c[1]), rk=rank[t.layer]||0; if(!best.code||rk>best.rk||(rk===best.rk&&d<best.cd)){ best.rk=rk; best.code=t.t; best.cd=d; best.areaTxt=t.lines.find(s=>/^\d+([.,]\d+)?$/.test(s))||""; } } else orphan.push(t); });
+    if(best){ best.nTxt++; (best.codes=best.codes||new Set()).add(String(t.t).toUpperCase().replace(/\s+/g,"")); (best.tx=best.tx||[]).push(t); const d=Math.hypot(t.x-best.c[0],t.y-best.c[1]), rk=rank[t.layer]||0; if(!best.code||rk>best.rk||(rk===best.rk&&d<best.cd)){ best.rk=rk; best.code=t.t; best.cd=d; best.areaTxt=t.lines.find(s=>/^\d+([.,]\d+)?$/.test(s))||""; } } else orphan.push(t); });
+  // a shape that holds two or more different plot numbers is a block or a road area, not a plot: its numbers need their own outlines
+  cand.forEach(it=>{ if(!it.tx||it.tx.length<2) return; const mx=Math.max(...it.tx.map(t=>rank[t.layer]||0)); const top=new Set(it.tx.filter(t=>(rank[t.layer]||0)===mx).map(t=>String(t.t).toUpperCase().replace(/\s+/g,"")));
+    if(top.size>=2){ orphan.push(...it.tx.filter(t=>(rank[t.layer]||0)===mx)); it.code=""; it.block=true; } });
+  cand.forEach(it=>{ delete it.codes; delete it.tx; });
   return orphan; }
 /* group shapes by place (2 km cells, joined), so sheet copies and detail drawings separate */
-function clusters(items){ const cell=2000, m=new Map(); items.forEach((it,i)=>{ const k=Math.floor(it.c[0]/cell)+","+Math.floor(it.c[1]/cell); if(!m.has(k)) m.set(k,[]); m.get(k).push(i); });
+function clusters(items){ const cell=700, m=new Map(); items.forEach((it,i)=>{ const k=Math.floor(it.c[0]/cell)+","+Math.floor(it.c[1]/cell); if(!m.has(k)) m.set(k,[]); m.get(k).push(i); });
   const seen=new Set(), out=[]; m.forEach((_,k0)=>{ if(seen.has(k0)) return; const comp=[], q=[k0]; seen.add(k0);
     while(q.length){ const k=q.pop(); comp.push(...m.get(k)); const [x,y]=k.split(",").map(Number); for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++){ const kk=(x+dx)+","+(y+dy); if(m.has(kk)&&!seen.has(kk)){ seen.add(kk); q.push(kk); } } }
     const its=comp.map(i=>items[i]); const b=bb(its.map(it=>it.c)); out.push({idx:comp,coded:its.filter(it=>it.code).length,n:its.length,box:b,c:[(b[0]+b[2])/2,(b[1]+b[3])/2]}); });
@@ -22090,7 +22094,7 @@ async function prepare(R,near,opts){ opts=opts||{}; if(!R._orig) R._orig={items:
     if(near){ const ok=C.map((c,i)=>[c,i]).filter(([c])=>c.km!=null).sort((a,b)=>a[0].km-b[0].km); if(ok.length&&ok[0][0].km<15) pick=ok[0][1]; } }
   if(opts.copy!=null&&C[opts.copy]) pick=opts.copy;
   rep.copies=C.map((c,i)=>({i,n:c.n,coded:c.coded,km:c.km,used:i===pick})); const keep=C[pick];
-  if(keep&&C.length>1){ const pad=1500, b=[keep.box[0]-pad,keep.box[1]-pad,keep.box[2]+pad,keep.box[3]+pad], inside=p=>p[0]>=b[0]&&p[0]<=b[2]&&p[1]>=b[1]&&p[1]<=b[3];
+  if(keep&&C.length>1){ const pad=200, b=[keep.box[0]-pad,keep.box[1]-pad,keep.box[2]+pad,keep.box[3]+pad], inside=p=>p[0]>=b[0]&&p[0]<=b[2]&&p[1]>=b[1]&&p[1]<=b[3];
     const n0=R.items.length; R.items=R.items.filter(it=>inside(it.c)); R.texts=R.texts.filter(t=>inside([t.x,t.y])); R.segs=R.segs.filter(s=>inside([s[0],s[1]])||inside([s[2],s[3]])); orph=orph.filter(t=>inside([t.x,t.y])); rep.dropped=n0-R.items.length; }
   R.crsHint=keep&&keep.crs||null;
   // plots from lines where numbers sit in no closed shape
