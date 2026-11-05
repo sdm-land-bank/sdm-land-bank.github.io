@@ -21926,6 +21926,19 @@ i.ckd{vertical-align:-2px;margin:0 3px}
 @media(max-width:640px){.ck-it{grid-template-columns:1fr}.ck-pk{white-space:normal}}
 .eh[data-own="dev"]{box-shadow:inset 0 3px 0 #2F6DB5}.eh[data-own="sales"]{box-shadow:inset 0 3px 0 #C46A00}.eh[data-own="fin"]{box-shadow:inset 0 3px 0 #2E7D4F}
 body.sid-public .mp-page,body.sid-public .ck-page{display:none}
+/* V119 three files, Excel check, MDS register wizard */
+.mp-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}@media(max-width:760px){.mp-slots{grid-template-columns:1fr}}
+.mp-slot{display:flex;gap:10px;border:1px solid rgba(0,0,0,.09);border-radius:12px;padding:10px 12px;font-size:12px}.mp-slot>i{font-style:normal;flex:none;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.08);display:grid;place-items:center;font-weight:700;font-size:11px}
+.mp-slot.ok{border-color:rgba(48,164,108,.5);background:rgba(48,164,108,.05)}.mp-slot.ok>i{background:#30A46C;color:#fff}.mp-slot b{font-size:13px}.mp-slot em{font-style:normal;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--mute,#7c818b);margin-left:4px}.mp-slot em.req{color:#B3263D}
+.mp-slot p{margin:4px 0;color:var(--mute,#6b7079);line-height:1.45}.mp-sv{display:block;color:#1f7a4c;font-weight:600;word-break:break-word}
+.mr{display:flex;flex-direction:column;gap:10px}.mr-s{border:1px solid rgba(0,0,0,.09);border-radius:12px;padding:8px 12px}.mr-s.bad{border-color:rgba(179,38,61,.4);background:rgba(179,38,61,.035)}
+.mr-s>summary{cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mr-s>summary>span{font-size:11px;font-weight:700;background:rgba(0,0,0,.07);border-radius:99px;padding:1px 7px}.mr-s .mp-n{margin:6px 0}
+.mr-g{border-top:1px solid rgba(0,0,0,.07);padding:8px 0 4px}.mr-gh{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:12.5px}.mr-gh>span{color:var(--mute,#6b7079)}.mr-gh em{font-style:normal;font-size:11.5px;color:var(--mute,#6b7079)}
+.mr-t{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}.mr-t th{font-size:10.5px;text-transform:uppercase;color:var(--mute,#7c818b);text-align:left;padding:4px 6px}.mr-t td{padding:4px 6px;border-top:1px solid rgba(0,0,0,.05);vertical-align:middle}
+.mr-t td small{color:var(--mute,#6b7079)}.mr-t select{font:inherit;font-size:12px;padding:3px 6px;border-radius:7px;max-width:340px}.mr-t .nm,.nm{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.mr .bad,.mr-t .bad,.mp-is .bad{color:#B3263D;font-weight:600}
+.mr-all{margin-left:auto;font-size:11.5px;font-weight:400}.mr-all select{font:inherit;font-size:11.5px;padding:2px 4px;border-radius:6px}
+.mp-is .mp-chips label{font:11px ui-monospace,Menlo,monospace;padding:2px 6px;border-radius:5px;background:rgba(0,0,0,.05);display:flex;gap:4px;align-items:center}
+.mp-pb{padding:4px 10px;font-size:11.5px;margin-bottom:3px}.mp-cad li.bad{color:#B3263D}
 </style>
 <script id="mpcJs">
 /* V116 Master Plan Center — file readers and geometry helpers (window.SID_MPR).
@@ -22046,6 +22059,46 @@ function readSheet(buf){ const wb=XLSX.read(buf,{type:"array"}), ws=wb.Sheets[wb
   throw new Error("the sheet needs either X and Y columns (one row per corner) or an Area column");
 }
 
+/* ---------- V119 plot schedule (the Development "LAND PLOTS" workbook, Arabic or English): every table on every sheet is read,
+   merged cells are filled, block plots written as "use - F1" are kept, and each subtotal row is checked against its plots ---------- */
+const SC_CODE=/^(رقم|plot|unit|code|parcel|lot)|رقم\s*(القطعة|المنطقة|منطقة)|plot\s*(no|code|number)/i, SC_AREA=/مساحة|المساحة|area|sqm|m2|m²/i, SC_USE=/استعمال|الاستعمال|استخدام|الاستخدام|^use$|activity|land\s*use/i;
+const SC_TOT=/اجمال|الاجمال|إجمال|total|subtotal/i, SC_SIDE={n:/شمال|north/i,s:/جنوب|south/i,e:/شرق|east/i,w:/غرب|west/i,x:/مائل|slant|other/i};
+const isPlotCode=v=>{ const t=String(v==null?"":v).trim(); if(/\s-\s|\s.*\s/.test(t)) return false; return !!t&&t.length<=16&&/\d/.test(t)&&/^[A-Za-z0-9؀-ۿ][A-Za-z0-9؀-ۿ\-\/ .]*$/.test(t)&&!/^\d+([.,]\d+)?$/.test(t)||/^\d{1,4}$/.test(t); };
+function sheetGrid(ws){ const A=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+  (ws["!merges"]||[]).forEach(m=>{ const v=(A[m.s.r]||[])[m.s.c]; if(v==null) return; for(let r=m.s.r;r<=m.e.r;r++){ A[r]=A[r]||[]; for(let c=m.s.c;c<=m.e.c;c++){ if(r===m.s.r&&c===m.s.c) continue; if(A[r][c]==null) A[r][c]={merged:v}; } } });
+  return A; }
+const cv=x=>x&&typeof x==="object"&&"merged" in x?x.merged:x, own=x=>!(x&&typeof x==="object"&&"merged" in x);
+function readSchedule(buf){ const wb=XLSX.read(buf,{type:"array"}); const plots=[], totals=[], budget=[], seen=new Map(), dups=[], tables=[], extra=[];
+  wb.SheetNames.forEach(sn=>{ const A=sheetGrid(wb.Sheets[sn]), W=Math.max(0,...A.map(r=>r?r.length:0));
+    // the land-use budget (use · area · share), kept for the project totals
+    A.forEach((r,i)=>{ if(!r) return; const lab=r.map(cv).filter(v=>typeof v==="string").join(" ").trim(), nums=r.map(cv).filter(v=>typeof v==="number"); if(/الاجمالى|الإجمالي|الاجمالي|total/i.test(lab)&&nums.length>=2&&nums.some(v=>v>1e5)&&nums.some(v=>v>0&&v<=1.0001)) budget.push({sheet:sn,label:lab,area:Math.max(...nums)}); });
+    for(let h=0;h<A.length;h++){ const row=A[h]||[]; for(let c=0;c<W;c++){ const hv=cv(row[c]); if(typeof hv!=="string"||!own(row[c])||!SC_CODE.test(hv.trim())) continue;
+      let ac=-1; for(let k=c+1;k<Math.min(W,c+14);k++){ const v=cv(row[k]); if(typeof v==="string"&&SC_AREA.test(v)&&own(row[k])){ ac=k; break; } } if(ac<0) continue;
+      let uc=-1; for(let k=Math.max(0,c-3);k<ac;k++){ const v=cv(row[k]); if(k!==c&&typeof v==="string"&&SC_USE.test(v)){ uc=k; break; } }
+      const sub=A[h+1]||[], sides={}; for(let k=c+1;k<ac;k++){ const v=cv(sub[k]); if(typeof v==="string") Object.entries(SC_SIDE).forEach(([key,re])=>{ if(re.test(v)&&sides[key]==null) sides[key]=k; }); }
+      const start=Object.keys(sides).length?h+2:h+1, T={sheet:sn,row:h+1,n:0,area:0}; let grp=[], blank=0;
+      for(let r=start;r<A.length;r++){ const R=A[r]||[], code=cv(R[c]), area=cv(R[ac]), use=uc>=0?cv(R[uc]):null;
+        if(R.some((x,k)=>own(x)&&typeof x==="string"&&SC_CODE.test(x.trim())&&R.slice(k+1,k+14).some(y=>own(y)&&typeof y==="string"&&SC_AREA.test(y)))) break;   // the next table starts
+        const lab=[R[c],uc>=0?R[uc]:null,R[Math.min(c,uc<0?c:uc)]].map(cv).filter(v=>typeof v==="string").join(" ");
+        if(code==null&&area==null&&(uc<0||use==null)){ if(++blank>=3) break; continue; } blank=0;
+        if(SC_TOT.test(lab)&&typeof area==="number"){ if(grp.length){ let k=grp.length, sum=grp.reduce((t,p)=>t+p.area,0);
+            if(Math.abs(sum-area)>.05){ let acc=0; for(let i=0;i<grp.length;i++){ acc+=grp[i].area; if(Math.abs(acc-area)<=.05){ k=i+1; sum=acc; break; } } }
+            totals.push({sheet:sn,label:[...new Set(lab.trim().split(/\s{2,}|\s(?=اجمال)/))].join(" ").trim(),area,sum:Math.round(sum*1000)/1000,n:k,ok:Math.abs(sum-area)<=.05}); grp=grp.slice(k); } continue; }
+        if(typeof area!=="number"||!(area>0)) continue;
+        let cd=code!=null&&own(R[c])?String(code).trim():"", u=typeof use==="string"?use.trim():"", blk="";
+        const m=u.match(/^(.*?)[\s]*[-–—][\s]*([A-Za-z]{1,3}\d{0,3})\s*$/); if(m){ u=m[1].trim(); blk=m[2].toUpperCase(); }
+        if(!cd&&m&&Object.keys(sides).some(k=>R[sides[k]]!=null)) cd=blk;            // a block that is one plot ("صناعات غذائية - F1")
+        if(!cd&&typeof cv(R[c])==="string"&&!own(R[c])) continue;
+        if(!isPlotCode(cd)){ const nm=[R[c],uc>=0?R[uc]:null].map(cv).filter(v=>v!=null&&String(v).trim()).map(v=>String(v).replace(/\s+/g," ").trim()); if(nm.length){ const x={name:nm.join(" · "),area:Math.round(area*1000)/1000,unnumbered:true,sheet:sn,row:r+1}; grp.push(x); extra.push(x); } continue; }
+        if(!blk){ const b=cd.match(/^([A-Za-z]{1,3}\d{0,3})[-\/]/); if(b) blk=b[1].toUpperCase(); }
+        const sd={}; Object.entries(sides).forEach(([k,col])=>{ const v=cv(R[col]); if(v!=null&&v!=="") sd[k]=typeof v==="number"?v:String(v).replace(/\s+/g," ").trim(); });
+        const key=cd.toUpperCase().replace(/\s+/g,""); if(seen.has(key)){ dups.push(cd); continue; } seen.set(key,1);
+        const p={code:cd,area:Math.round(area*1000)/1000,use:u||null,block:blk||null,sides:sd,sheet:sn,row:r+1}; plots.push(p); grp.push(p); T.n++; T.area+=p.area; }
+      if(T.n) tables.push(T); } } });
+  if(!plots.length) return null;
+  const sum=plots.reduce((t,p)=>t+p.area,0);
+  return {fmt:"Excel plot schedule",items:[],texts:[],list:plots.map(p=>({code:p.code,area:p.area})),schedule:{plots,totals,budget,dups,tables,extra,sum:Math.round(sum*1000)/1000,uses:[...new Set(plots.map(p=>p.use).filter(Boolean))]}}; }
+
 /* ---------- one entry point ---------- */
 async function readFile(file,onP){ const n=file.name.toLowerCase();
   if(n.endsWith(".dwg")) return SID_MPCAD.readDWG(file,onP);
@@ -22054,8 +22107,9 @@ async function readFile(file,onP){ const n=file.name.toLowerCase();
   if(n.endsWith(".kmz")) return readKMZ(await file.arrayBuffer());
   if(n.endsWith(".geojson")||n.endsWith(".json")) return readGeoJSON(await file.text());
   if(n.endsWith(".zip")) return readSHPZip(await file.arrayBuffer());
-  if(/\.(xlsx|xls|csv)$/.test(n)) return readSheet(await file.arrayBuffer());
-  throw new Error("This file type is not supported. Use AutoCAD (DWG or DXF), KML, KMZ, GeoJSON, a zipped Shapefile or Excel.");
+  if(/\.(xlsx|xls|csv)$/.test(n)){ const b=await file.arrayBuffer(); let R=null; try{ R=readSheet(b); }catch(e){} if(R&&R.items.length) return R; const S=readSchedule(b); if(S) return S; if(R) return R; return readSheet(b); }
+  if(n.endsWith(".pdf")) return {fmt:"PDF",pdf:true,items:[],texts:[],list:[]};
+  throw new Error("This file type is not supported. Use AutoCAD (DWG or DXF), KML, KMZ, GeoJSON, a zipped Shapefile, Excel or the approved PDF.");
 }
 /* the file's system → lon/lat (Egyptian belts, UTM, WGS84) */
 function samplePts(R){ const s=[]; R.items.forEach(it=>{ const r=it.rings[0]; if(r&&r.length) s.push(r[0]); }); R.texts.slice(0,50).forEach(t=>s.push([t.x,t.y])); return s.slice(0,300); }
@@ -22067,11 +22121,11 @@ async function guessCrs(R,near){ if(R.crsHint) return R.crsHint; const T=window.
   if(pts.every(p=>p[0]>24&&p[0]<37.5&&p[1]>21.5&&p[1]<32.5)) return "wgs"; if(!T) return "22992"; await T.needProj4(); return T.suggestCrs(pts,near); }
 const CRS_LIST=()=>{ const T=window.SID_TOPO2&&SID_TOPO2._t; return T&&T.CRS?T.CRS.map(c=>({k:c.k,n:c.n})):[{k:"wgs",n:"WGS84 longitude / latitude"}]; };
 
-window.SID_MPR={readFile,toLonLat,guessCrs,CRS_LIST,unzip,readDXF,readKML,readGeoJSON,readSheet,
+window.SID_MPR={readFile,toLonLat,guessCrs,CRS_LIST,unzip,readDXF,readKML,readGeoJSON,readSheet,readSchedule,
   geo:{ringArea,ringCentroid,inRing,bbox,bbHit,dist,clean,hull,enc,dec,kx,KY}};
 })();
 
-/* V117 CAD engine for the Master Plan Center (window.SID_MPCAD). Built from the team's real drawings (Oct 2026):
+/* V119 CAD engine for the Master Plan Center (window.SID_MPCAD). Built from the team's real drawings (Oct 2026):
    - DWG read in the browser with LibreDWG (libredwg-web 0.7.17, GPL, jsdelivr), in a background worker, every file checked
      against its SHA-384 before use; loaded only when someone uploads a DWG (~11 MB, cached by the browser).
    - DXF read with its BLOCKS section.
@@ -22108,13 +22162,36 @@ function normDWG(db){
     if(t==="LWPOLYLINE"){ const v=e.vertices||[]; return {k:"P",layer:e.layer,closed:!!((e.flag&512)||(e.flag&1)),pts:v.map(p=>[p.x,p.y])}; }
     if(t==="POLYLINE2D"||t==="POLYLINE3D"||t==="POLYLINE"){ const v=e.vertices||[]; return {k:"P",layer:e.layer,closed:!!((e.flag&1)||(e.flag&512)||e.closed),pts:v.map(p=>[(p.point||p).x,(p.point||p).y])}; }
     if(t==="LINE"){ const a=pt(e.startPoint), b=pt(e.endPoint); return {k:"L",layer:e.layer,x1:a.x,y1:a.y,x2:b.x,y2:b.y}; }
-    if(t==="TEXT"||t==="MTEXT"||t==="ATTRIB"){ const p=pt(e.insertionPoint||e.startPoint); return {k:"T",layer:e.layer,x:p.x,y:p.y,raw:e.text||e.contents||""}; }
+    if(t==="ARC"){ const c=pt(e.center), r=e.radius||0; let a0=e.startAngle||0, a1=e.endAngle||0; if(a1<=a0) a1+=2*Math.PI; const n=Math.max(2,Math.ceil((a1-a0)/(Math.PI/18))), pts=[];
+      for(let i=0;i<=n;i++){ const a=a0+(a1-a0)*i/n; pts.push([c.x+r*Math.cos(a),c.y+r*Math.sin(a)]); } return {k:"P",layer:e.layer,closed:false,pts}; }
+    if(t==="MTEXT"){ /* the insertion point is a corner of the text box: use the box centre, so a number written along a rotated plot lands inside it */
+      const p=pt(e.insertionPoint), raw=e.text||e.contents||"", h=e.textHeight||0, d=e.direction&&(e.direction.x||e.direction.y)?e.direction:{x:Math.cos(e.rotation||0),y:Math.sin(e.rotation||0)}, L=Math.hypot(d.x,d.y)||1, dx=d.x/L, dy=d.y/L;
+      const longest=Math.max(1,...cleanText(raw).map(s=>s.length)), w=Math.min(e.rectWidth||1e9,longest*h*.62), ap=e.attachmentPoint||1, col=(ap-1)%3, row=Math.floor((ap-1)/3);
+      const ox=w*(.5-col/2), oy=h*(row/2-.5); return {k:"T",layer:e.layer,x:p.x+dx*ox-dy*oy,y:p.y+dy*ox+dx*oy,raw}; }
+    if(t==="TEXT"||t==="ATTRIB"){ const p=pt(e.insertionPoint||e.startPoint); return {k:"T",layer:e.layer,x:p.x,y:p.y,raw:e.text||e.contents||""}; }
     if(t==="INSERT"){ const p=pt(e.insertionPoint); return {k:"I",name:e.name,x:p.x,y:p.y,rot:e.rotation||0,sx:e.xScale||1,sy:e.yScale||1,att:(e.attribs||[]).map(a=>{ const q=pt(a.insertionPoint||a.startPoint); return {k:"T",layer:a.layer,x:q.x,y:q.y,raw:a.text||""}; })}; }
     return null; };
   const blocks={}; ((db.tables&&db.tables.BLOCK_RECORD&&db.tables.BLOCK_RECORD.entries)||[]).forEach(b=>{ if(!b.name||/^\*paper/i.test(b.name)) return; blocks[b.name]={bx:(b.basePoint||{}).x||0,by:(b.basePoint||{}).y||0,ents:(b.entities||[]).map(one).filter(Boolean)}; });
   return {ents:(db.entities||[]).filter(e=>e.isVisible!==false).map(one).filter(Boolean),blocks}; }
 
 /* ---------- DWG: LibreDWG in a worker ---------- */
+/* V119: the reader's glue builds two small functions from text (new Function), which the page's safety rules forbid; swap both for plain closures */
+function patchGlue(s){
+  const A="return new Function(args1,invokerFnBody)}function craftInvokerFunction";
+  const A2="return (...cl)=>{const invoker=cl[2],fn=cl[3],runDestructors=cl[4],fromRetWire=cl[5],toClassParamWire=cl[6],toArg=cl.slice(7,7+argCount),dts=cl.slice(7+argCount);"+
+    "const dIdx=[];if(!needsDestructorStack){for(let i=isClassMethodFunc?1:2;i<argTypes.length;++i){if(argTypes[i].destructorFunction!==null)dIdx.push(i)}}"+
+    "return function(...a){const destructors=needsDestructorStack?[]:null;const W=[fn];let thisWired;if(isClassMethodFunc){thisWired=toClassParamWire(destructors,this);W.push(thisWired)}"+
+    "const aw=[];for(let i=0;i<argCount;++i){aw.push(toArg[i](destructors,a[i]))}W.push(...aw);const rv=invoker(...W);"+
+    "if(needsDestructorStack){runDestructors(destructors)}else{dIdx.forEach((p,k)=>{dts[k](p===1?thisWired:aw[p-2])})}"+
+    "if(returns)return fromRetWire(rv)}}}function craftInvokerFunction";
+  const B="var invokerFunction=new Function(Object.keys(captures),functionBody)(...Object.values(captures));";
+  const B2="var invokerFunction=function(handle,methodName,destructorsRef,args){const v=argFromPtr.map((f,i)=>f(args+i*GenericWireTypeSize));let r;"+
+    "if(kind===0)r=Emval.toValue(handle)(...v);else if(kind===2)r=new(Emval.toValue(handle))(...v);else if(kind===1)r=Emval.toValue(handle)[getStringOrSymbol(methodName)](...v);else r=v.length?v[v.length-1]:undefined;"+
+    "if(!retType.isVoid)return emval_returnValue(toReturnWire,destructorsRef,r)};";
+  if(s.split(A).length!==2||s.split(B).length!==2) throw new Error("the AutoCAD reader changed — not used");
+  s=s.replace(A,()=>A2).replace(B,()=>B2);
+  if(/new Function\(|\beval\(/.test(s)) throw new Error("the AutoCAD reader still builds code from text — not used");
+  return s; }
 async function sha384(buf){ const h=await crypto.subtle.digest("SHA-384",buf); let s=""; new Uint8Array(h).forEach(b=>{ s+=String.fromCharCode(b); }); return btoa(s); }
 let LIBP=null;
 function loadLib(onP){ if(LIBP) return LIBP; LIBP=(async()=>{
@@ -22122,7 +22199,7 @@ function loadLib(onP){ if(LIBP) return LIBP; LIBP=(async()=>{
   const [g,w,wa]=await Promise.all([fetch(LIB+"wasm/libredwg-web.js").then(r=>r.arrayBuffer()),fetch(LIB+"dist/libredwg-web.js").then(r=>r.arrayBuffer()),fetch(LIB+"wasm/libredwg-web.wasm").then(r=>r.arrayBuffer())]);
   const [hg,hw,hwa]=await Promise.all([sha384(g),sha384(w),sha384(wa)]);
   if(hg!==SHA.glue||hw!==SHA.wrap||hwa!==SHA.wasm) throw new Error("the AutoCAD reader did not pass its safety check — not used");
-  const td=new TextDecoder(); const glueURL=URL.createObjectURL(new Blob([td.decode(g)],{type:"text/javascript"}));
+  const td=new TextDecoder(); const glueURL=URL.createObjectURL(new Blob([patchGlue(td.decode(g))],{type:"text/javascript"}));
   const wrapURL=URL.createObjectURL(new Blob([td.decode(w).replace(/(["'])\.\.\/wasm\/libredwg-web\.js\1/g,JSON.stringify(glueURL))],{type:"text/javascript"}));
   const src=`${cleanText.toString()}\n${flatten.toString()}\n${normDWG.toString()}\n
     self.onmessage=async e=>{ try{ const {glueURL,wrapURL,wasm,buf}=e.data; const mod=await import(glueURL); const inst=await mod.default({wasmBinary:wasm,locateFile:f=>"https://cdn.jsdelivr.net/npm/@mlightcad/libredwg-web@0.7.17/wasm/"+f}); const W=await import(wrapURL);
@@ -22178,28 +22255,87 @@ function assign(items,texts){ items.forEach(it=>{ it.code=""; it.a=area(it.rings
     if(top.size>=2){ orphan.push(...it.tx.filter(t=>(rank[t.layer]||0)===mx)); it.code=""; it.block=true; } });
   cand.forEach(it=>{ delete it.codes; delete it.tx; });
   return orphan; }
-/* group shapes by place (2 km cells, joined), so sheet copies and detail drawings separate */
-function clusters(items){ const cell=700, m=new Map(); items.forEach((it,i)=>{ const k=Math.floor(it.c[0]/cell)+","+Math.floor(it.c[1]/cell); if(!m.has(k)) m.set(k,[]); m.get(k).push(i); });
-  const seen=new Set(), out=[]; m.forEach((_,k0)=>{ if(seen.has(k0)) return; const comp=[], q=[k0]; seen.add(k0);
-    while(q.length){ const k=q.pop(); comp.push(...m.get(k)); const [x,y]=k.split(",").map(Number); for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++){ const kk=(x+dx)+","+(y+dy); if(m.has(kk)&&!seen.has(kk)){ seen.add(kk); q.push(kk); } } }
-    const its=comp.map(i=>items[i]); const b=bb(its.map(it=>it.c)); out.push({idx:comp,codes:new Set(its.filter(it=>it.code).map(it=>String(it.code).toUpperCase().replace(/\s+/g,""))),coded:its.filter(it=>it.code).length,n:its.length,box:b,c:[(b[0]+b[2])/2,(b[1]+b[3])/2]}); });
+/* group the plot numbers by place (single link, 150 m), so sheet copies, schedules and detail drawings separate even when they sit
+   only a few hundred metres apart (New Sadat REV05 holds the 1:2500 and the 1:5000 plan 230 m apart) */
+function clusters(pts,link){ link=link||150; const cell=link, m=new Map(); pts.forEach((p,i)=>{ const k=Math.floor(p.x/cell)+","+Math.floor(p.y/cell); if(!m.has(k)) m.set(k,[]); m.get(k).push(i); });
+  const par=pts.map((_,i)=>i), f=i=>{ while(par[i]!==i){ par[i]=par[par[i]]; i=par[i]; } return i; };
+  m.forEach((L,k)=>{ const [x,y]=k.split(",").map(Number); for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++){ const M=m.get((x+dx)+","+(y+dy)); if(!M) continue;
+    for(const i of L) for(const j of M){ if(j<=i) continue; const a=f(i),b=f(j); if(a===b) continue; if(Math.hypot(pts[i].x-pts[j].x,pts[i].y-pts[j].y)<=link) par[a]=b; } } });
+  const G=new Map(); pts.forEach((p,i)=>{ const r=f(i); if(!G.has(r)) G.set(r,[]); G.get(r).push(i); });
+  const out=[]; G.forEach(idx=>{ const P=idx.map(i=>pts[i]); const b=[Math.min(...P.map(p=>p.x)),Math.min(...P.map(p=>p.y)),Math.max(...P.map(p=>p.x)),Math.max(...P.map(p=>p.y))];
+    out.push({idx,codes:new Set(P.map(p=>p.k)),coded:new Set(P.map(p=>p.k)).size,n:P.length,box:b,c:[(b[0]+b[2])/2,(b[1]+b[3])/2]}); });
   return out.sort((a,b)=>b.coded-a.coded||b.n-a.n); }
+/* survey points written on the drawing ("N 858034.398 / E 574780.873" with a leader to the point): a drawing exported from Revit or
+   drawn in local units is placed on the grid with them (2 points place it, 3 or more also prove it) */
+function surveyPts(R){ const out=[], segs=R.segs||[];
+  R.texts.forEach(t=>{ const s=t.lines.join(" "), n=s.match(/(?:^|[^A-Za-z])N\s*[:=]?\s*(\d{5,7}(?:\.\d+)?)/), e=s.match(/(?:^|[^A-Za-z])E\s*[:=]?\s*(\d{5,7}(?:\.\d+)?)/); if(!n||!e) return;
+    const N=+n[1], E=+e[1]; if(!(E>100000&&E<1500000&&N>100000&&N<4000000)) return;
+    const near0=segs.filter(q=>Math.min(Math.hypot(q[0]-t.x,q[1]-t.y),Math.hypot(q[2]-t.x,q[3]-t.y))<250), same=near0.filter(q=>q[4]===t.layer), near=same.length>=2?same:near0;   // the leader is drawn on the note's own layer
+    const key=(x,y)=>Math.round(x*1000)+"|"+Math.round(y*1000), nodes=new Map(), adj=new Map(), add=(a,b)=>{ (adj.get(a)||adj.set(a,new Set()).get(a)).add(b); };
+    near.forEach(q=>{ const a=key(q[0],q[1]), b=key(q[2],q[3]); if(a===b) return; nodes.set(a,[q[0],q[1]]); nodes.set(b,[q[2],q[3]]); add(a,b); add(b,a); });
+    // the arrow: a small closed triangle; the point is its corner that also carries the leader
+    // only the line work joined to this note counts (another note's arrow may be close by)
+    let st=null,sd=1e18; nodes.forEach((p,k)=>{ const d=Math.hypot(p[0]-t.x,p[1]-t.y); if(d<sd){ sd=d; st=k; } }); const reach=new Set(); if(st!=null&&sd<120){ const q=[st]; reach.add(st); while(q.length){ const k=q.pop(); (adj.get(k)||[]).forEach(n=>{ if(!reach.has(n)){ reach.add(n); q.push(n); } }); } }
+    // candidate points: the corners of small closed triangles (arrow heads) near the note, and the far end of the leader; the notes are then
+    // read together and only the points that agree with each other are used
+    const cands=[]; adj.forEach((nb,a)=>{ if(nb.size<3) return; const L=[...nb]; for(let i=0;i<L.length;i++) for(let j=i+1;j<L.length;j++){ if(!(adj.get(L[i])||new Set()).has(L[j])) continue;
+      const A=nodes.get(a),B=nodes.get(L[i]),C=nodes.get(L[j]), per=Math.hypot(A[0]-B[0],A[1]-B[1])+Math.hypot(B[0]-C[0],B[1]-C[1])+Math.hypot(C[0]-A[0],C[1]-A[1]); if(per>0&&per<40&&!cands.some(c=>Math.hypot(c[0]-A[0],c[1]-A[1])<.01)) cands.push(A); } });
+    if(st!=null&&sd<120){ const seen=new Set([st]); let cur=st, far=st, fd=0; for(let g=0;g<50;g++){ const nx=[...(adj.get(cur)||[])].find(k=>!seen.has(k)); if(!nx) break; seen.add(nx); cur=nx; const p=nodes.get(cur), d=Math.hypot(p[0]-t.x,p[1]-t.y); if(d>fd){ fd=d; far=cur; } }
+      const p=nodes.get(far); if(far!==st&&!cands.some(c=>Math.hypot(c[0]-p[0],c[1]-p[1])<.01)) cands.push(p); }
+    cands.sort((a,b)=>Math.hypot(a[0]-t.x,a[1]-t.y)-Math.hypot(b[0]-t.x,b[1]-t.y)); if(cands.length&&!out.some(o=>o.E===E&&o.N===N)) out.push({E,N,txt:s,cands:cands.slice(0,6)}); });
+  return out; }
+function helmert(P){ const n=P.length; if(n<2) return null; const xm=P.reduce((t,p)=>t+p.x,0)/n, ym=P.reduce((t,p)=>t+p.y,0)/n, Em=P.reduce((t,p)=>t+p.E,0)/n, Nm=P.reduce((t,p)=>t+p.N,0)/n;
+  let sxx=0,sa=0,sb=0; P.forEach(p=>{ const x=p.x-xm,y=p.y-ym,E=p.E-Em,N=p.N-Nm; sxx+=x*x+y*y; sa+=x*E+y*N; sb+=x*N-y*E; }); if(sxx<1) return null;
+  const a=sa/sxx, b=sb/sxx, tx=Em-a*xm+b*ym, ty=Nm-b*xm-a*ym, f=(x,y)=>[a*x-b*y+tx,b*x+a*y+ty];
+  const res=P.map(p=>{ const q=f(p.x,p.y); return Math.hypot(q[0]-p.E,q[1]-p.N); }); return {a,b,tx,ty,f,scale:Math.hypot(a,b),rot:Math.atan2(b,a)*180/Math.PI,max:Math.max(...res),n}; }
+function georef(R){ const P0=surveyPts(R); if(P0.length<2) return null;
+  // one point per note: the combination that fits a plain move / turn at a real drawing unit (m, cm, mm) with the smallest error
+  const unitOff=h=>Math.min(...[1,.001,.01,1000,100].map(u=>Math.abs(Math.log10(h.scale/u)))); let H=null, P=null, tries=0;
+  const pick=(i,acc)=>{ if(tries>20000) return; if(i===P0.length){ tries++; const pts=acc.map((c,k)=>({x:c[0],y:c[1],E:P0[k].E,N:P0[k].N})); const h=helmert(pts); if(!h||unitOff(h)>.002) return;
+      if(!H||h.max<H.max-1e-6){ H=h; P=pts; } return; } P0[i].cands.forEach(c=>pick(i+1,acc.concat([c]))); };
+  pick(0,[]);
+  if(H&&P.length>=3&&H.max>.5){ // one note may be wrong: drop it if the rest agree
+    P.forEach((_,i)=>{ const Q=P.filter((_,j)=>j!==i), h=helmert(Q); if(h&&unitOff(h)<.002&&(Q.length<3||h.max<=.5)&&h.max<H.max){ H=h; } }); }
+  if(!H) return null; const id=Math.abs(H.a-1)<1e-6&&Math.abs(H.b)<1e-6&&Math.hypot(H.tx,H.ty)<.01;
+  const geo={pts:P0.length,used:H.n,max:H.max,scale:H.scale,rot:H.rot,shift:[H.tx,H.ty],applied:!id,ok:H.max<=.5,anchors:P0.map(p=>[p.E,p.N])};
+  if(!geo.ok||id) return geo;
+  const f=H.f; R.items.forEach(it=>{ it.rings=it.rings.map(r=>r.map(p=>f(p[0],p[1]))); }); R.texts.forEach(t=>{ const q=f(t.x,t.y); t.x=q[0]; t.y=q[1]; });
+  R.segs=(R.segs||[]).map(s=>{ const a=f(s[0],s[1]), b=f(s[2],s[3]); return [a[0],a[1],b[0],b[1],s[4]]; }); return geo; }
 /* plain line work → enclosed faces (planar graph); keeps faces that hold an orphan number */
-function polygonize(segs,orph,maxSegs){
+function polygonize(segs,orph,maxSegs,snapTol){
   if(!segs.length||!orph.length) return [];
   const ob=bb(orph.map(t=>[t.x,t.y])), pad=400; let S=segs.filter(s=>Math.max(s[0],s[2])>=ob[0]-pad&&Math.min(s[0],s[2])<=ob[2]+pad&&Math.max(s[1],s[3])>=ob[1]-pad&&Math.min(s[1],s[3])<=ob[3]+pad);
   if(S.length>(maxSegs||60000)) S=S.slice(0,maxSegs||60000);
   const q=v=>Math.round(v*50)/50;                       // 2 cm snap
   S=S.map(s=>[q(s[0]),q(s[1]),q(s[2]),q(s[3])]).filter(s=>s[0]!==s[2]||s[1]!==s[3]);
+  /* plot dividers often stop a few cm short of the block edge (New Sadat REV05: 1 cm – 60 cm): join each loose end to the nearest line with a short connector (lines are never moved, so the order does not matter) */
+  { const tol=snapTol||.6, ek=(x,y)=>x+"|"+y, cnt=new Map(); S.forEach(s=>{ [ek(s[0],s[1]),ek(s[2],s[3])].forEach(k=>cnt.set(k,(cnt.get(k)||0)+1)); });
+    const c2=Math.max(tol*4,5), H=new Map(); S.forEach((s,i)=>{ for(let x=Math.floor(Math.min(s[0],s[2])/c2);x<=Math.floor(Math.max(s[0],s[2])/c2);x++) for(let y=Math.floor(Math.min(s[1],s[3])/c2);y<=Math.floor(Math.max(s[1],s[3])/c2);y++){ if((Math.floor(Math.max(s[0],s[2])/c2)-Math.floor(Math.min(s[0],s[2])/c2)+1)*(Math.floor(Math.max(s[1],s[3])/c2)-Math.floor(Math.min(s[1],s[3])/c2)+1)>20000) return; const k=x+","+y; if(!H.has(k)) H.set(k,[]); H.get(k).push(i); } });
+    const bridges=[]; S.forEach((s,i)=>{ [0,2].forEach(o=>{ const px=s[o],py=s[o+1]; if(cnt.get(ek(px,py))!==1) return; let best=null,bd=tol;
+      (H.get(Math.floor(px/c2)+","+Math.floor(py/c2))||[]).forEach(j=>{ if(j===i) return; const t=S[j], dx=t[2]-t[0], dy=t[3]-t[1], L=dx*dx+dy*dy; if(!L) return; let u=((px-t[0])*dx+(py-t[1])*dy)/L; u=Math.max(0,Math.min(1,u));
+        const qx=t[0]+u*dx, qy=t[1]+u*dy, d=Math.hypot(px-qx,py-qy); if(d>1e-9&&d<bd){ bd=d; best=[qx,qy]; } });
+      if(!best){ // or carry the line on in its own direction (up to 3 m) until it meets another line
+        const ox=o?s[0]:s[2], oy=o?s[1]:s[3], L0=Math.hypot(px-ox,py-oy); if(L0>0){ const ux=(px-ox)/L0, uy=(py-oy)/L0, ext=Math.min(3*tol/.6,L0*.5), fx=px+ux*ext, fy=py+uy*ext; let bt=1e9;
+          const cells=new Set(); for(let k=0;k<=4;k++){ const x=px+ux*ext*k/4, y=py+uy*ext*k/4; cells.add(Math.floor(x/c2)+","+Math.floor(y/c2)); }
+          cells.forEach(ck=>(H.get(ck)||[]).forEach(j=>{ if(j===i) return; const t=S[j], d=(fx-px)*(t[3]-t[1])-(fy-py)*(t[2]-t[0]); if(Math.abs(d)<1e-12) return;
+            const u=((t[0]-px)*(t[3]-t[1])-(t[1]-py)*(t[2]-t[0]))/d, v=((t[0]-px)*(fy-py)-(t[1]-py)*(fx-px))/d; if(u>1e-9&&u<=1&&v>=-1e-9&&v<=1+1e-9&&u<bt){ bt=u; best=[px+u*(fx-px),py+u*(fy-py)]; } })); } }
+      if(best) bridges.push([px,py,best[0],best[1]]); }); }); S.push(...bridges); }
   // split at crossings (grid of 25 m)
   const cell=25, G=new Map(); S.forEach((s,i)=>{ const x0=Math.floor(Math.min(s[0],s[2])/cell),x1=Math.floor(Math.max(s[0],s[2])/cell),y0=Math.floor(Math.min(s[1],s[3])/cell),y1=Math.floor(Math.max(s[1],s[3])/cell);
     if((x1-x0+1)*(y1-y0+1)>4000) return; for(let x=x0;x<=x1;x++) for(let y=y0;y<=y1;y++){ const k=x+","+y; if(!G.has(k)) G.set(k,[]); G.get(k).push(i); } });
-  const cuts=S.map(()=>[]), done=new Set();
-  G.forEach(L=>{ for(let a=0;a<L.length;a++) for(let b=a+1;b<L.length;b++){ const i=L[a],j=L[b], key=i<j?i*1e6+j:j*1e6+i; if(done.has(key)) continue; done.add(key);
-    const s=S[i],t=S[j], d=(s[2]-s[0])*(t[3]-t[1])-(s[3]-s[1])*(t[2]-t[0]); if(Math.abs(d)<1e-12) continue;
+  const cuts=S.map(()=>[]);
+  // each crossing is kept only in the grid cell that holds it, so a pair met in several cells counts once (no pair list: large drawings stay fast)
+  G.forEach((L,ck)=>{ const [cx,cy]=ck.split(",").map(Number); for(let a=0;a<L.length;a++) for(let b=a+1;b<L.length;b++){ const i=L[a],j=L[b];
+    const s=S[i],t=S[j], d=(s[2]-s[0])*(t[3]-t[1])-(s[3]-s[1])*(t[2]-t[0]), ls=Math.hypot(s[2]-s[0],s[3]-s[1]), lt=Math.hypot(t[2]-t[0],t[3]-t[1]);
+    if(Math.abs(d)<=2e-3*ls*lt){ // (nearly) parallel: lines drawn on top of each other (plot line over the road edge) share their points
+      const on=(a,p)=>{ const dx=a[2]-a[0], dy=a[3]-a[1], L=dx*dx+dy*dy; if(!L) return null; if(Math.abs(dx*(p[1]-a[1])-dy*(p[0]-a[0]))/Math.sqrt(L)>.02) return null; const u=((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L; return u>1e-9&&u<1-1e-9?u:null; };
+      [[t[0],t[1]],[t[2],t[3]]].forEach(p=>{ const u=on(s,p); if(u!=null) cuts[i].push([u,p[0],p[1]]); }); [[s[0],s[1]],[s[2],s[3]]].forEach(p=>{ const u=on(t,p); if(u!=null) cuts[j].push([u,p[0],p[1]]); }); continue; }
     const u=((t[0]-s[0])*(t[3]-t[1])-(t[1]-s[1])*(t[2]-t[0]))/d, v=((t[0]-s[0])*(s[3]-s[1])-(t[1]-s[1])*(s[2]-s[0]))/d;
-    if(u>-1e-9&&u<1+1e-9&&v>-1e-9&&v<1+1e-9){ const px=q(s[0]+u*(s[2]-s[0])), py=q(s[1]+u*(s[3]-s[1])); cuts[i].push([u,px,py]); cuts[j].push([v,px,py]); } } });
-  const nodes=new Map(), xy=[], adj=[]; const nid=(x,y)=>{ const k=x+"|"+y; let i=nodes.get(k); if(i==null){ i=xy.length; nodes.set(k,i); xy.push([x,y]); adj.push([]); } return i; };
+    const eu=.001/(ls||1), ev=.001/(lt||1);   // touching within 1 mm counts
+    if(u>-eu&&u<1+eu&&v>-ev&&v<1+ev){ const ex=s[0]+u*(s[2]-s[0]), ey=s[1]+u*(s[3]-s[1]); if(Math.floor(ex/cell)!==cx||Math.floor(ey/cell)!==cy) continue; cuts[i].push([u,ex,ey]); cuts[j].push([v,ex,ey]); } } });
+  const nodes=new Map(), xy=[], adj=[], NT=.02; // points closer than 2 cm are one point
+  const nid=(x,y)=>{ const gx=Math.floor(x/NT), gy=Math.floor(y/NT); for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++){ const L=nodes.get((gx+dx)+","+(gy+dy)); if(L) for(const i of L){ if(Math.hypot(xy[i][0]-x,xy[i][1]-y)<=NT) return i; } }
+    const i=xy.length, k=gx+","+gy; (nodes.get(k)||nodes.set(k,[]).get(k)).push(i); xy.push([x,y]); adj.push([]); return i; };
   const E=new Set(); S.forEach((s,i)=>{ const pts=[[0,s[0],s[1]],...cuts[i],[1,s[2],s[3]]].sort((a,b)=>a[0]-b[0]);
     for(let k=1;k<pts.length;k++){ const a=nid(pts[k-1][1],pts[k-1][2]), b=nid(pts[k][1],pts[k][2]); if(a===b) continue; const key=a<b?a+"_"+b:b+"_"+a; if(E.has(key)) continue; E.add(key); adj[a].push(b); adj[b].push(a); } });
   // drop dangling ends repeatedly
@@ -22207,45 +22343,88 @@ function polygonize(segs,orph,maxSegs){
   while(st.length){ const i=st.pop(); if(dead.has(i)) continue; dead.add(i); adj[i].forEach(j=>{ if(!dead.has(j)){ deg[j]--; if(deg[j]<2) st.push(j); } }); }
   const ang=(a,b)=>Math.atan2(xy[b][1]-xy[a][1],xy[b][0]-xy[a][0]);
   const ord=adj.map((l,i)=>dead.has(i)?[]:l.filter(j=>!dead.has(j)).sort((p,r)=>ang(i,p)-ang(i,r)));
-  const used=new Set(), faces=[];
-  for(let a=0;a<ord.length;a++) for(const b of ord[a]){ const k0=a+">"+b; if(used.has(k0)) continue; const ring=[]; let u=a,v=b,guard=0;
-    while(guard++<5000){ const k=u+">"+v; if(used.has(k)) break; used.add(k); ring.push(xy[u]); const L=ord[v], i=L.indexOf(u); const w=L[(i-1+L.length)%L.length]; u=v; v=w; if(u===a&&v===b) break; }
-    if(ring.length>=3){ let s=0; for(let i=0,j=ring.length-1;i<ring.length;j=i++) s+=(ring[j][0]*ring[i][1]-ring[i][0]*ring[j][1]); if(s>0){ const A=s/2; if(A>=PLOT_MIN&&A<=PLOT_MAX) faces.push(ring.concat([ring[0]])); } } }
+  // every ring of the line network; in each connected group the largest ring is the outline around the others (not a plot)
+  const par=xy.map((_,i)=>i), fd=i=>{ while(par[i]!==i){ par[i]=par[par[i]]; i=par[i]; } return i; }; ord.forEach((l,i)=>l.forEach(j=>{ const x=fd(i), y=fd(j); if(x!==y) par[x]=y; }));
+  const used=new Set(), rings=[];
+  for(let a=0;a<ord.length;a++) for(const b of ord[a]){ const k0=a+">"+b; if(used.has(k0)) continue; const ring=[]; let u=a,v=b,guard=0, closed=false;
+    while(guard++<20000){ const k=u+">"+v; if(used.has(k)) break; used.add(k); ring.push(xy[u]); const L=ord[v], i=L.indexOf(u); const w=L[(i-1+L.length)%L.length]; u=v; v=w; if(u===a&&v===b){ closed=true; break; } }
+    if(closed&&ring.length>=3){ let s=0; for(let i=0,j=ring.length-1;i<ring.length;j=i++) s+=(ring[j][0]*ring[i][1]-ring[i][0]*ring[j][1]); rings.push({ring,A:Math.abs(s/2),g:fd(a)}); } }
+  const big=new Map(); rings.forEach((r,i)=>{ const c=big.get(r.g); if(c==null||r.A>rings[c].A) big.set(r.g,i); });
+  const faces=[]; rings.forEach((r,i)=>{ if(big.get(r.g)===i) return; if(r.A>=PLOT_MIN&&r.A<=PLOT_MAX) faces.push(r.ring.concat([r.ring[0]])); });
   return faces; }
 /* the whole preparation; near = the project's live centre in lon/lat (or null for a new project) */
 async function prepare(R,near,opts){ opts=opts||{}; if(!R._orig) R._orig={items:R.items.slice(),texts:R.texts.slice(),segs:(R.segs||[]).slice()}; const rep={copies:[],used:null,byLayer:{},numbers:0,orphans:0,fromLines:0,lineLayers:[],dropped:0};
-  let orph=assign(R.items,R.texts); rep.numbers=R.texts.filter(t=>t.isCode).length;
-  const plots=R.items.filter(it=>it.code&&it.a>=PLOT_MIN&&it.a<=PLOT_MAX), C=clusters(plots.length?plots:R.items.filter(it=>it.a>=PLOT_MIN&&it.a<=PLOT_MAX));
-  // which group sits on the project: convert each group's centre with the suggested grid and measure the distance
+  rep.geo=opts.noSurvey?null:georef(R);
+  /* drawing units from the drawing itself (the file's unit setting is often wrong): plot numbers sit tens of metres apart, so a typical
+     gap in the thousands means millimetres */
+  const us=(()=>{ if(rep.geo&&rep.geo.applied) return 1; const P=R.texts.filter(t=>t.isCode).slice(0,400); if(P.length<5) return 1; const d=P.map(p=>{ let b=1e18; P.forEach(q=>{ if(q!==p){ const e=Math.hypot(q.x-p.x,q.y-p.y); if(e>0&&e<b) b=e; } }); return b; }).sort((a,b)=>a-b); return d[Math.floor(d.length/2)]>2000?1000:1; })(); rep.unitScale=us;
+  const nk=c=>String(c).toUpperCase().replace(/\s+/g,"");
+  /* a number written far more often than plot numbers are (road widths "20", section marks "03") is a label, not a plot number */
+  { const f=new Map(); R.texts.forEach(t=>{ if(t.isCode){ const k=nk(t.t); f.set(k,(f.get(k)||0)+1); } }); const v=[...f.values()].sort((a,b)=>a-b), med=v.length?v[Math.floor(v.length/2)]:1;
+    rep.labels=[...f].filter(([k,n])=>n>=Math.max(3,med*2.5)).map(([k])=>k); const L=new Set(rep.labels); R.texts.forEach(t=>{ if(t.isCode&&L.has(nk(t.t))){ t.isCode=false; t.label=true; } });
+    /* a block name ("B1") is written inside one of its plots ("B1-5"): a number that starts other numbers is the block, not a plot */
+    const all=[...new Set(R.texts.filter(t=>t.isCode).map(t=>nk(t.t)))], B=new Set(all.filter(c=>all.some(o=>o!==c&&o.length>c.length&&o.startsWith(c)&&/[-\/_.]/.test(o[c.length])))); rep.blocks=[...B];
+    R.texts.forEach(t=>{ if(t.isCode&&B.has(nk(t.t))){ t.isCode=false; t.block=true; } }); }
+  const pts=R.texts.filter(t=>t.isCode).map(t=>({x:t.x,y:t.y,k:nk(t.t),t}));
+  const C=clusters(pts.length?pts:R.items.filter(it=>it.a>=PLOT_MIN&&it.a<=PLOT_MAX).map(it=>({x:it.c[0],y:it.c[1],k:""})),150*us);
+  // which group sits on the project: the one holding the survey points, else the one nearest today's plots, else the one with most numbers
   const T=window.SID_TOPO2&&SID_TOPO2._t; let pick=0;
   if(C.length>1||near){ if(T) await T.needProj4(); for(const c of C){ try{ const crs=T?T.suggestCrs([[c.c[0],c.c[1],0]],near):"wgs"; c.crs=crs; const ll=crs==="wgs"?c.c:T.toLL(crs)(c.c[0],c.c[1]); c.ll=ll; if(near){ const k=111320*Math.cos(near[1]*Math.PI/180); c.km=Math.hypot((ll[0]-near[0])*k,(ll[1]-near[1])*110574)/1000; } }catch(e){} }
     if(near){ const ok=C.map((c,i)=>[c,i]).filter(([c])=>c.km!=null).sort((a,b)=>a[0].km-b[0].km); if(ok.length&&ok[0][0].km<15) pick=ok[0][1]; } }
+  if(rep.geo&&rep.geo.applied){ const hit=C.map((c,i)=>[i,rep.geo.anchors.filter(([E,N])=>E>=c.box[0]-300*us&&E<=c.box[2]+300*us&&N>=c.box[1]-300*us&&N<=c.box[3]+300*us).length]).sort((a,b)=>b[1]-a[1]||C[b[0]].coded-C[a[0]].coded)[0]; if(hit&&hit[1]) pick=hit[0]; }
   if(opts.copy!=null&&C[opts.copy]) pick=opts.copy;
   /* parts of the same project bring new plot numbers; sheet copies repeat numbers already taken */
   const keep=C[pick], use=new Set(keep?[pick]:[]), taken=new Set(keep?keep.codes:[]);
   if(keep) C.map((c,i)=>[c,i]).filter(([c,i])=>i!==pick).sort((a,b)=>Math.hypot(a[0].c[0]-keep.c[0],a[0].c[1]-keep.c[1])-Math.hypot(b[0].c[0]-keep.c[0],b[0].c[1]-keep.c[1])).forEach(([c,i])=>{
-    if(Math.hypot(c.c[0]-keep.c[0],c.c[1]-keep.c[1])>5000) return; let rep_=0; c.codes.forEach(k=>{ if(taken.has(k)) rep_++; }); if(c.codes.size&&rep_/c.codes.size>.3) return; if(!c.codes.size&&c.n<3) return;
+    if(Math.hypot(c.c[0]-keep.c[0],c.c[1]-keep.c[1])>5000*us) return;
+    // one or two numbers far from the plan are notes (setting-out points, title block), not a part of the project
+    const bx=keep.box, dx=Math.max(bx[0]-c.c[0],0,c.c[0]-bx[2]), dy=Math.max(bx[1]-c.c[1],0,c.c[1]-bx[3]); if(c.coded<3&&Math.hypot(dx,dy)>500*us) return; let rep_=0; c.codes.forEach(k=>{ if(taken.has(k)) rep_++; }); if(c.codes.size&&rep_/c.codes.size>.3) return; if(!c.codes.size&&c.n<3) return;
     use.add(i); c.codes.forEach(k=>taken.add(k)); });
   rep.copies=C.map((c,i)=>({i,n:c.n,coded:c.coded,km:c.km,used:i===pick,part:use.has(i)&&i!==pick})).filter(c=>c.used||c.part||c.coded>=3);
-  const boxes=[...use].map(i=>C[i].box);
-  if(keep&&C.length>1){ const pad=200, inside=p=>boxes.some(b=>p[0]>=b[0]-pad&&p[0]<=b[2]+pad&&p[1]>=b[1]-pad&&p[1]<=b[3]+pad);
-    const n0=R.items.length; R.items=R.items.filter(it=>inside(it.c)); R.texts=R.texts.filter(t=>inside([t.x,t.y])); R.segs=R.segs.filter(s=>inside([s[0],s[1]])||inside([s[2],s[3]])); orph=orph.filter(t=>inside([t.x,t.y])); rep.dropped=n0-R.items.length; }
+  /* a number missing from the used copy but written on another copy of the same plan (New Sadat REV05: B1-1 and J1-8 are only on the
+     1:5000 plan) is carried over with the shift between the two copies, measured on the numbers they share */
+  rep.borrowed=[]; if(keep) C.forEach((c,i)=>{ if(use.has(i)||c.coded<10) return; const mineP=new Map(); [...use].forEach(u=>C[u].idx.forEach(j=>{ if(!mineP.has(pts[j].k)) mineP.set(pts[j].k,pts[j]); }));
+    const pairs=[]; const seen=new Set(); c.idx.forEach(j=>{ const p=pts[j]; if(seen.has(p.k)) return; seen.add(p.k); const m=mineP.get(p.k); if(m) pairs.push({x:p.x,y:p.y,E:m.x,N:m.y}); });
+    if(pairs.length<10||pairs.length<c.coded*.6) return; const H=helmert(pairs); if(!H) return; const res=pairs.map(p=>{ const q=H.f(p.x,p.y); return Math.hypot(q[0]-p.E,q[1]-p.N); }).sort((a,b)=>a-b);
+    if(res[Math.floor(res.length/2)]>8*us) return;
+    // the two copies read side by side: the same spot must carry the same number (New Sadat 1:2500: B1-1 written "1-1", J1-8 written "J1-9")
+    const O=c.idx.map(j=>{ const p=pts[j], q=H.f(p.x,p.y); return {x:q[0],y:q[1],k:p.k,t:p.t}; }), cnt=new Map(); [...use].forEach(u=>C[u].idx.forEach(j=>cnt.set(pts[j].k,(cnt.get(pts[j].k)||0)+1)));
+    const otherK=new Set(O.map(o=>o.k)); rep.relabelled=rep.relabelled||[]; rep.conflicts=rep.conflicts||[];
+    [...use].forEach(u=>C[u].idx.forEach(j=>{ const p=pts[j]; let b=null,bd=12*us; O.forEach(o=>{ const d=Math.hypot(o.x-p.x,o.y-p.y); if(d<bd){ bd=d; b=o; } }); if(!b||b.k===p.k) return;
+      if((cnt.get(p.k)||0)>=2||!otherK.has(p.k)){ if(taken.has(b.k)&&(cnt.get(b.k)||0)>0) return; rep.relabelled.push({from:p.t.t,to:b.t.t}); cnt.set(p.k,cnt.get(p.k)-1); cnt.set(b.k,(cnt.get(b.k)||0)+1); p.t.t=b.t.t; p.t.lines=[b.t.t]; p.k=b.k; taken.add(b.k); }
+      else rep.conflicts.push({here:p.t.t,other:b.t.t}); }));
+    // numbers only on the other copy: placed with the shift of their nearest shared neighbours
+    c.idx.forEach(j=>{ const p=pts[j]; if(taken.has(p.k)) return; const q=H.f(p.x,p.y); const nb=pairs.map(r=>{ const z=H.f(r.x,r.y); return {d:Math.hypot(z[0]-q[0],z[1]-q[1]),dx:r.E-z[0],dy:r.N-z[1]}; }).sort((a,b)=>a.d-b.d).slice(0,4);
+      const dx=nb.reduce((t,n)=>t+n.dx,0)/(nb.length||1), dy=nb.reduce((t,n)=>t+n.dy,0)/(nb.length||1);
+      const t={x:q[0]+dx,y:q[1]+dy,t:p.t.t,isCode:true,lines:[p.t.t],layer:p.t.layer,borrowed:true}; R.texts.push(t); pts.push({x:t.x,y:t.y,k:p.k,t}); C[pick].idx.push(pts.length-1); taken.add(p.k); rep.borrowed.push(p.t.t); }); });
+  if(keep&&C.length>1){ const boxes=[...use].map(i=>C[i].box), mine=new Set([...use].flatMap(i=>C[i].idx.map(j=>pts[j].t))), pad=400*us, inside=p=>boxes.some(b=>p[0]>=b[0]-pad&&p[0]<=b[2]+pad&&p[1]>=b[1]-pad&&p[1]<=b[3]+pad);
+    // numbers belong to their group; shapes and lines are kept around it (a big plot reaches far from its number), the other copies' numbers are not
+    const n0=R.items.length; R.items=R.items.filter(it=>inside(it.c||cen(it.rings[0]))); R.texts=R.texts.filter(t=>t.isCode?mine.has(t):inside([t.x,t.y])); R.segs=R.segs.filter(s=>inside([s[0],s[1]])||inside([s[2],s[3]]));
+    rep.dropped=n0-R.items.length; }
+  let orph=assign(R.items,R.texts); rep.numbers=R.texts.filter(t=>t.isCode).length;
   R.crsHint=keep&&keep.crs||null;
   // plots from lines where numbers sit in no closed shape
   if(orph.length>=1&&opts.lines!==false&&R.segs&&R.segs.length){ const byL={}; R.segs.forEach(s=>{ (byL[s[4]]=byL[s[4]]||[]).push(s); });
     const near_=l=>orph.filter(t=>byL[l].some(s=>Math.min(Math.hypot(s[0]-t.x,s[1]-t.y),Math.hypot(s[2]-t.x,s[3]-t.y))<120)).length;
-    let layers=opts.lineLayers||Object.keys(byL).filter(l=>!/dim|text|txt|hatch|furn|tree|annot|title|ttlb|sheet|frame|grid-?line|axis|cr-|elev|leader/i.test(l)).filter(l=>near_(l)>=Math.min(3,orph.length));
+    const cand=Object.keys(byL).filter(l=>!/dim|text|txt|hatch|furn|tree|annot|anno|symb|nplt|title|ttlb|sheet|frame|grid-?line|axis|cr-|elev|leader|vehic|veicol|section|\$0\$/i.test(l)).map(l=>[l,near_(l)]), top=Math.max(0,...cand.map(x=>x[1]));
+    let layers=opts.lineLayers||cand.filter(([l,n])=>n>=Math.min(3,orph.length)&&n>=top*.05).map(([l])=>l);
     rep.lineLayerChoices=Object.keys(byL).map(l=>({l,n:byL[l].length,near:near_(l)})).filter(x=>x.near>0).sort((a,b)=>b.near-a.near).slice(0,20);
-    if(layers.length){ const faces=polygonize(layers.flatMap(l=>byL[l]),orph); const add=faces.map(r=>({rings:[r],layer:"(built from lines)",code:"",props:{},fromLines:true}));
+    if(layers.length){ const faces=polygonize(layers.flatMap(l=>byL[l]),orph,0,.6*us); const add=faces.map(r=>({rings:[r],layer:"(built from lines)",code:"",props:{},fromLines:true}));
       R.items.push(...add); const left=assign(R.items,R.texts);
-      rep.fromLines=add.filter(it=>it.code).length; R.items=R.items.filter(it=>!it.fromLines||it.code); orph=left; rep.lineLayers=layers; } }
+      /* one outline holding two or more plot numbers: the line between them is missing in the drawing (New Sadat REV05: P1-4 / P1-5).
+         Kept as one unnumbered plot with both numbers noted, so Development splits it on the test map */
+      rep.shared=[]; add.forEach(it=>{ if(!it.block) return; const inside=left.filter(t=>t.x>=it.b[0]&&t.x<=it.b[2]&&t.y>=it.b[1]&&t.y<=it.b[3]&&inR([t.x,t.y],it.rings[0]));
+        const cs=[...new Set(inside.map(t=>String(t.t).trim()))]; if(cs.length<2||cs.length>4||it.a>PLOT_MAX/4) return; it.shared=cs; it.code=""; rep.shared.push({codes:cs,a:Math.round(it.a)}); });
+      const sh=new Set(add.filter(it=>it.shared).flatMap(it=>it.shared.map(nk)));
+      rep.fromLines=add.filter(it=>it.code).length; R.items=R.items.filter(it=>!it.fromLines||it.code||it.shared); orph=left.filter(t=>!sh.has(nk(t.t))); rep.lineLayers=layers; } }
   // drop exact duplicates (same place, same size)
   const seen=new Map(); R.items=R.items.filter(it=>{ const k=Math.round(it.c[0])+","+Math.round(it.c[1])+","+Math.round(it.a/10); if(seen.has(k)){ const o=seen.get(k); if(!o.code&&it.code){ o.code=it.code; } return false; } seen.set(k,it); return true; });
   R.items.forEach(it=>{ const o=rep.byLayer[it.layer]||(rep.byLayer[it.layer]={n:0,coded:0,plotSized:0}); o.n++; if(it.a>=PLOT_MIN&&it.a<=PLOT_MAX) o.plotSized++; if(it.code) o.coded++; });
-  const main=new Set(plotLayers(rep)), nk=c=>String(c).toUpperCase().replace(/\s+/g,""), byCode=new Map();
+  const main=new Set(plotLayers(rep)), byCode=new Map();
   R.items.forEach(it=>{ it.keep=false; if(!it.code||it.a<PLOT_MIN||it.a>PLOT_MAX) return; const k=nk(it.code), sc=(main.has(it.layer)?0:1e9)+it.a, cur=byCode.get(k); if(!cur||sc<cur.s) byCode.set(k,{it,s:sc}); });
   byCode.forEach(({it})=>{ if(main.has(it.layer)||it.a<=100000) it.keep=true; });
   R.items.forEach(it=>{ if(!it.code&&main.has(it.layer)&&/plot|land|parcel|lot|قطع/i.test(it.layer)&&it.a>=PLOT_MIN&&it.a<=PLOT_MAX) it.keep=true; });
+  R.items.forEach(it=>{ if(it.shared) it.keep=true; });
   const kept=R.items.filter(it=>it.keep), KG=grid(kept,200,it=>it.b);
   kept.forEach(z=>{ const seen2=new Set(); let inside=0; for(let x=Math.floor(z.b[0]/200);x<=Math.floor(z.b[2]/200)&&inside<2;x++) for(let y=Math.floor(z.b[1]/200);y<=Math.floor(z.b[3]/200)&&inside<2;y++) (KG.get(x+","+y)||[]).forEach(i=>{ const o=kept[i]; if(o===z||seen2.has(o)||o.a>=z.a) return; seen2.add(o); if(inR(o.c,z.rings[0])) inside++; });
     if(inside>=2){ z.keep=false; z.zone=true; } });
@@ -22255,6 +22434,154 @@ async function prepare(R,near,opts){ opts=opts||{}; if(!R._orig) R._orig={items:
 function plotLayers(rep){ return Object.entries(rep.byLayer).filter(([l,o])=>(o.coded>=10&&o.coded/Math.max(1,o.plotSized)>=.3)||(o.coded>=1&&/plot|land|parcel|lot|قطع|built from lines/i.test(l))).map(([l])=>l); }
 
 window.SID_MPCAD={readDWG,readDXF,prepare,plotLayers,isCode,cleanText,polygonize,_t:{assign,clusters,flatten,normDWG}};
+})();
+
+/* V119 MDS register wizard of the Master Plan Center (window.SID_MPREG).
+   A new master plan changes plot numbers, areas and uses; this reads the new plan (drawing + Development's Excel schedule) against
+   today's map and the MDS register, row by row, and proposes the register changes on one screen:
+     · same number, new area / new use  → update the row (deals keep their contract area unless Development ticks it)
+     · number gone, its land now inside another plot (merged, re-plotted, renumbered) → the row moves to that plot:
+         deal rows (sold / reserved / with a client) are linked to it and keep their deal; free rows become the plot or leave the register
+     · number gone and its land is road / green now → the free row leaves the register; a deal row is shown in red for a decision
+     · new plot with no row → a new row (status chosen here, sector from the Excel use)
+   Nothing is written here: the choices are saved with the draft and applied to the register when the plan is published. */
+(function(){
+"use strict";
+const G=SID_MPR.geo;
+const fmt=n=>n==null||!isFinite(n)?"—":fInt(n);
+const f2=n=>n==null||!isFinite(n)?"—":Number(n).toLocaleString("en-GB",{maximumFractionDigits:2});
+const DEAL=r=>r.status==="sold"||r.status==="reserved"||r.status==="eoi"||!!(r.client&&String(r.client).trim());
+const ST={sold:"Sold",reserved:"Reserved",eoi:"EOI",ats:"Available",hold:"On hold",nfs:"Not for sale"};
+const stName=s=>ST[s]||s||"—";
+/* the Excel's land use → the register's sector and land type (order matters: small industries before engineering) */
+const SECT=[[/صغيرة|sme/i,"SME'S","Industrial"],[/غذائ|food/i,"Food Processing","Industrial"],[/دوائ|pharma/i,"Pharmaceutical","Industrial"],[/كيما|chem/i,"Chemical","Industrial"],
+  [/نسيج|textile/i,"Textile","Industrial"],[/هندس|engineer/i,"Engineering","Industrial"],[/لوجست|logistic/i,"Logistic Services","Services"],[/مخازن|مستودع|warehouse|storage/i,"Logistics","Logistics"],
+  [/مرافق|utilit/i,"Utilities","Services"],[/انتظار|parking/i,"Parking","Services"],[/^\s*ida\s*$/i,"IDA","Services"],[/ادار|إدار|admin/i,"Admin Building","Services"],[/ورش|workshop|academ/i,"Technical Academy","Services"]];
+function sectorOf(use){ if(!use) return null; const m=SECT.find(([re])=>re.test(use)); return m?{sector:m[1],landType:m[2]}:null; }
+const nsec=s=>String(s||"").toLowerCase().replace(/[^a-z]/g,"");
+const blkOf=c=>{ const m=String(c||"").toUpperCase().replace(/\s+/g,"").match(/^([A-Z]{1,3}\d{0,3})[-\/_]/); return m?m[1]:null; };
+function sample(r){ const b=G.bbox(r), pts=[]; for(let i=1;i<9;i++) for(let j=1;j<9;j++){ const p=[b[0]+(b[2]-b[0])*i/9,b[1]+(b[3]-b[1])*j/9]; if(G.inRing(p,r)) pts.push(p); } if(!pts.length) pts.push(G.ringCentroid(r)); return pts; }
+const outer=f=>{ const g=f.geometry; return g.type==="Polygon"?g.coordinates[0]:g.type==="MultiPolygon"?g.coordinates[0][0]:null; };
+
+/* ---------- the proposal ---------- */
+function build(park,plan,sched,liveFeats){
+  const rows=S.rows.filter(r=>!r.dup&&r.park===park);
+  const NP=[], byK=new Map();
+  plan.plots.forEach(p=>{ const codes=p.u?[p.u]:(p.j?String(p.j).split(/\s*\+\s*/):[]); codes.forEach(u=>{ const k=ukey(u); if(byK.has(k)) return; const n={u,k,r:p.r,b:G.bbox(p.r),A:p.u?(p.a!=null?p.a:Math.round(p.g)):null,g:p.g,use:p.use||null,shared:!p.u}; byK.set(k,n); NP.push(n); }); });
+  (sched&&sched.plots||[]).forEach(s=>{ const k=ukey(s.code), n=byK.get(k); if(n){ if(n.A==null||n.shared) n.A=s.area; if(!n.use) n.use=s.use; return; } const x={u:s.code,k,r:null,A:s.area,use:s.use,listed:true}; byK.set(k,x); NP.push(x); });
+  const drawn=NP.filter(n=>n.r);
+  // where each of today's plots goes: the share of its land inside each new plot
+  const oldByK=new Map(); (liveFeats||[]).forEach(f=>{ const u=f.properties.unitAr||f.properties.unit; const r=outer(f); if(!u||!r) return; const P=sample(r), hits=new Map();
+    P.forEach(p=>{ const n=drawn.find(n=>p[0]>=n.b[0]&&p[0]<=n.b[2]&&p[1]>=n.b[1]&&p[1]<=n.b[3]&&G.inRing(p,n.r)); if(n) hits.set(n.k,(hits.get(n.k)||0)+1/P.length); });
+    oldByK.set(ukey(u),{u,hits,A:f.properties.gis}); });
+  const claimed=new Map(), claim=(k,r)=>(claimed.get(k)||claimed.set(k,[]).get(k)).push(r);
+  const areaI=[], useI=[], gone=[]; let same=0;
+  rows.forEach(r=>{ const codes=expandUnits(r.unit,park); if(!codes.length) return; const ks=codes.map(ukey), hit=ks.map(k=>byK.get(k));
+    if(hit.every(Boolean)){ hit.forEach(n=>claim(n.k,r)); const A=hit.every(n=>n.A!=null)?Math.round(hit.reduce((t,n)=>t+n.A,0)*1000)/1000:null;
+      const aChg=A!=null&&r.area!=null&&Math.abs(A-r.area)>.5, sec=hit.length===1?sectorOf(hit[0].use):null, sChg=!!(sec&&nsec(sec.sector)!==nsec(r.sector));
+      if(aChg) areaI.push({r,A,codes:hit.map(n=>n.u),on:!DEAL(r)}); if(sChg) useI.push({r,to:sec,use:hit[0].use,on:!DEAL(r)}); if(!aChg&&!sChg) same++; return; }
+    const tg=new Map(); let onMap=false; ks.forEach(k=>{ const o=oldByK.get(k); if(!o) return; onMap=true; o.hits.forEach((f,nk)=>tg.set(nk,(tg.get(nk)||0)+f/ks.length)); });
+    let list=[...tg].map(([k,f])=>({n:byK.get(k),f,why:"land"})).filter(x=>x.f>=.1).sort((a,b)=>b.f-a.f);
+    // not on today's map: a block that became one plot keeps its block number (F1-3 → F1, R1-7 → R1)
+    if(!list.length){ const T=[...new Set(codes.map(blkOf).filter(Boolean))].map(b=>byK.get(ukey(b))).find(Boolean); if(T) list=[{n:T,f:1,why:"block"}]; }
+    gone.push({r,codes,onMap,list,main:list[0]&&list[0].f>=.5?list[0].n:null}); });
+  // a deal still without a plot follows the same client's other moved plots (S1-x of a client whose R1-x went to R1)
+  gone.forEach(g=>{ if(g.list.length||!DEAL(g.r)||!g.r.client) return; const c=new Map(); gone.forEach(h=>{ if(h!==g&&h.main&&String(h.r.client).trim().toLowerCase()===String(g.r.client).trim().toLowerCase()) c.set(h.main.k,(c.get(h.main.k)||0)+1); });
+    const best=[...c].sort((a,b)=>b[1]-a[1])[0]; if(best){ g.list=[{n:byK.get(best[0]),f:0,why:"client"}]; g.main=byK.get(best[0]); } });
+  const hasSched=!!(sched&&sched.plots&&sched.plots.length);
+  // decide where each row whose number left the plan goes
+  const byT=new Map(); gone.forEach(g=>{ const k=g.main?g.main.k:"—"; (byT.get(k)||byT.set(k,[]).get(k)).push(g); });
+  const moves=[];
+  byT.forEach((gs,k)=>{ const T=k==="—"?null:byK.get(k); let taken=T&&(claimed.get(T.k)||[]).length>0;
+    gs.sort((a,b)=>(DEAL(b.r)?1:0)-(DEAL(a.r)?1:0)||(b.list[0]?b.list[0].f:0)-(a.list[0]?a.list[0].f:0));
+    gs.forEach(g=>{ const ch=[], deal=DEAL(g.r);
+      const why=x=>x.why==="block"?"its block is now this one plot":x.why==="client"?"the same client's other plots moved there":`${Math.round(x.f*100)}% of its land`;
+      if(deal){ g.list.forEach(x=>ch.push({v:"link:"+x.n.k,l:`Link to ${x.n.u} (${why(x)})`})); ch.push({v:"leave",l:"Leave as it is (not on the map)"}); g.v=g.list.length?"link:"+g.list[0].n.k:"leave"; }
+      else { if(T&&!taken){ ch.push({v:"ren:"+T.k,l:`Becomes ${T.u} · ${f2(T.A)} sqm`}); } g.list.filter(x=>!T||x.n.k!==T.k||taken).slice(0,3).forEach(x=>{ if(!(claimed.get(x.n.k)||[]).length&&!ch.some(c=>c.v==="ren:"+x.n.k)) ch.push({v:"ren:"+x.n.k,l:`Becomes ${x.n.u} · ${f2(x.n.A)} sqm`}); });
+        ch.push({v:"del",l:"Remove from the register"}); ch.push({v:"leave",l:"Leave as it is"});
+        g.v=T&&!taken?"ren:"+T.k:(g.onMap||hasSched)?"del":"leave"; if(T&&!taken) taken=true; }
+      if(T&&g.v.startsWith("link:")) taken=true; g.ch=ch; g.T=T; moves.push(g); }); });
+  const st={park,plan,NP,byK,claimed,areaI,useI,moves,same,rows:rows.length,adds:[]};
+  refreshAdds(st); return st; }
+/* new plots that no row reaches (after the moves chosen) get a new row */
+function refreshAdds(st){ const used=new Set(); st.claimed.forEach((v,k)=>{ if(v.length) used.add(k); }); st.moves.forEach(g=>{ const m=String(g.v).match(/^(?:link|ren):(.+)$/); if(m) used.add(m[1]); });
+  const old=new Map(st.adds.map(a=>[a.n.k,a])); st.adds=st.NP.filter(n=>!used.has(n.k)).map(n=>old.get(n.k)||{n,on:true,status:"hold",sec:sectorOf(n.use)}); }
+
+/* ---------- the register changes (saved with the draft, applied at publish) ---------- */
+function ops(st){ const out=[], sheet=(S.rows.find(r=>r.park===st.park&&r.sheet)||{}).sheet||null, id=r=>({unit:String(r.unit),st:r.status||"",client:String(r.client||"")});
+  st.areaI.forEach(x=>{ if(x.on) out.push(Object.assign({op:"set",f:{area:x.A},why:`Area ${f2(x.r.area)} → ${f2(x.A)} sqm (new plan)`},id(x.r))); });
+  st.useI.forEach(x=>{ if(x.on) out.push(Object.assign({op:"set",f:{sector:x.to.sector,landType:x.to.landType},why:`Use ${x.r.sector||"—"} → ${x.to.sector}`},id(x.r))); });
+  st.moves.forEach(g=>{ const m=String(g.v).match(/^(link|ren):(.+)$/), r=g.r;
+    if(m){ const T=st.byK.get(m[2]); if(!T) return; const f={unit:T.u}; if(m[1]==="ren"){ if(T.A!=null) f.area=T.A; const s=sectorOf(T.use); if(s){ f.sector=s.sector; f.landType=s.landType; } }
+      out.push(Object.assign({op:"set",f,why:m[1]==="link"?`Deal moved to plot ${T.u} (was ${r.unit})`:`Plot ${r.unit} is now ${T.u}`},id(r))); }
+    else if(g.v==="del") out.push(Object.assign({op:"del",why:g.T?`Plot ${r.unit} is now part of ${g.T.u}`:`Plot ${r.unit} is not in the new plan`},id(r))); });
+  st.adds.forEach(a=>{ if(!a.on) return; const s=a.sec||{}; out.push({op:"add",row:{park:st.park,sheet,unit:a.n.u,area:a.n.A!=null?a.n.A:Math.round(a.n.g||0),status:a.status||"hold",sector:s.sector||null,landType:s.landType||null},why:`New plot ${a.n.u}`}); });
+  return out; }
+function findRow(list,park,o,used){ return list.find(x=>!used.has(x)&&x.park===park&&String(x.unit)===o.unit&&(x.status||"")===(o.st||"")&&String(x.client||"")===(o.client||"")); }
+/* the rows as they will be after the changes (used to preview the MDS link before anything is written) */
+function applyToRows(rows,park,O){ const out=rows.map(r=>Object.assign({},r)), used=new Set(), drop=new Set(); let miss=0;
+  (O||[]).forEach(o=>{ if(o.op==="add"){ out.push(Object.assign({_id:-1-out.length,_plots:[]},o.row)); return; } const r=findRow(out,park,o,used); if(!r){ miss++; return; } used.add(r); if(o.op==="del") drop.add(r); else Object.assign(r,o.f); });
+  return {rows:out.filter(r=>!drop.has(r)),miss}; }
+/* write them into the register editor and save (the publisher's normal "Save changes", with its history and audit) */
+async function apply(park,O){ if(typeof edInit==="function"&&!ED.rows) edInit(); if(!ED||!ED.rows) throw new Error("the register editor is not ready");
+  const used=new Set(), live=()=>ED.rows.filter(x=>!ED.deleted.has(x._id)), g=[], miss=[]; let added=0, removed=0;
+  O.forEach(o=>{ if(o.op==="add"){ const row={_id:++RID}; S.reg.cols.forEach(k=>row[k]=o.row[k]??null); if(!row.cur&&typeof cur==="function") try{ row.cur=cur(park); }catch(e){}
+      ED.rows.unshift(row); ED.byId.set(row._id,row); ED.added.add(row._id); ED.undo.push([{type:"add",id:row._id}]); added++; return; }
+    const r=findRow(live(),park,o,used); if(!r){ miss.push(o.unit); return; } used.add(r);
+    if(o.op==="del"){ ED.deleted.add(r._id); ED.undo.push([{type:"del",ids:[r._id],was:[false]}]); removed++; return; }
+    Object.entries(o.f).forEach(([k,v])=>edSetG(r,k,v,g)); });
+  if(g.length) ED.undo.push(g);
+  await edSave(); return {changed:new Set(g.map(x=>x.id)).size,added,removed,miss}; }
+
+/* ---------- the screen ---------- */
+function html(st){ const deals=st.moves.filter(g=>DEAL(g.r)), free=st.moves.filter(g=>!DEAL(g.r)), O=ops(st);
+  const n=t=>O.filter(o=>o.op===t).length;
+  const tile=(b,s,bad)=>`<div class="${bad?"bad":""}"><b>${b}</b><span>${s}</span></div>`;
+  const rowTxt=r=>`<b>${esc(r.unit)}</b> <small>${esc(stName(r.status))}${r.client?" · "+esc(r.client):""} · ${f2(r.area)} sqm</small>`;
+  const sel=(g,i)=>`<select data-mv="${i}">${g.ch.map(c=>`<option value="${esc(c.v)}" ${c.v===g.v?"selected":""}>${esc(c.l)}</option>`).join("")}</select>`;
+  // merged / moved groups by their new plot
+  const grp=new Map(); free.forEach(g=>{ const k=g.T?g.T.k:"—"; (grp.get(k)||grp.set(k,[]).get(k)).push(g); });
+  const dealsT=new Map(); deals.forEach(g=>{ const m=String(g.v).match(/^link:(.+)$/); const k=m?m[1]:"—"; (dealsT.get(k)||dealsT.set(k,[]).get(k)).push(g); });
+  return `<div class="mr">
+   <p class="mp-n">The new plan is read against today's map and the MDS register (${fmt(st.rows)} rows of ${esc(pnameOf(st.park))}). Each change is proposed below — change any choice. <b>Nothing is written now</b>: the choices are saved with the draft and applied to the register when the plan is published, with the register's own history and audit.</p>
+   <div class="mp-tiles">${tile(fmt(st.same),"rows unchanged")}${tile(n("set"),"rows updated")}${tile(n("add"),"new rows")}${tile(n("del"),"rows removed")}${tile(deals.length,"deals (sold / reserved) moved",deals.length)}</div>
+   ${deals.length?`<details class="mr-s bad" open><summary><b>Deals on plots that changed — agree with Sales Operation</b> <span>${deals.length}</span></summary>
+     <p class="mp-n">These rows have a client. Their number is not in the new plan; the land is inside the plot shown. Linking keeps the deal, price and contract area as they are and puts it on the new plot.</p>
+     ${[...dealsT].map(([k,gs])=>{ const T=st.byK.get(k); const sum=gs.reduce((t,g)=>t+(+g.r.area||0),0);
+       return `<div class="mr-g"><div class="mr-gh">${T?`<b>${esc(T.u)}</b> <span>${f2(T.A)} sqm${T.use?" · "+esc(T.use):""}</span>`:"<b>No plot chosen</b>"} <em>${gs.length} row${gs.length>1?"s":""} · ${f2(sum)} sqm in the deals${T&&T.A!=null&&Math.abs(T.A-sum)>1?` · <span class="bad">${T.A>sum?"plot is "+f2(T.A-sum)+" sqm larger":"plot is "+f2(sum-T.A)+" sqm smaller"}</span>`:""}</em></div>
+         <table class="mr-t">${gs.map(g=>`<tr><td>${rowTxt(g.r)}</td><td>${sel(g,st.moves.indexOf(g))} <input class="mr-oth" data-oth="${st.moves.indexOf(g)}" list="mrCodes" placeholder="or type a plot" aria-label="Another plot for ${esc(g.r.unit)}"></td></tr>`).join("")}</table></div>`; }).join("")}
+     <datalist id="mrCodes">${st.NP.map(n=>`<option value="${esc(n.u)}">`).join("")}</datalist></details>`:""}
+   ${free.length?`<details class="mr-s" open><summary><b>Renumbered, merged and re-plotted</b> <span>${free.length}</span></summary>
+     <p class="mp-n">Free rows (no client) whose number is not in the new plan. Each is matched to the new plot that now covers its land.</p>
+     ${[...grp].map(([k,gs])=>{ const T=st.byK.get(k); return `<div class="mr-g"><div class="mr-gh">${T?`<b>${esc(T.u)}</b> <span>${f2(T.A)} sqm${T.use?" · "+esc(T.use):""}${T.shared?" · drawn together with another plot":""}</span>`:(gs.every(g=>!g.onMap)?"<b>Not in the new plan</b> <span>these numbers are not in the approved schedule and not on today's map</span>":"<b>Not inside any new plot</b> <span>road, green or outside the plan</span>")} <em>${gs.length} row${gs.length>1?"s":""}</em>
+       <button class="mp-link" data-all="${esc(k)}" data-to="del">all: remove</button><button class="mp-link" data-all="${esc(k)}" data-to="leave">all: leave</button></div>
+       <table class="mr-t">${gs.map(g=>`<tr><td>${rowTxt(g.r)}${g.onMap?"":' <small class="bad">not on today\'s map</small>'}</td><td>${sel(g,st.moves.indexOf(g))}</td></tr>`).join("")}</table></div>`; }).join("")}</details>`:""}
+   ${st.areaI.length?`<details class="mr-s" open><summary><b>Area changed</b> <span>${st.areaI.length}</span> <button class="mp-link" data-chk="a" data-on="1">tick all</button><button class="mp-link" data-chk="a" data-on="0">untick all</button></summary>
+     <table class="mr-t"><tr><th></th><th>Plot</th><th>Status</th><th>Register sqm</th><th>New plan sqm</th><th>Difference</th></tr>${st.areaI.map((x,i)=>`<tr><td><input type="checkbox" data-a="${i}" ${x.on?"checked":""}></td><td><b>${esc(x.r.unit)}</b></td><td>${esc(stName(x.r.status))}${x.r.client?"<br><small>"+esc(x.r.client)+"</small>":""}</td><td class="nm">${f2(x.r.area)}</td><td class="nm">${f2(x.A)}</td><td class="nm ${Math.abs(x.A-x.r.area)/(x.r.area||1)>.1?"bad":""}">${x.A>x.r.area?"+":""}${f2(x.A-x.r.area)}</td></tr>`).join("")}</table>
+     ${st.areaI.some(x=>DEAL(x.r))?'<p class="mp-n">Rows with a deal are not ticked: their area is the contract area. Tick only if the contract follows the new plan.</p>':""}</details>`:""}
+   ${st.useI.length?`<details class="mr-s"><summary><b>Use changed</b> <span>${st.useI.length}</span> <button class="mp-link" data-chk="u" data-on="1">tick all</button><button class="mp-link" data-chk="u" data-on="0">untick all</button></summary>
+     <table class="mr-t">${st.useI.map((x,i)=>`<tr><td><input type="checkbox" data-u="${i}" ${x.on?"checked":""}></td><td><b>${esc(x.r.unit)}</b> <small>${esc(stName(x.r.status))}</small></td><td>${esc(x.r.sector||"—")} → <b>${esc(x.to.sector)}</b> <small>${esc(x.use||"")}</small></td></tr>`).join("")}</table></details>`:""}
+   ${st.adds.length?`<details class="mr-s" open><summary><b>New plots — new register rows</b> <span>${st.adds.length}</span> <label class="mr-all">status for all <select data-allst>${["","hold","ats","nfs"].map(s=>`<option value="${s}">${s?stName(s):"—"}</option>`).join("")}</select></label></summary>
+     <table class="mr-t"><tr><th></th><th>Plot</th><th>Area sqm</th><th>Use → sector</th><th>Status</th></tr>${st.adds.map((a,i)=>`<tr><td><input type="checkbox" data-ad="${i}" ${a.on?"checked":""}></td><td><b>${esc(a.n.u)}</b>${a.n.listed?' <small>in the Excel, not drawn</small>':a.n.shared?' <small>drawn with another plot — split it on the test map</small>':""}</td><td class="nm">${f2(a.n.A)}</td><td>${esc(a.n.use||"—")}${a.sec?" → <b>"+esc(a.sec.sector)+"</b>":""}</td><td><select data-st="${i}">${["hold","ats","nfs"].map(s=>`<option value="${s}" ${a.status===s?"selected":""}>${stName(s)}</option>`).join("")}</select></td></tr>`).join("")}</table></details>`:""}
+   ${!O.length&&!deals.length?'<p class="mp-ok">The register already matches the new plan — no changes needed.</p>':""}
+   <div class="mr-after" id="mrAfter"></div></div>`; }
+const pnameOf=p=>(S.reg.parks[p]&&S.reg.parks[p].name)||p;
+function wire(el,st,onChange){ const redo=()=>{ refreshAdds(st); el.innerHTML=html(st); wire(el,st,onChange); onChange&&onChange(); };
+  el.querySelectorAll("[data-mv]").forEach(s=>s.onchange=()=>{ st.moves[+s.dataset.mv].v=s.value; redo(); });
+  el.querySelectorAll("[data-oth]").forEach(x=>x.onchange=()=>{ const n=st.byK.get(ukey(x.value.trim())); const g=st.moves[+x.dataset.oth]; if(!n){ x.classList.add("bad"); return; }
+    if(!g.ch.some(c=>c.v==="link:"+n.k)) g.ch.unshift({v:"link:"+n.k,l:`Link to ${n.u} (chosen)`}); g.v="link:"+n.k; redo(); });
+  el.querySelectorAll("[data-all]").forEach(b=>b.onclick=e=>{ e.preventDefault(); st.moves.forEach(g=>{ if(!DEAL(g.r)&&(g.T?g.T.k:"—")===b.dataset.all&&g.ch.some(c=>c.v===b.dataset.to)) g.v=b.dataset.to; }); redo(); });
+  el.querySelectorAll("[data-a]").forEach(c=>c.onchange=()=>{ st.areaI[+c.dataset.a].on=c.checked; onChange&&onChange(); });
+  el.querySelectorAll("[data-u]").forEach(c=>c.onchange=()=>{ st.useI[+c.dataset.u].on=c.checked; onChange&&onChange(); });
+  el.querySelectorAll("[data-chk]").forEach(b=>b.onclick=e=>{ e.preventDefault(); (b.dataset.chk==="a"?st.areaI:st.useI).forEach(x=>x.on=b.dataset.on==="1"); redo(); });
+  el.querySelectorAll("[data-ad]").forEach(c=>c.onchange=()=>{ st.adds[+c.dataset.ad].on=c.checked; onChange&&onChange(); });
+  el.querySelectorAll("[data-st]").forEach(s=>s.onchange=()=>{ st.adds[+s.dataset.st].status=s.value; onChange&&onChange(); });
+  const all=el.querySelector("[data-allst]"); if(all) all.onchange=()=>{ if(all.value){ st.adds.forEach(a=>a.status=all.value); redo(); } }; }
+/* the saved changes, shown again in the publish dialog */
+function opsHtml(O){ if(!O||!O.length) return "No register changes."; const c={set:0,add:0,del:0}; O.forEach(o=>c[o.op]++);
+  return `${c.set} row${c.set===1?"":"s"} updated · ${c.add} new · ${c.del} removed <details><summary>see the list</summary><div class="mp-chips">${O.slice(0,400).map(o=>`<span>${esc(o.op==="add"?"+ "+o.row.unit:o.op==="del"?"− "+o.unit:o.unit+": "+o.why)}</span>`).join("")}</div></details>`; }
+
+window.SID_MPREG={build,ops,html,wire,applyToRows,apply,opsHtml,sectorOf,refreshAdds,DEAL};
 })();
 
 /* V116 Master Plan Center (window.SID_MPC) — Development uploads a master plan per project, checks it on a test map that only
@@ -22279,6 +22606,7 @@ const isDev=()=>{ try{ return isAdm()||canPublish()||(SBME&&SBME.role==="develop
 const canUpload=()=>isDev()&&canWrite();
 const pname=id=>(S.reg.parks[id]&&S.reg.parks[id].name)||(MP.idx&&MP.idx.newParks&&MP.idx.newParks[id]&&MP.idx.newParks[id].name)||id;
 const fmt=n=>n==null||!isFinite(n)?"—":fInt(n);
+const f2=n=>n==null||!isFinite(n)?"—":Number(n).toLocaleString("en-GB",{maximumFractionDigits:2});
 const day=iso=>{ try{ return new Date(iso).toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}); }catch(e){ return "—"; } };
 const kb=n=>n==null?"—":n<1024*1024?Math.max(1,Math.round(n/1024))+" KB":(n/1048576).toFixed(1)+" MB";
 const slug=s=>String(s||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40)||"project";
@@ -22310,9 +22638,9 @@ function planFeatures(plan){
     return {type:"Feature",geometry:{type:"Polygon",coordinates:[ring]},properties:pr}; }); }
 /* in-page features follow the boot rule: an Arabic plot number is shown with its Latin letters */
 function forPage(feats){ return feats.map(f=>{ const p=f.properties; if(p.unit&&hasAr(p.unit)&&typeof enUnit==="function"){ p.unitAr=p.unit; p.unit=enUnit(p.unit); } return f; }); }
-function packPlan(plan){ return JSON.stringify(Object.assign({},plan,{plots:plan.plots.map(p=>({u:p.u||"",g:Math.round(p.g),r:Array.isArray(p.r[0])?G.enc(p.r):p.r})),
+function packPlan(plan){ return JSON.stringify(Object.assign({},plan,{plots:plan.plots.map(p=>Object.assign({u:p.u||"",g:Math.round(p.g),r:Array.isArray(p.r[0])?G.enc(p.r):p.r},p.a!=null?{a:p.a}:{},p.use?{use:p.use}:{},p.j?{j:p.j}:{})),
   boundary:plan.boundary?G.enc(plan.boundary):null, green:(plan.green||[]).map(G.enc), services:(plan.services||[]).map(G.enc)})); }
-function unpackPlan(o){ if(o.raw) return o; o.plots=(o.plots||[]).map(p=>({u:p.u,g:p.g,r:G.dec(p.r)})); o.boundary=o.boundary?G.dec(o.boundary):null; o.green=(o.green||[]).map(G.dec); o.services=(o.services||[]).map(G.dec); return o; }
+function unpackPlan(o){ if(o.raw) return o; o.plots=(o.plots||[]).map(p=>Object.assign({u:p.u,g:p.g,r:G.dec(p.r)},p.a!=null?{a:p.a}:{},p.use?{use:p.use}:{},p.j?{j:p.j}:{})); o.boundary=o.boundary?G.dec(o.boundary):null; o.green=(o.green||[]).map(G.dec); o.services=(o.services||[]).map(G.dec); return o; }
 async function loadPlan(ver){ const k="mpv:"+ver.file; try{ const c=await idb.get(k); if(c) return unpackPlan(JSON.parse(c)); }catch(e){}
   const t=await (await sbDl(ver.file)).text(); try{ await idb.set(k,t); }catch(e){} return unpackPlan(JSON.parse(t)); }
 async function upload(path,text){ const r=await SB.storage.from("sid").upload(path,new Blob([text],{type:"application/json"}),{upsert:true,contentType:"application/json"}); if(r.error) throw r.error; }
@@ -22326,13 +22654,13 @@ function buildPlan(R,roles,park,src){
   const numLayers=new Set(Object.keys(roles.text||{}).filter(l=>roles.text[l]==="numbers")); const texts=R.texts.filter(t=>!numLayers.size||numLayers.has(t.layer));
   const plotName=/plot|land|parcel|lot|قطع/i;
   R.items.forEach(it=>{ const role=roles.poly[it.layer]||"ignore"; if(role==="ignore") return; const ring=G.clean(it.ll[0]); if(ring.length<4) return; const a=G.ringArea(ring);
-    if(R.cad&&R.prepared){ if(it.keep&&role!=="ignore"||it.keep&&!(it.layer in roles.poly)){ plots.push({u:(it.code||"").trim(),g:a,r:ring,c:G.ringCentroid(ring)}); return; } if(role==="plots") return; }   /* CAD: the plots the drawing check chose (one shape per number) */
+    if(R.cad&&R.prepared){ if(it.keep&&role!=="ignore"||it.keep&&!(it.layer in roles.poly)){ plots.push({u:(it.code||"").trim(),g:a,r:ring,c:G.ringCentroid(ring),j:(it.shared||[]).join(" + ")}); return; } if(role==="plots") return; }   /* CAD: the plots the drawing check chose (one shape per number) */
     if(role==="plots"){ if(a<5) return; const cen=G.ringCentroid(ring); plots.push({u:(it.code||pickCode(ring,texts,cen)||"").trim(),g:a,r:ring,c:cen}); }
     else if(role==="boundary") boundary.push({ring,a}); else if(role==="green") green.push(ring); else if(role==="services") services.push(ring); else if(role==="roads") roadA+=a; });
-  let bnd=boundary.sort((x,y)=>y.a-x.a)[0]; bnd=bnd?bnd.ring:(plots.length?G.hull(plots.flatMap(p=>p.r)):null);
+  let bnd=boundary.sort((x,y)=>y.a-x.a)[0]; const bfp=!bnd; bnd=bnd?bnd.ring:(plots.length?G.hull(plots.flatMap(p=>p.r)):null);
   const ga=green.reduce((t,r)=>t+G.ringArea(r),0), sa=services.reduce((t,r)=>t+G.ringArea(r),0), pa=plots.reduce((t,p)=>t+p.g,0), ba=bnd?G.ringArea(bnd):0;
-  return {v:1,park,at:new Date().toISOString(),by:myName(),src:src||"",crs:R.crs,fmt:R.fmt,plots:plots.map(p=>({u:p.u,g:p.g,r:p.r})),boundary:bnd,green,services,
-    stats:{plots:plots.length,plotArea:Math.round(pa),boundaryArea:Math.round(ba),green:green.length,greenArea:Math.round(ga),services:services.length,servicesArea:Math.round(sa),roadArea:Math.round(roadA),numbered:plots.filter(p=>p.u).length}}; }
+  return {v:1,park,at:new Date().toISOString(),by:myName(),src:src||"",crs:R.crs,fmt:R.fmt,plots:plots.map(p=>Object.assign({u:p.u,g:p.g,r:p.r},p.j?{j:p.j}:{})),boundary:bnd,green,services,
+    boundaryFromPlots:bfp,stats:{plots:plots.length,plotArea:Math.round(pa),boundaryArea:Math.round(ba),green:green.length,greenArea:Math.round(ga),services:services.length,servicesArea:Math.round(sa),roadArea:Math.round(roadA),numbered:plots.filter(p=>p.u).length}}; }
 function guessRoles(R){ const g=guessRoles0(R); if(R.cad&&R.prepared){ const P=new Set(SID_MPCAD.plotLayers(R.prepared)); R.items.forEach(it=>{ if(it.keep) P.add(it.layer); }); Object.keys(g.poly).forEach(l=>{ if(P.has(l)) g.poly[l]="plots"; else if(g.poly[l]==="plots") g.poly[l]="ignore"; }); } return g; }
 function guessRoles0(R){ const L={}; R.items.forEach(it=>{ const l=it.layer; const o=L[l]||(L[l]={n:0,a:0,code:0,txt:0}); o.n++; const a=G.ringArea(it.ll?it.ll[0]:it.rings[0]); o.a+=a; if(it.code) o.code++; });
   const TL={}; R.texts.forEach(t=>{ TL[t.layer]=(TL[t.layer]||0)+1; });
@@ -22369,9 +22697,9 @@ function linkStats(park){ const L=S.link&&S.link.parks[park]; if(!L) return {row
 /* the link as it is with the LIVE plan (while the test map is open the map holds the draft) */
 function liveStats(park){ if(!(MP.test&&MP.test.park===park)) return linkStats(park); const save=S.geo.features; let o;
   try{ S.geo.features=save.filter(f=>f.properties.park!==park).concat(forPage(MP.test.live.map(f=>JSON.parse(JSON.stringify(f))))); bind(); o=linkStats(park); } finally{ S.geo.features=save; bind(); } return o; }
-function simulate(park,feats){ const before=liveStats(park), save=S.geo.features; let after;
-  try{ S.geo.features=save.filter(f=>f.properties.park!==park).concat(forPage(feats.map(f=>JSON.parse(JSON.stringify(f))))); bind(); after=linkStats(park); }
-  finally{ S.geo.features=save; bind(); }
+function simulate(park,feats,ops){ const before=liveStats(park), save=S.geo.features, rows0=S.rows; let after;
+  try{ S.geo.features=save.filter(f=>f.properties.park!==park).concat(forPage(feats.map(f=>JSON.parse(JSON.stringify(f))))); if(ops&&ops.length&&window.SID_MPREG) S.rows=SID_MPREG.applyToRows(rows0,park,ops).rows; bind(); after=linkStats(park); }
+  finally{ S.rows=rows0; S.geo.features=save; bind(); }
   const lostSale=after.sale.filter(u=>!before.sale.includes(u)); return {before,after,lostSale}; }
 
 /* ---------- test map ---------- */
@@ -22391,7 +22719,7 @@ async function enterTest(park,plan,ver){
 function exitTest(quiet){ if(!MP.test) return; S.geo.features=MP.test.saved; MP.test=null; document.documentElement.classList.remove("mp-testing");
   const b=document.getElementById("mpBanner"); if(b) b.remove(); document.documentElement.style.removeProperty("--mpb"); liveLayer(false); bind(); try{ render(); }catch(e){} repaint(); if(!quiet) toast("Back to the live map"); }
 function syncDraftFromMap(){ if(!MP.test) return; const park=MP.test.park; MP.test.feats=S.geo.features.filter(f=>f.properties.park===park).map(f=>{ const c=JSON.parse(JSON.stringify(f)); if(c.properties.unitAr){ c.properties.unit=c.properties.unitAr; delete c.properties.unitAr; } delete c.properties.st; delete c.properties.mlc; return c; });
-  MP.test.plan.plots=MP.test.feats.map(f=>({u:f.properties.unit||"",g:f.properties.gis||G.ringArea(outer(f)),r:outer(f)})); }
+  const sc=MP.test.plan.sched||{}; MP.test.plan.plots=MP.test.feats.map(f=>{ const u=f.properties.unit||"", x=u&&sc[ukey(u)]; return Object.assign({u,g:f.properties.gis||G.ringArea(outer(f)),r:outer(f)},x?{a:x[0]}:{},x&&x[1]?{use:x[1]}:{}); }); }
 function nudge(dx,dy,rot){ if(!MP.test) return; const park=MP.test.park, fs=S.geo.features.filter(f=>f.properties.park===park); if(!fs.length) return;
   const c=fs.reduce((t,f)=>[t[0]+f.properties.c[0],t[1]+f.properties.c[1]],[0,0]).map(v=>v/fs.length), k=G.kx(c[1]), a=(rot||0)*Math.PI/180, ca=Math.cos(a), sa=Math.sin(a);
   const mv=p=>{ const x=(p[0]-c[0])*k, y=(p[1]-c[1])*G.KY, X=x*ca-y*sa+(dx||0), Y=x*sa+y*ca+(dy||0); return [+(c[0]+X/k).toFixed(7),+(c[1]+Y/G.KY).toFixed(7)]; };
@@ -22416,15 +22744,18 @@ function banner(){ if(!MP.test) return; let b=document.getElementById("mpBanner"
   b.querySelector("#mpbChk").onclick=()=>{ syncDraftFromMap(); openChecks(t.park,t.plan); };
   b.querySelector("#mpbPub").onclick=()=>{ syncDraftFromMap(); publishDlg(t.park,t.plan,t.ver); }; }
 async function saveDraftFromTest(){ if(!MP.test) return; syncDraftFromMap(); const t=MP.test; try{ const v=await saveDraft(t.park,t.plan,(t.plan.src||"")+(t.ver?" (edited on the test map)":"")); t.ver=v; t.dirty=false; banner(); toast("Saved as a new draft"); }catch(e){ toast("Not saved: "+(e.message||e),true); } }
-async function saveDraft(park,plan,src){ if(!canUpload()) throw new Error("only Development or an administrator can save master plans");
+async function saveDraft(park,plan,src,pdf){ if(!canUpload()) throw new Error("only Development or an administrator can save master plans");
   const id=new Date().toISOString().replace(/[-:T.Z]/g,"").slice(0,14)+"-"+Math.random().toString(36).slice(2,6), file="mp/"+park+"/"+id+".json";
+  if(pdf&&!plan.pdf){ try{ const r=await SB.storage.from("sid").upload("mp/"+park+"/"+id+".pdf",pdf,{upsert:true,contentType:"application/pdf"}); if(r.error) throw r.error; plan.pdf={file:"mp/"+park+"/"+id+".pdf",name:pdf.name,size:pdf.size}; }
+    catch(e){ toast("The PDF was not kept ("+(e.message||e)+") — the plan is saved without it",true); } }
   plan.at=new Date().toISOString(); plan.by=myName(); plan.src=src||plan.src||""; const txt=packPlan(plan); await upload(file,txt); try{ await idb.set("mpv:"+file,txt); }catch(e){}
-  const ent={id,at:plan.at,by:plan.by,file,status:"draft",src:plan.src,size:txt.length,stats:plan.stats||{plots:plan.plots.length,plotArea:Math.round(plan.plots.reduce((a,p)=>a+p.g,0))},newPark:plan.newPark||null};
+  const ent={id,at:plan.at,by:plan.by,file,status:"draft",src:plan.src,size:txt.length,stats:plan.stats||{plots:plan.plots.length,plotArea:Math.round(plan.plots.reduce((a,p)=>a+p.g,0))},newPark:plan.newPark||null,
+    pdf:plan.pdf||null,reg:plan.reg?{n:plan.reg.length,set:plan.reg.filter(o=>o.op==="set").length,add:plan.reg.filter(o=>o.op==="add").length,del:plan.reg.filter(o=>o.op==="del").length}:null,excel:plan.excel||null};
   await idxSave(i=>{ const P=i.parks[park]||(i.parks[park]={v:[]}); P.v.push(ent); if(plan.newPark) i.newParks[park]=plan.newPark; });
   return ent; }
 
 /* ---------- publish ---------- */
-async function publish(park,plan,ver,note){
+async function publish(park,plan,ver,note,regOps){
   if(!canPublish()) throw new Error("only the publisher (Dina Rizk) or an administrator can publish");
   if(!canWrite()) throw new Error("your role cannot write to the shared files");
   if(!ver) ver=await saveDraft(park,plan,plan.src);
@@ -22440,9 +22771,15 @@ async function publish(park,plan,ver,note){
   const np=plan.newPark||(MP.idx.newParks&&MP.idx.newParks[park]);
   if(np){ const reg=JSON.parse(await (await sbDl("base/register.json")).text()); reg.parks=reg.parks||{};
     reg.parks[park]=Object.assign({},reg.parks[park]||{},{name:np.name,where:np.where||""},np.aliases&&np.aliases.length?{aliases:np.aliases}:{}); await upload("base/register.json",JSON.stringify(reg)); }
-  await idxSave(i=>{ const Q=i.parks[park]||(i.parks[park]={v:[]}); Q.v.forEach(v=>{ if(v.status==="live") v.status="archived"; }); let me=Q.v.find(v=>v.id===ver.id); if(!me){ me=Object.assign({},ver); Q.v.push(me); } me.status="live"; me.pubAt=new Date().toISOString(); me.pubBy=myName(); me.note=note||""; }); }
+  await idxSave(i=>{ const Q=i.parks[park]||(i.parks[park]={v:[]}); Q.v.forEach(v=>{ if(v.status==="live") v.status="archived"; }); let me=Q.v.find(v=>v.id===ver.id); if(!me){ me=Object.assign({},ver); Q.v.push(me); } me.status="live"; me.pubAt=new Date().toISOString(); me.pubBy=myName(); me.note=note||""; });
+  /* the register changes chosen in the wizard, written through the register's own Save (history + audit) */
+  if(regOps&&regOps.length){ let res; try{ res=await SID_MPREG.apply(park,regOps); }catch(e){ res={err:String(e&&e.message||e)}; }
+    await idxSave(i=>{ const me=(i.parks[park].v||[]).find(v=>v.id===ver.id); if(me) me.regApplied=Object.assign({at:new Date().toISOString(),by:myName()},res); });
+    if(res.err) throw new Error("the map is published, but the register changes were not saved: "+res.err+" — open the version and press Publish again, or fix them in the register");
+    return res; } }
 function publishDlg(park,plan,ver){
-  const chk=planCheck(plan), ch=plan.raw?null:changeCheck(plan), sim=simulate(park,planFeatures(plan));
+  const regOps=(plan.reg||[]).length&&!(ver&&ver.regApplied)&&!(ver&&ver.status==="archived")?plan.reg:[], pend=(()=>{ try{ return typeof edPending==="function"&&ED&&ED.rows?edPending():0; }catch(e){ return 0; } })();
+  const chk=planCheck(plan), ch=plan.raw?null:changeCheck(plan), sim=simulate(park,planFeatures(plan),regOps);
   const sale=sim.lostSale, blockers=chk.blockers;
   const body=`<div class="mpd-h"><b>Publish to live — ${esc(pname(park))}</b><button class="mp-x" aria-label="Close">×</button></div>
    <div class="mpd-b"><p class="mp-n">Everyone sees this plan from their next page load. The plan that is live now is kept and can be brought back in one click.</p>
@@ -22452,6 +22789,7 @@ function publishDlg(park,plan,ver){
     <li><label><input type="checkbox" id="mpcFit"> <b>Fit</b> — I checked on the test map that the drawing sits right on the satellite</label></li>
     <li><b>MDS link after publishing</b>: ${fmt(sim.after.linked)} of ${fmt(sim.after.plots)} plots linked (now ${fmt(sim.before.linked)} of ${fmt(sim.before.plots)}) · MDS rows not on the map ${sim.after.rowsNo.length} (now ${sim.before.rowsNo.length}) · area differs over 10%: ${sim.after.size} (now ${sim.before.size})
       <label><input type="checkbox" id="mpcSync"> I reviewed this</label></li>
+    ${regOps.length?`<li><b>MDS register</b> — changes chosen with this plan: ${SID_MPREG.opsHtml(regOps)}<label><input type="checkbox" id="mpcReg" checked> Apply them to the MDS register when publishing</label>${pend?`<small class="bad">You have ${pend} unsaved register edit${pend>1?"s":""} in the register editor — they are saved together.</small>`:""}</li>`:(ver&&ver.regApplied?`<li><b>MDS register</b> — the changes of this version were applied ${day(ver.regApplied.at)}. Going back to a version does not change the register.</li>`:"")}
     <li class="${sale.length?"bad":"ok"}"><b>Sold and reserved plots</b> ${sale.length?`${sale.length} would lose their plot on the map: ${esc(sale.slice(0,20).join(", "))}${sale.length>20?"…":""}<input id="mpcSales" placeholder="Name of the Sales Operation person who agreed (required)">`:"none affected"}</li>
    </ol>
    ${ch?`<p class="mp-n">Changes: ${ch.added.length} new · ${ch.removed.length} removed · ${ch.resized.length} resized · ${ch.renamed.length} renamed · ${ch.merged.length} merged · ${ch.split.length} split · ${fmt(ch.same)} unchanged</p>`:""}
@@ -22462,7 +22800,8 @@ function publishDlg(park,plan,ver){
   d.querySelectorAll("input,textarea").forEach(x=>x.addEventListener("input",ok)); d.querySelectorAll("input[type=checkbox]").forEach(x=>x.addEventListener("change",ok));
   go_.onclick=async()=>{ go_.disabled=true; go_.textContent="Publishing…";
     const note=[d.querySelector("#mpcNote").value.trim(), blockers?"Accepted: "+d.querySelector("#mpcBlk").value.trim():"", sale.length?"Sales Op agreed: "+d.querySelector("#mpcSales").value.trim():""].filter(Boolean).join(" · ");
-    try{ await publish(park,plan,ver,note); closeModal(); toast("Published — reloading the live plan"); setTimeout(()=>location.reload(),900); }
+    const rb=d.querySelector("#mpcReg"), ro=rb&&rb.checked?regOps:[]; if(ro.length) go_.textContent="Publishing and updating the register…";
+    try{ const res=await publish(park,plan,ver,note,ro); closeModal(); toast("Published"+(res?` — register: ${res.changed} updated, ${res.added} added, ${res.removed} removed${res.miss&&res.miss.length?`, ${res.miss.length} not found (${res.miss.slice(0,5).join(", ")})`:""}`:"")+" — reloading the live plan"); setTimeout(()=>location.reload(),res?2600:900); }
     catch(e){ go_.textContent="Publish to live"; go_.disabled=false; toast("Not published: "+(e.message||e),true); } }; }
 
 /* ---------- small modal helper ---------- */
@@ -22483,11 +22822,11 @@ function openChecks(park,plan){ const chk=planCheck(plan), ch=plan.raw?null:chan
   modal(`<div class="mpd-h"><b>Checks — ${esc(pname(park))}</b><button class="mp-x" aria-label="Close">×</button></div><div class="mpd-b">${checksHtml(chk,ch,sim)}</div><div class="mpd-f"><button class="ebtn" data-close>Close</button></div>`,"mp-chk"); }
 
 /* ---------- the wizard ---------- */
-const STEPS=["Project & file","Read the drawing","Check the plan","Compare","Test map"];
+const STEPS=["Project & files","Read the drawing","Check the plan","MDS register","Test map"];
 function wizShell(){ const W=MP.wiz; return `<div class="mpd-h"><b>${W.newPark?"New project":"Upload a master plan"}</b><ol class="mp-steps">${STEPS.map((s,i)=>`<li class="${i<W.step?"done":i===W.step?"on":""}"><i>${i+1}</i>${s}</li>`).join("")}</ol><button class="mp-x" aria-label="Close">×</button></div>
   <div class="mpd-b" id="mpwB"></div><div class="mpd-f"><span class="mp-n" id="mpwMsg"></span><button class="ebtn" id="mpwBack" ${W.step?"":"hidden"}>Back</button><button class="ebtn pri" id="mpwNext">Next</button></div>`; }
 function openWizard(park,isNew){ if(!canUpload()){ toast("Only Development or an administrator can upload a master plan",true); return; }
-  MP.wiz={step:0,park:park||"",newPark:isNew?{name:"",where:"",aliases:[]}:null,file:null,R:null,roles:null,crs:null,plan:null}; const d=modal(wizShell(),"mp-wiz"); renderStep(); }
+  MP.wiz={step:0,park:park||"",newPark:isNew?{name:"",where:"",aliases:[]}:null,file:null,R:null,SC:null,sched:null,pdf:null,roles:null,crs:null,plan:null}; const d=modal(wizShell(),"mp-wiz"); renderStep(); }
 function setMsg(t,bad){ const m=document.getElementById("mpwMsg"); if(m){ m.textContent=t||""; m.classList.toggle("bad",!!bad); } }
 async function renderStep(){ const W=MP.wiz; const dlg=document.querySelector(".mp-wiz"); if(!dlg) return; dlg.innerHTML=wizShell(); const B=dlg.querySelector("#mpwB"), next=dlg.querySelector("#mpwNext"), back=dlg.querySelector("#mpwBack");
   back.onclick=()=>{ W.step--; renderStep(); };
@@ -22496,24 +22835,29 @@ async function renderStep(){ const W=MP.wiz; const dlg=document.querySelector(".
     B.innerHTML=`${W.newPark?`<div class="mp-grid2"><label class="mp-f">Project name<input id="mpNpName" value="${esc(W.newPark.name)}" placeholder="e.g. Industria Menya"></label><label class="mp-f">City / area<input id="mpNpWhere" value="${esc(W.newPark.where)}" placeholder="e.g. New Menya, Menya"></label>
         <label class="mp-f span2">Project name(s) used in the MDS sheet, separated by commas<input id="mpNpAl" value="${esc((W.newPark.aliases||[]).join(", "))}" placeholder="e.g. SDM - Menya, Industria Menya"><small>So the MDS rows of this project find it automatically.</small></label></div>`
       :`<label class="mp-f">Project<select id="mpPark"><option value="">Choose a project…</option>${parks.map(p=>`<option value="${p}" ${W.park===p?"selected":""}>${esc(pname(p))}</option>`).join("")}</select></label>`}
-      <div class="mp-drop" id="mpDrop" tabindex="0"><input type="file" id="mpFile" accept=".dwg,.dxf,.kml,.kmz,.geojson,.json,.zip,.xlsx,.xls,.csv" hidden>
-        <b>${W.file?esc(W.file.name):"Drop the master plan file here, or click to choose"}</b><span>${W.file?kb(W.file.size)+" · "+esc(W.R?W.R.fmt:""):"AutoCAD DWG or DXF · KML · KMZ · GeoJSON · Shapefile (.zip) · Excel"}</span></div>
-      <div class="mp-need"><h4>What the system needs</h4><table><tr><th>What</th><th>Accepted</th><th>If you don't have it</th></tr>
-        <tr><td><b>Plots with their numbers</b> <em>required</em></td><td>The AutoCAD master plan as it is (DWG or DXF): plot outlines and the plot number written inside each plot — blocks, sheet copies and plain lines are handled. Also KML/KMZ, GeoJSON, Shapefile</td><td>Excel with plot number + corner X/Y (one row per corner); or Excel with plot number + area (listed, not drawn)</td></tr>
-        <tr><td><b>Project boundary</b></td><td>A layer named boundary / border / limit</td><td>Taken from the outer edge of the plots</td></tr>
-        <tr><td><b>Roads, green, services</b></td><td>Layers in the same file</td><td>Skipped — add them in a later version</td></tr>
-        <tr><td><b>Coordinates</b></td><td colspan="2">The drawing in real coordinates (Egypt Red / Purple / Blue belt or UTM), as your master plans are. The system finds the grid by itself.</td></tr></table></div>`;
+      <div class="mp-drop" id="mpDrop" tabindex="0"><input type="file" id="mpFile" accept=".dwg,.dxf,.kml,.kmz,.geojson,.json,.zip,.xlsx,.xls,.csv,.pdf" multiple hidden>
+        <b>Drop the files here, or click to choose — one or all three at once</b><span>The drawing (DWG / DXF / KML / KMZ / GeoJSON / Shapefile) · the plot schedule (Excel) · the approved plan (PDF)</span></div>
+      <div class="mp-slots">${slot("draw","1","The drawing","required","AutoCAD DWG or DXF as Development has it — sheet exports from Revit too. The plots and their numbers are read from it, and it is placed on the map by its coordinates or by the survey points written on it (N … / E …).",W.file?`${esc(W.file.name)} · ${kb(W.file.size)}${W.R?" · "+esc(W.R.fmt):""}`:"")}
+        ${slot("sched","2","The plot schedule","recommended","Excel with every plot number and its official area (Arabic or English; several tables, merged cells and subtotals are fine). Its areas go to the MDS register; every subtotal is checked.",W.sched?`${esc(W.sched.name)} · ${W.SC?fmt(W.SC.schedule.plots.length)+" plots · "+fmt(W.SC.schedule.sum)+" sqm":""}`:"")}
+        ${slot("pdf","3","The approved plan","for reference","The stamped PDF. Kept with this version so everyone can open the approved drawing; it is not read.",W.pdf?`${esc(W.pdf.name)} · ${kb(W.pdf.size)}`:"")}</div>`;
     const inp=B.querySelector("#mpFile"), drop=B.querySelector("#mpDrop");
-    const take=async f=>{ if(!f) return; setMsg("Reading "+f.name+"…"); next.disabled=true; const t0=Date.now(); let last=""; const tick=setInterval(()=>{ setMsg(last+" "+Math.round((Date.now()-t0)/1000)+" s"); },1000);
-      try{ W.file=f; W.crs=null; W.R=await SID_MPR.readFile(f,m=>{ last=m; setMsg(m); }); W.roles=null; W.plan=null; setMsg(`${W.R.fmt}: ${fmt(W.R.items.length)} closed shapes, ${fmt(W.R.texts.filter(t=>t.isCode!==false).length)} plot numbers / texts${W.R.list.length?", "+W.R.list.length+" listed plots":""}`); }
-      catch(e){ W.file=null; W.R=null; setMsg(e.message||String(e),true); } finally{ clearInterval(tick); next.disabled=false; } drop.querySelector("b").textContent=W.file?W.file.name:"Drop the master plan file here, or click to choose"; drop.querySelector("span").textContent=W.R?kb(f.size)+" · "+W.R.fmt:"Try another file"; };
-    drop.onclick=()=>inp.click(); drop.onkeydown=e=>{ if(e.key==="Enter"||e.key===" ") inp.click(); }; inp.onchange=()=>take(inp.files[0]);
-    drop.ondragover=e=>{ e.preventDefault(); drop.classList.add("on"); }; drop.ondragleave=()=>drop.classList.remove("on"); drop.ondrop=e=>{ e.preventDefault(); drop.classList.remove("on"); take(e.dataTransfer.files[0]); };
+    const kind=f=>{ const n=f.name.toLowerCase(); return /\.pdf$/.test(n)?"pdf":/\.(xlsx|xls|csv)$/.test(n)?"sched":"draw"; };
+    const take=async fl=>{ fl=[...(fl||[])]; if(!fl.length) return; next.disabled=true;
+      for(const f of fl){ const k=kind(f); const t0=Date.now(); let last=""; const tick=setInterval(()=>{ setMsg(last+" "+Math.round((Date.now()-t0)/1000)+" s"); },1000);
+        try{ setMsg("Reading "+f.name+"…");
+          if(k==="pdf"){ if(f.size>15*1048576) throw new Error("the PDF is over 15 MB — export it smaller"); W.pdf=f; }
+          else if(k==="sched"){ const R=await SID_MPR.readFile(f); if(R.schedule){ W.sched=f; W.SC=R; } else if(R.items.length){ W.file=f; W.R=R; W.crs=null; W.roles=null; W.plan=null; } else { W.sched=f; W.SC={schedule:{plots:R.list.map(x=>({code:x.code,area:x.area})),totals:[],budget:[],dups:[],tables:[],extra:[],sum:R.list.reduce((t,x)=>t+(x.area||0),0),uses:[]},list:R.list}; } }
+          else { W.file=f; W.crs=null; W.R=await SID_MPR.readFile(f,m=>{ last=m; setMsg(m); }); W.roles=null; W.plan=null; } }
+        catch(e){ setMsg(f.name+": "+(e.message||String(e)),true); clearInterval(tick); next.disabled=false; renderStep(); return; } finally{ clearInterval(tick); } }
+      next.disabled=false; renderStep(); setMsg([W.R?`${W.R.fmt}: ${fmt(W.R.items.length)} closed shapes, ${fmt(W.R.texts.filter(t=>t.isCode!==false).length)} numbers / texts`:"",W.SC?`schedule: ${fmt(W.SC.schedule.plots.length)} plots`:"",W.pdf?"PDF kept":""].filter(Boolean).join(" · ")); };
+    drop.onclick=()=>inp.click(); drop.onkeydown=e=>{ if(e.key==="Enter"||e.key===" ") inp.click(); }; inp.onchange=()=>take(inp.files);
+    drop.ondragover=e=>{ e.preventDefault(); drop.classList.add("on"); }; drop.ondragleave=()=>drop.classList.remove("on"); drop.ondrop=e=>{ e.preventDefault(); drop.classList.remove("on"); take(e.dataTransfer.files); };
+    B.querySelectorAll("[data-clr]").forEach(x=>x.onclick=e=>{ e.stopPropagation(); const k=x.dataset.clr; if(k==="draw"){ W.file=null; W.R=null; W.plan=null; } if(k==="sched"){ W.sched=null; W.SC=null; } if(k==="pdf") W.pdf=null; renderStep(); });
     next.onclick=async()=>{ if(W.newPark){ W.newPark.name=B.querySelector("#mpNpName").value.trim(); W.newPark.where=B.querySelector("#mpNpWhere").value.trim(); W.newPark.aliases=B.querySelector("#mpNpAl").value.split(",").map(s=>s.trim()).filter(Boolean);
         if(!W.newPark.name){ setMsg("Write the project name",true); return; } let id=slug(W.newPark.name); while(S.reg.parks[id]&&!W.park) id+="-2"; W.park=W.park||id; }
       else W.park=B.querySelector("#mpPark").value;
-      if(!W.park){ setMsg("Choose the project",true); return; } if(!W.R){ setMsg("Choose the file first",true); return; }
-      if(W.R.list.length&&!W.R.items.length){ W.step=2; W.plan={v:1,park:W.park,listOnly:W.R.list,plots:[],stats:{plots:W.R.list.length}}; renderStep(); return; }
+      if(!W.park){ setMsg("Choose the project",true); return; } if(!W.R&&!W.SC){ setMsg("Add the drawing first",true); return; }
+      if(!W.R||(W.R.list.length&&!W.R.items.length)){ const L=W.R&&W.R.list.length?W.R.list:W.SC.schedule.plots.map(p=>({code:p.code,area:p.area})); W.step=2; W.plan={v:1,park:W.park,listOnly:L,plots:[],stats:{plots:L.length}}; renderStep(); return; }
       if(W.R.cad&&!W.R.prepared){ setMsg("Finding the plots in the drawing…"); next.disabled=true; try{ await SID_MPCAD.prepare(W.R,nearOf(W.park)); }catch(e){ setMsg("Could not read the plots: "+(e.message||e),true); next.disabled=false; return; } next.disabled=false; }
       if(!W.R.items.length){ setMsg("No closed shapes or plot outlines were found in this file.",true); return; }
       W.step=1; renderStep(); }; return; }
@@ -22523,7 +22867,7 @@ async function renderStep(){ const W=MP.wiz; const dlg=document.querySelector(".
     try{ await SID_MPR.toLonLat(W.R,W.crs); }catch(e){ B.innerHTML=`<div class="mp-warn">${esc(e.message||e)}</div>`; return; }
     if(!W.roles) W.roles=guessRoles(W.R);
     const Lp=Object.entries(W.roles.layers).sort((a,b)=>b[1].n-a[1].n), Lt=Object.entries(W.roles.textLayers).sort((a,b)=>b[1]-a[1]);
-    const draw=()=>{ const plan=buildPlan(W.R,W.roles,W.park,W.file.name); W.plan=plan; const st=plan.stats;
+    const draw=()=>{ const plan=buildPlan(W.R,W.roles,W.park,W.file.name); if(W.SC) attachSched(plan,W.SC); W.plan=plan; const st=plan.stats;
       B.querySelector("#mpSum").innerHTML=`<b>${fmt(st.plots)}</b> plots · <b>${fmt(st.numbered)}</b> with a number · ${fmt(st.plotArea)} sqm of plots${st.boundaryArea?" · boundary "+fmt(st.boundaryArea)+" sqm":""}`;
       preview(B.querySelector("#mpCv"),plan,near); };
     B.innerHTML=cadHtml(W.R)+`<div class="mp-grid2"><div>
@@ -22544,21 +22888,68 @@ async function renderStep(){ const W=MP.wiz; const dlg=document.querySelector(".
     const st=plan.stats, chk=planCheck(plan); W.chk=chk;
     B.innerHTML=`<div class="mp-tiles"><div><b>${fmt(st.plots)}</b><span>plots</span></div><div><b>${fmt(st.plotArea)}</b><span>sqm of plots</span></div><div><b>${st.plots?fmt(st.plotArea/st.plots):"—"}</b><span>sqm average plot</span></div>
       <div><b>${st.boundaryArea?Math.round(st.plotArea/st.boundaryArea*100)+"%":"—"}</b><span>saleable share of the boundary</span></div><div><b>${fmt(st.greenArea)}</b><span>sqm green (${st.green})</span></div><div><b>${fmt(st.servicesArea)}</b><span>sqm services (${st.services})</span></div><div><b>${fmt(st.roadArea)}</b><span>sqm roads</span></div><div><b>${fmt(st.boundaryArea)}</b><span>sqm inside the boundary</span></div></div>
-      ${sizeBands(plan)}${checksHtml(chk,null,null)}<button class="ebtn" id="mpTpl">Download the register template (every plot number and area, for Sales Operation)</button>`;
-    B.querySelector("#mpTpl").onclick=()=>template(W.park,plan);
-    next.onclick=()=>{ W.step=3; renderStep(); }; return; }
-  if(W.step===3){ const plan=W.plan; B.innerHTML='<p class="mp-n">Comparing with the live plan and the MDS register…</p>';
-    await new Promise(r=>setTimeout(r,30)); const ch=liveFeats(W.park).length?changeCheck(plan):null, sim=simulate(W.park,planFeatures(plan)); W.ch=ch; W.sim=sim;
-    B.innerHTML=checksHtml(W.chk||planCheck(plan),ch,sim)+(ch?"":'<p class="mp-n">This project has no live plan yet — everything is new.</p>');
+      ${excelHtml(W)}${sizeBands(plan)}${checksHtml(chk,null,null)}<button class="ebtn" id="mpTpl">Download the register template (every plot number and area, for Sales Operation)</button>${W.pdf?' <button class="ebtn" id="mpPdf">Open the approved PDF</button>':""}`;
+    B.querySelector("#mpTpl").onclick=()=>template(W.park,plan); const pb=B.querySelector("#mpPdf"); if(pb) pb.onclick=()=>openBlob(W.pdf);
+    B.querySelectorAll("[data-drop]").forEach(c=>c.onchange=()=>{ plan._x.notListed[+c.dataset.drop].drop=c.checked; });
+    next.onclick=()=>{ if(plan._x){ const drop=new Set(plan._x.notListed.filter(p=>p.drop!==false)); if(drop.size){ plan.plots=plan.plots.filter(p=>!drop.has(p)); plan._x.notListed=plan._x.notListed.filter(p=>!drop.has(p)); plan.stats.plots=plan.plots.length; plan.stats.numbered=plan.plots.filter(p=>p.u).length; plan.stats.plotArea=Math.round(plan.plots.reduce((t,p)=>t+p.g,0)); if(plan.boundaryFromPlots){ plan.boundary=G.hull(plan.plots.flatMap(p=>p.r)); plan.stats.boundaryArea=Math.round(G.ringArea(plan.boundary)); } } }
+      W.reg=null; W.step=3; renderStep(); }; return; }
+  if(W.step===3){ const plan=W.plan; B.innerHTML='<p class="mp-n">Reading the new plan against today\'s map and the MDS register…</p>';
+    await new Promise(r=>setTimeout(r,30)); const ch=liveFeats(W.park).length?changeCheck(plan):null; W.ch=ch;
+    if(!W.reg){ try{ W.reg=SID_MPREG.build(W.park,plan,W.SC&&W.SC.schedule,liveFeats(W.park)); }catch(e){ console.error("register wizard",e); W.reg=null; } }
+    const L=(t,a)=>a&&a.length?`<details class="mp-is"><summary>${t} <b>${a.length}</b></summary><div class="mp-chips">${a.slice(0,300).map(x=>`<span>${esc(x)}</span>`).join("")}</div></details>`:"";
+    B.innerHTML=`${ch?`<div class="mp-sec"><h4>The drawing compared with the live plan</h4><p class="mp-n">${fmt(ch.same)} plots unchanged · ${ch.added.length} new · ${ch.removed.length} gone · ${ch.resized.length} resized · ${ch.merged.length} merged · ${ch.split.length} split · ${ch.renamed.length} renamed · ${ch.moved.length} moved over 5 m</p>
+        ${L("New plots",ch.added)}${L("Plots no longer in the plan",ch.removed)}${L("Resized (more than 2%)",ch.resized)}${L("Merged",ch.merged)}${L("Split",ch.split)}${L("Renamed",ch.renamed)}${L("Moved more than 5 m",ch.moved)}</div>`:'<p class="mp-n">This project has no live plan yet — everything is new.</p>'}
+      <div class="mp-sec"><h4>MDS register</h4><div id="mpReg">${W.reg?"":'<div class="mp-warn">The register comparison could not run — the plan can still be saved; fix the register by hand after publishing.</div>'}</div></div>
+      <div class="mp-sec" id="mpSim"></div>`;
+    const simBox=B.querySelector("#mpSim"); let tmr=null;
+    const sim=()=>{ clearTimeout(tmr); tmr=setTimeout(()=>{ try{ const O=W.reg?SID_MPREG.ops(W.reg):[]; const r=simulate(W.park,planFeatures(plan),O); W.sim=r;
+        simBox.innerHTML=`<h4>After publishing (map + register changes)</h4><div class="mp-tiles"><div><b>${fmt(r.after.linked)}</b><span>of ${fmt(r.after.plots)} plots linked to an MDS row (now ${fmt(r.before.linked)} of ${fmt(r.before.plots)})</span></div><div class="${r.after.rowsNo.length?"bad":""}"><b>${r.after.rowsNo.length}</b><span>MDS rows not on the map (now ${r.before.rowsNo.length})</span></div><div class="${r.after.plotsNo.length?"bad":""}"><b>${r.after.plotsNo.length}</b><span>plots with no MDS row (now ${r.before.plotsNo.length})</span></div><div class="${r.lostSale.length?"bad":""}"><b>${r.lostSale.length}</b><span>sold / reserved rows without a plot</span></div></div>
+          ${L("MDS rows that will not be on the map",r.after.rowsNo)}${L("Plots that will have no MDS row",r.after.plotsNo)}${L("Sold / reserved rows without a plot — agree with Sales Operation",r.lostSale)}`; }catch(e){ console.warn("sim",e); } },120); };
+    if(W.reg){ const el=B.querySelector("#mpReg"); el.innerHTML=SID_MPREG.html(W.reg); SID_MPREG.wire(el,W.reg,sim); }
+    sim();
     next.textContent="Save draft & open the test map"; next.onclick=async()=>{ next.disabled=true; setMsg("Saving the draft…");
-      try{ const v=await saveDraft(W.park,plan,W.file?W.file.name:""); W.ver=v; W.step=4; await enterTest(W.park,plan,v); }catch(e){ next.disabled=false; setMsg("Not saved: "+(e.message||e),true); } }; return; }
+      plan.reg=W.reg?SID_MPREG.ops(W.reg):[]; if(W.sched) plan.excel=Object.assign(plan.excel||{},{file:W.sched.name}); delete plan._x;
+      try{ const v=await saveDraft(W.park,plan,[W.file&&W.file.name,W.sched&&W.sched.name].filter(Boolean).join(" + "),W.pdf); W.ver=v; W.step=4; await enterTest(W.park,plan,v); }catch(e){ next.disabled=false; setMsg("Not saved: "+(e.message||e),true); } }; return; }
 }
+/* the Excel schedule against the drawing: official areas and uses go onto the plots; what does not agree is listed */
+function attachSched(plan,SC){ const sc=SC.schedule, by=new Map(sc.plots.map(p=>[ukey(p.code),p])), seen=new Set(), X={match:[],diff:[],notDrawn:[],notListed:[],shared:[]};
+  plan.sched={}; sc.plots.forEach(p=>{ plan.sched[ukey(p.code)]=[p.area,p.use||""]; });
+  plan.plots.forEach(p=>{ if(!p.u){ if(p.j){ const cs=p.j.split(/\s*\+\s*/), A=cs.reduce((t,c)=>t+((by.get(ukey(c))||{}).area||0),0); cs.forEach(c=>seen.add(ukey(c))); X.shared.push({j:p.j,g:p.g,A}); } return; }
+    const x=by.get(ukey(p.u)); if(!x){ X.notListed.push(p); return; } seen.add(ukey(p.u)); p.a=x.area; if(x.use) p.use=x.use;
+    const d=(p.g-x.area)/x.area; (Math.abs(d)<=.01||Math.abs(p.g-x.area)<=2?X.match:X.diff).push({u:p.u,g:p.g,A:x.area,d}); });
+  sc.plots.forEach(x=>{ if(!seen.has(ukey(x.code))) X.notDrawn.push(x); });
+  plan.excel={file:"",plots:sc.plots.length,sum:sc.sum,match:X.match.length,diff:X.diff.length,notDrawn:X.notDrawn.length,notListed:X.notListed.length,totalsOk:sc.totals.filter(t=>t.ok).length,totalsBad:sc.totals.filter(t=>!t.ok).length};
+  plan._x=X; return X; }
+function excelHtml(W){ const plan=W.plan, SC=W.SC; if(!SC) return `<div class="mp-sec"><h4>Plot schedule</h4><p class="mp-n">No Excel schedule was added — the areas are measured from the drawing. Add Development's schedule on the first step to check every area and to give the register the official figures.</p></div>`;
+  const X=plan._x||attachSched(plan,SC), sc=SC.schedule, bud=(sc.budget[0]||{}).area, tb=sc.totals.filter(t=>!t.ok);
+  const T=(h,rows)=>`<table class="mr-t"><tr>${h.map(x=>`<th>${x}</th>`).join("")}</tr>${rows.join("")}</table>`;
+  return `<div class="mp-sec"><h4>Drawing against the Excel schedule <small class="mp-n">${esc(W.sched?W.sched.name:"")}</small></h4>
+   <div class="mp-tiles"><div><b>${fmt(sc.plots.length)}</b><span>plots in the Excel · ${f2(sc.sum)} sqm</span></div><div><b>${fmt(X.match.length)}</b><span>drawn, area within 1%</span></div><div class="${X.diff.length?"bad":""}"><b>${fmt(X.diff.length)}</b><span>drawn, area differs</span></div>
+     <div class="${X.shared.length?"bad":""}"><b>${fmt(X.shared.length)}</b><span>outlines holding 2+ numbers (split on the test map)</span></div><div class="${X.notDrawn.length?"bad":""}"><b>${fmt(X.notDrawn.length)}</b><span>in the Excel, not drawn</span></div><div class="${X.notListed.length?"bad":""}"><b>${fmt(X.notListed.length)}</b><span>drawn, not in the Excel</span></div>
+     <div class="${tb.length?"bad":""}"><b>${sc.totals.length-tb.length}/${sc.totals.length}</b><span>Excel subtotals that add up</span></div>${bud?`<div><b>${fmt(bud)}</b><span>sqm project area (land-use budget)</span></div>`:""}</div>
+   <p class="mp-n">The register gets the <b>Excel area</b> of each plot (the official figure); the outline on the map is the drawing's. A difference over 1% means the drawing and the Excel disagree — tell Development which one is right before publishing.</p>
+   ${X.diff.length?`<details class="mp-is bad" open><summary>Area differs between the drawing and the Excel <b>${X.diff.length}</b></summary>${T(["Plot","Drawn sqm","Excel sqm","Difference"],X.diff.sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).map(x=>`<tr><td><b>${esc(x.u)}</b></td><td class="nm">${f2(x.g)}</td><td class="nm">${f2(x.A)}</td><td class="nm bad">${x.d>0?"+":""}${(x.d*100).toFixed(1)}%</td></tr>`))}</details>`:""}
+   ${X.shared.length?`<details class="mp-is bad" open><summary>One outline, two or more numbers — the dividing line is missing in the drawing <b>${X.shared.length}</b></summary>${T(["Numbers","Drawn sqm","Excel sqm together"],X.shared.map(x=>`<tr><td><b>${esc(x.j)}</b></td><td class="nm">${f2(x.g)}</td><td class="nm">${f2(x.A)}</td></tr>`))}<p class="mp-n">They come to the test map as one unnumbered plot: select it, <b>Split with a line</b>, then rename the parts.</p></details>`:""}
+   ${X.notDrawn.length?`<details class="mp-is bad"><summary>In the Excel but no outline in the drawing <b>${X.notDrawn.length}</b></summary><div class="mp-chips">${X.notDrawn.map(x=>`<span>${esc(x.code)} · ${f2(x.area)}</span>`).join("")}</div><p class="mp-n">They still get their register row with the Excel area; they show on the map once drawn.</p></details>`:""}
+   ${X.notListed.length?`<details class="mp-is" open><summary>Drawn but not in the Excel <b>${X.notListed.length}</b> — probably labels, not plots</summary><div class="mp-chips">${X.notListed.map((p,i)=>`<label><input type="checkbox" data-drop="${i}" ${p.drop!==false?"checked":""}> leave out ${esc(p.u)} · ${fmt(p.g)} sqm</label>`).join("")}</div></details>`:""}
+   ${tb.length?`<details class="mp-is bad"><summary>Excel subtotals that do not add up <b>${tb.length}</b></summary>${T(["Row","Subtotal","Sum of its plots"],tb.map(t=>`<tr><td>${esc(t.label)}</td><td class="nm">${f2(t.area)}</td><td class="nm">${f2(t.sum)}</td></tr>`))}</details>`:""}
+   ${sc.extra&&sc.extra.length?`<p class="mp-n">Listed without a plot number (counted in their subtotal, not plots): ${sc.extra.map(x=>esc(x.name)+" "+f2(x.area)+" sqm").join(" · ")}</p>`:""}
+   ${sc.dups.length?`<div class="mp-warn">The Excel lists ${esc(sc.dups.join(", "))} twice — only the first is used.</div>`:""}</div>`; }
+function openBlob(b){ const u=URL.createObjectURL(b instanceof Blob?b:new Blob([b],{type:"application/pdf"})); const w=window.open(u,"_blank","noopener"); if(!w){ const a=document.createElement("a"); a.href=u; a.target="_blank"; a.download=(b&&b.name)||"master plan.pdf"; document.body.appendChild(a); a.click(); a.remove(); } setTimeout(()=>URL.revokeObjectURL(u),120000); }
+async function openPdf(path){ const b=await sbDl(path); openBlob(new Blob([await b.arrayBuffer()],{type:"application/pdf"})); }
+function slot(k,n,t,tag,help,val){ return `<div class="mp-slot ${val?"ok":""}"><i>${n}</i><div><b>${t}</b> <em class="${tag==="required"?"req":""}">${tag}</em><p>${help}</p>${val?`<span class="mp-sv">✓ ${val} <button class="mp-link" data-clr="${k}">remove</button></span>`:""}</div></div>`; }
 function restoreR(R){ if(R._orig){ R.items=R._orig.items.slice(); R.texts=R._orig.texts.slice(); R.segs=R._orig.segs.slice(); R.prepared=null; R.crsHint=null; } }
 function nearOf(park){ const lf=liveFeats(park); if(!lf.length) return null; return lf.reduce((t,f)=>[t[0]+f.properties.c[0],t[1]+f.properties.c[1]],[0,0]).map(v=>v/lf.length); }
 /* what the system understood in an AutoCAD file, with the two choices a person may need */
 function cadHtml(R){ const r=R.prepared; if(!r) return ""; const cp=(r.copies||[]).filter(c=>!c.part); const used=cp.find(c=>c.used); const parts=(r.copies||[]).filter(c=>c.part).length;
   const L=Object.entries(r.byLayer).filter(([l,o])=>o.coded).sort((a,b)=>b[1].coded-a[1].coded).slice(0,8);
+  const g=r.geo, rl=r.relabelled||[], sh=r.shared||[], bo=r.borrowed||[], cf=r.conflicts||[];
   return `<div class="mp-cad"><h4>What the system found in the drawing</h4><ul>
+    ${g?(g.ok&&g.applied?`<li>Placed on the grid with <b>${g.used} survey point${g.used>1?"s":""}</b> written on the drawing (N / E) — ${g.used>=3?`they agree to <b>${g.max<.01?"under 1 cm":f2(g.max)+" m"}</b>`:"only two points, so the placement is not cross-checked — check it on the test map"}${Math.abs(g.rot)>.01?` · turned ${f2(g.rot)}°`:""}${Math.abs(g.scale-1)>1e-4&&Math.abs(g.scale-.001)>1e-7?` · scale ${g.scale.toFixed(5)}`:""}.</li>`:g.ok?"":`<li class="bad">The survey points on the drawing do not agree with each other (${f2(g.max)} m) — not used; the coordinates are read as they are.</li>`):""}
+    ${rl.length?`<li>Plot numbers written wrongly on this copy of the plan and corrected from the other copy in the same file: ${rl.map(x=>`<b>${esc(x.from)} → ${esc(x.to)}</b>`).join(", ")} — tell Development so the drawing is fixed.</li>`:""}
+    ${bo.length?`<li>${bo.length} number${bo.length>1?"s":""} missing on this copy, taken from the other copy: ${esc(bo.slice(0,12).join(", "))}${bo.length>12?"…":""}</li>`:""}
+    ${cf.length?`<li class="bad">The two copies in the file disagree on ${cf.length} number${cf.length>1?"s":""}: ${cf.slice(0,8).map(x=>esc(x.here)+" / "+esc(x.other)).join(", ")}</li>`:""}
+    ${sh.length?`<li class="bad">${sh.length} outline${sh.length>1?"s hold":" holds"} two or more numbers (the dividing line is missing in the drawing): ${sh.map(x=>esc(x.codes.join(" + "))).join(", ")} — split them on the test map.</li>`:""}
     ${cp.length>1?`<li>The drawing holds <b>${cp.length} copies</b> of the plan (sheet copies, details). Using the one ${used&&used.km!=null?`<b>${used.km<1?"on":used.km.toFixed(1)+" km from"}</b> the project`:"with the most numbered plots"} (${fmt(used&&used.coded)} numbered plots${parts?`, plus ${parts} nearby part${parts>1?"s":""} of the same project`:""}). ${cp.filter(c=>!c.used).slice(0,3).map(c=>`<button class="mp-link" data-copy="${c.i}">Use the other copy (${fmt(c.coded)} plots${c.km!=null?", "+c.km.toFixed(0)+" km away":""})</button>`).join(" ")}</li>`:""}
     <li><b>${fmt(r.numbers)}</b> plot numbers read · <b>${fmt(r.numbers-r.orphans)}</b> placed in a plot outline${r.fromLines?` · <b>${fmt(r.fromLines)}</b> outlines built from plain lines`:""}${r.orphans?` · <span class="bad">${fmt(r.orphans)} numbers have no outline</span>`:""}</li>
     ${L.length?`<li>Plots are on: ${L.map(([l,o])=>`<b>${esc(l)}</b> (${fmt(o.coded)})`).join(", ")}</li>`:""}
@@ -22595,22 +22986,23 @@ function card(p){ const lf=liveFeats(p), vs=vers(p), live=vs.find(v=>v.status===
     <div class="mp-kv"><div><b>${fmt(lf.length)}</b><span>plots</span></div><div><b>${fmt(area)}</b><span>sqm</span></div><div><b>${pct==null?"—":pct+"%"}</b><span>linked to MDS</span></div><div><b>${L?L.rowsNo.length:"—"}</b><span>MDS rows not drawn</span></div></div>
     <p class="mp-n">${live?`Published ${day(live.pubAt||live.at)} by ${esc(live.pubBy||live.by)}${live.note?" — "+esc(live.note):""}`:"The drawing from before the Master Plan Center."}</p>
     <div class="mp-cb">${canUpload()?`<button class="ebtn pri" data-a="up">Upload new master plan</button>`:""}<button class="ebtn" data-a="vers">Versions (${vs.length})</button>${drafts[0]?`<button class="ebtn" data-a="test" data-v="${drafts[0].id}">Open latest draft on the test map</button>`:""}</div>
-    <div class="mp-vl" hidden></div></section>`; }
+    <div class="mp-vl" ${vs.length>1?"":"hidden"}>${vs.length>1?versHtml(p):""}</div></section>`; }
 function versHtml(p){ const vs=vers(p); if(!vs.length) return '<p class="mp-n">No versions yet. The first upload creates one; the drawing that is live today is saved as “Original drawing” on the first publish.</p>';
-  return `<table class="mp-vt"><tr><th>Status</th><th>Saved</th><th>By</th><th>Plots</th><th>Area sqm</th><th>File</th><th>Size</th><th></th></tr>${vs.map(v=>`<tr><td><span class="mp-pill ${v.status}">${v.status}</span></td><td>${day(v.at)}${v.pubAt?`<br><small>live ${day(v.pubAt)} by ${esc(v.pubBy||"")}</small>`:""}</td><td>${esc(v.by||"—")}</td><td>${fmt(v.stats&&v.stats.plots)}</td><td>${fmt(v.stats&&v.stats.plotArea)}</td><td title="${esc(v.src||"")}">${esc((v.src||"").slice(0,40))}${v.note?`<br><small>${esc(v.note)}</small>`:""}</td><td>${kb(v.size)}</td>
-    <td class="mp-va"><button class="mp-link" data-va="test" data-v="${v.id}">Test map</button>${v.status!=="live"&&canPublish()?`<button class="mp-link" data-va="pub" data-v="${v.id}">${v.status==="archived"?"Return to this":"Publish"}</button>`:""}<button class="mp-link" data-va="dl" data-v="${v.id}">GeoJSON</button>${v.status==="draft"&&canUpload()?`<button class="mp-link" data-va="arch" data-v="${v.id}">Archive</button>`:""}</td></tr>`).join("")}</table>`; }
+  return `<table class="mp-vt"><tr><th>Status</th><th>Saved</th><th>By</th><th>Plots</th><th>Area sqm</th><th>File</th><th>Size</th><th></th></tr>${vs.map(v=>`<tr><td><span class="mp-pill ${v.status}">${v.status}</span></td><td>${day(v.at)}${v.pubAt?`<br><small>live ${day(v.pubAt)} by ${esc(v.pubBy||"")}</small>`:""}</td><td>${esc(v.by||"—")}</td><td>${fmt(v.stats&&v.stats.plots)}</td><td>${fmt(v.stats&&v.stats.plotArea)}</td><td title="${esc(v.src||"")}">${esc((v.src||"").slice(0,40))}${v.note?`<br><small>${esc(v.note)}</small>`:""}</td><td>${kb(v.size)}${v.excel?`<br><small>Excel ${fmt(v.excel.match)}/${fmt(v.excel.plots)} match</small>`:""}${v.reg&&v.reg.n?`<br><small>${v.regApplied?"register updated":"register: "+v.reg.n+" change"+(v.reg.n>1?"s":"")}</small>`:""}</td>
+    <td class="mp-va">${v.status==="live"?'<span class="mp-pill live">on the map now</span>':`<button class="ebtn pri mp-pb" data-va="pub" data-v="${v.id}" ${canPublish()?"":"disabled title='Only the publisher (Dina Rizk) or an administrator'"}>${v.status==="archived"?"Show this on the map":"Publish to live"}</button>`}<br><button class="mp-link" data-va="test" data-v="${v.id}">Test map</button>${v.pdf?`<button class="mp-link" data-va="pdf" data-v="${v.id}">Approved PDF</button>`:""}<button class="mp-link" data-va="dl" data-v="${v.id}">GeoJSON</button>${v.status==="draft"&&canUpload()?`<button class="mp-link" data-va="arch" data-v="${v.id}">Archive</button>`:""}</td></tr>`).join("")}</table>`; }
 function wire(){ const root=document.querySelector(".mp-page"); if(!root) return;
   const nb=root.querySelector("#mpNew"); if(nb) nb.onclick=()=>openWizard("",true);
   const gt=root.querySelector("#mpGoTest"); if(gt) gt.onclick=()=>{ go("inventory"); setTimeout(banner,300); };
   const pb=root.querySelector("#mpPubs"); if(pb) pb.onclick=pubDlg;
-  root.querySelectorAll(".mp-card").forEach(c=>{ const p=c.dataset.p;
+  root.querySelectorAll(".mp-card").forEach(c=>{ const p=c.dataset.p; const vl=c.querySelector(".mp-vl"); if(vl&&!vl.hidden) wireVers(vl,p);
     c.querySelectorAll("[data-a]").forEach(b=>b.onclick=async()=>{ const a=b.dataset.a;
       if(a==="up") openWizard(p,false);
       if(a==="vers"){ const L=c.querySelector(".mp-vl"); L.hidden=!L.hidden; if(!L.hidden){ L.innerHTML=versHtml(p); wireVers(L,p); } }
       if(a==="test"){ const v=vers(p).find(x=>x.id===b.dataset.v); if(v){ b.disabled=true; try{ await enterTest(p,await loadPlan(v),v); }catch(e){ toast("Could not open: "+(e.message||e),true); } b.disabled=false; } } }); }); }
 function wireVers(L,p){ L.querySelectorAll("[data-va]").forEach(b=>b.onclick=async()=>{ const v=vers(p).find(x=>x.id===b.dataset.v); if(!v) return; const a=b.dataset.va;
   try{ if(a==="test") await enterTest(p,await loadPlan(v),v);
-    if(a==="pub"){ const plan=await loadPlan(v); plan.park=p; publishDlg(p,plan,v); }
+    if(a==="pub"){ if(!canPublish()) return; const plan=await loadPlan(v); plan.park=p; publishDlg(p,plan,v); }
+    if(a==="pdf"&&v.pdf){ b.disabled=true; try{ await openPdf(v.pdf.file); }finally{ b.disabled=false; } }
     if(a==="dl"){ const plan=await loadPlan(v); plan.park=p; const fc={type:"FeatureCollection",features:planFeatures(plan)}; const u=URL.createObjectURL(new Blob([JSON.stringify(fc)],{type:"application/geo+json"})); const x=document.createElement("a"); x.href=u; x.download=pname(p)+" "+v.id+".geojson"; document.body.appendChild(x); x.click(); setTimeout(()=>{ URL.revokeObjectURL(u); x.remove(); },1500); }
     if(a==="arch"){ await idxSave(i=>{ const q=(i.parks[p]&&i.parks[p].v||[]).find(x=>x.id===v.id); if(q) q.status="archived"; }); L.innerHTML=versHtml(p); wireVers(L,p); toast("Draft archived (kept, not deleted)"); } }
   catch(e){ toast((e.message||e)+"",true); } }); }
