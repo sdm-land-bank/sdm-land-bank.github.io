@@ -21939,6 +21939,20 @@ body.sid-public .mp-page,body.sid-public .ck-page{display:none}
 .mr-all{margin-left:auto;font-size:11.5px;font-weight:400}.mr-all select{font:inherit;font-size:11.5px;padding:2px 4px;border-radius:6px}
 .mp-is .mp-chips label{font:11px ui-monospace,Menlo,monospace;padding:2px 6px;border-radius:5px;background:rgba(0,0,0,.05);display:flex;gap:4px;align-items:center}
 .mp-pb{padding:4px 10px;font-size:11.5px;margin-bottom:3px}.mp-cad li.bad{color:#B3263D}
+
+.mp-vl{overflow:visible}.mp-va{white-space:normal;display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.mp-vlist{display:flex;flex-direction:column;gap:8px;margin-top:6px}.mp-vi{border:1px solid rgba(0,0,0,.1);border-radius:12px;padding:10px 12px;background:#fff}
+.mp-vi.live{border-color:#30A46C;background:rgba(48,164,108,.06)}.mp-vi.hid{opacity:.6}
+.mp-vh{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}.mp-vh span:last-child{color:#6b7079}.mp-vs{font-size:12.5px;margin-top:4px}.mp-vf{font-size:11.5px;color:#7c818b;margin-top:2px;overflow-wrap:anywhere}
+.mp-va .ebtn{font-size:12px;padding:5px 10px}.mp-va .ebtn.bad{color:#B3263D}
+.mr-t th.nm,.mp-sec .mr-t th.nm{text-align:right}
+.mp-dv{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}.mp-dv canvas{width:100%;max-width:560px;height:auto;border:1px solid rgba(0,0,0,.08);border-radius:10px;background:#fafafa}
+.mp-dl{display:flex;flex-direction:column;gap:6px;font-size:12.5px}.mp-dl i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+#mpDiff{position:fixed;left:76px;bottom:14px;z-index:60;width:250px;max-height:46vh;overflow:auto;background:#fff;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.22);padding:10px 12px;font-size:12.5px;color:#222}
+#mpDiff .mpdf-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}#mpDiff .mpdf-h label{font-size:11px;color:#666;white-space:nowrap}
+#mpDiff summary{cursor:pointer;padding:3px 0}#mpDiff summary i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+#mpDiff details button{display:block;width:100%;text-align:left;background:none;border:0;padding:4px 6px;font:inherit;font-size:12px;border-radius:6px;cursor:pointer}#mpDiff details button:hover{background:rgba(0,0,0,.06)}
+#mpDiff .mpdf-s{margin:6px 0 0;color:#777;font-size:11.5px}
 </style>
 <script id="mpcJs">
 /* V116 Master Plan Center — file readers and geometry helpers (window.SID_MPR).
@@ -22543,7 +22557,7 @@ function html(st){ const deals=st.moves.filter(g=>DEAL(g.r)), free=st.moves.filt
   const grp=new Map(); free.forEach(g=>{ const k=g.T?g.T.k:"—"; (grp.get(k)||grp.set(k,[]).get(k)).push(g); });
   const dealsT=new Map(); deals.forEach(g=>{ const m=String(g.v).match(/^link:(.+)$/); const k=m?m[1]:"—"; (dealsT.get(k)||dealsT.set(k,[]).get(k)).push(g); });
   return `<div class="mr">
-   <p class="mp-n">The new plan is read against today's map and the MDS register (${fmt(st.rows)} rows of ${esc(pnameOf(st.park))}). Each change is proposed below — change any choice. <b>Nothing is written now</b>: the choices are saved with the draft and applied to the register when the plan is published, with the register's own history and audit.</p>
+   <p class="mp-n">The system has already matched the new plan to the register (${fmt(st.rows)} rows of ${esc(pnameOf(st.park))}). <b>Only the red box needs your decision</b>; the other groups are already filled in — open one only to change it. Nothing is written now: it is applied when the plan is published, with the register's own history.</p>
    <div class="mp-tiles">${tile(fmt(st.same),"rows unchanged")}${tile(n("set"),"rows updated")}${tile(n("add"),"new rows")}${tile(n("del"),"rows removed")}${tile(deals.length,"deals (sold / reserved) moved",deals.length)}</div>
    ${deals.length?`<details class="mr-s bad" open><summary><b>Deals on plots that changed — agree with Sales Operation</b> <span>${deals.length}</span></summary>
      <p class="mp-n">These rows have a client. Their number is not in the new plan; the land is inside the plot shown. Linking keeps the deal, price and contract area as they are and puts it on the new plot.</p>
@@ -22551,17 +22565,17 @@ function html(st){ const deals=st.moves.filter(g=>DEAL(g.r)), free=st.moves.filt
        return `<div class="mr-g"><div class="mr-gh">${T?`<b>${esc(T.u)}</b> <span>${f2(T.A)} sqm${T.use?" · "+esc(T.use):""}</span>`:"<b>No plot chosen</b>"} <em>${gs.length} row${gs.length>1?"s":""} · ${f2(sum)} sqm in the deals${T&&T.A!=null&&Math.abs(T.A-sum)>1?` · <span class="bad">${T.A>sum?"plot is "+f2(T.A-sum)+" sqm larger":"plot is "+f2(sum-T.A)+" sqm smaller"}</span>`:""}</em></div>
          <table class="mr-t">${gs.map(g=>`<tr><td>${rowTxt(g.r)}</td><td>${sel(g,st.moves.indexOf(g))} <input class="mr-oth" data-oth="${st.moves.indexOf(g)}" list="mrCodes" placeholder="or type a plot" aria-label="Another plot for ${esc(g.r.unit)}"></td></tr>`).join("")}</table></div>`; }).join("")}
      <datalist id="mrCodes">${st.NP.map(n=>`<option value="${esc(n.u)}">`).join("")}</datalist></details>`:""}
-   ${free.length?`<details class="mr-s" open><summary><b>Renumbered, merged and re-plotted</b> <span>${free.length}</span></summary>
+   ${free.length?`<details class="mr-s"><summary><b>Renumbered, merged and re-plotted</b> <span>${free.length}</span></summary>
      <p class="mp-n">Free rows (no client) whose number is not in the new plan. Each is matched to the new plot that now covers its land.</p>
      ${[...grp].map(([k,gs])=>{ const T=st.byK.get(k); return `<div class="mr-g"><div class="mr-gh">${T?`<b>${esc(T.u)}</b> <span>${f2(T.A)} sqm${T.use?" · "+esc(T.use):""}${T.shared?" · drawn together with another plot":""}</span>`:(gs.every(g=>!g.onMap)?"<b>Not in the new plan</b> <span>these numbers are not in the approved schedule and not on today's map</span>":"<b>Not inside any new plot</b> <span>road, green or outside the plan</span>")} <em>${gs.length} row${gs.length>1?"s":""}</em>
        <button class="mp-link" data-all="${esc(k)}" data-to="del">all: remove</button><button class="mp-link" data-all="${esc(k)}" data-to="leave">all: leave</button></div>
        <table class="mr-t">${gs.map(g=>`<tr><td>${rowTxt(g.r)}${g.onMap?"":' <small class="bad">not on today\'s map</small>'}</td><td>${sel(g,st.moves.indexOf(g))}</td></tr>`).join("")}</table></div>`; }).join("")}</details>`:""}
-   ${st.areaI.length?`<details class="mr-s" open><summary><b>Area changed</b> <span>${st.areaI.length}</span> <button class="mp-link" data-chk="a" data-on="1">tick all</button><button class="mp-link" data-chk="a" data-on="0">untick all</button></summary>
+   ${st.areaI.length?`<details class="mr-s"><summary><b>Area changed</b> <span>${st.areaI.length}</span> <button class="mp-link" data-chk="a" data-on="1">tick all</button><button class="mp-link" data-chk="a" data-on="0">untick all</button></summary>
      <table class="mr-t"><tr><th></th><th>Plot</th><th>Status</th><th>Register sqm</th><th>New plan sqm</th><th>Difference</th></tr>${st.areaI.map((x,i)=>`<tr><td><input type="checkbox" data-a="${i}" ${x.on?"checked":""}></td><td><b>${esc(x.r.unit)}</b></td><td>${esc(stName(x.r.status))}${x.r.client?"<br><small>"+esc(x.r.client)+"</small>":""}</td><td class="nm">${f2(x.r.area)}</td><td class="nm">${f2(x.A)}</td><td class="nm ${Math.abs(x.A-x.r.area)/(x.r.area||1)>.1?"bad":""}">${x.A>x.r.area?"+":""}${f2(x.A-x.r.area)}</td></tr>`).join("")}</table>
      ${st.areaI.some(x=>DEAL(x.r))?'<p class="mp-n">Rows with a deal are not ticked: their area is the contract area. Tick only if the contract follows the new plan.</p>':""}</details>`:""}
    ${st.useI.length?`<details class="mr-s"><summary><b>Use changed</b> <span>${st.useI.length}</span> <button class="mp-link" data-chk="u" data-on="1">tick all</button><button class="mp-link" data-chk="u" data-on="0">untick all</button></summary>
      <table class="mr-t">${st.useI.map((x,i)=>`<tr><td><input type="checkbox" data-u="${i}" ${x.on?"checked":""}></td><td><b>${esc(x.r.unit)}</b> <small>${esc(stName(x.r.status))}</small></td><td>${esc(x.r.sector||"—")} → <b>${esc(x.to.sector)}</b> <small>${esc(x.use||"")}</small></td></tr>`).join("")}</table></details>`:""}
-   ${st.adds.length?`<details class="mr-s" open><summary><b>New plots — new register rows</b> <span>${st.adds.length}</span> <label class="mr-all">status for all <select data-allst>${["","hold","ats","nfs"].map(s=>`<option value="${s}">${s?stName(s):"—"}</option>`).join("")}</select></label></summary>
+   ${st.adds.length?`<details class="mr-s"><summary><b>New plots — new register rows</b> <span>${st.adds.length}</span> <label class="mr-all">status for all <select data-allst>${["","hold","ats","nfs"].map(s=>`<option value="${s}">${s?stName(s):"—"}</option>`).join("")}</select></label></summary>
      <table class="mr-t"><tr><th></th><th>Plot</th><th>Area sqm</th><th>Use → sector</th><th>Status</th></tr>${st.adds.map((a,i)=>`<tr><td><input type="checkbox" data-ad="${i}" ${a.on?"checked":""}></td><td><b>${esc(a.n.u)}</b>${a.n.listed?' <small>in the Excel, not drawn</small>':a.n.shared?' <small>drawn with another plot — split it on the test map</small>':""}</td><td class="nm">${f2(a.n.A)}</td><td>${esc(a.n.use||"—")}${a.sec?" → <b>"+esc(a.sec.sector)+"</b>":""}</td><td><select data-st="${i}">${["hold","ats","nfs"].map(s=>`<option value="${s}" ${a.status===s?"selected":""}>${stName(s)}</option>`).join("")}</select></td></tr>`).join("")}</table></details>`:""}
    ${!O.length&&!deals.length?'<p class="mp-ok">The register already matches the new plan — no changes needed.</p>':""}
    <div class="mr-after" id="mrAfter"></div></div>`; }
@@ -22681,13 +22695,13 @@ function planCheck(plan){ const P=plan.plots.map(p=>({u:p.u,g:p.g,r:p.r,b:G.bbox
 function changeCheck(plan){ const old=liveFeats(plan.park).map(f=>{ const r=outer(f); return {u:f.properties.unitAr||f.properties.unit||"",g:f.properties.gis||(r?G.ringArea(r):0),r,c:r?G.ringCentroid(r):f.properties.c}; }).filter(o=>o.r);
   const nw=plan.plots.map(p=>({u:p.u,g:p.g,r:p.r,c:G.ringCentroid(p.r)}));
   const om=new Map(), nm=new Map(); old.forEach(o=>{ if(o.u) om.set(ukey(o.u),o); }); nw.forEach(n=>{ if(n.u) nm.set(ukey(n.u),n); });
-  const res={same:0,resized:[],moved:[],added:[],removed:[],renamed:[],merged:[],split:[]}; const usedO=new Set(), usedN=new Set();
-  nm.forEach((n,k)=>{ const o=om.get(k); if(!o) return; usedO.add(o); usedN.add(n); const d=o.g?Math.abs(n.g-o.g)/o.g:0; if(d>.02) res.resized.push(`${n.u}: ${fmt(o.g)} → ${fmt(n.g)} sqm`); else if(G.dist(o.c,n.c)>5) res.moved.push(n.u); else res.same++; });
+  const res={same:0,resized:[],moved:[],added:[],removed:[],renamed:[],merged:[],split:[],geo:[]}; const G_=(cat,label,r)=>{ if(r) res.geo.push({cat,label,r}); }; const usedO=new Set(), usedN=new Set();
+  nm.forEach((n,k)=>{ const o=om.get(k); if(!o) return; usedO.add(o); usedN.add(n); const d=o.g?Math.abs(n.g-o.g)/o.g:0; if(d>.02){ res.resized.push(`${n.u}: ${fmt(o.g)} → ${fmt(n.g)} sqm`); G_("resized",`${n.u}: ${fmt(o.g)} → ${fmt(n.g)} sqm`,n.r); } else if(G.dist(o.c,n.c)>5){ res.moved.push(n.u); G_("moved",n.u+" moved "+Math.round(G.dist(o.c,n.c))+" m",n.r); } else res.same++; });
   const freeO=old.filter(o=>!usedO.has(o)), freeN=nw.filter(n=>!usedN.has(n));
-  freeN.forEach(n=>{ const inside=freeO.filter(o=>!usedO.has(o)&&G.inRing(o.c,n.r)); if(inside.length>=2){ inside.forEach(o=>usedO.add(o)); usedN.add(n); res.merged.push(`${inside.map(o=>o.u||"?").join(" + ")} → ${n.u||"unnumbered"}`); return; }
-    const o=inside[0]; if(o&&Math.abs(n.g-o.g)/(o.g||1)<=.02){ usedO.add(o); usedN.add(n); if(!o.u&&!n.u) res.same++; else res.renamed.push(`${o.u||"unnumbered"} → ${n.u||"unnumbered"}`); } });
-  freeO.filter(o=>!usedO.has(o)).forEach(o=>{ const parts=freeN.filter(n=>!usedN.has(n)&&G.inRing(n.c,o.r)); if(parts.length>=2){ parts.forEach(n=>usedN.add(n)); usedO.add(o); res.split.push(`${o.u||"?"} → ${parts.map(n=>n.u||"?").join(" + ")}`); } });
-  freeN.filter(n=>!usedN.has(n)).forEach(n=>res.added.push(n.u||"unnumbered")); freeO.filter(o=>!usedO.has(o)).forEach(o=>res.removed.push(o.u||"unnumbered"));
+  freeN.forEach(n=>{ const inside=freeO.filter(o=>!usedO.has(o)&&G.inRing(o.c,n.r)); if(inside.length>=2){ inside.forEach(o=>usedO.add(o)); usedN.add(n); res.merged.push(`${inside.map(o=>o.u||"?").join(" + ")} → ${n.u||"unnumbered"}`); G_("merged",`${inside.map(o=>o.u||"?").join(" + ")} → ${n.u||"unnumbered"}`,n.r); return; }
+    const o=inside[0]; if(o&&Math.abs(n.g-o.g)/(o.g||1)<=.02){ usedO.add(o); usedN.add(n); if(!o.u&&!n.u) res.same++; else{ res.renamed.push(`${o.u||"unnumbered"} → ${n.u||"unnumbered"}`); G_("renamed",`${o.u||"unnumbered"} → ${n.u||"unnumbered"}`,n.r); } } });
+  freeO.filter(o=>!usedO.has(o)).forEach(o=>{ const parts=freeN.filter(n=>!usedN.has(n)&&G.inRing(n.c,o.r)); if(parts.length>=2){ parts.forEach(n=>usedN.add(n)); usedO.add(o); res.split.push(`${o.u||"?"} → ${parts.map(n=>n.u||"?").join(" + ")}`); G_("split",`${o.u||"?"} → ${parts.map(n=>n.u||"?").join(" + ")}`,o.r); } });
+  freeN.filter(n=>!usedN.has(n)).forEach(n=>{ res.added.push(n.u||"unnumbered"); G_("added",n.u||"unnumbered",n.r); }); freeO.filter(o=>!usedO.has(o)).forEach(o=>{ res.removed.push(o.u||"unnumbered"); G_("removed",o.u||"unnumbered",o.r); });
   return res; }
 /* what the MDS link would look like: swap the project's plots in, re-link, read, put the live plots back */
 function linkStats(park){ const L=S.link&&S.link.parks[park]; if(!L) return {rows:0,plots:0,linked:0,rowsNo:[],plotsNo:[],smart:[],sale:[],size:0};
@@ -22708,16 +22722,36 @@ function liveLayer(on){ try{ if(!map||!map.getSource) return; const fc={type:"Fe
   if(!map.getSource("mp-live")) map.addSource("mp-live",{type:"geojson",data:fc}); else map.getSource("mp-live").setData(fc);
   if(!map.getLayer("mp-live-l")) map.addLayer({id:"mp-live-l",type:"line",source:"mp-live",paint:{"line-color":"#FF6A00","line-width":2,"line-dasharray":[2,1.5],"line-opacity":.95}});
   map.setLayoutProperty("mp-live-l","visibility",on&&MP.test?"visible":"none"); }catch(e){ console.warn("live outline",e); } }
+/* what changed against the live plan, drawn on the test map and listed in a panel */
+const DCAT={added:["New plot","#16a34a"],resized:["Resized","#f59e0b"],moved:["Moved","#2563eb"],renamed:["Renamed","#9333ea"],merged:["Merged","#0891b2"],split:["Split","#0891b2"],removed:["Gone from the plan","#dc2626"]};
+function diffLayer(on){ try{ if(!map||!map.getSource) return; const t=MP.test; const geo=t&&t.diff?t.diff.geo:[];
+  const fc={type:"FeatureCollection",features:geo.map(x=>({type:"Feature",properties:{cat:x.cat,label:x.label,color:DCAT[x.cat][1]},geometry:{type:"Polygon",coordinates:[x.r]}}))};
+  if(!map.getSource("mp-diff")) map.addSource("mp-diff",{type:"geojson",data:fc}); else map.getSource("mp-diff").setData(fc);
+  if(!map.getLayer("mp-diff-f")) map.addLayer({id:"mp-diff-f",type:"fill",source:"mp-diff",paint:{"fill-color":["get","color"],"fill-opacity":.38}});
+  if(!map.getLayer("mp-diff-l")) map.addLayer({id:"mp-diff-l",type:"line",source:"mp-diff",paint:{"line-color":["get","color"],"line-width":3}});
+  ["mp-diff-f","mp-diff-l"].forEach(i=>map.setLayoutProperty(i,"visibility",on&&t?"visible":"none")); }catch(e){ console.warn("diff layer",e); } }
+function diffPanel(){ let d=document.getElementById("mpDiff"); const t=MP.test; if(!t){ if(d) d.remove(); return; }
+  if(!t.diff){ try{ t.diff=t.plan.raw?null:changeCheck(t.plan); }catch(e){ console.warn(e); t.diff=null; } }
+  const df=t.diff; if(!df){ if(d) d.remove(); return; }
+  if(!d){ d=document.createElement("div"); d.id="mpDiff"; document.body.appendChild(d); }
+  const by={}; df.geo.forEach(x=>(by[x.cat]=by[x.cat]||[]).push(x)); const cats=Object.keys(DCAT).filter(c=>by[c]); if(t.showDiff==null) t.showDiff=true;
+  d.innerHTML=`<div class="mpdf-h"><b>What changed vs the live plan</b><label><input type="checkbox" id="mpdfOn" ${t.showDiff?"checked":""}> show on map</label></div>
+   ${cats.length?cats.map(c=>`<details${t.dfOpen===c?" open":""} data-c="${c}"><summary><i style="background:${DCAT[c][1]}"></i>${DCAT[c][0]} <b>${by[c].length}</b></summary>${by[c].map((x,i)=>`<button data-c="${c}" data-i="${i}">${esc(x.label)}</button>`).join("")}</details>`).join(""):'<p class="mp-n">No difference: the drawing is the same as the live plan.</p>'}
+   <p class="mpdf-s">${fmt(df.same)} plots are the same as live.</p>`;
+  d.querySelector("#mpdfOn").onchange=e=>{ t.showDiff=e.target.checked; diffLayer(t.showDiff); };
+  d.querySelectorAll("details").forEach(x=>x.ontoggle=()=>{ if(x.open) t.dfOpen=x.dataset.c; });
+  d.querySelectorAll("button[data-i]").forEach(b=>b.onclick=()=>{ const x=by[b.dataset.c][+b.dataset.i]; try{ const [w,s,e,n]=G.bbox(x.r); map.fitBounds([[w,s],[e,n]],{padding:120,maxZoom:19.5,duration:600}); }catch(er){} });
+  diffLayer(t.showDiff); }
 async function enterTest(park,plan,ver){
   if(MP.test) exitTest(true);
   const feats=planFeatures(plan), live=liveFeats(park);
-  MP.test={park,plan,ver,live:live.map(f=>JSON.parse(JSON.stringify(f))),feats,dirty:false,showLive:true,saved:S.geo.features};
+  MP.test={park,plan,ver,live:live.map(f=>JSON.parse(JSON.stringify(f))),feats,dirty:false,showLive:false,saved:S.geo.features};
   S.geo.features=S.geo.features.filter(f=>f.properties.park!==park).concat(forPage(feats));
   document.documentElement.classList.add("mp-testing"); bind(); S.park=park; const ps=document.getElementById("parkSel"); if(ps) ps.value=park;
-  closeWiz(); go("inventory"); setTimeout(()=>{ repaint(); liveLayer(true); const ks=new Set(S.geo.features.filter(f=>f.properties.park===park).map(f=>f.properties.k)); if(ks.size) fitKeys(ks); banner(); },400);
+  closeWiz(); go("inventory"); setTimeout(()=>{ repaint(); liveLayer(false); const ks=new Set(S.geo.features.filter(f=>f.properties.park===park).map(f=>f.properties.k)); if(ks.size) fitKeys(ks); banner(); diffPanel(); },400);
   toast("Test map: only you see this draft. Everyone else still sees the live plan."); }
 function exitTest(quiet){ if(!MP.test) return; S.geo.features=MP.test.saved; MP.test=null; document.documentElement.classList.remove("mp-testing");
-  const b=document.getElementById("mpBanner"); if(b) b.remove(); document.documentElement.style.removeProperty("--mpb"); liveLayer(false); bind(); try{ render(); }catch(e){} repaint(); if(!quiet) toast("Back to the live map"); }
+  const b=document.getElementById("mpBanner"); if(b) b.remove(); const dp=document.getElementById("mpDiff"); if(dp) dp.remove(); document.documentElement.style.removeProperty("--mpb"); liveLayer(false); diffLayer(false); bind(); try{ render(); }catch(e){} repaint(); if(!quiet) toast("Back to the live map"); }
 function syncDraftFromMap(){ if(!MP.test) return; const park=MP.test.park; MP.test.feats=S.geo.features.filter(f=>f.properties.park===park).map(f=>{ const c=JSON.parse(JSON.stringify(f)); if(c.properties.unitAr){ c.properties.unit=c.properties.unitAr; delete c.properties.unitAr; } delete c.properties.st; delete c.properties.mlc; return c; });
   const sc=MP.test.plan.sched||{}; MP.test.plan.plots=MP.test.feats.map(f=>{ const u=f.properties.unit||"", x=u&&sc[ukey(u)]; return Object.assign({u,g:f.properties.gis||G.ringArea(outer(f)),r:outer(f)},x?{a:x[0]}:{},x&&x[1]?{use:x[1]}:{}); }); }
 function nudge(dx,dy,rot){ if(!MP.test) return; const park=MP.test.park, fs=S.geo.features.filter(f=>f.properties.park===park); if(!fs.length) return;
@@ -22822,14 +22856,16 @@ function openChecks(park,plan){ const chk=planCheck(plan), ch=plan.raw?null:chan
   modal(`<div class="mpd-h"><b>Checks — ${esc(pname(park))}</b><button class="mp-x" aria-label="Close">×</button></div><div class="mpd-b">${checksHtml(chk,ch,sim)}</div><div class="mpd-f"><button class="ebtn" data-close>Close</button></div>`,"mp-chk"); }
 
 /* ---------- the wizard ---------- */
-const STEPS=["Project & files","Read the drawing","Check the plan","MDS register","Test map"];
-function wizShell(){ const W=MP.wiz; return `<div class="mpd-h"><b>${W.newPark?"New project":"Upload a master plan"}</b><ol class="mp-steps">${STEPS.map((s,i)=>`<li class="${i<W.step?"done":i===W.step?"on":""}"><i>${i+1}</i>${s}</li>`).join("")}</ol><button class="mp-x" aria-label="Close">×</button></div>
+const VIS=[[0,"Files"],[2,"Check the plan"],[3,"MDS register"],[4,"Test map"]];
+function wizShell(){ const W=MP.wiz; return `<div class="mpd-h"><b>${W.newPark?"New project":"Upload a master plan"}</b><ol class="mp-steps">${VIS.map(([i,s],n)=>{ const cur=W.step===1?2:W.step; return `<li class="${i<cur?"done":i===cur?"on":""}"><i>${n+1}</i>${s}</li>`; }).join("")}</ol><button class="mp-x" aria-label="Close">×</button></div>
   <div class="mpd-b" id="mpwB"></div><div class="mpd-f"><span class="mp-n" id="mpwMsg"></span><button class="ebtn" id="mpwBack" ${W.step?"":"hidden"}>Back</button><button class="ebtn pri" id="mpwNext">Next</button></div>`; }
 function openWizard(park,isNew){ if(!canUpload()){ toast("Only Development or an administrator can upload a master plan",true); return; }
   MP.wiz={step:0,park:park||"",newPark:isNew?{name:"",where:"",aliases:[]}:null,file:null,R:null,SC:null,sched:null,pdf:null,roles:null,crs:null,plan:null}; const d=modal(wizShell(),"mp-wiz"); renderStep(); }
+async function autoRead(W){ const near=nearOf(W.park); if(!W.crs){ try{ W.crs=await SID_MPR.guessCrs(W.R,near); }catch(e){ W.crs="wgs"; } } await SID_MPR.toLonLat(W.R,W.crs); if(!W.roles) W.roles=guessRoles(W.R);
+  const plan=buildPlan(W.R,W.roles,W.park,W.file.name); if(W.SC) attachSched(plan,W.SC); W.plan=plan; if(!plan.plots.length) throw new Error("no plots were found — open “Advanced” to choose the layers"); }
 function setMsg(t,bad){ const m=document.getElementById("mpwMsg"); if(m){ m.textContent=t||""; m.classList.toggle("bad",!!bad); } }
 async function renderStep(){ const W=MP.wiz; const dlg=document.querySelector(".mp-wiz"); if(!dlg) return; dlg.innerHTML=wizShell(); const B=dlg.querySelector("#mpwB"), next=dlg.querySelector("#mpwNext"), back=dlg.querySelector("#mpwBack");
-  back.onclick=()=>{ W.step--; renderStep(); };
+  back.onclick=()=>{ W.step=W.step===2?0:W.step===1?2:W.step-1; renderStep(); };
   if(W.step===0){
     const parks=Object.keys(S.reg.parks);
     B.innerHTML=`${W.newPark?`<div class="mp-grid2"><label class="mp-f">Project name<input id="mpNpName" value="${esc(W.newPark.name)}" placeholder="e.g. Industria Menya"></label><label class="mp-f">City / area<input id="mpNpWhere" value="${esc(W.newPark.where)}" placeholder="e.g. New Menya, Menya"></label>
@@ -22860,7 +22896,7 @@ async function renderStep(){ const W=MP.wiz; const dlg=document.querySelector(".
       if(!W.R||(W.R.list.length&&!W.R.items.length)){ const L=W.R&&W.R.list.length?W.R.list:W.SC.schedule.plots.map(p=>({code:p.code,area:p.area})); W.step=2; W.plan={v:1,park:W.park,listOnly:L,plots:[],stats:{plots:L.length}}; renderStep(); return; }
       if(W.R.cad&&!W.R.prepared){ setMsg("Finding the plots in the drawing…"); next.disabled=true; try{ await SID_MPCAD.prepare(W.R,nearOf(W.park)); }catch(e){ setMsg("Could not read the plots: "+(e.message||e),true); next.disabled=false; return; } next.disabled=false; }
       if(!W.R.items.length){ setMsg("No closed shapes or plot outlines were found in this file.",true); return; }
-      W.step=1; renderStep(); }; return; }
+      setMsg("Placing the plan on the map…"); next.disabled=true; try{ await autoRead(W); }catch(e){ setMsg("Could not read the drawing: "+(e.message||e),true); next.disabled=false; return; } next.disabled=false; W.step=2; renderStep(); }; return; }
   if(W.step===1){ const near=nearOf(W.park);
     B.innerHTML='<p class="mp-n">Reading coordinates…</p>';
     if(!W.crs){ try{ W.crs=await SID_MPR.guessCrs(W.R,near); }catch(e){ W.crs="wgs"; } }
@@ -22870,7 +22906,7 @@ async function renderStep(){ const W=MP.wiz; const dlg=document.querySelector(".
     const draw=()=>{ const plan=buildPlan(W.R,W.roles,W.park,W.file.name); if(W.SC) attachSched(plan,W.SC); W.plan=plan; const st=plan.stats;
       B.querySelector("#mpSum").innerHTML=`<b>${fmt(st.plots)}</b> plots · <b>${fmt(st.numbered)}</b> with a number · ${fmt(st.plotArea)} sqm of plots${st.boundaryArea?" · boundary "+fmt(st.boundaryArea)+" sqm":""}`;
       preview(B.querySelector("#mpCv"),plan,near); };
-    B.innerHTML=cadHtml(W.R)+`<div class="mp-grid2"><div>
+    B.innerHTML=`<p class="mp-n"><b>Advanced.</b> This is how the drawing was read. Change it only if the picture on the right looks wrong, then press Next.</p>`+cadHtml(W.R)+`<div class="mp-grid2"><div>
         <label class="mp-f">Coordinate system <select id="mpCrs">${SID_MPR.CRS_LIST().map(c=>`<option value="${c.k}" ${c.k===W.crs?"selected":""}>${esc(c.n)}</option>`).join("")}</select><small>Suggested from the numbers in the file${near?" and where the project is":""}.</small></label>
         <h4>Shape layers — what each one is</h4><table class="mp-lt">${Lp.map(([l,o])=>`<tr><td title="${esc(l)}">${esc(l)}</td><td>${fmt(o.n)}</td><td><select data-l="${esc(l)}">${ROLES.map(([k,n])=>`<option value="${k}" ${W.roles.poly[l]===k?"selected":""}>${n}</option>`).join("")}</select></td></tr>`).join("")}</table>
         ${Lt.length?`<h4>Text layers — where the plot numbers are</h4><table class="mp-lt">${Lt.map(([l,n])=>`<tr><td>${esc(l)}</td><td>${fmt(n)}</td><td><select data-t="${esc(l)}"><option value="numbers" ${W.roles.text[l]==="numbers"?"selected":""}>Plot numbers</option><option value="ignore" ${W.roles.text[l]!=="numbers"?"selected":""}>Ignore</option></select></td></tr>`).join("")}</table>`:""}
@@ -22886,9 +22922,15 @@ async function renderStep(){ const W=MP.wiz; const dlg=document.querySelector(".
     if(plan.listOnly){ B.innerHTML=`<div class="mp-warn">This sheet lists ${plan.listOnly.length} plot numbers with areas but no corners, so nothing can be drawn on the map yet. You can download the register template for Sales Operation now, and upload the drawing when it is ready.</div><button class="ebtn" id="mpTpl">Download the register template</button>`;
       B.querySelector("#mpTpl").onclick=()=>template(W.park,plan); next.textContent="Close"; next.onclick=closeWiz; return; }
     const st=plan.stats, chk=planCheck(plan); W.chk=chk;
-    B.innerHTML=`<div class="mp-tiles"><div><b>${fmt(st.plots)}</b><span>plots</span></div><div><b>${fmt(st.plotArea)}</b><span>sqm of plots</span></div><div><b>${st.plots?fmt(st.plotArea/st.plots):"—"}</b><span>sqm average plot</span></div>
-      <div><b>${st.boundaryArea?Math.round(st.plotArea/st.boundaryArea*100)+"%":"—"}</b><span>saleable share of the boundary</span></div><div><b>${fmt(st.greenArea)}</b><span>sqm green (${st.green})</span></div><div><b>${fmt(st.servicesArea)}</b><span>sqm services (${st.services})</span></div><div><b>${fmt(st.roadArea)}</b><span>sqm roads</span></div><div><b>${fmt(st.boundaryArea)}</b><span>sqm inside the boundary</span></div></div>
-      ${excelHtml(W)}${sizeBands(plan)}${checksHtml(chk,null,null)}<button class="ebtn" id="mpTpl">Download the register template (every plot number and area, for Sales Operation)</button>${W.pdf?' <button class="ebtn" id="mpPdf">Open the approved PDF</button>':""}`;
+    const ch=liveFeats(W.park).length?changeCheck(plan):null; W.ch=ch; const X=plan._x, nDiff=ch?ch.geo.length:0;
+    const L=(t,a)=>a&&a.length?`<details class="mp-is"><summary>${t} <b>${a.length}</b></summary><div class="mp-chips">${a.slice(0,300).map(x=>`<span>${esc(x)}</span>`).join("")}</div></details>`:"";
+    B.innerHTML=`<div class="mp-tiles"><div><b>${fmt(st.plots)}</b><span>plots drawn · ${fmt(st.plotArea)} sqm</span></div>${X?`<div><b>${fmt(W.SC.schedule.plots.length)}</b><span>plots in the Excel · ${f2(W.SC.schedule.sum)} sqm</span></div>`:""}${ch?`<div><b>${fmt(ch.same)}</b><span>same as the live plan</span></div><div class="${nDiff?"bad":""}"><b>${fmt(nDiff)}</b><span>different from the live plan</span></div>`:""}</div>
+      ${ch?`<div class="mp-sec"><h4>New drawing against the live plan</h4><div class="mp-dv"><canvas id="mpDv" width="560" height="400" aria-label="What changed"></canvas><div class="mp-dl">${Object.keys(DCAT).filter(c=>ch.geo.some(x=>x.cat===c)).map(c=>`<span><i style="background:${DCAT[c][1]}"></i>${DCAT[c][0]} <b>${ch.geo.filter(x=>x.cat===c).length}</b></span>`).join("")||"<span>No difference</span>"}<span><i style="background:rgba(47,109,181,.55)"></i>same as live <b>${fmt(ch.same)}</b></span></div></div>
+        ${L("New plots",ch.added)}${L("Gone from the plan",ch.removed)}${L("Resized (more than 2%)",ch.resized)}${L("Merged",ch.merged)}${L("Split",ch.split)}${L("Renamed",ch.renamed)}${L("Moved more than 5 m",ch.moved)}</div>`:'<p class="mp-n">This project has no live plan yet — everything is new.</p>'}
+      ${excelHtml(W)}
+      <details class="mp-is"><summary>More details (plot sizes, plan checks, register template)</summary>${sizeBands(plan)}${checksHtml(chk,null,null)}<button class="ebtn" id="mpTpl">Download the register template (every plot number and area, for Sales Operation)</button></details>
+      <p class="mp-n">${W.pdf?'<button class="ebtn" id="mpPdf">Open the approved PDF</button> ':""}<button class="mp-link" id="mpAdv">Advanced: the plan does not look right — change how the drawing was read</button></p>`;
+    if(ch) diffPreview(B.querySelector("#mpDv"),plan,ch); const adv=B.querySelector("#mpAdv"); if(adv) adv.onclick=()=>{ W.step=1; renderStep(); };
     B.querySelector("#mpTpl").onclick=()=>template(W.park,plan); const pb=B.querySelector("#mpPdf"); if(pb) pb.onclick=()=>openBlob(W.pdf);
     B.querySelectorAll("[data-drop]").forEach(c=>c.onchange=()=>{ plan._x.notListed[+c.dataset.drop].drop=c.checked; });
     next.onclick=()=>{ if(plan._x){ const drop=new Set(plan._x.notListed.filter(p=>p.drop!==false)); if(drop.size){ plan.plots=plan.plots.filter(p=>!drop.has(p)); plan._x.notListed=plan._x.notListed.filter(p=>!drop.has(p)); plan.stats.plots=plan.plots.length; plan.stats.numbered=plan.plots.filter(p=>p.u).length; plan.stats.plotArea=Math.round(plan.plots.reduce((t,p)=>t+p.g,0)); if(plan.boundaryFromPlots){ plan.boundary=G.hull(plan.plots.flatMap(p=>p.r)); plan.stats.boundaryArea=Math.round(G.ringArea(plan.boundary)); } } }
@@ -22897,9 +22939,7 @@ async function renderStep(){ const W=MP.wiz; const dlg=document.querySelector(".
     await new Promise(r=>setTimeout(r,30)); const ch=liveFeats(W.park).length?changeCheck(plan):null; W.ch=ch;
     if(!W.reg){ try{ W.reg=SID_MPREG.build(W.park,plan,W.SC&&W.SC.schedule,liveFeats(W.park)); }catch(e){ console.error("register wizard",e); W.reg=null; } }
     const L=(t,a)=>a&&a.length?`<details class="mp-is"><summary>${t} <b>${a.length}</b></summary><div class="mp-chips">${a.slice(0,300).map(x=>`<span>${esc(x)}</span>`).join("")}</div></details>`:"";
-    B.innerHTML=`${ch?`<div class="mp-sec"><h4>The drawing compared with the live plan</h4><p class="mp-n">${fmt(ch.same)} plots unchanged · ${ch.added.length} new · ${ch.removed.length} gone · ${ch.resized.length} resized · ${ch.merged.length} merged · ${ch.split.length} split · ${ch.renamed.length} renamed · ${ch.moved.length} moved over 5 m</p>
-        ${L("New plots",ch.added)}${L("Plots no longer in the plan",ch.removed)}${L("Resized (more than 2%)",ch.resized)}${L("Merged",ch.merged)}${L("Split",ch.split)}${L("Renamed",ch.renamed)}${L("Moved more than 5 m",ch.moved)}</div>`:'<p class="mp-n">This project has no live plan yet — everything is new.</p>'}
-      <div class="mp-sec"><h4>MDS register</h4><div id="mpReg">${W.reg?"":'<div class="mp-warn">The register comparison could not run — the plan can still be saved; fix the register by hand after publishing.</div>'}</div></div>
+    B.innerHTML=`<div class="mp-sec"><h4>MDS register</h4><div id="mpReg">${W.reg?"":'<div class="mp-warn">The register comparison could not run — the plan can still be saved; fix the register by hand after publishing.</div>'}</div></div>
       <div class="mp-sec" id="mpSim"></div>`;
     const simBox=B.querySelector("#mpSim"); let tmr=null;
     const sim=()=>{ clearTimeout(tmr); tmr=setTimeout(()=>{ try{ const O=W.reg?SID_MPREG.ops(W.reg):[]; const r=simulate(W.park,planFeatures(plan),O); W.sim=r;
@@ -22922,13 +22962,13 @@ function attachSched(plan,SC){ const sc=SC.schedule, by=new Map(sc.plots.map(p=>
   plan._x=X; return X; }
 function excelHtml(W){ const plan=W.plan, SC=W.SC; if(!SC) return `<div class="mp-sec"><h4>Plot schedule</h4><p class="mp-n">No Excel schedule was added — the areas are measured from the drawing. Add Development's schedule on the first step to check every area and to give the register the official figures.</p></div>`;
   const X=plan._x||attachSched(plan,SC), sc=SC.schedule, bud=(sc.budget[0]||{}).area, tb=sc.totals.filter(t=>!t.ok);
-  const T=(h,rows)=>`<table class="mr-t"><tr>${h.map(x=>`<th>${x}</th>`).join("")}</tr>${rows.join("")}</table>`;
+  const T=(h,rows)=>`<table class="mr-t"><tr>${h.map((x,i)=>`<th class="${i?"nm":""}">${x}</th>`).join("")}</tr>${rows.join("")}</table>`;
   return `<div class="mp-sec"><h4>Drawing against the Excel schedule <small class="mp-n">${esc(W.sched?W.sched.name:"")}</small></h4>
    <div class="mp-tiles"><div><b>${fmt(sc.plots.length)}</b><span>plots in the Excel · ${f2(sc.sum)} sqm</span></div><div><b>${fmt(X.match.length)}</b><span>drawn, area within 1%</span></div><div class="${X.diff.length?"bad":""}"><b>${fmt(X.diff.length)}</b><span>drawn, area differs</span></div>
      <div class="${X.shared.length?"bad":""}"><b>${fmt(X.shared.length)}</b><span>outlines holding 2+ numbers (split on the test map)</span></div><div class="${X.notDrawn.length?"bad":""}"><b>${fmt(X.notDrawn.length)}</b><span>in the Excel, not drawn</span></div><div class="${X.notListed.length?"bad":""}"><b>${fmt(X.notListed.length)}</b><span>drawn, not in the Excel</span></div>
      <div class="${tb.length?"bad":""}"><b>${sc.totals.length-tb.length}/${sc.totals.length}</b><span>Excel subtotals that add up</span></div>${bud?`<div><b>${fmt(bud)}</b><span>sqm project area (land-use budget)</span></div>`:""}</div>
    <p class="mp-n">The register gets the <b>Excel area</b> of each plot (the official figure); the outline on the map is the drawing's. A difference over 1% means the drawing and the Excel disagree — tell Development which one is right before publishing.</p>
-   ${X.diff.length?`<details class="mp-is bad" open><summary>Area differs between the drawing and the Excel <b>${X.diff.length}</b></summary>${T(["Plot","Drawn sqm","Excel sqm","Difference"],X.diff.sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).map(x=>`<tr><td><b>${esc(x.u)}</b></td><td class="nm">${f2(x.g)}</td><td class="nm">${f2(x.A)}</td><td class="nm bad">${x.d>0?"+":""}${(x.d*100).toFixed(1)}%</td></tr>`))}</details>`:""}
+   ${X.diff.length?`<details class="mp-is bad" open><summary>Area differs between the drawing and the Excel <b>${X.diff.length}</b></summary>${T(["Plot","In the drawing (sqm)","In the Excel — official (sqm)","Difference"],X.diff.sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).map(x=>`<tr><td><b>${esc(x.u)}</b></td><td class="nm">${f2(x.g)}</td><td class="nm">${f2(x.A)}</td><td class="nm bad">${x.d>0?"+":""}${(x.d*100).toFixed(1)}%</td></tr>`))}</details>`:""}
    ${X.shared.length?`<details class="mp-is bad" open><summary>One outline, two or more numbers — the dividing line is missing in the drawing <b>${X.shared.length}</b></summary>${T(["Numbers","Drawn sqm","Excel sqm together"],X.shared.map(x=>`<tr><td><b>${esc(x.j)}</b></td><td class="nm">${f2(x.g)}</td><td class="nm">${f2(x.A)}</td></tr>`))}<p class="mp-n">They come to the test map as one unnumbered plot: select it, <b>Split with a line</b>, then rename the parts.</p></details>`:""}
    ${X.notDrawn.length?`<details class="mp-is bad"><summary>In the Excel but no outline in the drawing <b>${X.notDrawn.length}</b></summary><div class="mp-chips">${X.notDrawn.map(x=>`<span>${esc(x.code)} · ${f2(x.area)}</span>`).join("")}</div><p class="mp-n">They still get their register row with the Excel area; they show on the map once drawn.</p></details>`:""}
    ${X.notListed.length?`<details class="mp-is" open><summary>Drawn but not in the Excel <b>${X.notListed.length}</b> — probably labels, not plots</summary><div class="mp-chips">${X.notListed.map((p,i)=>`<label><input type="checkbox" data-drop="${i}" ${p.drop!==false?"checked":""}> leave out ${esc(p.u)} · ${fmt(p.g)} sqm</label>`).join("")}</div></details>`:""}
@@ -22963,6 +23003,13 @@ function preview(cv,plan,near){ if(!cv) return; const g=cv.getContext("2d"), W=c
   const P=p=>[10+(p[0]-w)*k*sc,H-10-(p[1]-s)*G.KY*sc]; const path=(r,fill,stroke,lw)=>{ g.beginPath(); r.forEach((p,i)=>{ const q=P(p); i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]); }); g.closePath(); if(fill){ g.fillStyle=fill; g.fill(); } if(stroke){ g.strokeStyle=stroke; g.lineWidth=lw||1; g.stroke(); } };
   live.forEach(r=>path(r,null,"rgba(140,140,150,.6)",1)); (plan.green||[]).forEach(r=>path(r,"rgba(48,164,108,.45)")); (plan.services||[]).forEach(r=>path(r,"rgba(142,78,198,.45)"));
   plan.plots.forEach(p=>path(p.r,p.u?"rgba(47,109,181,.55)":"rgba(229,72,77,.65)","rgba(255,255,255,.9)",.6)); if(plan.boundary) path(plan.boundary,null,"#FF6A00",2); }
+function diffPreview(cv,plan,ch){ if(!cv) return; const g=cv.getContext("2d"), W=cv.width, H=cv.height; g.clearRect(0,0,W,H);
+  const cat=new Map(ch.geo.map(x=>[x.r,x.cat])), live=liveFeats(plan.park).map(f=>outer(f)).filter(Boolean), pts=plan.plots.flatMap(p=>p.r).concat(ch.geo.filter(x=>x.cat==="removed").flatMap(x=>x.r)); if(!pts.length) return;
+  const [w,s,e,n]=G.bbox(pts), k=G.kx((s+n)/2), sc=Math.min((W-20)/((e-w)*k||1),(H-20)/((n-s)*G.KY||1)), P=p=>[10+(p[0]-w)*k*sc,H-10-(p[1]-s)*G.KY*sc];
+  const path=(r,fill,stroke,lw)=>{ g.beginPath(); r.forEach((p,i)=>{ const q=P(p); i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]); }); g.closePath(); if(fill){ g.fillStyle=fill; g.fill(); } if(stroke){ g.strokeStyle=stroke; g.lineWidth=lw||1; g.stroke(); } };
+  live.forEach(r=>path(r,null,"rgba(140,140,150,.5)",1));
+  plan.plots.forEach(p=>{ const c=cat.get(p.r); path(p.r,c?DCAT[c][1]+"88":"rgba(47,109,181,.45)",c?DCAT[c][1]:"rgba(255,255,255,.9)",c?2:.6); });
+  ch.geo.filter(x=>x.cat==="removed").forEach(x=>path(x.r,DCAT.removed[1]+"66",DCAT.removed[1],2)); if(plan.boundary) path(plan.boundary,null,"#FF6A00",1.5); }
 function template(park,plan){ const rows=(plan.listOnly||plan.plots.map(p=>({code:p.u,area:Math.round(p.g)}))).map(p=>({u:p.code||p.u,g:p.area||p.g})).filter(p=>p.u);
   const ex=new Set(S.rows.filter(r=>r.park===park).flatMap(r=>expandUnits(r.unit,park).map(u=>ukey(u))));
   const sheetName=(plan.newPark&&plan.newPark.aliases&&plan.newPark.aliases[0])||(S.rows.find(r=>r.park===park)||{}).sheet||pname(park);
@@ -22971,12 +23018,12 @@ function template(park,plan){ const rows=(plan.listOnly||plan.plots.map(p=>({cod
   XLSX.writeFile(wb,"Register template - "+pname(park)+".xlsx"); }
 
 /* ---------- the page ---------- */
-function vers(park){ return ((MP.idx&&MP.idx.parks[park]&&MP.idx.parks[park].v)||[]).slice().sort((a,b)=>String(b.at).localeCompare(String(a.at))); }
+function vers(park){ return ((MP.idx&&MP.idx.parks[park]&&MP.idx.parks[park].v)||[]).filter(v=>!v.hidden||MP.showHidden).slice().sort((a,b)=>String(b.at).localeCompare(String(a.at))); }
 function view(){ const parks=Object.keys(S.reg.parks).concat(Object.keys((MP.idx&&MP.idx.newParks)||{}).filter(p=>!S.reg.parks[p]));
   const pubs=pubList(); const u=MP.usage;
   return `<div class="mp-page"><div class="mp-top"><div><h2>Master Plan Center</h2><p class="mp-n">Upload a master plan per project, check it on a test map that only you see, then publish it to everyone. Every version is kept.</p></div>
     <div class="mp-acts">${canUpload()?'<button class="ebtn pri" id="mpNew">+ New project</button>':""}</div></div>
-    <div class="mp-how"><span><i>1</i>Upload the file</span><span><i>2</i>The system reads plots, numbers, areas</span><span><i>3</i>Checks against today's plan and the MDS</span><span><i>4</i>Test map — only you see it</span><span><i>5</i>Publish to live${pubs.length?"":""}</span></div>
+    <div class="mp-how"><span><i>1</i>Upload the DWG + Excel</span><span><i>2</i>See what changed against the live plan</span><span><i>3</i>Confirm the MDS register</span><span><i>4</i>Test map, then Publish</span></div>
     <div class="mp-meta"><span>Can publish: <b>${esc(pubs.length?pubs.map(e=>{ const x=(MP.users||[]).find(y=>String(y.email).toLowerCase()===e); return x?x.name:e; }).join(", "):"administrators only")}</b>${isAdm()?' <button class="mp-link" id="mpPubs">change</button>':""}</span>
       <span>Storage used: <b>${u&&u.bucket_bytes!=null?kb(u.bucket_bytes)+" of 1 GB":"—"}</b></span>${MP.test?`<span class="mp-warn">Test map open: ${esc(pname(MP.test.park))} <button class="mp-link" id="mpGoTest">go there</button></span>`:""}</div>
     <div class="mp-cards">${parks.map(p=>card(p)).join("")}</div></div>`; }
@@ -22988,8 +23035,12 @@ function card(p){ const lf=liveFeats(p), vs=vers(p), live=vs.find(v=>v.status===
     <div class="mp-cb">${canUpload()?`<button class="ebtn pri" data-a="up">Upload new master plan</button>`:""}<button class="ebtn" data-a="vers">Versions (${vs.length})</button>${drafts[0]?`<button class="ebtn" data-a="test" data-v="${drafts[0].id}">Open latest draft on the test map</button>`:""}</div>
     <div class="mp-vl" ${vs.length>1?"":"hidden"}>${vs.length>1?versHtml(p):""}</div></section>`; }
 function versHtml(p){ const vs=vers(p); if(!vs.length) return '<p class="mp-n">No versions yet. The first upload creates one; the drawing that is live today is saved as “Original drawing” on the first publish.</p>';
-  return `<table class="mp-vt"><tr><th>Status</th><th>Saved</th><th>By</th><th>Plots</th><th>Area sqm</th><th>File</th><th>Size</th><th></th></tr>${vs.map(v=>`<tr><td><span class="mp-pill ${v.status}">${v.status}</span></td><td>${day(v.at)}${v.pubAt?`<br><small>live ${day(v.pubAt)} by ${esc(v.pubBy||"")}</small>`:""}</td><td>${esc(v.by||"—")}</td><td>${fmt(v.stats&&v.stats.plots)}</td><td>${fmt(v.stats&&v.stats.plotArea)}</td><td title="${esc(v.src||"")}">${esc((v.src||"").slice(0,40))}${v.note?`<br><small>${esc(v.note)}</small>`:""}</td><td>${kb(v.size)}${v.excel?`<br><small>Excel ${fmt(v.excel.match)}/${fmt(v.excel.plots)} match</small>`:""}${v.reg&&v.reg.n?`<br><small>${v.regApplied?"register updated":"register: "+v.reg.n+" change"+(v.reg.n>1?"s":"")}</small>`:""}</td>
-    <td class="mp-va">${v.status==="live"?'<span class="mp-pill live">on the map now</span>':`<button class="ebtn pri mp-pb" data-va="pub" data-v="${v.id}" ${canPublish()?"":"disabled title='Only the publisher (Dina Rizk) or an administrator'"}>${v.status==="archived"?"Show this on the map":"Publish to live"}</button>`}<br><button class="mp-link" data-va="test" data-v="${v.id}">Test map</button>${v.pdf?`<button class="mp-link" data-va="pdf" data-v="${v.id}">Approved PDF</button>`:""}<button class="mp-link" data-va="dl" data-v="${v.id}">GeoJSON</button>${v.status==="draft"&&canUpload()?`<button class="mp-link" data-va="arch" data-v="${v.id}">Archive</button>`:""}</td></tr>`).join("")}</table>`; }
+  const hid=((MP.idx&&MP.idx.parks[p]&&MP.idx.parks[p].v)||[]).filter(v=>v.hidden).length;
+  return `<div class="mp-vlist">${vs.map(v=>{ const pub=canPublish(); return `<div class="mp-vi ${v.status}${v.hidden?" hid":""}">
+    <div class="mp-vh"><span class="mp-pill ${v.status}">${v.hidden?"deleted":v.status==="live"?"on the map now":v.status}</span><b>${day(v.at)}</b><span>by ${esc(v.by||"—")}</span></div>
+    <div class="mp-vs">${fmt(v.stats&&v.stats.plots)} plots · ${fmt(v.stats&&v.stats.plotArea)} sqm${v.excel?` · Excel ${fmt(v.excel.match)}/${fmt(v.excel.plots)} match`:""}${v.reg&&v.reg.n?` · ${v.regApplied?"register updated":"register: "+v.reg.n+" change"+(v.reg.n>1?"s":"")}`:""}</div>
+    <div class="mp-vf" title="${esc(v.src||"")}">${esc((v.src||"").slice(0,90))}${v.pubAt?` · live since ${day(v.pubAt)} by ${esc(v.pubBy||"")}`:""}${v.note?` · ${esc(v.note)}`:""}</div>
+    <div class="mp-va">${v.hidden?`<button class="ebtn" data-va="undel" data-v="${v.id}">Restore</button>`:`${v.status==="live"?"":`<button class="ebtn pri mp-pb" data-va="pub" data-v="${v.id}" ${pub?"":"disabled title='Only the publisher (Dina Rizk) or an administrator'"}>${v.status==="archived"?"Show this on the map":"Publish to live"}</button>`}<button class="ebtn" data-va="test" data-v="${v.id}">Compare on map</button>${v.pdf?`<button class="ebtn" data-va="pdf" data-v="${v.id}">Approved PDF</button>`:""}<button class="ebtn" data-va="dl" data-v="${v.id}">GeoJSON</button>${v.status!=="live"&&canUpload()?`<button class="ebtn bad" data-va="del" data-v="${v.id}">Delete</button>`:""}`}</div></div>`; }).join("")}</div>${hid||MP.showHidden?`<p class="mp-n"><button class="mp-link" data-va="tog">${MP.showHidden?"Hide":"Show"} deleted versions (${hid})</button></p>`:""}`; }
 function wire(){ const root=document.querySelector(".mp-page"); if(!root) return;
   const nb=root.querySelector("#mpNew"); if(nb) nb.onclick=()=>openWizard("",true);
   const gt=root.querySelector("#mpGoTest"); if(gt) gt.onclick=()=>{ go("inventory"); setTimeout(banner,300); };
@@ -22999,12 +23050,19 @@ function wire(){ const root=document.querySelector(".mp-page"); if(!root) return
       if(a==="up") openWizard(p,false);
       if(a==="vers"){ const L=c.querySelector(".mp-vl"); L.hidden=!L.hidden; if(!L.hidden){ L.innerHTML=versHtml(p); wireVers(L,p); } }
       if(a==="test"){ const v=vers(p).find(x=>x.id===b.dataset.v); if(v){ b.disabled=true; try{ await enterTest(p,await loadPlan(v),v); }catch(e){ toast("Could not open: "+(e.message||e),true); } b.disabled=false; } } }); }); }
-function wireVers(L,p){ L.querySelectorAll("[data-va]").forEach(b=>b.onclick=async()=>{ const v=vers(p).find(x=>x.id===b.dataset.v); if(!v) return; const a=b.dataset.va;
+function exportGeo(p,v,plan){ const ccw=r=>{ let t=0; for(let i=0;i<r.length-1;i++) t+=r[i][0]*r[i+1][1]-r[i+1][0]*r[i][1]; return t>0?r:r.slice().reverse(); }, rd=c=>c.map(q=>[+q[0].toFixed(7),+q[1].toFixed(7)]);
+  const f=plan.raw?planFeatures(plan).map(x=>({geometry:x.geometry,properties:{plot:x.properties.unit||"",drawn_sqm:x.properties.gis}})):plan.plots.map(x=>({geometry:{type:"Polygon",coordinates:[ccw(rd(Array.isArray(x.r[0])?x.r:G.dec(x.r)))]},properties:{plot:x.u||"",drawn_sqm:Math.round(x.g*100)/100,official_sqm:x.a!=null?Math.round(x.a*1000)/1000:null,use:x.use||null}}));
+  const fc={type:"FeatureCollection",name:pname(p)+" — "+day(v.at),features:f.map(x=>({type:"Feature",properties:Object.assign({project:pname(p),version:v.id,status:v.status},x.properties),geometry:x.geometry.type==="Polygon"?{type:"Polygon",coordinates:x.geometry.coordinates.map(ccw)}:x.geometry}))};
+  const u=URL.createObjectURL(new Blob([JSON.stringify(fc)],{type:"application/json"})), a=document.createElement("a"); a.href=u; a.download=pname(p).replace(/[^A-Za-z0-9]+/g,"-")+"-"+String(v.at).slice(0,10)+".geojson"; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(u); a.remove(); },3000);
+  toast("GeoJSON saved ("+fc.features.length+" plots, WGS84 longitude / latitude)"); }
+function wireVers(L,p){ L.querySelectorAll("[data-va]").forEach(b=>b.onclick=async()=>{ const a=b.dataset.va; if(a==="tog"){ MP.showHidden=!MP.showHidden; L.innerHTML=versHtml(p); wireVers(L,p); return; } const v=vers(p).find(x=>x.id===b.dataset.v); if(!v) return;
   try{ if(a==="test") await enterTest(p,await loadPlan(v),v);
     if(a==="pub"){ if(!canPublish()) return; const plan=await loadPlan(v); plan.park=p; publishDlg(p,plan,v); }
     if(a==="pdf"&&v.pdf){ b.disabled=true; try{ await openPdf(v.pdf.file); }finally{ b.disabled=false; } }
-    if(a==="dl"){ const plan=await loadPlan(v); plan.park=p; const fc={type:"FeatureCollection",features:planFeatures(plan)}; const u=URL.createObjectURL(new Blob([JSON.stringify(fc)],{type:"application/geo+json"})); const x=document.createElement("a"); x.href=u; x.download=pname(p)+" "+v.id+".geojson"; document.body.appendChild(x); x.click(); setTimeout(()=>{ URL.revokeObjectURL(u); x.remove(); },1500); }
-    if(a==="arch"){ await idxSave(i=>{ const q=(i.parks[p]&&i.parks[p].v||[]).find(x=>x.id===v.id); if(q) q.status="archived"; }); L.innerHTML=versHtml(p); wireVers(L,p); toast("Draft archived (kept, not deleted)"); } }
+    if(a==="dl"){ const plan=await loadPlan(v); plan.park=p; exportGeo(p,v,plan); }
+    if(a==="del"||a==="undel"){ if(a==="del"&&!confirm("Delete this version from the list?\n\nIt disappears from here but the file is kept in storage (nothing is erased). You can restore it with “Show deleted versions”.")) return;
+      await idxSave(i=>{ const q=(i.parks[p]&&i.parks[p].v||[]).find(x=>x.id===v.id); if(q){ if(a==="del"&&q.status!=="live"){ q.hidden=true; q.hiddenAt=new Date().toISOString(); q.hiddenBy=myName(); } if(a==="undel"){ delete q.hidden; } } });
+      const card=L.closest(".mp-card"); L.innerHTML=versHtml(p); wireVers(L,p); const cb=card&&card.querySelector('[data-a="vers"]'); if(cb) cb.textContent="Versions ("+vers(p).length+")"; toast(a==="del"?"Version deleted from the list (the file is kept)":"Version restored"); } }
   catch(e){ toast((e.message||e)+"",true); } }); }
 async function pubDlg(){ const us=await usersLoad()||[], cur=new Set(pubList());
   const d=modal(`<div class="mpd-h"><b>Who can publish master plans to live</b><button class="mp-x" aria-label="Close">×</button></div><div class="mpd-b"><p class="mp-n">Administrators can always publish. Tick the people who may also press “Publish to live”.</p>
