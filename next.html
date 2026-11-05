@@ -22435,9 +22435,10 @@ async function prepare(R,near,opts){ opts=opts||{}; if(!R._orig) R._orig={items:
          and accept the smallest outline that holds this number and no other */
       const all=layers.flatMap(l=>byL[l]), rescued=[];
       orph.filter(t=>t.isCode).slice(0,60).forEach(t=>{ const Wd=160*us; const segs=all.filter(s=>(Math.abs(s[0]-t.x)<Wd||Math.abs(s[2]-t.x)<Wd)&&(Math.abs(s[1]-t.y)<Wd||Math.abs(s[3]-t.y)<Wd)); if(!segs.length) return;
+        const exp=opts.areas&&opts.areas[nk(t.t)]; let best=null;
         for(const gap of [3,8,25]){ let faces; try{ faces=polygonize(segs,[t],0,gap*us); }catch(e){ break; }
-          const ok=faces.map(r=>({r,A:area(r),b:bb(r)})).filter(f=>f.A>=PLOT_MIN&&f.A<=PLOT_MAX&&inR([t.x,t.y],f.r)&&!R.texts.some(o=>o!==t&&o.isCode&&o.x>=f.b[0]&&o.x<=f.b[2]&&o.y>=f.b[1]&&o.y<=f.b[3]&&inR([o.x,o.y],f.r))).sort((x,y)=>x.A-y.A)[0];
-          if(ok){ rescued.push({rings:[ok.r],layer:"(built from lines)",code:"",props:{},fromLines:true,rescued:t.t,gap}); break; } } });
+          faces.map(r=>({r,A:area(r),b:bb(r)})).filter(f=>f.A>=PLOT_MIN&&f.A<=PLOT_MAX&&inR([t.x,t.y],f.r)&&!R.texts.some(o=>o!==t&&o.isCode&&o.x>=f.b[0]&&o.x<=f.b[2]&&o.y>=f.b[1]&&o.y<=f.b[3]&&inR([o.x,o.y],f.r))).forEach(f=>{ const dev=exp?Math.abs(f.A-exp)/exp:f.A; if(!best||dev<best.dev) best={f,dev,gap}; }); }
+        if(best&&(!exp||best.dev<=.5)) rescued.push({rings:[best.f.r],layer:"(built from lines)",code:"",props:{},fromLines:true,rescued:t.t,gap:best.gap}); });
       if(rescued.length){ R.items.push(...rescued); const left2=assign(R.items,R.texts); rep.rescued=rescued.filter(x=>x.code||left2.every(t=>t.t!==x.rescued)).map(x=>x.rescued+" ("+x.gap+" m gap closed)"); R.items=R.items.filter(it=>!it.fromLines||it.code||it.shared); orph=left2.filter(t=>!sh.has(nk(t.t))); } } }
   // drop exact duplicates (same place, same size)
   const seen=new Map(); R.items=R.items.filter(it=>{ const k=Math.round(it.c[0])+","+Math.round(it.c[1])+","+Math.round(it.a/10); if(seen.has(k)){ const o=seen.get(k); if(!o.code&&it.code){ o.code=it.code; } return false; } seen.set(k,it); return true; });
@@ -22869,6 +22870,7 @@ function wizShell(){ const W=MP.wiz; return `<div class="mpd-h"><b>${W.newPark?"
   <div class="mpd-b" id="mpwB"></div><div class="mpd-f"><span class="mp-n" id="mpwMsg"></span><button class="ebtn" id="mpwBack" ${W.step?"":"hidden"}>Back</button><button class="ebtn pri" id="mpwNext">Next</button></div>`; }
 function openWizard(park,isNew){ if(!canUpload()){ toast("Only Development or an administrator can upload a master plan",true); return; }
   MP.wiz={step:0,park:park||"",newPark:isNew?{name:"",where:"",aliases:[]}:null,file:null,R:null,SC:null,sched:null,pdf:null,roles:null,crs:null,plan:null}; const d=modal(wizShell(),"mp-wiz"); renderStep(); }
+function schedAreas(W){ const o={}; if(W.SC) W.SC.schedule.plots.forEach(p=>{ if(p.code&&p.area) o[String(p.code).trim().toUpperCase().replace(/\s+/g,"")]=p.area; }); return o; }
 async function autoRead(W){ const near=nearOf(W.park); if(!W.crs){ try{ W.crs=await SID_MPR.guessCrs(W.R,near); }catch(e){ W.crs="wgs"; } } await SID_MPR.toLonLat(W.R,W.crs); if(!W.roles) W.roles=guessRoles(W.R);
   const plan=buildPlan(W.R,W.roles,W.park,W.file.name); if(W.SC) attachSched(plan,W.SC); W.plan=plan; if(!plan.plots.length) throw new Error("no plots were found — open “Advanced” to choose the layers"); }
 function setMsg(t,bad){ const m=document.getElementById("mpwMsg"); if(m){ m.textContent=t||""; m.classList.toggle("bad",!!bad); } }
@@ -22902,7 +22904,7 @@ async function renderStep(){ const W=MP.wiz; const dlg=document.querySelector(".
       else W.park=B.querySelector("#mpPark").value;
       if(!W.park){ setMsg("Choose the project",true); return; } if(!W.R&&!W.SC){ setMsg("Add the drawing first",true); return; }
       if(!W.R||(W.R.list.length&&!W.R.items.length)){ const L=W.R&&W.R.list.length?W.R.list:W.SC.schedule.plots.map(p=>({code:p.code,area:p.area})); W.step=2; W.plan={v:1,park:W.park,listOnly:L,plots:[],stats:{plots:L.length}}; renderStep(); return; }
-      if(W.R.cad&&!W.R.prepared){ setMsg("Finding the plots in the drawing…"); next.disabled=true; try{ await SID_MPCAD.prepare(W.R,nearOf(W.park)); }catch(e){ setMsg("Could not read the plots: "+(e.message||e),true); next.disabled=false; return; } next.disabled=false; }
+      if(W.R.cad&&!W.R.prepared){ setMsg("Finding the plots in the drawing…"); next.disabled=true; try{ await SID_MPCAD.prepare(W.R,nearOf(W.park),{areas:schedAreas(W)}); }catch(e){ setMsg("Could not read the plots: "+(e.message||e),true); next.disabled=false; return; } next.disabled=false; }
       if(!W.R.items.length){ setMsg("No closed shapes or plot outlines were found in this file.",true); return; }
       setMsg("Placing the plan on the map…"); next.disabled=true; try{ await autoRead(W); }catch(e){ setMsg("Could not read the drawing: "+(e.message||e),true); next.disabled=false; return; } next.disabled=false; W.step=2; renderStep(); }; return; }
   if(W.step===1){ const near=nearOf(W.park);
@@ -22922,7 +22924,7 @@ async function renderStep(){ const W=MP.wiz; const dlg=document.querySelector(".
     B.querySelector("#mpCrs").onchange=async e=>{ W.crs=e.target.value; await SID_MPR.toLonLat(W.R,W.crs); draw(); };
     B.querySelectorAll("select[data-l]").forEach(s=>s.onchange=()=>{ W.roles.poly[s.dataset.l]=s.value; draw(); });
     B.querySelectorAll("select[data-t]").forEach(s=>s.onchange=()=>{ W.roles.text[s.dataset.t]=s.value; draw(); });
-    const redo=async opts=>{ setMsg("Reading the plots again…"); restoreR(W.R); await SID_MPCAD.prepare(W.R,near,opts); W.crs=W.R.crsHint||W.crs; W.roles=null; renderStep(); };
+    const redo=async opts=>{ setMsg("Reading the plots again…"); restoreR(W.R); await SID_MPCAD.prepare(W.R,near,Object.assign({areas:schedAreas(W)},opts)); W.crs=W.R.crsHint||W.crs; W.roles=null; renderStep(); };
     B.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>redo({copy:+b.dataset.copy}));
     const rl=B.querySelector("#mpReLines"); if(rl) rl.onclick=()=>redo({lineLayers:[...B.querySelectorAll(".mp-ll input:checked")].map(i=>i.value),copy:(W.R.prepared.copies.find(c=>c.used)||{}).i});
     draw(); next.onclick=()=>{ if(!W.plan||!W.plan.plots.length){ setMsg("Mark at least one layer as Plots",true); return; } W.step=2; renderStep(); }; return; }
