@@ -22326,7 +22326,7 @@ function polygonize(segs,orph,maxSegs,snapTol){
   { const tol=snapTol||.6, ek=(x,y)=>x+"|"+y, cnt=new Map(); S.forEach(s=>{ [ek(s[0],s[1]),ek(s[2],s[3])].forEach(k=>cnt.set(k,(cnt.get(k)||0)+1)); });
     const c2=Math.max(tol*4,5), H=new Map(); S.forEach((s,i)=>{ for(let x=Math.floor(Math.min(s[0],s[2])/c2);x<=Math.floor(Math.max(s[0],s[2])/c2);x++) for(let y=Math.floor(Math.min(s[1],s[3])/c2);y<=Math.floor(Math.max(s[1],s[3])/c2);y++){ if((Math.floor(Math.max(s[0],s[2])/c2)-Math.floor(Math.min(s[0],s[2])/c2)+1)*(Math.floor(Math.max(s[1],s[3])/c2)-Math.floor(Math.min(s[1],s[3])/c2)+1)>20000) return; const k=x+","+y; if(!H.has(k)) H.set(k,[]); H.get(k).push(i); } });
     const bridges=[]; S.forEach((s,i)=>{ [0,2].forEach(o=>{ const px=s[o],py=s[o+1]; if(cnt.get(ek(px,py))!==1) return; let best=null,bd=tol;
-      (H.get(Math.floor(px/c2)+","+Math.floor(py/c2))||[]).forEach(j=>{ if(j===i) return; const t=S[j], dx=t[2]-t[0], dy=t[3]-t[1], L=dx*dx+dy*dy; if(!L) return; let u=((px-t[0])*dx+(py-t[1])*dy)/L; u=Math.max(0,Math.min(1,u));
+      [-1,0,1].flatMap(ax=>[-1,0,1].map(ay=>H.get((Math.floor(px/c2)+ax)+","+(Math.floor(py/c2)+ay)))).filter(Boolean).flat().forEach(j=>{ if(j===i) return; const t=S[j], dx=t[2]-t[0], dy=t[3]-t[1], L=dx*dx+dy*dy; if(!L) return; let u=((px-t[0])*dx+(py-t[1])*dy)/L; u=Math.max(0,Math.min(1,u));
         const qx=t[0]+u*dx, qy=t[1]+u*dy, d=Math.hypot(px-qx,py-qy); if(d>1e-9&&d<bd){ bd=d; best=[qx,qy]; } });
       if(!best){ // or carry the line on in its own direction (up to 3 m) until it meets another line
         const ox=o?s[0]:s[2], oy=o?s[1]:s[3], L0=Math.hypot(px-ox,py-oy); if(L0>0){ const ux=(px-ox)/L0, uy=(py-oy)/L0, ext=Math.min(3*tol/.6,L0*.5), fx=px+ux*ext, fy=py+uy*ext; let bt=1e9;
@@ -22430,7 +22430,15 @@ async function prepare(R,near,opts){ opts=opts||{}; if(!R._orig) R._orig={items:
       rep.shared=[]; add.forEach(it=>{ if(!it.block) return; const inside=left.filter(t=>t.x>=it.b[0]&&t.x<=it.b[2]&&t.y>=it.b[1]&&t.y<=it.b[3]&&inR([t.x,t.y],it.rings[0]));
         const cs=[...new Set(inside.map(t=>String(t.t).trim()))]; if(cs.length<2||cs.length>4||it.a>PLOT_MAX/4) return; it.shared=cs; it.code=""; rep.shared.push({codes:cs,a:Math.round(it.a)}); });
       const sh=new Set(add.filter(it=>it.shared).flatMap(it=>it.shared.map(nk)));
-      rep.fromLines=add.filter(it=>it.code).length; R.items=R.items.filter(it=>!it.fromLines||it.code||it.shared); orph=left.filter(t=>!sh.has(nk(t.t))); rep.lineLayers=layers; } }
+      rep.fromLines=add.filter(it=>it.code).length; R.items=R.items.filter(it=>!it.fromLines||it.code||it.shared); orph=left.filter(t=>!sh.has(nk(t.t))); rep.lineLayers=layers;
+      /* a number whose outline is open (a plot at a road mouth, O1-1 in New Sadat REV05): close the gap between loose ends in steps of 3, 8 and 25 m,
+         and accept the smallest outline that holds this number and no other */
+      const all=layers.flatMap(l=>byL[l]), rescued=[];
+      orph.filter(t=>t.isCode).slice(0,60).forEach(t=>{ const Wd=160*us; const segs=all.filter(s=>(Math.abs(s[0]-t.x)<Wd||Math.abs(s[2]-t.x)<Wd)&&(Math.abs(s[1]-t.y)<Wd||Math.abs(s[3]-t.y)<Wd)); if(!segs.length) return;
+        for(const gap of [3,8,25]){ let faces; try{ faces=polygonize(segs,[t],0,gap*us); }catch(e){ break; }
+          const ok=faces.map(r=>({r,A:area(r),b:bb(r)})).filter(f=>f.A>=PLOT_MIN&&f.A<=PLOT_MAX&&inR([t.x,t.y],f.r)&&!R.texts.some(o=>o!==t&&o.isCode&&o.x>=f.b[0]&&o.x<=f.b[2]&&o.y>=f.b[1]&&o.y<=f.b[3]&&inR([o.x,o.y],f.r))).sort((x,y)=>x.A-y.A)[0];
+          if(ok){ rescued.push({rings:[ok.r],layer:"(built from lines)",code:"",props:{},fromLines:true,rescued:t.t,gap}); break; } } });
+      if(rescued.length){ R.items.push(...rescued); const left2=assign(R.items,R.texts); rep.rescued=rescued.filter(x=>x.code||left2.every(t=>t.t!==x.rescued)).map(x=>x.rescued+" ("+x.gap+" m gap closed)"); R.items=R.items.filter(it=>!it.fromLines||it.code||it.shared); orph=left2.filter(t=>!sh.has(nk(t.t))); } } }
   // drop exact duplicates (same place, same size)
   const seen=new Map(); R.items=R.items.filter(it=>{ const k=Math.round(it.c[0])+","+Math.round(it.c[1])+","+Math.round(it.a/10); if(seen.has(k)){ const o=seen.get(k); if(!o.code&&it.code){ o.code=it.code; } return false; } seen.set(k,it); return true; });
   R.items.forEach(it=>{ const o=rep.byLayer[it.layer]||(rep.byLayer[it.layer]={n:0,coded:0,plotSized:0}); o.n++; if(it.a>=PLOT_MIN&&it.a<=PLOT_MAX) o.plotSized++; if(it.code) o.coded++; });
@@ -22559,7 +22567,7 @@ function html(st){ const deals=st.moves.filter(g=>DEAL(g.r)), free=st.moves.filt
   return `<div class="mr">
    <p class="mp-n">The system has already matched the new plan to the register (${fmt(st.rows)} rows of ${esc(pnameOf(st.park))}). <b>Only the red box needs your decision</b>; the other groups are already filled in — open one only to change it. Nothing is written now: it is applied when the plan is published, with the register's own history.</p>
    <div class="mp-tiles">${tile(fmt(st.same),"rows unchanged")}${tile(n("set"),"rows updated")}${tile(n("add"),"new rows")}${tile(n("del"),"rows removed")}${tile(deals.length,"deals (sold / reserved) moved",deals.length)}</div>
-   ${deals.length?`<details class="mr-s bad" open><summary><b>Deals on plots that changed — agree with Sales Operation</b> <span>${deals.length}</span></summary>
+   ${deals.length?`<details class="mr-s bad"${deals.some(g=>!/^link:/.test(g.v))?" open":""}><summary><b>Deals on plots that changed — agree with Sales Operation</b> <span>${deals.length}</span> <em class="mr-hint">${[...dealsT].map(([k,gs])=>gs.length+" → "+(st.byK.get(k)?st.byK.get(k).u:"no plot")).join(" · ")} — open to check</em></summary>
      <p class="mp-n">These rows have a client. Their number is not in the new plan; the land is inside the plot shown. Linking keeps the deal, price and contract area as they are and puts it on the new plot.</p>
      ${[...dealsT].map(([k,gs])=>{ const T=st.byK.get(k); const sum=gs.reduce((t,g)=>t+(+g.r.area||0),0);
        return `<div class="mr-g"><div class="mr-gh">${T?`<b>${esc(T.u)}</b> <span>${f2(T.A)} sqm${T.use?" · "+esc(T.use):""}</span>`:"<b>No plot chosen</b>"} <em>${gs.length} row${gs.length>1?"s":""} · ${f2(sum)} sqm in the deals${T&&T.A!=null&&Math.abs(T.A-sum)>1?` · <span class="bad">${T.A>sum?"plot is "+f2(T.A-sum)+" sqm larger":"plot is "+f2(sum-T.A)+" sqm smaller"}</span>`:""}</em></div>
