@@ -22750,7 +22750,7 @@ function diffPanel(){ let d=document.getElementById("mpDiff"); const t=MP.test; 
   d.querySelector("#mpdfOn").onchange=e=>{ t.showDiff=e.target.checked; diffLayer(t.showDiff); };
   d.querySelectorAll("details").forEach(x=>x.ontoggle=()=>{ if(x.open) t.dfOpen=x.dataset.c; });
   d.querySelectorAll("button[data-i]").forEach(b=>b.onclick=()=>{ const x=by[b.dataset.c][+b.dataset.i]; try{ const [w,s,e,n]=G.bbox(x.r); map.fitBounds([[w,s],[e,n]],{padding:120,maxZoom:19.5,duration:600}); }catch(er){} });
-  diffLayer(t.showDiff); }
+  diffLayer(t.showDiff&&!t.only); if(t.only) d.style.display="none"; }
 async function enterTest(park,plan,ver){
   if(MP.test) exitTest(true);
   const feats=planFeatures(plan), live=liveFeats(park);
@@ -22775,15 +22775,17 @@ function banner(){ if(!MP.test) return; let b=document.getElementById("mpBanner"
       <span class="mpb-n" title="Move or turn the whole drawing when it does not sit right on the satellite"><button data-n="-1,0,0" aria-label="West">←</button><button data-n="1,0,0" aria-label="East">→</button><button data-n="0,1,0" aria-label="North">↑</button><button data-n="0,-1,0" aria-label="South">↓</button><button data-n="0,0,-0.1" aria-label="Turn left">⟲</button><button data-n="0,0,0.1" aria-label="Turn right">⟳</button>
       <select id="mpbStep" aria-label="Step"><option value="0.25">0.25 m</option><option value="1" selected>1 m</option><option value="5">5 m</option></select></span>${s&&(s.dx||s.dy||s.rot)?`<small>moved ${s.dx.toFixed(2)} m east, ${s.dy.toFixed(2)} m north, turned ${s.rot.toFixed(2)}°</small>`:""}</div></details>
     <button class="mpb-b" id="mpbSave" ${t.dirty&&canUpload()?"":"disabled"}>Save as new draft</button>
+    <button class="mpb-b${t.only?" on":""}" id="mpbOnly" title="Hide the old drawing (its outline and the plots that are gone) and show only the new uploaded plan">${t.only?"Show old drawing":"Hide old drawing"}</button>
     <button class="mpb-b" id="mpbChk">Checks</button>
     <button class="mpb-b pri" id="mpbPub" ${canPublish()?"":"disabled title='Only the publisher (Dina Rizk) or an administrator'"}>Publish to live…</button>
     <button class="mpb-b" id="mpbOut">Back to live</button>`;
-  b.querySelector("#mpbLive").onchange=e=>{ t.showLive=e.target.checked; liveLayer(t.showLive); };
+  b.querySelector("#mpbLive").onchange=e=>{ t.showLive=e.target.checked; liveLayer(t.showLive&&!t.only); };
   const fd=b.querySelector(".mpb-fit"); fd.ontoggle=()=>{ MP.fitOpen=fd.open; };
   const fit=()=>document.documentElement.style.setProperty("--mpb",b.getBoundingClientRect().height+"px"); fit(); setTimeout(fit,50);
   b.querySelectorAll("[data-n]").forEach(x=>x.onclick=()=>{ const st=+b.querySelector("#mpbStep").value, [a,c,r]=x.dataset.n.split(",").map(Number); nudge(a*st,c*st,r*(st>=1?1:.25)); });
   b.querySelector("#mpbOut").onclick=()=>{ if(t.dirty&&!confirm("Leave the test map? The changes made here are not saved as a draft.")) return; exitTest(); };
   b.querySelector("#mpbSave").onclick=()=>saveDraftFromTest();
+  b.querySelector("#mpbOnly").onclick=()=>{ t.only=!t.only; liveLayer(!t.only&&t.showLive); diffLayer(!t.only&&t.showDiff!==false); const dp=document.getElementById("mpDiff"); if(dp) dp.style.display=t.only?"none":""; banner(); };
   b.querySelector("#mpbChk").onclick=()=>{ syncDraftFromMap(); openChecks(t.park,t.plan); };
   b.querySelector("#mpbPub").onclick=()=>{ syncDraftFromMap(); publishDlg(t.park,t.plan,t.ver); }; }
 async function saveDraftFromTest(){ if(!MP.test) return; syncDraftFromMap(); const t=MP.test; try{ const v=await saveDraft(t.park,t.plan,(t.plan.src||"")+(t.ver?" (edited on the test map)":"")); t.ver=v; t.dirty=false; banner(); toast("Saved as a new draft"); }catch(e){ toast("Not saved: "+(e.message||e),true); } }
