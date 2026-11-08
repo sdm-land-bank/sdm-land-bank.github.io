@@ -12624,7 +12624,6 @@ function viewEditor(){
       <button class="ebtn" id="edCols" title="Hide or show columns — only for you, on this device">${edColsLabel()}</button>
       <button class="ebtn" id="edHist" title="Who changed what in the register, and when">History</button>
       <span class="ed-sep"></span>
-      <button class="ebtn" id="edFillUS" title="Reads only the Unified Sales report text from the online sheet and fills it on matching rows (project + unit). Nothing else changes; you press Save changes.">Fill Unified Sales report</button>
       <button class="ebtn" id="edCollect" title="Finance: upload the Excel with the new collected amounts (Unified Sales report + Collection Amount)">Import collection update</button>
       <button class="ebtn" id="edCollLog" title="Every collection import, month by month">Collection log</button>
       <button class="ebtn" id="edXlsx" title="The register as an MDS-format workbook — it can be dropped back into Data health">Export Excel</button>
@@ -21757,28 +21756,6 @@ function addAll(wb){ cols(); define(); const sh=wb.Sheets[wb.SheetNames[0]]; if(
 if(typeof XLSX!=="undefined"&&XLSX.writeFile&&!XLSX.__allCols){ const w0=XLSX.writeFile; XLSX.__allCols=true;
   XLSX.writeFile=function(wb,n,o){ try{ if(wb&&wb.SheetNames&&wb.SheetNames[0]==="MDS"&&typeof ED!=="undefined"&&ED&&ED.rows) addAll(wb); }catch(e){ console.error("export all columns",e); } return w0.call(XLSX,wb,n,o); }; }
 
-/* V124.1: "Fill Unified Sales report" — reads the online sheet's Unified Sales report text only and puts it on the matching register rows
-   (matched by Project Name + Unit Code). Nothing else is replaced or imported; the edits stay unsaved until Save changes. */
-async function fillSales(){
-  if(typeof ED==="undefined"||!ED||!ED.rows){ toast("Open the MDS register first",true); return; }
-  try{ if(sbReady()&&!sbCanWrite()){ toast("Your role can see the MDS register but not save changes",true); return; } }catch(e){}
-  const b=document.getElementById("edFillUS"); if(b){ b.disabled=true; b.textContent="Reading the online sheet…"; }
-  try{
-    const w=await fetchLive(true), p=wbRead(w.buf);
-    const sh=new Map(); p.out.rows.forEach(o=>{ const k=ckey(o.sheet,o.unit), v=o.unifiedSales; if(v==null||String(v).trim()==="") return; const a=sh.get(k); sh.set(k,a?{dup:true}:{v:String(v).trim()}); });
-    const cnt=new Map(); ED.rows.forEach(r=>{ if(ED.deleted.has(r._id)) return; const k=ckey(r.sheet,r.unit); cnt.set(k,(cnt.get(k)||0)+1); });
-    let filled=0,same=0,none=0,amb=0; const g=[];
-    ED.rows.forEach(r=>{ if(ED.deleted.has(r._id)) return; const k=ckey(r.sheet,r.unit), a=sh.get(k);
-      if(!a){ none++; return; } if(a.dup||cnt.get(k)>1){ amb++; return; }
-      if(r.unifiedSales===a.v){ same++; return; } edSetG(r,"unifiedSales",a.v,g); filled++; });
-    if(g.length) ED.undo.push(g);
-    try{ edFilter(); edPaint(true); edChrome(); }catch(e){}
-    toast(filled?`Unified Sales report filled on ${filled.toLocaleString("en-US")} rows — press Save changes to keep it. (${same} already the same, ${none} not in the sheet${amb?`, ${amb} skipped: the same project + unit twice`:""})`
-                :`Nothing to fill — ${same} rows already match, ${none} not in the sheet${amb?`, ${amb} skipped`:""}`, false);
-  }catch(e){ toast("Could not read the online sheet: "+(e&&e.message||e),true); }
-  finally{ const b2=document.getElementById("edFillUS"); if(b2){ b2.disabled=false; b2.textContent="Fill Unified Sales report"; } }
-}
-document.addEventListener("click",e=>{ const a=e.target.closest&&e.target.closest("#edFillUS"); if(a){ e.preventDefault(); fillSales(); } },true);
 window.SID_UNIFIED={cols,define};
 })();
 </script>
