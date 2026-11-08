@@ -21591,20 +21591,25 @@ async function readSheet(file){
 function check(sh){
   const live=ED.rows.filter(r=>!ED.deleted.has(r._id)); const E={headings:[],pending:null,notFound:[],count:[],invalid:[],noClient:[],emptyKey:[]}, W={decrease:[],blankKept:[],mdsMissing:[],byOrder:[]};
   const c=(typeof edCounts==="function")?edCounts():{changed:0,added:0,deleted:0}; if(c.changed+c.added+c.deleted>0) E.pending=c.changed+c.added+c.deleted;
-  const reg=new Map(); live.forEach(r=>{ const k=K(rkey(r)); (reg.get(k)||reg.set(k,[]).get(k)).push(r); });
-  const by=new Map(); sh.rows.forEach(e=>{ if(!e.key){ E.emptyKey.push(e); return; } const k=K(e.key); (by.get(k)||by.set(k,[]).get(k)).push(e); });
+  /* The register keeps Client ID as a number, so "7025/1" is stored as 7025. Rows are therefore matched on the code without a trailing /n or -n
+     (project + client number); when the sheet and the register list that number the same number of times they are paired in the order of the sheet. */
+  const base=k=>K(k).replace(/[\/-]\d+$/,"");
+  const reg=new Map(); live.forEach(r=>{ const k=base(rkey(r)); (reg.get(k)||reg.set(k,[]).get(k)).push(r); });
+  const by=new Map(), sheetKeys=new Set(); sh.rows.forEach(e=>{ if(!e.key){ E.emptyKey.push(e); return; } sheetKeys.add(base(e.key)); const k=base(e.key); (by.get(k)||by.set(k,[]).get(k)).push(e); });
   const upd=[]; let unchanged=0, blank=0, listed=0;
+  const keysOf=es=>[...new Set(es.map(e=>e.key))].slice(0,4).join(" · ")+(new Set(es.map(e=>e.key)).size>4?" …":"");
   by.forEach((es,k)=>{ const rs=reg.get(k)||[]; listed+=es.length;
-    if(!rs.length){ E.notFound.push({key:es[0].key,rows:es.map(e=>e.row)}); return; }
+    if(!rs.length){ E.notFound.push({key:keysOf(es),rows:es.map(e=>e.row)}); return; }
     es.forEach(e=>{ if(e.m.bad!=null) E.invalid.push({key:e.key,row:e.row,raw:e.m.bad}); });
     if(es.every(e=>e.m.blank)){ blank+=es.length; return; }                       // available plots: nothing to update
-    if(rs.every(r=>!T(r.clientId))){ E.noClient.push({key:es[0].key,rows:es.map(e=>e.row)}); return; }
-    if(es.length!==rs.length){ E.count.push({key:es[0].key,sheet:es.length,mds:rs.length,rows:es.map(e=>e.row)}); return; }
+    if(rs.every(r=>!T(r.clientId))){ E.noClient.push({key:keysOf(es),rows:es.map(e=>e.row)}); return; }
+    if(es.length!==rs.length){ E.count.push({key:keysOf(es),sheet:es.length,mds:rs.length,rows:es.map(e=>e.row)}); return; }
+    const flag=es.length>1||es.some((e,i)=>K(e.key)!==K(rkey(rs[i])));
     es.forEach((e,i)=>{ const r=rs[i]; if(e.m.bad!=null) return;
       if(e.m.blank){ blank++; if(+r.collected>0) W.blankKept.push({key:e.key,row:e.row,unit:r.unit,old:+r.collected}); return; }
-      const old=+r.collected||0, nw=e.m.n; if(Math.abs(nw-old)<.005){ unchanged++; return; }
-      const u={r,key:e.key,row:e.row,from:old,to:nw,order:es.length>1}; upd.push(u); if(nw<old) W.decrease.push(u); if(es.length>1) W.byOrder.push(u); }); });
-  live.forEach(r=>{ if(T(r.clientId)&&!by.has(K(rkey(r)))) W.mdsMissing.push(r); });
+      const old=+r.collected||0, nw=e.m.n; if(Math.abs(nw-old)<.02){ unchanged++; return; }
+      const u={r,key:e.key,row:e.row,from:old,to:nw,order:flag}; upd.push(u); if(nw<old) W.decrease.push(u); if(flag) W.byOrder.push(u); }); });
+  live.forEach(r=>{ if(T(r.clientId)&&!by.has(base(rkey(r)))) W.mdsMissing.push(r); });
   const P=new Map(); live.forEach(r=>{ const n=pname(r); const o=P.get(n)||P.set(n,{n,rows:0,before:0,after:0,total:0}).get(n); o.before+=+r.collected||0; });
   upd.forEach(u=>{ const o=P.get(pname(u.r)); o.rows++; });
   P.forEach(o=>{ o.after=o.before; }); upd.forEach(u=>{ P.get(pname(u.r)).after+=u.to-u.from; });
@@ -21631,7 +21636,7 @@ function reportHtml(R){
    ${list("Collection went DOWN — check these with finance (they are still updated)",W.decrease.map(u=>`<div><b>${esc(u.key)}</b> <small>${esc(u.r.unit)} · ${f2(u.from)} → ${f2(u.to)}</small></div>`),"warn",true)}
    ${list("In the MDS but not in the sheet — not changed",W.mdsMissing.map(r=>`<div><b>${esc(rkey(r))}</b> <small>${esc(r.unit)}</small></div>`),"warn",false)}
    ${list("Blank in the sheet but the MDS has an amount — kept as it is",W.blankKept.map(x=>`<div><b>${esc(x.key)}</b> <small>${esc(x.unit)} · ${f2(x.old)}</small></div>`),"warn",false)}
-   ${list("Codes used by several plots — matched in the order of the sheet (check that the order is the same as the MDS)",W.byOrder.map(u=>`<div><b>${esc(u.key)}</b> <small>${esc(u.r.unit)} · ${f2(u.from)} → ${f2(u.to)}</small></div>`),"",false)}
+   ${list("Matched by position: the code is used by several plots, or the MDS has it without its “/1” — check the sheet is in the same order as the register",W.byOrder.map(u=>`<div><b>${esc(u.key)}</b> <small>${esc(u.r.unit)} · ${f2(u.from)} → ${f2(u.to)}</small></div>`),"",false)}
    ${list("Rows that will be updated",R.upd.map(u=>`<div><b>${esc(u.key)}</b> <small>${esc(u.r.unit)} · ${f2(u.from)} → ${f2(u.to)}</small></div>`),"",false)}`;
 }
 
