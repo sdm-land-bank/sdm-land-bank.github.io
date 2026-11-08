@@ -2897,7 +2897,7 @@ html[data-look="modules"][data-text="large"] body{font-size:13.75px}
 .nl-walls button.on{border-color:#B3263D;box-shadow:0 0 0 2px rgba(179,38,61,.3)}
 .nl-walls span{display:block;font-size:10.5px;text-align:center;margin-top:3px;opacity:.7}
 </style>
-</head>
+<style id="perf-css">#map:not(.poi-names) .poi:not(:hover):not(.on) .poi-n{-webkit-backdrop-filter:none;backdrop-filter:none}</style></head>
 <body>
 <div class="app">
   <aside class="rail">
@@ -10065,7 +10065,7 @@ function addMarks(){
     TPINS.push({t,at,el,marker:new maplibregl.Marker({element:el,anchor:"bottom",offset:[0,8]}).setLngLat(at).addTo(map)});
   });
   ["move","zoom","resize","pitch","rotate"].forEach(ev=>map.on(ev,updateMarks));
-  prepareGround();
+  groundDefer();
   updateMarks();
 }
 
@@ -10172,12 +10172,12 @@ async function prepareGround(){
     const zt=Math.log2(156543.03*Math.cos(lat0*Math.PI/180)*cardW/wM);
     m.ground={id:"glogo-"+m.id, url:g.url, quad:q, center, zt};
   }
-  addGroundLogos(); updateMarks();
+  addGroundLogos(); GL_NEED=MARKS.some(m=>m.ground&&!map.getSource(m.ground.id)); updateMarks();
 }
 function addGroundLogos(){
   if(!map||!map.getLayer("fill-"+ORDER[0])) return;
   MARKS.forEach(m=>{
-    const g=m.ground; if(!g||map.getSource(g.id)) return;
+    const g=m.ground; if(!g||map.getSource(g.id)) return; if(map.getZoom()<Math.max(PLOT_MIN,g.zt-1)-1.6) return;
     map.addSource(g.id,{type:"image",url:g.url,coordinates:g.quad});
     map.addLayer({id:g.id,type:"raster",source:g.id,minzoom:Math.max(PLOT_MIN,g.zt-1),
       paint:{"raster-opacity":["interpolate",["linear"],["zoom"],g.zt-.25,0,g.zt+.25,GROUND_OPACITY],"raster-fade-duration":0}},
@@ -10192,12 +10192,32 @@ function addGroundLogos(){
    home position only when there is clear room (hysteresis), and any move is animated
    rather than jumped. Placement depends only on relative screen positions, so panning never
    changes it. */
-let markRaf=null, MK_HITS=null;
+let markRaf=null, MK_HITS=null, MK_SRC=null, MK_SP=null, MK_N=-2, MK_SZV=0, GL_T=0, GL_NEED=true, GD_DONE=false, GD_H=false;
+/* V121: a logo card keeps its measured size; it is measured again only when the window, fonts or language change */
+function mkSize(m){ if(m._sz&&m._szv===MK_SZV) return m._sz;
+  const w=m.el.offsetWidth, h=m.el.offsetHeight;
+  if(w>0&&h>0){ m._sz=[w,h]; m._szv=MK_SZV; return m._sz; }
+  return [w||96,h||38]; }
+(function(){ const bump=()=>{ MK_SZV++; };
+  addEventListener("resize",bump);
+  try{ if(document.fonts&&document.fonts.ready) document.fonts.ready.then(bump); }catch(e){}
+  try{ new MutationObserver(bump).observe(document.documentElement,{attributes:true,attributeFilter:["lang","dir"]}); }catch(e){}
+})();
+function groundLazy(){ if(GL_T) return; GL_T=setTimeout(()=>{ GL_T=0; try{ addGroundLogos(); }catch(e){} },120); }
+function groundDefer(){ if(GD_DONE||!map) return;
+  if(map.getZoom()>=7.2){ GD_DONE=true; prepareGround(); return; }
+  if(GD_H) return; GD_H=true;
+  const h=()=>{ if(map.getZoom()>=7.2){ map.off("zoom",h); GD_DONE=true; prepareGround(); } };
+  map.on("zoom",h); }
 function updateMarks(){
   if(!map||(!MARKS.length&&!TPINS.length)) return;
   const z=map.getZoom(), pf=typeof PR!=="undefined"&&PR.on;
-  MK_HITS=HIT?new Map():null;
-  if(MK_HITS) HIT.forEach(k=>{ const p=S.plots.get(k); if(p) MK_HITS.set(p.park,(MK_HITS.get(p.park)||0)+1); });
+  if(MK_SRC!==HIT||MK_SP!==S.plots||MK_N!==(HIT?HIT.size:-1)){
+    MK_SRC=HIT; MK_SP=S.plots; MK_N=HIT?HIT.size:-1;
+    MK_HITS=HIT?new Map():null;
+    if(MK_HITS) HIT.forEach(k=>{ const p=S.plots.get(k); if(p) MK_HITS.set(p.park,(MK_HITS.get(p.park)||0)+1); });
+  }
+  if(GL_NEED) groundLazy();
   MARKS.forEach(m=>{
     const g=m.ground, zt=g?g.zt:13.2;
     // off the plots by the time the plots are big enough to read (≈ zt-1.6), then hand over
@@ -10211,7 +10231,7 @@ function updateMarks(){
   renderMarks();
   const tp=ramp(z,TOUR_FADE[0],TOUR_FADE[1]);
   TPINS.forEach(x=>{
-    const off=tp<=.02||(pf&&S.pfStage&&S.pfStage!=="operating");
+    const off=tp<=.02||(pf&&S.pfStage&&S.pfStage!=="operating"); const _k=(off?0:tp.toFixed(3))+"|"+(off||tp<.2)+"|"+(z>=14.4); if(x._k===_k) return; x._k=_k;
     [...x.el.children].forEach(c=>c.style.opacity=off?0:tp);
     x.el.classList.toggle("off",off||tp<.2);
     x.el.classList.toggle("mini",z>=14.4);          // street level: a small badge on the gate, the label on hover
@@ -10237,7 +10257,7 @@ function layoutMarks(){
   const blockerOf=(r,m)=>{ const q=placed.find(q=>over(r,q)); if(q) return q.m;
     const d=dots.find(q=>q.m!==m&&over(r,q)); return d?d.m:null; };
   vis.forEach((m,idx)=>{
-    const w=m.el.offsetWidth||96, h=m.el.offsetHeight||38;
+    const [w,h]=mkSize(m);
     const rect=(dx,dy,e=0)=>({m,x0:m.p.x+dx-w/2-5-e,x1:m.p.x+dx+w/2+5+e,y0:m.p.y+dy-h/2-5-e,y1:m.p.y+dy+h/2+5+e});
     const homeDy=-(h/2+10);
     // home, with room to spare when coming back (hysteresis)
@@ -10287,17 +10307,17 @@ function renderMarks(){
     }
     const n=MK_HITS?m.parks.reduce((a,k)=>a+(MK_HITS.get(k)||0),0):null;
     const dim=MK_HITS&&!n, atHome=m.tail&&Math.abs(m.dx-m.tx)<1.5&&Math.abs(m.dy-m.ty)<1.5;
-    m.marker.setLngLat(m.anchor);
-    m.marker.setOffset(on?[m.dx,m.dy]:[0,0]);
-    m.el.firstElementChild.style.opacity=on?m.op*(dim?.35:1):0;
+    if(!m._la||m._la[0]!==m.anchor[0]||m._la[1]!==m.anchor[1]){ m.marker.setLngLat(m.anchor); m._la=[m.anchor[0],m.anchor[1]]; }
+    { const _ox=on?m.dx:0, _oy=on?m.dy:0; if(m._ox!==_ox||m._oy!==_oy){ m._ox=_ox; m._oy=_oy; m.marker.setOffset([_ox,_oy]); } }
+    { const _o=on?m.op*(dim?.35:1):0; if(m._op!==_o){ m._op=_o; m.el.firstElementChild.style.opacity=_o; } }
     m.el.classList.toggle("off",!on||m.op<.2);
     m.el.classList.toggle("tail",atHome);
-    m.el.style.zIndex=on?String(100-MARKS.indexOf(m)):"0";
-    const hb=m.el.querySelector(".plogo-hit");
-    hb.hidden=!MK_HITS||!n||!on; hb.textContent=fInt(n||0)+" match"+(n===1?"":"es");
-    hb.style.opacity=m.el.firstElementChild.style.opacity;
+    { const _z=on?String(100-MARKS.indexOf(m)):"0"; if(m._z!==_z){ m._z=_z; m.el.style.zIndex=_z; } }
+    const hb=m._hb||(m._hb=m.el.querySelector(".plogo-hit"));
+    { const _h=!MK_HITS||!n||!on, _t=fInt(n||0)+" match"+(n===1?"":"es"); if(hb.hidden!==_h){ hb.hidden=_h; m._szv=-1; } if(m._ht!==_t){ m._ht=_t; hb.textContent=_t; if(!_h) m._szv=-1; } }
+    { const _po=m.el.firstElementChild.style.opacity; if(m._pho!==_po){ m._pho=_po; hb.style.opacity=_po; } }
     if(on&&!atHome){
-      const w=m.el.offsetWidth||96, h=m.el.offsetHeight||38, cx=m.p.x+m.dx, cy=m.p.y+m.dy;
+      const [w,h]=mkSize(m), cx=m.p.x+m.dx, cy=m.p.y+m.dy;
       const vx=m.p.x-cx, vy=m.p.y-cy, s=Math.min(Math.abs((w/2)/(vx||1e-6)),Math.abs((h/2)/(vy||1e-6)));
       if(Math.hypot(vx,vy)>h/2+6){
         const ex=cx+vx*Math.min(s,1), ey=cy+vy*Math.min(s,1), o=(m.op*(dim?.35:1)).toFixed(2);
@@ -10306,7 +10326,7 @@ function renderMarks(){
       }
     }
   });
-  if(LEADS){ LEADS.innerHTML=lines; LEADS.setAttribute("class","leads"+(S.base==="sat"?" sat":"")); }
+  if(LEADS){ if(LEADS._l!==lines){ LEADS._l=lines; LEADS.innerHTML=lines; } const _lc="leads"+(S.base==="sat"?" sat":""); if(LEADS._c!==_lc){ LEADS._c=_lc; LEADS.setAttribute("class",_lc); } }
   if(moving&&!markRaf) markRaf=requestAnimationFrame(()=>{ markRaf=null; MARKS.forEach(m=>m.p=map.project(m.anchor)); renderMarks(); });
 }
 function onLogo(m){
@@ -10421,7 +10441,45 @@ function buildFactories(){
   });
   return {type:"FeatureCollection",features:feats};
 }
+let FZ_ON=false, FZ_BOX=null, FACTORY_C=null, FZ_HOOK=false;
+const FZ_ADD=11.8, FZ_DROP=10.8;
 function addFactories(){
+  if(!map) return;
+  FZ_ON=!!map.getLayer("factories"); if(!FZ_ON) FZ_BOX=null;
+  if(!FZ_HOOK){ FZ_HOOK=true;
+    map.on("zoom",()=>{ if(!FZ_ON&&map.getZoom()>=FZ_ADD) factoriesSync(); });
+    map.on("moveend",factoriesSync); map.on("zoomend",factoriesSync); }
+  factoriesSync();
+}
+function factoriesSync(){
+  if(!map||!S.geo||!map.getLayer("fill")) return;
+  const z=map.getZoom();
+  if(z<FZ_DROP){
+    if(FZ_ON||map.getLayer("factories")){ try{ if(map.getLayer("factories")) map.removeLayer("factories"); if(map.getSource("factories")) map.removeSource("factories"); }catch(e){} FZ_ON=false; FZ_BOX=null; }
+    return; }
+  if(z<FZ_ADD&&!FZ_ON) return;
+  if(document.body.classList.contains("pp-only")) return;
+  const b=map.getBounds(), w=b.getEast()-b.getWest(), h=b.getNorth()-b.getSouth();
+  if(FZ_ON&&FZ_BOX&&b.getWest()>=FZ_BOX[0]&&b.getSouth()>=FZ_BOX[1]&&b.getEast()<=FZ_BOX[2]&&b.getNorth()<=FZ_BOX[3]) return;
+  if(!FACTORY_FC) FACTORY_FC=buildFactories();
+  if(!FACTORY_C) FACTORY_C=FACTORY_FC.features.map(f=>{ const r=f.geometry.coordinates[0]; return [r[0][0],r[0][1]]; });
+  const bx=[b.getWest()-w,b.getSouth()-h,b.getEast()+w,b.getNorth()+h], feats=[];
+  FACTORY_FC.features.forEach((f,i)=>{ const c=FACTORY_C[i]; if(c[0]>=bx[0]&&c[0]<=bx[2]&&c[1]>=bx[1]&&c[1]<=bx[3]) feats.push(f); });
+  const fc={type:"FeatureCollection",features:feats};
+  const src=map.getSource("factories");
+  if(src&&map.getLayer("factories")) src.setData(fc);
+  else{
+    if(src) map.removeSource("factories");
+    map.addSource("factories",{type:"geojson",data:fc});
+    map.addLayer({id:"factories",type:"fill-extrusion",source:"factories",minzoom:13,
+      paint:{"fill-extrusion-color":["to-color",["get","c"]],"fill-extrusion-height":["to-number",["get","h"]],"fill-extrusion-base":0,
+             "fill-extrusion-opacity":["interpolate",["linear"],["zoom"],13,0,14,.4],"fill-extrusion-vertical-gradient":true}},
+      map.getLayer("halo")?"halo":undefined);
+    if(typeof HIT!=="undefined"&&HIT) map.setFilter("factories",["in",["get","k"],["literal",[...HIT]]]);
+  }
+  FZ_ON=true; FZ_BOX=bx;
+}
+function addFactoriesNow(){
   if(!map||map.getLayer("factories")) return;
   if(!FACTORY_FC) FACTORY_FC=buildFactories();
   if(!map.getSource("factories")) map.addSource("factories",{type:"geojson",data:FACTORY_FC});
@@ -15950,7 +16008,7 @@ setInterval(()=>{ try{ if(pub()){ MODE=""; return; }
 function declutter(){
   try{
     const pins=[...document.querySelectorAll(".pp-pin")]; if(!pins.length) return;
-    const D=P(); const area=n=>{ const p=D.projects.find(x=>x.name===n); return p?p.lands.reduce((a,id)=>{ const l=D.lands.find(x=>x.id===id); return a+(l&&l.area||0); },0):0; };
+    const D=P(); const _am=new Map(), area=n=>{ if(_am.has(n)) return _am.get(n); const _v=area0(n); _am.set(n,_v); return _v; }, area0=n=>{ const p=D.projects.find(x=>x.name===n); return p?p.lands.reduce((a,id)=>{ const l=D.lands.find(x=>x.id===id); return a+(l&&l.area||0); },0):0; };
     pins.forEach(e=>e.classList.remove("pp-nolabel"));
     const placed=[];
     if(MODE!=="pipe") document.querySelectorAll(".plogo").forEach(e=>{ const r=e.getBoundingClientRect(); if(r.width&&getComputedStyle(e).display!=="none") placed.push(r); });
@@ -15961,7 +16019,7 @@ function declutter(){
       if(hit) e.classList.add("pp-nolabel"); else placed.push(r); });
   }catch(e){}
 }
-let dq=0; const dsched=()=>{ if(dq) return; dq=requestAnimationFrame(()=>{ dq=0; declutter(); }); };
+let dq=0, dlast=0, dto=0; const dsched=()=>{ if(dq||dto) return; const mv=(typeof map!=="undefined"&&map&&map.isMoving&&map.isMoving()); const wait=mv?Math.max(0,250-(performance.now()-dlast)):0; const run=()=>{ dq=requestAnimationFrame(()=>{ dq=0; dlast=performance.now(); declutter(); }); }; if(wait>16){ dto=setTimeout(()=>{ dto=0; run(); },wait); } else run(); };
 { const k=setInterval(()=>{ if(typeof map==="undefined"||!map||!document.querySelector(".pp-pin")) return; clearInterval(k); map.on("zoomend",dsched); map.on("moveend",dsched); map.on("zoom",dsched); declutter(); },1000); }
 window.addEventListener("resize",dsched);
 
@@ -21500,6 +21558,25 @@ button.ml-ns{background:none;border:0;padding:0;cursor:pointer;font-family:inher
 .ml-head b{font-variant-numeric:tabular-nums}
 .ml-head .ebtn,.ml-head button{margin-left:auto}
 </style>
+
+<script id="unifiedJs">
+(function(){
+const T=v=>String(v==null?"":v).replace(/ /g," ").trim();
+const FX={unifiedMds:r=>T(r.sheet)+T(r.unit), unifiedSales:r=>T(r.sheet)+T(r.clientId)};
+function cols(){ if(typeof EDCOLS==="undefined") return;
+  const put=(after,c)=>{ if(EDCOLS.some(x=>x.k===c.k)) return; let i=EDCOLS.findIndex(x=>x.k===after); EDCOLS.splice(i<0?EDCOLS.length:i+1,0,c); };
+  put("collected",{k:"unifiedMds",label:"Unified MDS",type:"text",w:210,calc:true});
+  put("opsStatus",{k:"unifiedSales",label:"Unified Sales report",type:"text",w:210,calc:true});
+  try{ if(typeof edCalcW==="function") edCalcW(); }catch(e){} }
+function define(){ if(typeof ED==="undefined"||!ED||!ED.rows) return;
+  ED.rows.forEach(r=>{ Object.keys(FX).forEach(k=>{ try{ Object.defineProperty(r,k,{value:FX[k](r),enumerable:false,writable:true,configurable:true}); }catch(e){} }); }); }
+cols();
+if(typeof edFilter==="function"){ const f0=edFilter; window.edFilter=function(){ try{ cols(); define(); }catch(e){ console.error("unified columns",e); } return f0.apply(this,arguments); }; }
+if(typeof edSetG==="function"){ const g0=edSetG; window.edSetG=function(r,k){ if(FX[k]) return; return g0.apply(this,arguments); }; }
+if(typeof edStartEdit==="function"){ const e0=edStartEdit; window.edStartEdit=function(){ try{ const c=ED.cur&&EDCOLS[ED.cur.c]; if(c&&FX[c.k]){ toast("This column is calculated (Project Name + "+(c.k==="unifiedMds"?"Unit Code":"Client ID")+") — change those columns instead"); return; } }catch(e){} return e0.apply(this,arguments); }; }
+window.SID_UNIFIED={cols,define};
+})();
+</script>
 <script id="mlJs">
 (function(){
 const COLS=new Set(["onMap","mapWhy"]);
