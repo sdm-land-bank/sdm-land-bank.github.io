@@ -21752,9 +21752,8 @@ function addAll(wb){ cols(); define(); const sh=wb.Sheets[wb.SheetNames[0]]; if(
     sh[a]=typeof v==="number"?{t:"n",v}:{t:"s",v:String(v)}; }); });
   R.e.c=c0+use.length-1; sh["!ref"]=XLSX.utils.encode_range(R); if(sh["!autofilter"]) sh["!autofilter"].ref=sh["!ref"];
   sh["!cols"]=sh["!cols"]||[]; use.forEach((c,i)=>{ sh["!cols"][c0+i]={wch:Math.max(12,Math.min(30,c.label.length+4))}; }); }
-if(typeof edExport==="function"){ const x0=edExport; window.edExport=function(rows){ if(Array.isArray(rows)||typeof XLSX==="undefined") return x0.apply(this,arguments);
-  const w0=XLSX.writeFile; XLSX.writeFile=function(wb,n,o){ XLSX.writeFile=w0; try{ addAll(wb); }catch(e){ console.error("export all columns",e); } return w0.call(XLSX,wb,n,o); };
-  try{ return x0.apply(this,arguments); } finally{ XLSX.writeFile=w0; } }; }
+if(typeof XLSX!=="undefined"&&XLSX.writeFile&&!XLSX.__allCols){ const w0=XLSX.writeFile; XLSX.__allCols=true;
+  XLSX.writeFile=function(wb,n,o){ try{ if(wb&&wb.SheetNames&&wb.SheetNames[0]==="MDS"&&typeof ED!=="undefined"&&ED&&ED.rows) addAll(wb); }catch(e){ console.error("export all columns",e); } return w0.call(XLSX,wb,n,o); }; }
 window.SID_UNIFIED={cols,define};
 })();
 </script>
