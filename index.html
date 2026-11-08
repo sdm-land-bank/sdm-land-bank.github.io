@@ -3290,6 +3290,7 @@ function mdsRecord(T,r,label){
     opsStatus:txt(get("ops status"),16),
     mva:pos(get("electricity (mva)")), water:pos(get("water (m3/day)")), sewage:pos(get("sewage (m3/day)")),
     clientId:pos(get("client code","client id")),
+    unifiedMds:((v)=>v==null?null:(String(v).trim()||null))(get("unified mds")), unifiedSales:((v)=>v==null?null:(String(v).trim()||null))(get("unified sales report")),
     code:pos(get("code")), approvedBy:txt(get("approved by"),40), actualSales:pos(get("actual sales")),
     soldArea:pos(get("sold area")), plannedPrice:pos(get("sqm price planned")), plannedValue:pos(get("cash value planned")),
     areaRange:txt(get("area range"),8), costSqm:num(get("cost/sqm")), gpSqm:num(get("gp/sqm")), totalGp:num(get("total gp")),
@@ -3338,7 +3339,7 @@ function costMaskLB(f){ if(costAllowed()) return; const d=f.contentDocument; if(
 function costAsked(a){ try{ return /(^|[^a-z])(gp|gross|profit|cost|margin|loss)/i.test(Object.keys(a||{}).concat(Object.values(a||{}).filter(v=>typeof v==="string")).join(" ")); }catch(e){ return false; } }
 
 const FIN_ONLY=["costSqm","gpSqm","totalGp","gpPct","rfPrice","rfPriceUsd","roeUsd","totalUsd","dateOfCost",
-  "eoiDate","handoverDate","opsStatus","cur","clientId","withInterest","collected","reserveDate","contractDate"];
+  "eoiDate","handoverDate","opsStatus","cur","clientId","unifiedMds","unifiedSales","withInterest","collected","reserveDate","contractDate"];
 /* Returns {rows, unknown, report}, or null when the workbook is not in the MDS 2026 layout. */
 
 /* ---- one cost per project: the MDS "Cost" sheet ---- */
@@ -8419,7 +8420,7 @@ function parseWorkbook(buf){
       handoverDate:dt(get(r,"handover date")), phase:txt(get(r,"phase"),20),
       quarter:txt(get(r,"quarter of sale"),12), opsStatus:txt(get(r,"ops status"),14),
       mva:num(get(r,"electricity (mva)")), water:num(get(r,"water (m3/day)")),
-      sewage:num(get(r,"sewage (m3/day)")), clientId:num(get(r,"client id"))});
+      sewage:num(get(r,"sewage (m3/day)")), clientId:num(get(r,"client id")), unifiedMds:((v)=>v==null?null:(String(v).trim()||null))(get(r,"unified mds")), unifiedSales:((v)=>v==null?null:(String(v).trim()||null))(get(r,"unified sales report"))});
   });
   if(!out.length) throw new Error("Parsed the sheet but matched no known project names.");
   return {rows:out, unknown};
@@ -21569,7 +21570,7 @@ const K=v=>T(v).toUpperCase();
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const f2=n=>(n==null||isNaN(n))?"—":Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const f0=n=>(n==null||isNaN(n))?"—":Number(n).toLocaleString("en-US",{maximumFractionDigits:0});
-const rkey=r=>T(r.sheet)+T(r.clientId);
+const rkey=r=>T(r.unifiedSales)||(T(r.sheet)+T(r.clientId));
 const pname=r=>{ try{ return (S.reg.parks[r.park]&&S.reg.parks[r.park].name)||T(r.sheet)||"—"; }catch(e){ return T(r.sheet)||"—"; } };
 const me=()=>{ try{ return (SBME&&(SBME.name||SBME.email))||"—"; }catch(e){ return "—"; } };
 let ST=null;
@@ -21731,16 +21732,15 @@ const T=v=>String(v==null?"":v).replace(/ /g," ").trim();
 const FX={unifiedMds:r=>T(r.sheet)+T(r.unit), unifiedSales:r=>T(r.sheet)+T(r.clientId)};
 function cols(){ if(typeof EDCOLS==="undefined") return;
   const put=(after,c)=>{ if(EDCOLS.some(x=>x.k===c.k)) return; let i=EDCOLS.findIndex(x=>x.k===after); EDCOLS.splice(i<0?EDCOLS.length:i+1,0,c); };
-  put("collected",{k:"unifiedMds",label:"Unified MDS",type:"text",w:210,calc:true});
-  put("opsStatus",{k:"unifiedSales",label:"Unified Sales report",type:"text",w:210,calc:true});
+  put("collected",{k:"unifiedMds",label:"Unified MDS",type:"text",w:210});
+  put("opsStatus",{k:"unifiedSales",label:"Unified Sales report",type:"text",w:210});
   try{ if(typeof edCalcW==="function") edCalcW(); }catch(e){} }
 function define(){ if(typeof ED==="undefined"||!ED||!ED.rows) return;
-  ED.rows.forEach(r=>{ Object.keys(FX).forEach(k=>{ try{ Object.defineProperty(r,k,{value:FX[k](r),enumerable:false,writable:true,configurable:true}); }catch(e){} }); }); }
+  ED.rows.forEach(r=>{ Object.keys(FX).forEach(k=>{ try{ const d=Object.getOwnPropertyDescriptor(r,k); if(d&&d.enumerable&&d.value!=null&&d.value!=="") return;
+    Object.defineProperty(r,k,{value:FX[k](r),enumerable:false,writable:true,configurable:true}); }catch(e){} }); }); }
 cols();
 if(typeof edFilter==="function"){ const f0=edFilter; window.edFilter=function(){ try{ cols(); define(); }catch(e){ console.error("unified columns",e); } return f0.apply(this,arguments); }; }
-if(typeof edSetG==="function"){ const g0=edSetG; window.edSetG=function(r,k){ if(FX[k]) return; return g0.apply(this,arguments); }; }
-if(typeof edStartEdit==="function"){ const e0=edStartEdit; window.edStartEdit=function(){ try{ const c=ED.cur&&EDCOLS[ED.cur.c]; if(c&&FX[c.k]){ toast("This column is calculated (Project Name + "+(c.k==="unifiedMds"?"Unit Code":"Client ID")+") — change those columns instead"); return; } }catch(e){} return e0.apply(this,arguments); }; }
-
+if(typeof edSetG==="function"){ const g0=edSetG; window.edSetG=function(r,k){ const o=g0.apply(this,arguments); if(FX[k]){ try{ Object.defineProperty(r,k,{value:r[k],enumerable:true,writable:true,configurable:true}); }catch(e){} } return o; }; }
 /* V123: Export Excel = every row and every register column (the MDS-format columns first, then all other register fields) */
 const XH=new Set("park sheet unit area status sector landType phase client company clientId soldBy year quarter reserveDate eoiDate contractDate handoverDate price cash withInterest collected cur opsStatus mva water sewage code approvedBy actualSales soldArea plannedPrice plannedValue areaRange costSqm gpSqm totalGp gpPct rfPrice rfPriceUsd roeUsd totalUsd dateOfCost".split(" "));
 function addAll(wb){ cols(); define(); const sh=wb.Sheets[wb.SheetNames[0]]; if(!sh||!sh["!ref"]) return;
