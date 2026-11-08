@@ -21593,7 +21593,7 @@ function check(sh){
   const c=(typeof edCounts==="function")?edCounts():{changed:0,added:0,deleted:0}; if(c.changed+c.added+c.deleted>0) E.pending=c.changed+c.added+c.deleted;
   /* The register keeps Client ID as a number, so "7025/1" is stored as 7025. Rows are therefore matched on the code without a trailing /n or -n
      (project + client number); when the sheet and the register list that number the same number of times they are paired in the order of the sheet. */
-  const base=k=>K(k).replace(/[\/-]\d+$/,"");
+  const base=k=>K(k).replace(/\s+/g,"").replace(/[\/-]\d+$/,"");   /* spaces are ignored: the sheet's code has the project name with its trailing space */
   const reg=new Map(); live.forEach(r=>{ const k=base(rkey(r)); (reg.get(k)||reg.set(k,[]).get(k)).push(r); });
   const by=new Map(), sheetKeys=new Set(); sh.rows.forEach(e=>{ if(!e.key){ E.emptyKey.push(e); return; } sheetKeys.add(base(e.key)); const k=base(e.key); (by.get(k)||by.set(k,[]).get(k)).push(e); });
   const upd=[]; let unchanged=0, blank=0, listed=0;
