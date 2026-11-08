@@ -12623,6 +12623,8 @@ function viewEditor(){
       <button class="ebtn" id="edCols" title="Hide or show columns — only for you, on this device">${edColsLabel()}</button>
       <button class="ebtn" id="edHist" title="Who changed what in the register, and when">History</button>
       <span class="ed-sep"></span>
+      <button class="ebtn" id="edCollect" title="Finance: upload the Excel with the new collected amounts (Unified Sales report + Collection Amount)">Import collection update</button>
+      <button class="ebtn" id="edCollLog" title="Every collection import, month by month">Collection log</button>
       <button class="ebtn" id="edXlsx" title="The register as an MDS-format workbook — it can be dropped back into Data health">Export Excel</button>
       <button class="ebtn" id="edHtml" title="A copy of this dashboard file with the saved register built in, to share with the team">Download dashboard</button>
       <span class="ed-sep"></span>
@@ -21559,6 +21561,165 @@ button.ml-ns{background:none;border:0;padding:0;cursor:pointer;font-family:inher
 .ml-head .ebtn,.ml-head button{margin-left:auto}
 </style>
 
+
+<script id="collectJs">
+(function(){
+const T=v=>String(v==null?"":v).replace(/ /g," ").replace(/\s+/g," ").trim();
+const K=v=>T(v).toUpperCase();
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const f2=n=>(n==null||isNaN(n))?"—":Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const f0=n=>(n==null||isNaN(n))?"—":Number(n).toLocaleString("en-US",{maximumFractionDigits:0});
+const rkey=r=>T(r.sheet)+T(r.clientId);
+const pname=r=>{ try{ return (S.reg.parks[r.park]&&S.reg.parks[r.park].name)||T(r.sheet)||"—"; }catch(e){ return T(r.sheet)||"—"; } };
+const me=()=>{ try{ return (SBME&&(SBME.name||SBME.email))||"—"; }catch(e){ return "—"; } };
+let ST=null;
+
+function money(v){ if(v==null) return {blank:true}; if(typeof v==="number") return isFinite(v)&&v>=0?{n:Math.round(v*100)/100}:{bad:String(v)};
+  const s=T(v); if(s===""||s==="-"||s==="—") return {blank:true};
+  const c=s.replace(/[,\s]/g,""); if(/^\d+(\.\d+)?$/.test(c)) return {n:Math.round(+c*100)/100}; return {bad:s}; }
+
+async function readSheet(file){
+  if(typeof XLSX==="undefined") throw new Error("the Excel reader is not loaded — reload the page");
+  const wb=XLSX.read(await file.arrayBuffer(),{type:"array"}); const ws=wb.Sheets[wb.SheetNames[0]]; if(!ws) throw new Error("the file has no sheet");
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:false});
+  let h=-1,kc=-1,ac=-1; for(let i=0;i<Math.min(rows.length,15)&&h<0;i++){ const r=rows[i]||[]; const k=r.findIndex(c=>/unified.*sales|sales.*report/i.test(T(c))), a=r.findIndex(c=>/collect/i.test(T(c))); if(k>=0&&a>=0){ h=i; kc=k; ac=a; } }
+  if(h<0) throw new Error("the column headings were not found. The sheet needs two columns headed “Unified Sales report” and “Collection Amount”.");
+  const out=[]; for(let i=h+1;i<rows.length;i++){ const r=rows[i]||[]; const key=T(r[kc]); const m=money(r[ac]); if(!key&&m.blank) continue; out.push({row:i+1,key,raw:r[ac],m}); }
+  return {rows:out,name:file.name,sheet:wb.SheetNames[0],headerRow:h+1};
+}
+
+function check(sh){
+  const live=ED.rows.filter(r=>!ED.deleted.has(r._id)); const E={headings:[],pending:null,notFound:[],count:[],invalid:[],noClient:[],emptyKey:[]}, W={decrease:[],blankKept:[],mdsMissing:[],byOrder:[]};
+  const c=(typeof edCounts==="function")?edCounts():{changed:0,added:0,deleted:0}; if(c.changed+c.added+c.deleted>0) E.pending=c.changed+c.added+c.deleted;
+  const reg=new Map(); live.forEach(r=>{ const k=K(rkey(r)); (reg.get(k)||reg.set(k,[]).get(k)).push(r); });
+  const by=new Map(); sh.rows.forEach(e=>{ if(!e.key){ E.emptyKey.push(e); return; } const k=K(e.key); (by.get(k)||by.set(k,[]).get(k)).push(e); });
+  const upd=[]; let unchanged=0, blank=0, listed=0;
+  by.forEach((es,k)=>{ const rs=reg.get(k)||[]; listed+=es.length;
+    if(!rs.length){ E.notFound.push({key:es[0].key,rows:es.map(e=>e.row)}); return; }
+    es.forEach(e=>{ if(e.m.bad!=null) E.invalid.push({key:e.key,row:e.row,raw:e.m.bad}); });
+    if(es.every(e=>e.m.blank)){ blank+=es.length; return; }                       // available plots: nothing to update
+    if(rs.every(r=>!T(r.clientId))){ E.noClient.push({key:es[0].key,rows:es.map(e=>e.row)}); return; }
+    if(es.length!==rs.length){ E.count.push({key:es[0].key,sheet:es.length,mds:rs.length,rows:es.map(e=>e.row)}); return; }
+    es.forEach((e,i)=>{ const r=rs[i]; if(e.m.bad!=null) return;
+      if(e.m.blank){ blank++; if(+r.collected>0) W.blankKept.push({key:e.key,row:e.row,unit:r.unit,old:+r.collected}); return; }
+      const old=+r.collected||0, nw=e.m.n; if(Math.abs(nw-old)<.005){ unchanged++; return; }
+      const u={r,key:e.key,row:e.row,from:old,to:nw,order:es.length>1}; upd.push(u); if(nw<old) W.decrease.push(u); if(es.length>1) W.byOrder.push(u); }); });
+  live.forEach(r=>{ if(T(r.clientId)&&!by.has(K(rkey(r)))) W.mdsMissing.push(r); });
+  const P=new Map(); live.forEach(r=>{ const n=pname(r); const o=P.get(n)||P.set(n,{n,rows:0,before:0,after:0,total:0}).get(n); o.before+=+r.collected||0; });
+  upd.forEach(u=>{ const o=P.get(pname(u.r)); o.rows++; });
+  P.forEach(o=>{ o.after=o.before; }); upd.forEach(u=>{ P.get(pname(u.r)).after+=u.to-u.from; });
+  const nErr=E.notFound.length+E.count.length+E.invalid.length+E.noClient.length+E.emptyKey.length+(E.pending?1:0);
+  return {E,W,upd,unchanged,blank,listed,projects:[...P.values()].filter(o=>o.rows||o.before).sort((a,b)=>b.rows-a.rows||b.before-a.before),nErr,ok:nErr===0&&upd.length>0,sheetRows:sh.rows.length,name:sh.name};
+}
+
+function list(title,items,cls,open){ return items.length?`<details class="cl-s ${cls||""}"${open?" open":""}><summary><b>${title}</b> <span>${items.length}</span></summary><div class="cl-l">${items.slice(0,400).join("")}${items.length>400?`<p class="mp-n">… and ${items.length-400} more (download the report for all)</p>`:""}</div></details>`:""; }
+function reportHtml(R){
+  const {E,W}=R, rowsTxt=a=>a.length>6?a.slice(0,6).join(", ")+" …":a.join(", ");
+  const banner=R.nErr?`<div class="cl-b bad"><b>${R.nErr} problem${R.nErr>1?"s":""} found — nothing can be saved yet.</b> Ask finance to fix the sheet (below) and upload it again.</div>`
+    :R.upd.length?`<div class="cl-b ok"><b>All checked — no problems.</b> ${f0(R.upd.length)} row${R.upd.length>1?"s":""} will be updated. Press <b>Save changes</b> to write them to the MDS register.</div>`
+    :`<div class="cl-b"><b>No problems, but nothing to update:</b> every amount in the sheet is already in the register.</div>`;
+  const proj=R.projects.length?`<table class="cl-t"><tr><th>Project</th><th class="nm">Rows updated</th><th class="nm">Collected now (EGP)</th><th class="nm">After the update (EGP)</th><th class="nm">Change (EGP)</th></tr>${R.projects.map(o=>`<tr class="${o.rows?"":"cl-dim"}"><td>${esc(o.n)}</td><td class="nm">${f0(o.rows)}</td><td class="nm">${f2(o.before)}</td><td class="nm">${f2(o.after)}</td><td class="nm ${o.after-o.before<0?"bad":o.after-o.before>0?"up":""}">${o.after-o.before>0?"+":""}${f2(o.after-o.before)}</td></tr>`).join("")}<tr class="cl-tot"><td>Total</td><td class="nm">${f0(R.upd.length)}</td><td class="nm">${f2(R.projects.reduce((t,o)=>t+o.before,0))}</td><td class="nm">${f2(R.projects.reduce((t,o)=>t+o.after,0))}</td><td class="nm">${f2(R.projects.reduce((t,o)=>t+o.after-o.before,0))}</td></tr></table>`:"";
+  return `${banner}
+   <div class="mp-tiles"><div><b>${f0(R.sheetRows)}</b><span>rows in the sheet</span></div><div class="${R.upd.length?"ok":""}"><b>${f0(R.upd.length)}</b><span>rows to update</span></div><div><b>${f0(R.unchanged)}</b><span>already the same</span></div><div><b>${f0(R.blank)}</b><span>blank amount — available plots, not touched</span></div><div class="${R.nErr?"bad":""}"><b>${f0(R.nErr)}</b><span>problems</span></div></div>
+   ${proj}
+   ${list("Code not found in the MDS register — add it to the MDS or correct the code in the sheet",E.notFound.map(x=>`<div><b>${esc(x.key)}</b> <small>sheet row ${rowsTxt(x.rows)}</small></div>`),"bad",true)}
+   ${list("The code is listed a different number of times than in the MDS",E.count.map(x=>`<div><b>${esc(x.key)}</b> <small>sheet row ${rowsTxt(x.rows)} — ${x.sheet} in the sheet, ${x.mds} in the MDS</small></div>`),"bad",true)}
+   ${list("Amount is not a valid number",E.invalid.map(x=>`<div><b>${esc(x.key)}</b> <small>sheet row ${x.row}: “${esc(x.raw)}”</small></div>`),"bad",true)}
+   ${list("Plot has no Client ID in the MDS, so an amount cannot be linked",E.noClient.map(x=>`<div><b>${esc(x.key)}</b> <small>sheet row ${rowsTxt(x.rows)}</small></div>`),"bad",true)}
+   ${list("Rows with no Unified Sales report code",E.emptyKey.map(x=>`<div><small>sheet row ${x.row}</small></div>`),"bad",true)}
+   ${E.pending?`<div class="cl-b bad"><b>The register has ${E.pending} unsaved change${E.pending>1?"s":""}.</b> Save or discard them first, then upload again.</div>`:""}
+   ${list("Collection went DOWN — check these with finance (they are still updated)",W.decrease.map(u=>`<div><b>${esc(u.key)}</b> <small>${esc(u.r.unit)} · ${f2(u.from)} → ${f2(u.to)}</small></div>`),"warn",true)}
+   ${list("In the MDS but not in the sheet — not changed",W.mdsMissing.map(r=>`<div><b>${esc(rkey(r))}</b> <small>${esc(r.unit)}</small></div>`),"warn",false)}
+   ${list("Blank in the sheet but the MDS has an amount — kept as it is",W.blankKept.map(x=>`<div><b>${esc(x.key)}</b> <small>${esc(x.unit)} · ${f2(x.old)}</small></div>`),"warn",false)}
+   ${list("Codes used by several plots — matched in the order of the sheet (check that the order is the same as the MDS)",W.byOrder.map(u=>`<div><b>${esc(u.key)}</b> <small>${esc(u.r.unit)} · ${f2(u.from)} → ${f2(u.to)}</small></div>`),"",false)}
+   ${list("Rows that will be updated",R.upd.map(u=>`<div><b>${esc(u.key)}</b> <small>${esc(u.r.unit)} · ${f2(u.from)} → ${f2(u.to)}</small></div>`),"",false)}`;
+}
+
+function modal(html){ closeM(); const o=document.createElement("div"); o.className="mp-ov"; o.id="clOv"; o.innerHTML=`<div class="mp-dlg cl-dlg" role="dialog" aria-modal="true">${html}</div>`; document.body.appendChild(o);
+  o.addEventListener("click",e=>{ if(e.target===o||e.target.closest("[data-close]")||e.target.closest(".mp-x")) closeM(); }); return o.querySelector(".mp-dlg"); }
+function closeM(){ const o=document.getElementById("clOv"); if(o) o.remove(); ST=null; }
+
+function openImport(){
+  if(typeof ED==="undefined"||!ED||!ED.rows){ toast("Open the MDS register first",true); return; }
+  try{ if(sbReady()&&!sbCanWrite()){ toast("Your role can see the MDS register but not save changes — an administrator can give your role edit rights (Settings → Roles)",true); return; } }catch(e){}
+  const d=modal(`<div class="mpd-h"><b>Import collection update</b><button class="mp-x" aria-label="Close">×</button></div>
+    <div class="mpd-b" id="clB"></div><div class="mpd-f"><span class="mp-n" id="clMsg"></span><button class="ebtn" id="clIssues" hidden>Download problem report</button><button class="ebtn" id="clAgain" hidden>Upload another file</button><button class="ebtn" data-close>Cancel</button><button class="ebtn pri" id="clSave" disabled>Save changes</button></div>`);
+  const B=d.querySelector("#clB"), msg=d.querySelector("#clMsg"), save=d.querySelector("#clSave"), issues=d.querySelector("#clIssues"), again=d.querySelector("#clAgain");
+  const home=()=>{ save.disabled=true; issues.hidden=true; again.hidden=true; msg.textContent="";
+    B.innerHTML=`<p class="mp-n">Upload the Excel from finance with <b>two columns</b>: <b>Unified Sales report</b> (project + client ID — the code in column AQ of this register) and <b>Collection Amount</b>. Every row is checked against the MDS register first; nothing is written until you press <b>Save changes</b>. A blank amount means an available plot and is not touched.</p>
+      <div class="mp-drop" id="clDrop" tabindex="0"><input type="file" id="clFile" accept=".xlsx,.xls,.csv" hidden><b>Drop the Excel here, or click to choose</b><span>.xlsx · first sheet · headings “Unified Sales report” and “Collection Amount”</span></div>`;
+    const inp=B.querySelector("#clFile"), drop=B.querySelector("#clDrop"); drop.onclick=()=>inp.click(); drop.onkeydown=e=>{ if(e.key==="Enter"||e.key===" ") inp.click(); };
+    drop.ondragover=e=>{ e.preventDefault(); drop.classList.add("on"); }; drop.ondragleave=()=>drop.classList.remove("on"); drop.ondrop=e=>{ e.preventDefault(); drop.classList.remove("on"); take(e.dataTransfer.files[0]); }; inp.onchange=()=>take(inp.files[0]); };
+  const take=async f=>{ if(!f) return; msg.textContent="Reading "+f.name+"…";
+    try{ const sh=await readSheet(f); const R=check(sh); ST={R,sh}; show(R); }catch(e){ msg.textContent=""; B.innerHTML=`<div class="cl-b bad"><b>The file could not be used:</b> ${esc(e.message||e)}</div>`; again.hidden=false; } };
+  const show=R=>{ msg.textContent=R.nErr?"Fix the problems and upload again":R.upd.length?f0(R.upd.length)+" rows ready to save":"Nothing to update"; B.innerHTML=reportHtml(R);
+    save.disabled=!R.ok; again.hidden=false; issues.hidden=!(R.nErr||R.W.decrease.length||R.W.mdsMissing.length||R.W.blankKept.length); };
+  again.onclick=home; issues.onclick=()=>downloadIssues(ST.R);
+  save.onclick=async()=>{ const R=ST&&ST.R; if(!R||!R.ok) return; save.disabled=true; again.hidden=true; msg.textContent="Saving…";
+    try{ const res=await applyUpdates(R); closeM(); toast(`Saved — ${f0(res.n)} collection amounts updated. The register is up to date.`+(res.logged?"":" (The collection log could not be written.)")); }
+    catch(e){ msg.textContent="Not saved: "+(e.message||e); msg.classList.add("bad"); save.disabled=false; again.hidden=false; } };
+  home(); }
+
+async function applyUpdates(R){
+  const g=[]; R.upd.forEach(u=>edSetG(u.r,"collected",u.to,g)); if(g.length) ED.undo.push(g);
+  await edSave();
+  const c=(typeof edCounts==="function")?edCounts():{changed:0,added:0,deleted:0};
+  if(c.changed+c.added+c.deleted>0) throw new Error("the register did not accept the save (see the message on screen) — the changes are still waiting; press Save changes in the register after fixing it");
+  let logged=false; try{ await logImport(R); logged=true; }catch(e){ console.warn("collection log",e); }
+  return {n:R.upd.length,logged};
+}
+
+/* ---- collection log: sid_kv  collect:index  +  collect:<id> (every changed row) ---- */
+async function logImport(R){
+  const id=new Date().toISOString().replace(/[-:T.Z]/g,"").slice(0,14)+"-"+Math.random().toString(36).slice(2,6), at=new Date().toISOString();
+  const projects={}; R.projects.filter(o=>o.rows).forEach(o=>{ projects[o.n]={rows:o.rows,before:Math.round(o.before*100)/100,after:Math.round(o.after*100)/100}; });
+  const changes=R.upd.map(u=>({p:pname(u.r),k:u.key,u:u.r.unit,from:u.from,to:u.to}));
+  const r1=await SB.from("sid_kv").upsert({key:"collect:"+id,value:{id,at,by:me(),changes},updated_at:at}); if(r1.error) throw r1.error;
+  const cur=await SB.from("sid_kv").select("value").eq("key","collect:index").maybeSingle(); const idx=(cur.data&&cur.data.value)||{imports:[]}; idx.imports=idx.imports||[];
+  idx.imports.push({id,at,by:me(),file:R.name,rows:R.upd.length,unchanged:R.unchanged,blank:R.blank,increase:Math.round(R.upd.reduce((t,u)=>t+u.to-u.from,0)*100)/100,projects});
+  const r2=await SB.from("sid_kv").upsert({key:"collect:index",value:idx,updated_at:at}); if(r2.error) throw r2.error; }
+
+function downloadIssues(R){
+  const rows=[["Type","Unified Sales report","Sheet row","Detail"]]; const rt=a=>a.join(", ");
+  R.E.notFound.forEach(x=>rows.push(["ERROR — code not in the MDS",x.key,rt(x.rows),"Add it to the MDS or correct the code"]));
+  R.E.count.forEach(x=>rows.push(["ERROR — listed a different number of times",x.key,rt(x.rows),x.sheet+" in the sheet, "+x.mds+" in the MDS"]));
+  R.E.invalid.forEach(x=>rows.push(["ERROR — amount is not a number",x.key,x.row,String(x.raw)]));
+  R.E.noClient.forEach(x=>rows.push(["ERROR — plot has no Client ID in the MDS",x.key,rt(x.rows),""]));
+  R.E.emptyKey.forEach(x=>rows.push(["ERROR — no code",  "",x.row,""]));
+  R.W.decrease.forEach(u=>rows.push(["CHECK — collection went down",u.key,u.row,u.r.unit+": "+u.from+" → "+u.to]));
+  R.W.blankKept.forEach(x=>rows.push(["INFO — blank in the sheet, MDS has an amount (kept)",x.key,x.row,x.unit+": "+x.old]));
+  R.W.mdsMissing.forEach(r=>rows.push(["INFO — in the MDS, not in the sheet (not changed)",rkey(r),"",r.unit]));
+  const ws=XLSX.utils.aoa_to_sheet(rows); ws["!cols"]=[{wch:48},{wch:28},{wch:14},{wch:50}]; const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Problems"); XLSX.writeFile(wb,"Collection update - problems.xlsx"); }
+
+/* ---- Collection log window: month by month, import by import ---- */
+async function openLog(){
+  const d=modal(`<div class="mpd-h"><b>Collection log</b><button class="mp-x" aria-label="Close">×</button></div><div class="mpd-b" id="clB"><p class="mp-n">Loading…</p></div><div class="mpd-f"><button class="ebtn" data-close>Close</button></div>`); const B=d.querySelector("#clB");
+  let idx; try{ const r=await SB.from("sid_kv").select("value").eq("key","collect:index").maybeSingle(); idx=(r.data&&r.data.value)||{imports:[]}; }catch(e){ B.innerHTML=`<div class="cl-b bad">The log could not be read: ${esc(e.message||e)}</div>`; return; }
+  const im=(idx.imports||[]).slice().sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  if(!im.length){ B.innerHTML=`<p class="mp-n">No collection update has been imported yet. Each import is recorded here: who, when, which projects, and how much the collection grew.</p>`; return; }
+  const M=new Map(), names=new Set(); im.forEach(i=>{ const m=String(i.at).slice(0,7); const o=M.get(m)||M.set(m,{m,n:0,rows:0,inc:0,p:{}}).get(m); o.n++; o.rows+=i.rows; o.inc+=i.increase; Object.entries(i.projects||{}).forEach(([p,v])=>{ names.add(p); o.p[p]=(o.p[p]||0)+(v.after-v.before); }); });
+  const months=[...M.values()].sort((a,b)=>b.m.localeCompare(a.m)), pn=[...names].sort(), mon=m=>new Date(m+"-15").toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+  B.innerHTML=`<h4>Collected, month by month (EGP added by the imports)</h4><div class="cl-sc"><table class="cl-t"><tr><th>Month</th><th class="nm">Imports</th><th class="nm">Rows updated</th>${pn.map(p=>`<th class="nm">${esc(p)}</th>`).join("")}<th class="nm">Total</th></tr>
+      ${months.map(o=>`<tr><td>${mon(o.m)}</td><td class="nm">${o.n}</td><td class="nm">${f0(o.rows)}</td>${pn.map(p=>`<td class="nm">${o.p[p]?f2(o.p[p]):"—"}</td>`).join("")}<td class="nm"><b>${f2(o.inc)}</b></td></tr>`).join("")}</table></div>
+    <h4>Every import</h4><table class="cl-t"><tr><th>Date</th><th>By</th><th>File</th><th class="nm">Rows</th><th class="nm">Added (EGP)</th><th></th></tr>
+      ${im.map(i=>`<tr><td>${new Date(i.at).toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</td><td>${esc(i.by)}</td><td>${esc(i.file)}</td><td class="nm">${f0(i.rows)}</td><td class="nm">${f2(i.increase)}</td><td><button class="mp-link" data-dl="${esc(i.id)}">Rows (Excel)</button></td></tr>`).join("")}</table>`;
+  B.querySelectorAll("[data-dl]").forEach(b=>b.onclick=async()=>{ b.disabled=true; try{ const r=await SB.from("sid_kv").select("value").eq("key","collect:"+b.dataset.dl).maybeSingle(); const v=r.data&&r.data.value; if(!v) throw new Error("not found");
+      const rows=[["Project","Unified Sales report","Unit","Before","After","Change"]].concat(v.changes.map(c=>[c.p,c.k,c.u,c.from,c.to,Math.round((c.to-c.from)*100)/100])); const ws=XLSX.utils.aoa_to_sheet(rows); ws["!cols"]=[{wch:24},{wch:28},{wch:16},{wch:16},{wch:16},{wch:16}]; const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Collection update"); XLSX.writeFile(wb,"Collection update "+String(v.at).slice(0,10)+".xlsx"); }catch(e){ toast("Could not open: "+(e.message||e),true); } b.disabled=false; }); }
+
+document.addEventListener("click",e=>{ const a=e.target.closest&&e.target.closest("#edCollect"), b=e.target.closest&&e.target.closest("#edCollLog"); if(a){ e.preventDefault(); openImport(); } if(b){ e.preventDefault(); openLog(); } },true);
+window.SID_COLLECT={openImport,openLog,check,readSheet,money};
+})();
+</script>
+<style>
+.cl-dlg{width:min(900px,100%)}
+.cl-b{border-radius:10px;padding:10px 12px;background:rgba(0,0,0,.05);font-size:13px}.cl-b.ok{background:rgba(48,164,108,.14);color:#175c39}.cl-b.bad{background:rgba(179,38,61,.1);color:#9c1f34}
+.cl-s{border:1px solid rgba(0,0,0,.1);border-radius:10px;padding:6px 10px}.cl-s.bad{border-color:rgba(179,38,61,.4);background:rgba(179,38,61,.04)}.cl-s.warn{border-color:rgba(255,159,10,.5);background:rgba(255,159,10,.06)}
+.cl-s summary{cursor:pointer;font-size:13px}.cl-s summary span{background:rgba(0,0,0,.08);border-radius:9px;padding:0 7px;font-size:11px;margin-left:4px}
+.cl-l{max-height:210px;overflow:auto;margin-top:6px;font-size:12.5px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:2px 14px}.cl-l small{color:#6b7079}
+.cl-t{width:100%;border-collapse:collapse;font-size:12.5px}.cl-t th{font-size:10.5px;text-transform:uppercase;color:#7c818b;text-align:left;padding:4px 6px}.cl-t td{padding:5px 6px;border-top:1px solid rgba(0,0,0,.07)}
+.cl-t .nm{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.cl-t .bad{color:#B3263D;font-weight:600}.cl-t .up{color:#1f7a4c;font-weight:600}.cl-dim{opacity:.5}.cl-tot td{font-weight:700;border-top:2px solid rgba(0,0,0,.2)}
+.cl-sc{overflow-x:auto}.mp-tiles .ok b{color:#1f7a4c}
+</style>
 <script id="unifiedJs">
 (function(){
 const T=v=>String(v==null?"":v).replace(/ /g," ").trim();
