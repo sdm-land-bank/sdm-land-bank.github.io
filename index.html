@@ -10069,10 +10069,11 @@ function addMarks(){
       <span class="tpin-t"><b>360° tour</b><span>${esc(t.name)} · ${esc(t.lab||"main gate")}</span></span></span>
       <span class="tpin-stem"></span><span class="tpin-dot"></span>`;
     stopMap(el);
-    el.onclick=e=>{ e.stopPropagation(); flyToTour(t,at); };
+    el.onclick=e=>{ e.stopPropagation(); if(TP_EDIT) return; flyToTour(t,t.at||at); };
     // anchored at the dot, so the glowing point sits exactly on the gate
     TPINS.push({t,at,el,marker:new maplibregl.Marker({element:el,anchor:"bottom",offset:[0,8]}).setLngLat(at).addTo(map)});
   });
+  tourPinsInit();
   ["move","zoom","resize","pitch","rotate"].forEach(ev=>map.on(ev,updateMarks));
   groundDefer();
   updateMarks();
@@ -10353,6 +10354,41 @@ function flyToTour(t,at){
   const go=()=>openTour(t);
   if(at&&map.getZoom()<15){ map.easeTo({center:at,zoom:16,duration:RM?0:700}); setTimeout(go,RM?0:620); }
   else go();
+}
+/* V122: move the 360 points (administrators): drag, then Done saves for everybody */
+const TP_KEY="tourpins"; let TP_EDIT=false, TP_SNAP=null, TP_SAVED={};
+const tpId=t=>t.url||t.name;
+function tpApply(o){ if(!o||typeof o!=="object") return; TP_SAVED=o;
+  TPINS.forEach(x=>{ const p=o[tpId(x.t)]; if(Array.isArray(p)&&isFinite(p[0])&&isFinite(p[1])){ x.t.at=[+p[0],+p[1]]; x.at=x.t.at; x.marker.setLngLat(x.t.at); } }); }
+function tpAdmin(){ try{ return !!(typeof sbReady==="function"&&sbReady()&&SBME&&SBME.is_admin); }catch(e){ return false; } }
+class TpCtl{ onAdd(){ const d=document.createElement("div"); d.className="maplibregl-ctrl maplibregl-ctrl-group tp-ctl";
+    d.innerHTML='<button type="button" title="Move the 360° points on the map (administrators only)" aria-label="Move the 360 degree points" style="width:36px;height:36px;font:700 11px system-ui;color:#fff;background:linear-gradient(160deg,#c8102e,#8b0a1f);border-radius:4px">360°</button>';
+    d.querySelector("button").addEventListener("click",e=>{ e.stopPropagation(); tpEdit(!TP_EDIT); }); this._d=d; return d; }
+  onRemove(){ this._d&&this._d.remove(); } }
+function tourPinsInit(){
+  try{ if(typeof sbReady==="function"&&sbReady()) SB.from("sid_kv").select("value").eq("key",TP_KEY).maybeSingle().then(r=>{ if(r&&r.data&&r.data.value) tpApply(r.data.value); },()=>{}); }catch(e){}
+  setInterval(()=>{ try{ if(tpAdmin()&&map&&!document.querySelector(".tp-ctl")) map.addControl(new TpCtl(),"top-right"); }catch(e){} },1500);
+}
+function tpEdit(on){
+  let bar=document.getElementById("tpBar");
+  if(!on){ TP_EDIT=false; TPINS.forEach(x=>{ x.marker.setDraggable(false); x.el.style.cursor=""; }); if(bar) bar.remove(); return; }
+  if(!tpAdmin()) return;
+  TP_EDIT=true; TP_SNAP=TPINS.map(x=>x.marker.getLngLat().toArray());
+  TPINS.forEach(x=>{ x.marker.setDraggable(true); x.el.style.cursor="grab"; });
+  if(bar) bar.remove();
+  bar=document.createElement("div"); bar.id="tpBar";
+  bar.style.cssText="position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:100000;display:flex;gap:10px;align-items:center;padding:10px 14px;border-radius:14px;background:rgba(24,22,22,.92);color:#fff;font:500 13px system-ui;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:94vw;flex-wrap:wrap";
+  bar.innerHTML='<span>Zoom in, then drag each 360° point to its exact place</span><button id="tpDone" style="padding:7px 14px;border:0;border-radius:9px;background:#c8102e;color:#fff;font:600 13px system-ui;cursor:pointer">Done</button><button id="tpCancel" style="padding:7px 12px;border:1px solid rgba(255,255,255,.35);border-radius:9px;background:none;color:#fff;font:500 13px system-ui;cursor:pointer">Cancel</button>';
+  document.body.appendChild(bar);
+  bar.querySelector("#tpCancel").onclick=()=>{ TPINS.forEach((x,i)=>x.marker.setLngLat(TP_SNAP[i])); tpEdit(false); };
+  bar.querySelector("#tpDone").onclick=async()=>{
+    const o={...TP_SAVED}; let n=0;
+    TPINS.forEach((x,i)=>{ const p=x.marker.getLngLat(); if(Math.abs(p.lng-TP_SNAP[i][0])>1e-9||Math.abs(p.lat-TP_SNAP[i][1])>1e-9){ o[tpId(x.t)]=[+p.lng.toFixed(6),+p.lat.toFixed(6)]; n++; } });
+    if(!n){ tpEdit(false); return; }
+    const r=await SB.from("sid_kv").upsert({key:TP_KEY,value:o,updated_at:new Date().toISOString()});
+    if(r.error){ toast("Could not save the 360° points: "+r.error.message,true); return; }
+    tpApply(o); tpEdit(false); toast("360° points saved for everyone ("+n+" moved)");
+  };
 }
 /* V122: own 360 viewer (the teleport.eco tour pages are gone) */
 const TOUR_PANO={"industria-east":"https://360page.s3.us-east-1.amazonaws.com/captures/ed8197fb-94fb-4be2-a2f4-7cfb9a5d34d8/",
