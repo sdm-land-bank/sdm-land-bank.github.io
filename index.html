@@ -10021,7 +10021,7 @@ function bboxOfParks(parks){
   return b[0]<=b[2]?b:null;
 }
 function stopMap(el){
-  ["mousedown","touchstart","pointerdown","dblclick"].forEach(ev=>el.addEventListener(ev,e=>e.stopPropagation()));
+  ["mousedown","touchstart","pointerdown","dblclick"].forEach(ev=>el.addEventListener(ev,e=>{ if(typeof TP_EDIT!=="undefined"&&TP_EDIT&&el.classList.contains("tpin")) return; e.stopPropagation(); }));
 }
 function addMarks(){
   if(!map||MARKS.length||!window.maplibregl) return;
@@ -10361,27 +10361,27 @@ const tpId=t=>t.url||t.name;
 function tpApply(o){ if(!o||typeof o!=="object") return; TP_SAVED=o;
   TPINS.forEach(x=>{ const p=o[tpId(x.t)]; if(Array.isArray(p)&&isFinite(p[0])&&isFinite(p[1])){ x.t.at=[+p[0],+p[1]]; x.at=x.t.at; x.marker.setLngLat(x.t.at); } }); }
 function tpAdmin(){ try{ return !!(typeof sbReady==="function"&&sbReady()&&SBME&&SBME.is_admin); }catch(e){ return false; } }
-class TpCtl{ onAdd(){ const d=document.createElement("div"); d.className="maplibregl-ctrl maplibregl-ctrl-group tp-ctl";
+class TpMvCtl{ onAdd(){ const d=document.createElement("div"); d.className="maplibregl-ctrl maplibregl-ctrl-group tpmv-ctl";
     d.innerHTML='<button type="button" title="Move the 360° points on the map (administrators only)" aria-label="Move the 360 degree points" style="width:36px;height:36px;font:700 11px system-ui;color:#fff;background:linear-gradient(160deg,#c8102e,#8b0a1f);border-radius:4px">360°</button>';
     d.querySelector("button").addEventListener("click",e=>{ e.stopPropagation(); tpEdit(!TP_EDIT); }); this._d=d; return d; }
   onRemove(){ this._d&&this._d.remove(); } }
 function tourPinsInit(){
   try{ if(typeof sbReady==="function"&&sbReady()) SB.from("sid_kv").select("value").eq("key",TP_KEY).maybeSingle().then(r=>{ if(r&&r.data&&r.data.value) tpApply(r.data.value); },()=>{}); }catch(e){}
-  setInterval(()=>{ try{ if(tpAdmin()&&map&&!document.querySelector(".tp-ctl")) map.addControl(new TpCtl(),"top-right"); }catch(e){} },1500);
+  setInterval(()=>{ try{ if(tpAdmin()&&map&&!document.querySelector(".tpmv-ctl")) map.addControl(new TpMvCtl(),"top-right"); }catch(e){} },1500);
 }
 function tpEdit(on){
-  let bar=document.getElementById("tpBar");
+  let bar=document.getElementById("tpmvBar");
   if(!on){ TP_EDIT=false; TPINS.forEach(x=>{ x.marker.setDraggable(false); x.el.style.cursor=""; }); if(bar) bar.remove(); return; }
   if(!tpAdmin()) return;
   TP_EDIT=true; TP_SNAP=TPINS.map(x=>x.marker.getLngLat().toArray());
   TPINS.forEach(x=>{ x.marker.setDraggable(true); x.el.style.cursor="grab"; });
   if(bar) bar.remove();
-  bar=document.createElement("div"); bar.id="tpBar";
+  bar=document.createElement("div"); bar.id="tpmvBar";
   bar.style.cssText="position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:100000;display:flex;gap:10px;align-items:center;padding:10px 14px;border-radius:14px;background:rgba(24,22,22,.92);color:#fff;font:500 13px system-ui;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:94vw;flex-wrap:wrap";
-  bar.innerHTML='<span>Zoom in, then drag each 360° point to its exact place</span><button id="tpDone" style="padding:7px 14px;border:0;border-radius:9px;background:#c8102e;color:#fff;font:600 13px system-ui;cursor:pointer">Done</button><button id="tpCancel" style="padding:7px 12px;border:1px solid rgba(255,255,255,.35);border-radius:9px;background:none;color:#fff;font:500 13px system-ui;cursor:pointer">Cancel</button>';
+  bar.innerHTML='<span>Zoom in, then drag each 360° point to its exact place</span><button id="tpmvDone" style="padding:7px 14px;border:0;border-radius:9px;background:#c8102e;color:#fff;font:600 13px system-ui;cursor:pointer">Done</button><button id="tpmvCancel" style="padding:7px 12px;border:1px solid rgba(255,255,255,.35);border-radius:9px;background:none;color:#fff;font:500 13px system-ui;cursor:pointer">Cancel</button>';
   document.body.appendChild(bar);
-  bar.querySelector("#tpCancel").onclick=()=>{ TPINS.forEach((x,i)=>x.marker.setLngLat(TP_SNAP[i])); tpEdit(false); };
-  bar.querySelector("#tpDone").onclick=async()=>{
+  bar.querySelector("#tpmvCancel").onclick=()=>{ TPINS.forEach((x,i)=>x.marker.setLngLat(TP_SNAP[i])); tpEdit(false); };
+  bar.querySelector("#tpmvDone").onclick=async()=>{
     const o={...TP_SAVED}; let n=0;
     TPINS.forEach((x,i)=>{ const p=x.marker.getLngLat(); if(Math.abs(p.lng-TP_SNAP[i][0])>1e-9||Math.abs(p.lat-TP_SNAP[i][1])>1e-9){ o[tpId(x.t)]=[+p.lng.toFixed(6),+p.lat.toFixed(6)]; n++; } });
     if(!n){ tpEdit(false); return; }
