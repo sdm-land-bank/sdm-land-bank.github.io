@@ -10346,6 +10346,65 @@ function flyToTour(t,at){
   if(at&&map.getZoom()<15){ map.easeTo({center:at,zoom:16,duration:RM?0:700}); setTimeout(go,RM?0:620); }
   else go();
 }
+/* V122: own 360 viewer (the teleport.eco tour pages are gone) */
+const TOUR_PANO={"industria-east":"https://360page.s3.us-east-1.amazonaws.com/captures/ed8197fb-94fb-4be2-a2f4-7cfb9a5d34d8/",
+  "industria-west":"https://360page.s3.us-east-1.amazonaws.com/captures/aca5b821-a691-4438-b0b4-29b45ca44c4b/"};
+function tourPano(body,t,done){
+  const fail=msg=>{ done(); const d=document.createElement("div"); d.style.cssText="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font:500 14px system-ui;text-align:center;padding:24px"; d.textContent=msg; body.appendChild(d); };
+  const base=TOUR_PANO[t.park]; if(!base){ fail("360° photo not available for this project."); return; }
+  const cv=document.createElement("canvas"); cv.style.cssText="position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab";
+  const gl=cv.getContext("webgl",{antialias:false,alpha:false}); if(!gl){ fail("This browser cannot draw the 360° view (WebGL is off)."); return; }
+  const VSs="attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
+  const FSs="precision highp float;uniform sampler2D T;uniform vec2 R;uniform float Y;uniform float P;uniform float F;"+
+    "void main(){vec2 q=gl_FragCoord.xy/R*2.-1.;float t=tan(F*.5);vec3 d=normalize(vec3(q.x*t*R.x/R.y,q.y*t,-1.));"+
+    "float cp=cos(P),sp=sin(P);d=vec3(d.x,d.y*cp-d.z*sp,d.y*sp+d.z*cp);"+
+    "float c=cos(Y),s=sin(Y);d=vec3(d.x*c-d.z*s,d.y,d.x*s+d.z*c);"+
+    "float lon=atan(d.x,-d.z),lat=asin(clamp(d.y,-1.,1.));gl_FragColor=texture2D(T,vec2(lon/6.2831853+.5,.5-lat/3.1415927));}";
+  let pr;
+  try{
+    const sh=(k,src)=>{ const o=gl.createShader(k); gl.shaderSource(o,src); gl.compileShader(o); if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)) throw new Error("shader"); return o; };
+    pr=gl.createProgram(); gl.attachShader(pr,sh(gl.VERTEX_SHADER,VSs)); gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FSs)); gl.linkProgram(pr); gl.useProgram(pr);
+  }catch(e){ fail("This browser cannot draw the 360° view."); return; }
+  const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const ap=gl.getAttribLocation(pr,"p"); gl.enableVertexAttribArray(ap); gl.vertexAttribPointer(ap,2,gl.FLOAT,false,0,0);
+  const uR=gl.getUniformLocation(pr,"R"), uY=gl.getUniformLocation(pr,"Y"), uP=gl.getUniformLocation(pr,"P"), uF=gl.getUniformLocation(pr,"F");
+  const V={y:0,p:0,f:80*Math.PI/180,touched:false,last:0,ready:false};
+  const big=gl.getParameter(gl.MAX_TEXTURE_SIZE)>=4096;
+  const im=new Image(); im.crossOrigin="anonymous"; im.decoding="async";
+  im.onerror=()=>{ try{ const x=gl.getExtension("WEBGL_lose_context"); if(x) x.loseContext(); }catch(e){} cv.remove(); fail("The 360° photo could not be loaded. Check the connection and try again."); };
+  im.onload=()=>{
+    const tx=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,tx);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGB,gl.RGB,gl.UNSIGNED_BYTE,im);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    V.ready=true; done(); requestAnimationFrame(loop);
+  };
+  im.src=base+(big?"panorama.jpg":"panorama_web.jpg");
+  body.insertBefore(cv,body.firstChild);
+  const pts=new Map(); let pd=0;
+  const clampP=()=>{ V.p=Math.max(-1.45,Math.min(1.45,V.p)); };
+  const clampF=()=>{ V.f=Math.max(30*Math.PI/180,Math.min(110*Math.PI/180,V.f)); };
+  cv.addEventListener("pointerdown",e=>{ pts.set(e.pointerId,[e.clientX,e.clientY]); try{ cv.setPointerCapture(e.pointerId); }catch(x){} V.touched=true; cv.style.cursor="grabbing"; if(pts.size===2){ const a=[...pts.values()]; pd=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]); } });
+  cv.addEventListener("pointermove",e=>{
+    const o=pts.get(e.pointerId); if(!o) return;
+    const dx=e.clientX-o[0], dy=e.clientY-o[1]; pts.set(e.pointerId,[e.clientX,e.clientY]);
+    if(pts.size===2){ const a=[...pts.values()], d=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]); if(pd>0){ V.f*=pd/d; clampF(); } pd=d; return; }
+    const k=V.f/Math.max(1,cv.clientHeight);
+    V.y-=dx*k; V.p+=dy*k; clampP();
+  });
+  const up=e=>{ pts.delete(e.pointerId); pd=0; if(!pts.size) cv.style.cursor="grab"; };
+  cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
+  cv.addEventListener("wheel",e=>{ e.preventDefault(); V.f*=Math.exp(e.deltaY*0.001); clampF(); V.touched=true; },{passive:false});
+  function loop(ts){
+    if(!cv.isConnected){ try{ const x=gl.getExtension("WEBGL_lose_context"); if(x) x.loseContext(); }catch(e){} return; }
+    requestAnimationFrame(loop);
+    const dt=V.last?Math.min(100,ts-V.last):0; V.last=ts;
+    if(!V.touched) V.y+=dt*0.00006;
+    const dpr=Math.min(2,devicePixelRatio||1), w=Math.round(cv.clientWidth*dpr), h=Math.round(cv.clientHeight*dpr);
+    if(w<2||h<2) return; if(cv.width!==w||cv.height!==h){ cv.width=w; cv.height=h; }
+    gl.viewport(0,0,w,h); gl.uniform2f(uR,w,h); gl.uniform1f(uY,V.y); gl.uniform1f(uP,V.p); gl.uniform1f(uF,V.f); gl.drawArrays(gl.TRIANGLES,0,3);
+  }
+}
 /* The tour opens in a widget inside the app — never a new tab. */
 function openTour(t){
   if(!t) return;
@@ -10364,14 +10423,11 @@ function openTour(t){
     </div>
     <div class="tour-body">
       <div class="tour-load"><span>Loading 360° tour…</span></div>
-      <iframe src="${esc(t.url)}" title="${esc(t.name)} 360° virtual tour"
-        allow="${TOUR_ALLOW}"
-        allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
     </div></div>`;
   document.body.appendChild(ov);
-  const f=ov.querySelector("iframe"), ld=ov.querySelector(".tour-load");
+  const ld=ov.querySelector(".tour-load");
   const done=()=>{ if(!ld.isConnected) return; ld.style.transition="opacity .4s"; ld.style.opacity="0"; setTimeout(()=>ld.remove(),420); };
-  f.onload=()=>setTimeout(done,4000); setTimeout(done,15000);
+  tourPano(ov.querySelector(".tour-body"),t,done);
   ov.querySelector("#tourX").onclick=closeTour;
   ov.addEventListener("mousedown",e=>{ if(e.target===ov) closeTour(); });
   ov.querySelector("#tourFs").onclick=()=>{
@@ -12212,6 +12268,7 @@ async function restoreSaved(){
   if(!rec||!rec.rows) return;
   if(rec.baseSig===S.baseSig) applyRecord(rec);
   else if(rec.rowsSig===S.baseSig) S.restored=rec.savedAt;      // this file already carries those edits
+  else if(staleDismissed(rec)){ try{ await idb.del(STORE_KEY); }catch(e){} }   /* V122: already decided - never ask again */
   else S.stale=rec;                                              // made against another version of the data
 }
 async function persist(){
@@ -12822,16 +12879,46 @@ function edChrome(){
   const rv=$("#edRevert"); if(rv) rv.onclick=edRevert;
   buildNav();
 }
+function staleDismissed(rec){ try{ return localStorage.getItem("sid_stale_decided")===String(rec.savedAt); }catch(e){ return false; } }
+function staleDecide(rec){ try{ localStorage.setItem("sid_stale_decided",String(rec.savedAt)); }catch(e){} }
+/* V122: what would the saved edits change in the register that is open now? */
+function staleDiff(rec){
+  const skip=new Set(["st","cur","key","_id"]), cols=rec.cols, cur=new Map();
+  S.rows.forEach(r=>{ if(r.unit) cur.set(r.key,r); });
+  const seen=new Set(), ch=[], add=[]; let same=0;
+  rec.rows.forEach(a=>{
+    const o={}; cols.forEach((c,j)=>o[c]=a[j]);
+    const k=o.unit?ckey(o.sheet||defaultSheet(o.park),o.unit):null, r=k?cur.get(k):null;
+    if(!r){ add.push(o); return; }
+    seen.add(k);
+    const d=[]; cols.forEach(c=>{ if(skip.has(c)||c==="sheet") return; const x=r[c], y=o[c]; if(String(x??"")!==String(y??"")) d.push([c,x,y]); });
+    if(d.length) ch.push({o,d}); else same++;
+  });
+  const gone=[]; cur.forEach((r,k)=>{ if(!seen.has(k)) gone.push(r); });
+  return {ch,add,gone,same};
+}
+function staleHtml(rec){
+  const D=staleDiff(rec), v=x=>x==null||x===""?"—":esc(String(x)), nm=o=>esc((o.park||"?")+" · "+(o.unit||"(no unit)"));
+  const head=`<div><b>${fInt(D.ch.length)}</b> rows changed · <b>${fInt(D.add.length)}</b> rows added (not in the open register) · <b>${fInt(D.gone.length)}</b> rows in the open register that the saved edits do not have (they would disappear) · ${fInt(D.same)} unchanged</div>`;
+  const lim=(arr,n,f)=>arr.slice(0,n).map(f).join("")+(arr.length>n?`<div style="opacity:.7">… and ${fInt(arr.length-n)} more</div>`:"");
+  const chg=D.ch.length?`<div style="margin-top:8px"><b>Changed rows</b>`+lim(D.ch,60,x=>`<div style="margin:3px 0"><b>${nm(x.o)}</b>: ${x.d.slice(0,6).map(f=>esc(f[0])+" "+v(f[1])+" → <b>"+v(f[2])+"</b>").join(" · ")}${x.d.length>6?" · +"+(x.d.length-6)+" more fields":""}</div>`)+`</div>`:"";
+  const ad=D.add.length?`<div style="margin-top:8px"><b>Rows added</b>`+lim(D.add,30,o=>`<div>${nm(o)}${o.status?" · "+esc(o.status):""}</div>`)+`</div>`:"";
+  const gn=D.gone.length?`<div style="margin-top:8px"><b>Rows that would disappear</b>`+lim(D.gone,30,r=>`<div>${nm(r)}</div>`)+`</div>`:"";
+  return head+chg+ad+gn;
+}
 function edNotice(){
   const el=$("#edNotice"); if(!el) return;
   if(!S.stale){ el.hidden=true; return; }
   const when=new Date(S.stale.savedAt).toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
   el.hidden=false;
+  el.style.flexWrap="wrap";
   el.innerHTML=`<span><b>Saved edits from ${when} were not loaded.</b> They were made to a different version of the register
     than the one in this file (${fInt(S.stale.n)} rows). Loading them replaces the file's data.</span>
-    <button class="ebtn" id="stLoad">Load those edits</button><button class="ebtn" id="stDrop">Discard them</button>`;
-  $("#stLoad").onclick=()=>{ applyRecord(S.stale); edInit(true); commitRows(); toast("Saved edits loaded"); };
-  $("#stDrop").onclick=async()=>{ try{ await idb.del(STORE_KEY); }catch(e){} S.stale=null; edNotice(); toast("Old edits discarded"); };
+    <button class="ebtn" id="stShow">Show what they change</button><button class="ebtn" id="stLoad">Load those edits</button><button class="ebtn" id="stDrop">Discard them</button>
+    <div id="stDiff" hidden style="flex-basis:100%;max-height:300px;overflow:auto;margin-top:8px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.06);font-size:12px;line-height:1.5"></div>`;
+  $("#stShow").onclick=()=>{ const d=$("#stDiff"); if(d.hidden){ try{ d.innerHTML=staleHtml(S.stale); }catch(e){ d.textContent="Could not compare the saved edits with the open register."; } d.hidden=false; $("#stShow").textContent="Hide changes"; } else { d.hidden=true; $("#stShow").textContent="Show what they change"; } };
+  $("#stLoad").onclick=()=>{ const r=S.stale; staleDecide(r); applyRecord(r); edInit(true); commitRows(); toast("Saved edits loaded"); };
+  $("#stDrop").onclick=async()=>{ staleDecide(S.stale); try{ await idb.del(STORE_KEY); }catch(e){} S.stale=null; edNotice(); toast("Old edits discarded"); };
 }
 async function edSave(){
   if(!ED.rows) return;
