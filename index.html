@@ -9992,7 +9992,15 @@ const TOURS=[
   {park:"industria-east", name:"Industria East", space:"Main floor", at:[31.762633,30.206141],   // main gate
    url:"https://www.teleport.eco/tour/44629/main-floor-ED8197FB"},
   {park:"industria-west", name:"Industria West", space:"Main floor", at:[31.704014,30.220402],   // main gate
-   url:"https://www.teleport.eco/tour/44629-2/main-floor-ACA5B821"}
+   url:"https://www.teleport.eco/tour/44629-2/main-floor-ACA5B821"},
+  {park:"al-oula", name:"Aloula", space:"Entrance", lab:"entrance", at:[30.85105,29.93235], pano:"https://360page.s3.us-east-1.amazonaws.com/captures/38213105-9022-4547-b1d1-3adc4678fa31/",
+   url:"https://www.teleport.eco/tour/sixth-district/main-floor-38213105"},
+  {park:"al-oula", name:"Aloula", space:"Point 2", lab:"point 2", at:[30.84981,29.93357], pano:"https://360page.s3.us-east-1.amazonaws.com/captures/77db64d0-2d4f-4fa5-b7be-2bdc729b0802/",
+   url:"https://www.teleport.eco/tour/sixth-district-4/main-floor-77DB64D0"},
+  {park:"al-oula", name:"Aloula", space:"Point 3", lab:"point 3", at:[30.84853,29.93475], pano:"https://360page.s3.us-east-1.amazonaws.com/captures/a26a752c-e4c6-40f9-a227-155eb1147792/",
+   url:"https://www.teleport.eco/tour/sixth-district-3/main-floor-A26A752C"},
+  {park:"al-oula", name:"Aloula", space:"Point 4", lab:"point 4", at:[30.84964,29.9365], pano:"https://360page.s3.us-east-1.amazonaws.com/captures/49e7c980-ec2d-4b8b-8d6d-8c208ab6361f/",
+   url:"https://www.teleport.eco/tour/sixth-district-2/main-floor-49E7C980"}
 ];
 const TOUR_FADE=[12.3,13.1];
 const CAM_SVG='<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5a1.5 1.5 0 011.5-1.5h1.3l1-1.5h4.4l1 1.5h1.3A1.5 1.5 0 0114 5.5v6A1.5 1.5 0 0112.5 13h-9A1.5 1.5 0 012 11.5z"/><circle cx="8" cy="8.4" r="2.3"/></svg>';
@@ -10058,7 +10066,7 @@ function addMarks(){
     const el=document.createElement("button");
     el.type="button"; el.className="tpin"; el.setAttribute("aria-label",t.name+" 360° virtual tour");
     el.innerHTML=`<span class="tpin-c"><span class="tpin-i">${T360_SVG}</span>
-      <span class="tpin-t"><b>360° tour</b><span>${esc(t.name)} · main gate</span></span></span>
+      <span class="tpin-t"><b>360° tour</b><span>${esc(t.name)} · ${esc(t.lab||"main gate")}</span></span></span>
       <span class="tpin-stem"></span><span class="tpin-dot"></span>`;
     stopMap(el);
     el.onclick=e=>{ e.stopPropagation(); flyToTour(t,at); };
@@ -10351,7 +10359,7 @@ const TOUR_PANO={"industria-east":"https://360page.s3.us-east-1.amazonaws.com/ca
   "industria-west":"https://360page.s3.us-east-1.amazonaws.com/captures/aca5b821-a691-4438-b0b4-29b45ca44c4b/"};
 function tourPano(body,t,done){
   const fail=msg=>{ done(); const d=document.createElement("div"); d.style.cssText="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font:500 14px system-ui;text-align:center;padding:24px"; d.textContent=msg; body.appendChild(d); };
-  const base=TOUR_PANO[t.park]; if(!base){ fail("360° photo not available for this project."); return; }
+  const base=t.pano||TOUR_PANO[t.park]; if(!base){ fail("360° photo not available for this project."); return; }
   const cv=document.createElement("canvas"); cv.style.cssText="position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab";
   const gl=cv.getContext("webgl",{antialias:false,alpha:false}); if(!gl){ fail("This browser cannot draw the 360° view (WebGL is off)."); return; }
   const VSs="attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
@@ -15463,6 +15471,7 @@ if(typeof LARA!=="undefined"){
 /* ---------- 3. 360 view in the presentation: one full turn to the right, then the next slide ---------- */
 const PANO={"https://www.teleport.eco/tour/44629/main-floor-ED8197FB":"https://360page.s3.us-east-1.amazonaws.com/captures/ed8197fb-94fb-4be2-a2f4-7cfb9a5d34d8/",
   "https://www.teleport.eco/tour/44629-2/main-floor-ACA5B821":"https://360page.s3.us-east-1.amazonaws.com/captures/aca5b821-a691-4438-b0b4-29b45ca44c4b/"};
+PANO["https://www.teleport.eco/tour/sixth-district/main-floor-38213105"]="https://360page.s3.us-east-1.amazonaws.com/captures/38213105-9022-4547-b1d1-3adc4678fa31/";PANO["https://www.teleport.eco/tour/sixth-district-4/main-floor-77DB64D0"]="https://360page.s3.us-east-1.amazonaws.com/captures/77db64d0-2d4f-4fa5-b7be-2bdc729b0802/";PANO["https://www.teleport.eco/tour/sixth-district-3/main-floor-A26A752C"]="https://360page.s3.us-east-1.amazonaws.com/captures/a26a752c-e4c6-40f9-a227-155eb1147792/";PANO["https://www.teleport.eco/tour/sixth-district-2/main-floor-49E7C980"]="https://360page.s3.us-east-1.amazonaws.com/captures/49e7c980-ec2d-4b8b-8d6d-8c208ab6361f/";
 const TURN=22000, FOV=72*Math.PI/180;
 const VS="attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
 const FS="precision highp float;uniform sampler2D T;uniform vec2 R;uniform float Y;uniform float F;"+
