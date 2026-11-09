@@ -3289,7 +3289,7 @@ function mdsRecord(T,r,label){
     handoverDate:xlDate(get("handover date")), phase:txt(get("phase"),24), quarter:txt(get("quarter of sale"),12),
     opsStatus:txt(get("ops status"),16),
     mva:pos(get("electricity (mva)")), water:pos(get("water (m3/day)")), sewage:pos(get("sewage (m3/day)")),
-    clientId:pos(get("client code","client id")),
+    clientId:((v)=>{ if(v==null) return null; const t=String(v).trim(); if(!t) return null; const d=t.replace(/[,\s]/g,""); return /^\d+(\.0+)?$/.test(d)?Math.round(+d):t; })(get("client code","client id")),
     unifiedMds:((v)=>v==null?null:(String(v).trim()||null))(get("unified mds")), unifiedSales:((v)=>v==null?null:(String(v).trim()||null))(get("unified sales report")),
     code:pos(get("code")), approvedBy:txt(get("approved by"),40), actualSales:pos(get("actual sales")),
     soldArea:pos(get("sold area")), plannedPrice:pos(get("sqm price planned")), plannedValue:pos(get("cash value planned")),
@@ -8420,7 +8420,7 @@ function parseWorkbook(buf){
       handoverDate:dt(get(r,"handover date")), phase:txt(get(r,"phase"),20),
       quarter:txt(get(r,"quarter of sale"),12), opsStatus:txt(get(r,"ops status"),14),
       mva:num(get(r,"electricity (mva)")), water:num(get(r,"water (m3/day)")),
-      sewage:num(get(r,"sewage (m3/day)")), clientId:num(get(r,"client id")), unifiedMds:((v)=>v==null?null:(String(v).trim()||null))(get(r,"unified mds")), unifiedSales:((v)=>v==null?null:(String(v).trim()||null))(get(r,"unified sales report"))});
+      sewage:num(get(r,"sewage (m3/day)")), clientId:((v)=>{ if(v==null) return null; const t=String(v).trim(); if(!t) return null; const d=t.replace(/[,\s]/g,""); return /^\d+(\.0+)?$/.test(d)?Math.round(+d):t; })(get(r,"client id")), unifiedMds:((v)=>v==null?null:(String(v).trim()||null))(get(r,"unified mds")), unifiedSales:((v)=>v==null?null:(String(v).trim()||null))(get(r,"unified sales report"))});
   });
   if(!out.length) throw new Error("Parsed the sheet but matched no known project names.");
   return {rows:out, unknown};
@@ -12412,7 +12412,7 @@ function edAFOpen(k,btn){
   if(regHide(k)){ regUnlock(()=>{ const b=$(`#edHead .afb[data-af="${k}"]`); if(b) edAFOpen(k,b); }); return; }
   const cnt=new Map(); ED.rows.forEach(r=>{ const v=edAFRaw(c,r); cnt.set(v,(cnt.get(v)||0)+1); });
   const num=c.type==="num"||c.type==="int";
-  const vals=[...cnt.keys()].sort((a,b)=>a==="(blank)"?1:b==="(blank)"?-1:(num?a-b:String(edAFLabel(c,a)).localeCompare(String(edAFLabel(c,b)),undefined,{numeric:true})));
+  const vals=[...cnt.keys()].sort((a,b)=>a==="(blank)"?1:b==="(blank)"?-1:(num&&isFinite(a)&&isFinite(b)?a-b:String(edAFLabel(c,a)).localeCompare(String(edAFLabel(c,b)),undefined,{numeric:true})));
   ED.vs=ED.vs||{}; const cur=ED.vs[k], pick=new Set(cur&&cur.size?cur:vals);
   const o=document.createElement("div"); o.id="edAF";
   const r=btn.getBoundingClientRect(); o.style.left=Math.max(6,Math.min(r.left,innerWidth-268))+"px"; o.style.top=(r.bottom+2)+"px"; o.style.maxHeight=Math.max(180,innerHeight-r.bottom-10)+"px";
@@ -12631,11 +12631,13 @@ function ymd(y,m,dd){
   if(dt.getUTCFullYear()!==Y||dt.getUTCMonth()!==M-1||dt.getUTCDate()!==D) return null;
   return `${Y}-${String(M).padStart(2,"0")}-${String(D).padStart(2,"0")}`;
 }
+const TXTID=new Set(["clientId","code"]);
 function edParse(c,raw){
   const s=String(raw??"").trim();
   if(!s) return {v:null};
-  if(c.type==="num"){ const x=parseFloat(s.replace(/[,\s]/g,"")); return isFinite(x)?{v:Math.round(x*100)/100}:{err:c.label+": enter a number"}; }
-  if(c.type==="int"){ const x=parseInt(s.replace(/[,\s]/g,""),10); return isFinite(x)?{v:x}:{err:c.label+": enter a whole number"}; }
+  const _t=s.replace(/[,\s]/g,"");
+  if(c.type==="num"){ const x=/^[+-]?(\d+\.?\d*|\.\d+)$/.test(_t)?parseFloat(_t):NaN; return isFinite(x)?{v:Math.round(x*100)/100}:{err:c.label+": enter a number (not changed: "+s.slice(0,30)+")"}; }
+  if(c.type==="int"){ if(/^[+-]?\d+$/.test(_t)) return {v:parseInt(_t,10)}; if(TXTID.has(c.k)) return {v:s.slice(0,160)}; return {err:c.label+": enter a whole number (not changed: "+s.slice(0,30)+")"}; }
   if(c.type==="date"){
     let m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/), v=null;
     if(m) v=ymd(m[1],m[2],m[3]);
@@ -12673,7 +12675,7 @@ function edFilter(){
   const q=ED.q.trim().toLowerCase();
   const vss=Object.entries(ED.vs||{}).filter(([k,v])=>v&&v.size&&!regHide(k)&&colOf(k)).map(([k,v])=>[colOf(k),v]);
   const cfs=Object.entries(ED.cf).filter(([k])=>!regHide(k)&&colOf(k)).filter(([,v])=>v!==""&&v!=null).map(([k,v])=>{
-    const c=colOf(k); return {c,v,np:(c.type==="num"||c.type==="int")?numPred(v):null,s:String(v).toLowerCase()}; });
+    const c=colOf(k); return {c,v,np:(c.type==="num"||c.type==="int")&&!TXTID.has(c.k)?numPred(v):null,s:String(v).toLowerCase()}; });
   // rows the survey join actually drew on the map (a new row is not drawn until it is saved)
   const mapped=ED.show==="unmapped"?new Set([...S.plots.values()].flatMap(p=>(p.rows||[]).map(r=>r._id))):null;
   const list=ED.rows.filter(r=>{
@@ -12702,7 +12704,7 @@ function edFilter(){
     const {k,dir}=ED.sort, c=colOf(k), num=c.type==="num"||c.type==="int";
     list.sort((a,b)=>{ const x=a[k],y=b[k];
       if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1;
-      return (num?x-y:String(x).localeCompare(String(y),undefined,{numeric:true}))*dir; });
+      return (num&&isFinite(x)&&isFinite(y)?x-y:String(x).localeCompare(String(y),undefined,{numeric:true}))*dir; });
   } else list.sort((a,b)=>(ED.added.has(b._id)?1:0)-(ED.added.has(a._id)?1:0));
   ED.view=list;
   ED.idx=new Map(list.map((r,i)=>[r._id,i]));
@@ -12846,7 +12848,7 @@ function edStartEdit(initial){
     el.value=initial!=null?initial:(r[c.k]??"");
     if(c.list) el.setAttribute("list","edl-"+c.k);
     if(c.type==="date") el.placeholder="YYYY-MM-DD";
-    if(c.type==="num"||c.type==="int") el.inputMode="decimal";
+    if((c.type==="num"||c.type==="int")&&!TXTID.has(c.k)) el.inputMode="decimal";
   }
   cell.classList.add("editing"); cell.textContent=""; cell.appendChild(el);
   ED.editing={id:r._id,c:ED.cur.c,el};
@@ -13180,7 +13182,7 @@ function openRowForm(id,prefill){
     if(c.type==="enum") ctl=`<select name="${c.k}">${c.k==="park"?`<option value="">Choose a park…</option>`:(c.req?"":`<option value="">—</option>`)}${
       edOpts(c.k).map(([x,l])=>`<option value="${esc(x)}" ${val===x?"selected":""}>${esc(l)}</option>`).join("")}</select>`;
     else if(c.type==="date") ctl=`<input type="date" name="${c.k}" value="${esc(val||"")}">`;
-    else ctl=`<input name="${c.k}" value="${esc(val??"")}" autocomplete="off" ${c.type==="num"||c.type==="int"?'inputmode="decimal"':""}
+    else ctl=`<input name="${c.k}" value="${esc(val??"")}" autocomplete="off" ${(c.type==="num"||c.type==="int")&&!TXTID.has(c.k)?'inputmode="decimal"':""}
       ${c.k==="unit"?'list="edl-free"':c.list?`list="edl-${c.k}"`:""}>`;
     const hint=c.k==="unit"?'<span class="efm-hint" id="fmUnitHint"></span>':c.k==="cash"?'<span class="efm-hint" id="fmCashHint"></span>':"";
     return `<label class="${c.req?"req":""}"><span>${esc(c.label)}</span>${ctl}${hint}</label>`;
