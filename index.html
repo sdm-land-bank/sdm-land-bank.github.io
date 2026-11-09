@@ -10361,13 +10361,13 @@ const tpId=t=>t.url||t.name;
 function tpApply(o){ if(!o||typeof o!=="object") return; TP_SAVED=o;
   TPINS.forEach(x=>{ const p=o[tpId(x.t)]; if(Array.isArray(p)&&isFinite(p[0])&&isFinite(p[1])){ x.t.at=[+p[0],+p[1]]; x.at=x.t.at; x.marker.setLngLat(x.t.at); } }); }
 function tpAdmin(){ try{ return !!(typeof sbReady==="function"&&sbReady()&&SBME&&SBME.is_admin); }catch(e){ return false; } }
-class TpMvCtl{ onAdd(){ const d=document.createElement("div"); d.className="maplibregl-ctrl maplibregl-ctrl-group tpmv-ctl";
-    d.innerHTML='<button type="button" title="Move the 360° points on the map (administrators only)" aria-label="Move the 360 degree points" style="width:36px;height:36px;font:700 11px system-ui;color:#fff;background:linear-gradient(160deg,#c8102e,#8b0a1f);border-radius:4px">360°</button>';
+class TpMvCtl{ onAdd(){ const d=document.createElement("div"); d.className="maplibregl-ctrl maplibregl-ctrl-group tpmv-ctl"; d.style.cssText="margin:0 10px 10px 0;border-radius:12px;background:rgba(255,255,255,.8);box-shadow:0 4px 14px rgba(158,31,53,.45)";
+    d.innerHTML='<button type="button" title="Move the 360° points on the map (administrators only)" aria-label="Move the 360 degree points" style="width:36px;height:36px;font:700 11px system-ui;color:#fff;background:linear-gradient(160deg,#d23a55,#9e1f35);border-radius:4px">360°</button>';
     d.querySelector("button").addEventListener("click",e=>{ e.stopPropagation(); tpEdit(!TP_EDIT); }); this._d=d; return d; }
   onRemove(){ this._d&&this._d.remove(); } }
 function tourPinsInit(){
   try{ if(typeof sbReady==="function"&&sbReady()) SB.from("sid_kv").select("value").eq("key",TP_KEY).maybeSingle().then(r=>{ if(r&&r.data&&r.data.value) tpApply(r.data.value); },()=>{}); }catch(e){}
-  setInterval(()=>{ try{ if(tpAdmin()&&map&&!document.querySelector(".tpmv-ctl")) map.addControl(new TpMvCtl(),"top-right"); }catch(e){} },1500);
+  setInterval(()=>{ try{ if(tpAdmin()&&map&&!document.querySelector(".tpmv-ctl")) map.addControl(new TpMvCtl(),"bottom-right"); }catch(e){} },1500);
 }
 function tpEdit(on){
   let bar=document.getElementById("tpmvBar");
@@ -10403,7 +10403,7 @@ function tourPano(body,t,done){
     "void main(){vec2 q=gl_FragCoord.xy/R*2.-1.;float t=tan(F*.5);vec3 d=normalize(vec3(q.x*t*R.x/R.y,q.y*t,-1.));"+
     "float cp=cos(P),sp=sin(P);d=vec3(d.x,d.y*cp-d.z*sp,d.y*sp+d.z*cp);"+
     "float c=cos(Y),s=sin(Y);d=vec3(d.x*c-d.z*s,d.y,d.x*s+d.z*c);"+
-    "float lon=atan(d.x,-d.z),lat=asin(clamp(d.y,-1.,1.));gl_FragColor=texture2D(T,vec2(lon/6.2831853+.5,.5-lat/3.1415927));}";
+    "float lon=atan(d.x,-d.z),lat=asin(clamp(d.y,-1.,1.));gl_FragColor=texture2D(T,vec2(.5-lon/6.2831853,.5-lat/3.1415927));}";
   let pr;
   try{
     const sh=(k,src)=>{ const o=gl.createShader(k); gl.shaderSource(o,src); gl.compileShader(o); if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)) throw new Error("shader"); return o; };
@@ -15513,7 +15513,7 @@ const VS="attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
 const FS="precision highp float;uniform sampler2D T;uniform vec2 R;uniform float Y;uniform float F;"+
   "void main(){vec2 q=gl_FragCoord.xy/R*2.-1.;float t=tan(F*.5);vec3 d=normalize(vec3(q.x*t*R.x/R.y,q.y*t,-1.));"+
   "float c=cos(Y),s=sin(Y);d=vec3(d.x*c-d.z*s,d.y,d.x*s+d.z*c);"+
-  "float lon=atan(d.x,-d.z),lat=asin(clamp(d.y,-1.,1.));gl_FragColor=texture2D(T,vec2(lon/6.2831853+.5,.5-lat/3.1415927));}";
+  "float lon=atan(d.x,-d.z),lat=asin(clamp(d.y,-1.,1.));gl_FragColor=texture2D(T,vec2(.5-lon/6.2831853,.5-lat/3.1415927));}";
 function panoInto(el,base){
   const cv=document.createElement("canvas"); cv.className="pt-pano";
   const gl=cv.getContext("webgl",{antialias:false,alpha:false,preserveDrawingBuffer:false}); if(!gl) return;
