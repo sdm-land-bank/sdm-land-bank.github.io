@@ -21869,8 +21869,11 @@ function cols(){ if(typeof EDCOLS==="undefined") return;
   put("opsStatus",{k:"unifiedSales",label:"Unified Sales report",type:"text",w:210});
   try{ if(typeof edCalcW==="function") edCalcW(); }catch(e){} }
 function define(){ if(typeof ED==="undefined"||!ED||!ED.rows) return;
-  ED.rows.forEach(r=>{ FB.forEach(k=>{ try{ const d=Object.getOwnPropertyDescriptor(r,k); if(d&&d.enumerable&&d.value!=null&&d.value!=="") return;
-    Object.defineProperty(r,k,{value:FX[k](r),enumerable:false,writable:true,configurable:true}); }catch(e){} }); }); }
+  /* V125: the fallback must exist on BOTH the working rows and the saved baseline (ED.orig), and is never recomputed once set,
+     otherwise every row looks edited (blank -> text): 2,595 pending changes, the Save button flashing, and bogus history lines */
+  const fill=r=>{ FB.forEach(k=>{ try{ const d=Object.getOwnPropertyDescriptor(r,k); if(d&&d.value!=null&&d.value!=="") return;
+    Object.defineProperty(r,k,{value:FX[k](r),enumerable:false,writable:true,configurable:true}); }catch(e){} }); };
+  ED.rows.forEach(fill); if(ED.orig&&ED.orig.forEach) ED.orig.forEach(fill); }
 cols();
 if(typeof edFilter==="function"){ const f0=edFilter; window.edFilter=function(){ try{ cols(); define(); }catch(e){ console.error("unified columns",e); } return f0.apply(this,arguments); }; }
 if(typeof edSetG==="function"){ const g0=edSetG; window.edSetG=function(r,k){ const o=g0.apply(this,arguments); if(FXK.includes(k)){ try{ Object.defineProperty(r,k,{value:r[k],enumerable:true,writable:true,configurable:true}); }catch(e){} } return o; }; }
@@ -23611,7 +23614,7 @@ function deptView(d,I){ const mine=I.filter(i=>i.dept===d&&(C.park==="all"||i.pa
    ${Object.keys(groups).length?Object.entries(groups).sort((a,b)=>b[1][0].sev-a[1][0].sev||b[1].length-a[1].length).map(([rule,list])=>`<details class="ck-g" ${list[0].sev>=2?"open":""}><summary><span class="ck-sev s${list[0].sev}"></span>${esc(RULES[rule]||rule)} <b>${list.length}</b></summary>
      <div class="ck-list">${list.slice(0,300).map((i,ix)=>`<div class="ck-it" data-i="${esc(i.key)}"><span class="ck-pk">${esc(pname(i.park))}</span><span class="ck-tx">${esc(i.text)}</span><span class="ck-b"><button data-a="open">Open</button>${can?`<button data-a="ok">Not an issue</button>`:""}</span></div>`).join("")}${list.length>300?`<p class="ck-n">+${list.length-300} more — narrow by project or use Excel</p>`:""}</div></details>`).join("")
    :`<p class="ck-ok">Nothing open for ${DN[d]}${C.park!=="all"?" in "+esc(pname(C.park)):""}.</p>`}
-   ${ac.length?`<details class="ck-g"><summary>Accepted as not an issue <b>${ac.length}</b></summary><div class="ck-list">${ac.slice(0,200).map(i=>`<div class="ck-it"><span class="ck-pk">${esc(pname(i.park))}</span><span class="ck-tx">${esc(i.text)} <small>— ${esc(i.acc.why)} (${esc(i.acc.by)})</small></span></div>`).join("")}</div></details>`:""}`; }
+   ${ac.length?`<details class="ck-g" open><summary>Accepted as not an issue — with the reason typed <b>${ac.length}</b></summary><div class="ck-list">${ac.slice(0,200).map(i=>`<div class="ck-it" data-i="${esc(i.key)}"><span class="ck-pk">${esc(pname(i.park))}</span><span class="ck-tx">${esc(i.text)}<br><small>Reason: <b>${esc(i.acc.why)}</b> — ${esc(i.acc.by)}${i.acc.at?" · "+esc(day(i.acc.at)):""}</small></span><span class="ck-b"><button data-a="open">Open</button>${can?`<button data-a="reopen">Reopen</button>`:""}</span></div>`).join("")}</div></details>`:""}`; }
 function wire(){ const root=document.querySelector(".ck-page"); if(!root) return; const I=issues(), byKey=new Map(I.map(i=>[i.key+"|"+i.rule,i])), find=k=>I.find(i=>i.key===k);
   root.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ C.tab=b.dataset.t; C.touched=true; repaint(); });
   root.querySelector("#ckPark").onchange=e=>{ C.park=e.target.value; repaint(); };
@@ -23622,6 +23625,7 @@ function wire(){ const root=document.querySelector(".ck-page"); if(!root) return
     b.disabled=true; try{ await signSet(p,d,n,note); toast(`${DN[d]} signed off ${pname(p)}`); repaint(); }catch(e){ b.disabled=false; toast("Not saved: "+(e.message||e),true); } });
   root.querySelectorAll(".ck-it[data-i]").forEach(el=>{ const it=find(el.dataset.i); if(!it) return;
     el.querySelectorAll("[data-a]").forEach(b=>b.onclick=async()=>{ if(b.dataset.a==="open") openIt(it,b);
+      if(b.dataset.a==="reopen"){ try{ await SID_MLFIX.accSet(it.key,""); toast("Reopened"); repaint(); }catch(e){ toast("Not saved: "+(e.message||e),true); } }
       if(b.dataset.a==="ok"){ const why=prompt("Why is this not an issue? (shown to the team)",""); if(!why||!why.trim()) return; try{ await SID_MLFIX.accSet(it.key,why.trim()); toast("Saved"); repaint(); }catch(e){ toast("Not saved: "+(e.message||e),true); } } }); }); }
 function openIt(it,btn){ if(it.plot){ const k=it.plot.k; if(S.park!=="all"&&S.park!==it.plot.park){ S.park=it.plot.park; const s=document.getElementById("parkSel"); if(s) s.value=S.park; } showPlots([k]); return; }
   const r=it.row; if(!r) return;
@@ -23660,4 +23664,3 @@ if(typeof canSee==="function"){ const cs=canSee; canSee=function(id){ if(id==="m
 </script>
 </body>
 </html>
-<!-- V122e -->
