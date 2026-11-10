@@ -11299,8 +11299,8 @@ function fpPlan(area,price,c=FPL.cfg){
   return {area,price,total,adv,rem,fix,inst,n,pt,rows,paid,interest:paid-total,byYr,pv,cfg:{...c,start},
           sqmI:paid/area, up:total?paid/total-1:0};  // price / sqm with instalments = total payable ÷ area
 }
-const fpPrice=x=>FPL.px[x.id]!=null?FPL.px[x.id]:(x.price||null);
-const fpTotal=x=>FPL.px[x.id]!=null?FPL.px[x.id]*x.r.area:(x.total||null);
+const fpPrice=x=>{ const v=FPL.px[x.id]!=null?FPL.px[x.id]:(x.price||null); return v==null||MKF===1?v:Math.round(v*MKF); };
+const fpTotal=x=>{ const v=FPL.px[x.id]!=null?FPL.px[x.id]*x.r.area:(x.total||null); return v==null||MKF===1?v:Math.round(v*MKF*100)/100; };
 const fpPlanFor=x=>{ const t=fpTotal(x); return t?fpPlan(x.r.area,t/x.r.area):null; };
 const upS=v=>v>0.00005?" (+"+(Math.round(v*1000)/10)+"%)":"";
 function fpPanel(){
@@ -11314,7 +11314,7 @@ function fpPanel(){
       <label class="fp-f"><span>Payment type</span><span class="fp-in"><select data-fp="type">${Object.keys(FP_TYPES).map(k=>`<option ${k===c.type?"selected":""}>${k}</option>`).join("")}</select></span></label>
       ${f("adv","Advance payment","%")}${f("years","Instalment period","years","number","1")}${f("rate","Annual interest rate (lending)","%")}
       ${f("esc","Annual instalment escalation","%")}${f("fixPct","Fixed annual payment","% of value")}${f("fixN","Number of fixed annual payments","","number","1")}
-      ${f("start","First payment date","","date")}${f("disc","Discount rate","% · internal")}${f("credit","Credit interest","% · internal")}
+      ${f("start","First payment date","","date")}${f("cdisc","Special discount (printed)","% · max "+mkMaxDisc())}${f("disc","Discount rate","% · internal")}${f("credit","Credit interest","% · internal")}
     </div>
     <div class="fp-meta" id="fpMeta">${fpMeta()}</div>
   </section>`;
@@ -11452,11 +11452,32 @@ function soValue(){ const f=SO.f, cash=soTotal();
   return cash; }
 const soSqm=()=>{ const a=+SO.f.area||0; return a?soValue()/a:0; };
 const fSqmP=v=>Math.abs(v-Math.round(v))<0.005?fInt(v):fA(v);
-function soTotHtml(){ const f=SO.f, cash=soTotal(), v=soValue(), a=+f.area||0;
+function soTotHtml(){ const f=SO.f, a=+f.area||0, base=soTotHtml0(); if(!a||!(+f.price>0)) return base;
+  const real=+f.price, list=Math.round(real*(1+MK_PCT/100)), d=mkDisc(f.disc), net=Math.max(real,Math.round(list*(1-d/100)));
+  const v=mkSo(()=>MKV?MKV.vNet:soValue());
+  return base+`<span class="so-hint">Printed for the customer: list ${fInt(list)} EGP/sqm (+${MK_PCT}%)${d?` · special discount ${fA(d)}% → ${fInt(net)} EGP/sqm`:""} · total ${fA(v)} EGP. The real price above stays in the system only (max discount ${mkMaxDisc()}%).</span>`; }
+function soTotHtml0(){ const f=SO.f, cash=soTotal(), v=soValue(), a=+f.area||0;
   if(!a||Math.abs(v-cash)<0.01) return `Total value <b id="soTot">${fA(cash)} EGP</b>`;
   const up=cash?v/cash-1:0;
   return `Cash value <b>${fA(cash)} EGP</b><br>${f.mode==="plan"?"With instalments":"Custom rows"}: <b id="soTot">${fSqmP(v/a)} EGP/sqm · ${fA(v)} EGP</b>${up>0?` <em class="so-up">+${Math.round(up*1000)/10}%</em>`:""}
     <span class="so-hint">The offer prints this price per sqm and total — the value the client pays ÷ ${fA(a)} sqm.</span>`; }
+
+/* ---- V127 customer price: real + MK_PCT %, minus the printed special discount (never below the real price) ---- */
+const MK_PCT=20;
+let MKF=1, MKD=0, MKV=null;                     /* print-time factor and discount; 1 / 0 / null on screen (real prices) */
+const mkMaxDisc=()=>Math.floor((1-1/(1+MK_PCT/100))*10000)/100;   /* 16.66 % with +20 % */
+const mkDisc=v=>Math.max(0,Math.min(mkMaxDisc(),Math.round((+v||0)*100)/100));
+/* runs fn with the Sales offer at the CUSTOMER price; MKV holds the before/after-discount values for the price block */
+function mkSo(fn){
+  const f=SO.f; if(!f||!(+f.price>0)) return fn();
+  const real=+f.price, list=Math.round(real*(1+MK_PCT/100)), d=mkDisc(f.disc), net=Math.max(real,Math.round(list*(1-d/100))), saved=f.price;
+  try{
+    f.price=list; const vList=soValue();
+    f.price=net; const vNet=soValue();
+    MKV={list,net,d,vList,vNet}; return fn();
+  } finally { f.price=saved; MKV=null; }
+}
+function mkFactor(fn,d){ MKD=mkDisc(d); MKF=(1+MK_PCT/100)*(1-MKD/100); try{ return fn(); } finally{ MKF=1; MKD=0; } }
 function soPlan(){ const f=SO.f; return f.mode==="plan"?fpPlan(f.area,f.price,{...FP_DEF,...f.plan}):null; }
 /* The payment table: generated from the plan (summary or every instalment), cash, or edited by hand. */
 function soPayRows(){
@@ -11472,7 +11493,7 @@ function soPayRows(){
 const f2=v=>(+v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const fA=v=>(+v||0).toLocaleString("en-US",{maximumFractionDigits:2});
 /* ---- the PDF, in points on A4, laid out like the Excel offers ---- */
-function soPdf(){ PL.on=PL.lang!=="en"; try{ return soPdf0(); } finally{ PL.on=false; } }
+function soPdf(){ PL.on=PL.lang!=="en"; try{ return mkSo(()=>soPdf0()); } finally{ PL.on=false; } }
 function soPdf0(){
   const {jsPDF}=window.jspdf, doc=plDoc(new jsPDF({unit:"pt",format:"a4"})), f=SO.f, H=841.89;
   const L=53, R=549, C1=221, C2=318, C3=402, GR=[217,217,217], BK=[0,0,0], RD=[230,0,0];
@@ -11505,9 +11526,12 @@ function soPdf0(){
   tx("Date :",440,66+3*12.3,{b:true}); tx(soDateTxt(f.date),505,66+3*12.3,{b:true,a:"center"});
   y=134;
   const total=soValue(), cashV=soTotal();
-  [["Area :",fA(f.area),"M2"],["price / SQM",fSqmP(soSqm()),"EGP"],["Total value",fA(total),"EGP"]].forEach(([k,v,u],i)=>{
-    const last=i===2; box(L,y,C1-L,12.3,GR); box(C1,y,C2-C1,12.3,last?GR:null);
-    tx(k,L+3,y+6.2,{b:!last,i:last}); tx(v,C2-4,y+6.2,{b:true,i:last,a:"right"}); tx(u,C2+36,y+6.2,{b:true}); y+=12.3; });
+  const a0=+f.area||0, mk=MKV, before=mk?mk.vList:total, after=mk?mk.vNet:total;
+  const prows=[["Area :",fA(f.area),"M2",0],["price / SQM",fSqmP(a0?before/a0:0),"EGP",0],["Total value",fA(before),"EGP",1]];
+  if(mk&&mk.d>0) prows.push([`Special discount (${fA(mk.d)}%)`,"- "+fA(Math.round((before-after)*100)/100),"EGP",2],["Price / SQM after discount",fSqmP(a0?after/a0:0),"EGP",0],["Total after discount",fA(after),"EGP",1]);
+  prows.forEach(([k,v,u,kind])=>{
+    const last=kind===1, red=kind===2, RDc=[230,0,0]; box(L,y,C1-L,12.3,GR); box(C1,y,C2-C1,12.3,last?GR:null);
+    tx(k,L+3,y+6.2,{b:!last,i:last,c:red?RDc:undefined}); tx(v,C2-4,y+6.2,{b:true,i:last,a:"right",c:red?RDc:undefined}); tx(u,C2+36,y+6.2,{b:true}); y+=12.3; });
   if(f.cashNote&&Math.abs(total-cashV)>=0.01){ tx("*",L-4,y+6.2); rich(`Price with instalments (interest included). {Cash price ${fSqmP(+f.price||0)} EGP/SQM - total ${fA(cashV)} EGP.}`,L+3,y+6.2); y+=10; }
   // payment table
   y+=14; const rows=soPayRows(), due=rows.reduce((a,r)=>a+(+r.amt||0),0);
@@ -11587,7 +11611,7 @@ function viewOffer(){
       <div class="mm-2">${inp("sector","Sector (block)")}${inp("plots","Plots no.")}</div>
       <div class="mm-2">${inp("landType","Land type")}${inp("date","Date",{type:"date"})}</div></div>
     <div class="mm-sec"><h4>Land &amp; price</h4>
-      <div class="mm-2"><label class="hi">Area (sqm)<input data-so="area" type="number" step="any" value="${f.area}"></label><label class="hi">Cash price / SQM (EGP)<input data-so="price" type="number" step="any" value="${f.price}"></label></div>
+      <div class="mm-2"><label class="hi">Area (sqm)<input data-so="area" type="number" step="any" value="${f.area}"></label><label class="hi">Cash price / SQM (EGP)<input data-so="price" type="number" step="any" value="${f.price}"></label><label class="hi">Special discount % (printed)<input data-so="disc" type="number" step="0.5" min="0" max="${mkMaxDisc()}" value="${f.disc||0}"></label></div>
       <p class="so-tot" id="soTotBox">${soTotHtml()}</p></div>
     <div class="mm-sec"><h4>Payment</h4>
       <div class="so-seg">${[["plan","Payment plan"],["cash","Cash"],["custom","Custom rows"]].map(([k,l])=>`<button type="button" data-somode="${k}" class="${f.mode===k?"on":""}">${l}</button>`).join("")}</div>
@@ -11659,7 +11683,8 @@ function pdfSafe(s){
   if(PL.on) return String(s??"").replace(/\s+/g," ").trim();
   return String(s??"").replace(/[\u0600-\u06FF]/g,ch=>AR2LAT[ch]||"").replace(/[^\x20-\x7E\u00A0-\u00FF\u2013\u2014\u2019\u2022]/g,"").replace(/\s+/g," ").trim();
 }
-function buildProposal(opt={}){ PL.on=PL.lang!=="en"; try{ return buildProposal0(opt); } finally{ PL.on=false; } }
+function buildProposal(opt={}){ if(!(opt.prices||opt.fin)) return buildProposal0(opt); return mkFactor(()=>buildProposal0(opt),FPL.cfg.cdisc); }
+function buildProposal0(opt={}){ PL.on=PL.lang!=="en"; try{ return buildProposal0(opt); } finally{ PL.on=false; } }
 function buildProposal0(opt={}){
   const FIN=!!opt.fin, SHOWP=!!(opt.prices||opt.fin);
   // with the financial proposal, prices are instalment prices (total payable ÷ area); otherwise cash list prices
@@ -11689,7 +11714,7 @@ function buildProposal0(opt={}){
   const finPage=(p,idx)=>{
     const plan=fpPlanFor(p), r=p.r; head(`FINANCIAL PROPOSAL · OPTION ${idx+1}`);
     T(`Initial financial proposal — ${ptitle(p)}`,M,35,{s:16,b:true});
-    T(`${S.reg.parks[r.park]?.name||r.park} · ${fInt(r.area)} sqm${p.merge?" combined":""}`,M,42,{s:9.5,c:MUTE});
+    T(`${S.reg.parks[r.park]?.name||r.park} · ${fInt(r.area)} sqm${p.merge?" combined":""}${MKD>0?` · special discount ${fA(MKD)}% included`:""}`,M,42,{s:9.5,c:MUTE});
     if(!plan){ box(M,50,W-2*M,16); T("Price on request — this plot has no list price in the MDS yet.",M+6,60,{s:10}); return; }
     const c=plan.cfg, bw=(W-2*M-12)/5;
     [["CASH VALUE",fMon(plan.total,"EGP"),`${fInt(plan.area)} sqm x ${fInt(plan.price)}`],["ADVANCE "+(+c.adv)+"%",fMon(plan.adv,"EGP"),"on "+fDate(plan.rows[0].date)],
@@ -14153,12 +14178,45 @@ async function slLinkGo(){ let L=null; try{ L=JSON.parse(slStore("sid.sl.link")|
     const put=(n,v,keep)=>{ const el=F.elements[n]; if(el&&v&&!(keep&&String(el.value||"").trim())) el.value=String(v).slice(0,120); };
     put("client",b.customerName); put("company",b.companyName||b.customerName); if(F.elements.soldby) put("soldby",b.ownerEmail,true);   /* the lead's customer replaces the MDS's old names */
     F.dispatchEvent(new Event("input",{bubbles:true})); },800); }
+
+/* ---- V127: Lara's Initial financial offer, built here ---- */
+function laraOfGrab(){ try{ const m=location.hash.match(/^#laraoffer=([0-9a-fA-F-]{36})$/); if(!m) return false;
+    slStore("sid.sl.laraof",JSON.stringify({id:m[1],t:Date.now()})); history.replaceState(null,"",location.pathname+location.search); return true; }catch(e){ return false; } }
+laraOfGrab();
+async function laraOfGo(){ let L=null; try{ L=JSON.parse(slStore("sid.sl.laraof")||"null"); }catch(e){} slStore("sid.sl.laraof",null);
+  if(!L||!L.id||Date.now()-(L.t||0)>10*60*1000) return;
+  if(typeof canSee==="function"&&!canSee("match")){ toast("Lara's offer: your role does not include Investor Match",true); return; }
+  let d; try{ d=await slFetch("/integration/lara-offer/"+encodeURIComponent(L.id)); }catch(e){ toast("Lara's offer: "+slErrMsg(e),true); return; }
+  const keys=[...new Set((d.plotKeys||[]).flatMap(k=>slDrawnKeys(k)))];
+  if(!keys.length){ toast("Lara's offer: the plots were not found on the map",true); return; }
+  const keepCfg={...FPL.cfg};
+  S.sel=new Set(keys); selMatch();
+  Object.assign(MM.form,{company:String(d.company||d.customer||"").slice(0,120),contact:String(d.customer||"").slice(0,120),activity:String(d.activity||"").slice(0,160)});
+  FPL.cfg={...FPL.cfg,...(d.plan||{}),cdisc:+d.discountPct||0,start:""};
+  setTimeout(()=>laraOfBuild(d,keepCfg),1200);
+}
+async function laraOfBuild(d,keepCfg){
+  const J=window.jspdf; if(!J||!J.jsPDF){ toast("Lara's offer: the PDF library did not load",true); return; }
+  const Orig=J.jsPDF, docs=[];
+  J.jsPDF=function(...a){ const x=new Orig(...a); x.save=function(n){ docs.push({x,n}); return x; }; return x; };
+  let total=null;
+  /* SLB.inRun = an internal build: the bridge's customer picker / print record is skipped (Lara records the offer when it is sent) */
+  try{ SLB.inRun=true; buildProposal({fin:true,prices:true});
+    try{ total=mkFactor(()=>{ const p=mmAll().filter(x=>MM.picked.has(x.id)).map(x=>fpPlanFor(x)).filter(Boolean); return p.length?p.reduce((a,q)=>a+q.paid,0):null; },FPL.cfg.cdisc); }catch(e){}
+  } catch(e){ console.error(e); toast("Lara's offer: the PDF could not be built — "+e.message,true); return; }
+  finally{ SLB.inRun=false; J.jsPDF=Orig; FPL.cfg=keepCfg; }
+  const last=docs[docs.length-1]; if(!last){ toast("Lara's offer: no PDF was produced",true); return; }
+  const b64=String(last.x.output("datauristring")).split(",")[1]||"";
+  try{ await slFetch("/integration/lara-offer/"+encodeURIComponent(d.id)+"/pdf",{method:"POST",body:{fileName:("Initial financial offer - "+(d.ref||"")+".pdf").replace(/[\\/:*?"<>|]+/g," "),pdfBase64:b64,total}}); }
+  catch(e){ toast("Lara's offer: could not send the PDF to Sales Leads — "+slErrMsg(e),true); return; }
+  toast(`Lara's Initial financial offer ${d.ref||""} is built and attached in Sales Leads${total?` (customer total ${fInt(total)} EGP)`:""}. Approve it there.`);
+}
 function slBootWait(n){ n=n||0;
   const ok=typeof sbReady==="function"&&sbReady()&&SBME&&S.rows&&S.rows.length&&S.plots&&S.plots.size&&S.mapReady&&WF.ready;
   if(!ok){ const inGate=!(typeof sbReady==="function"&&sbReady()); if(n<300||inGate) setTimeout(()=>slBootWait(inGate?n:n+1),1000); return; }
-  setTimeout(()=>{ SLB.ready=true; slSnapSched(); if(slStore("sid.sl.link")) slLinkGo(); },1500); }
+  setTimeout(()=>{ SLB.ready=true; slSnapSched(); if(slStore("sid.sl.link")) slLinkGo(); if(slStore("sid.sl.laraof")) laraOfGo(); },1500); }
 setTimeout(()=>{ slBootWait(0);
-  addEventListener("hashchange",()=>{ if(slLinkGrab()&&SLB.ready) slLinkGo(); }); },0);
+  addEventListener("hashchange",()=>{ if(slLinkGrab()&&SLB.ready) slLinkGo(); if(laraOfGrab()&&SLB.ready) laraOfGo(); }); },0);
 
 /* ---- §3 / §6 the customer picker and the gate in front of every commercial offer ---- */
 function slMask(p){ const d=String(p||"").replace(/\D/g,""); return d.length>4?"•••• "+d.slice(-4):d; }
@@ -14198,7 +14256,8 @@ function slPlan(mode,c,p,total,cash){ const o={mode,totalPayable:slR2(total),cas
       escalationPct:+c.esc||0,fixedAnnual:(+c.fixPct||0)>0&&(+c.fixN||0)>0}); }
   if(mode==="custom") o.instalments=(SO.f.rows||[]).length;
   return o; }
-function slInfo(type){
+function slInfo(type){ return type==="sales_offer"?mkSo(()=>slInfo0(type)):mkFactor(()=>slInfo0(type),FPL.cfg.cdisc); }
+function slInfo0(type){
   if(type==="sales_offer"){ const rs=soRows(), f=SO.f||{}, v=soValue();
     const mode=f.mode==="plan"||f.mode==="custom"?f.mode:"cash";
     return {plots:rs.map(slPlotOf),total:slR2(v),plan:slPlan(mode,mode==="plan"?{...FP_DEF,...(f.plan||{})}:null,mode==="plan"?soPlan():null,v,soTotal()),summary:`Sales offer (${f.mode==="plan"?"instalments":f.mode==="custom"?"custom payments":"cash"}) · ${f.project||""} · ${rs.map(r=>r.unit).join(", ")} · ${fInt(f.area)} sqm`}; }
