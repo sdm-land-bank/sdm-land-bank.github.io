@@ -14183,12 +14183,16 @@ async function slLinkGo(){ let L=null; try{ L=JSON.parse(slStore("sid.sl.link")|
 function laraOfGrab(){ try{ const m=location.hash.match(/^#laraoffer=([0-9a-fA-F-]{36})$/); if(!m) return false;
     slStore("sid.sl.laraof",JSON.stringify({id:m[1],t:Date.now()})); history.replaceState(null,"",location.pathname+location.search); return true; }catch(e){ return false; } }
 laraOfGrab();
-async function laraOfGo(){ let L=null; try{ L=JSON.parse(slStore("sid.sl.laraof")||"null"); }catch(e){} slStore("sid.sl.laraof",null);
+/* the drawn plots of a Sales Leads plot key; right after start-up the row-to-plot link may not be settled, so the drawn plot with the same key also counts */
+const laraOfKeys=list=>[...new Set((list||[]).flatMap(k=>{ const a=slDrawnKeys(k); return a.length?a:S.geo.features.filter(f=>f.properties.k===k&&S.plots.has(k)).map(f=>f.properties.k); }))];
+async function laraOfGo(n){ n=n||0; let L=null; try{ L=JSON.parse(slStore("sid.sl.laraof")||"null"); }catch(e){}
+  if(!L||!L.id||Date.now()-(L.t||0)>10*60*1000){ slStore("sid.sl.laraof",null); return; }
   if(!L||!L.id||Date.now()-(L.t||0)>10*60*1000) return;
-  if(typeof canSee==="function"&&!canSee("match")){ toast("Lara's offer: your role does not include Investor Match",true); return; }
-  let d; try{ d=await slFetch("/integration/lara-offer/"+encodeURIComponent(L.id)); }catch(e){ toast("Lara's offer: "+slErrMsg(e),true); return; }
-  const keys=[...new Set((d.plotKeys||[]).flatMap(k=>slDrawnKeys(k)))];
-  if(!keys.length){ toast("Lara's offer: the plots were not found on the map",true); return; }
+  if(typeof canSee==="function"&&!canSee("match")){ slStore("sid.sl.laraof",null); toast("Lara's offer: your role does not include Investor Match",true); return; }
+  let d; try{ d=await slFetch("/integration/lara-offer/"+encodeURIComponent(L.id)); }catch(e){ slStore("sid.sl.laraof",null); toast("Lara's offer: "+slErrMsg(e),true); return; }
+  const keys=laraOfKeys(d.plotKeys);
+  if(!keys.length){ if(n<4){ setTimeout(()=>laraOfGo(n+1),4000); return; } slStore("sid.sl.laraof",null); toast("Lara's offer: the plots were not found on the map",true); return; }
+  slStore("sid.sl.laraof",null);
   const keepCfg={...FPL.cfg};
   S.sel=new Set(keys); selMatch();
   Object.assign(MM.form,{company:String(d.company||d.customer||"").slice(0,120),contact:String(d.customer||"").slice(0,120),activity:String(d.activity||"").slice(0,160)});
