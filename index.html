@@ -11951,11 +11951,7 @@ function buildProposal0(opt={}){
     if(doc.__mir) doc.__mir(false);
     { const F=fitter(bboxOf(feats,P),b1); doc.setLineWidth(.12);
       feats.forEach(ft=>{ if(sset.has(ft.properties.k)) return; const st=S.plots.get(ft.properties.k)?.row?.status;
-        doc.setDrawColor(150,145,140); if(st==="sold"||st==="reserved") doc.setFillColor(214,209,202); else doc.setFillColor(246,244,241); drawPoly(doc,ft,P,F,"FD");
-        const u=ft.properties.unit; if(!u) return; const r0=ringsOf(ft.geometry)[0]; if(!r0) return; const pts=r0.map(pt=>F.pt(P.fwd(pt)));
-        const w=Math.max(...pts.map(q=>q[0]))-Math.min(...pts.map(q=>q[0])), hh=Math.max(...pts.map(q=>q[1]))-Math.min(...pts.map(q=>q[1])); if(w<6||hh<2.4) return;
-        const fs=Math.max(1.6,Math.min(3,w/(u.length*0.62))); doc.setFont("helvetica","normal"); doc.setFontSize(fs); doc.setTextColor(...MUTE);
-        const c=polyCentroid(ft,P,F); doc.text(u,c[0],c[1]+fs*0.34,{align:"center"}); });
+        doc.setDrawColor(150,145,140); if(st==="sold"||st==="reserved") doc.setFillColor(214,209,202); else doc.setFillColor(246,244,241); drawPoly(doc,ft,P,F,"FD"); });
       doc.setFillColor(...RED); doc.setDrawColor(255,255,255); doc.setLineWidth(.25); subject.forEach(ft=>drawPoly(doc,ft,P,F,"FD"));
       { const c=groupCentroid(subject,P,F); doc.setDrawColor(...INK); doc.setLineWidth(.3);
         const lx=Math.min(b1.x+b1.w-32,c[0]+14), ly=Math.max(b1.y+8,c[1]-12); doc.line(c[0],c[1],lx,ly); doc.setFillColor(...INK); doc.roundedRect(lx,ly-4.5,30,7,1.5,1.5,"F");
@@ -11969,18 +11965,19 @@ function buildProposal0(opt={}){
     const b2={x:M+5,y:p2+13,w:W-2*M-10,h:h2-24};
     if(doc.__mir) doc.__mir(false);
     { let bb=bboxOf(subject,P); const pad=Math.max(bb[2]-bb[0],bb[3]-bb[1])*0.5+22; bb=[bb[0]-pad,bb[1]-pad,bb[2]+pad,bb[3]+pad];
-      const F=fitter(bb,{x:b2.x+14,y:b2.y+11,w:b2.w-28,h:b2.h-22});
+      const F=fitter(bb,{x:b2.x+14,y:b2.y+11,w:b2.w-56,h:b2.h-22});
       doc.setLineWidth(.15); doc.setDrawColor(165,160,155);
-      feats.forEach(ft=>{ if(sset.has(ft.properties.k)||!inBox(ft,F,b2)) return; doc.setFillColor(246,244,241); drawPoly(doc,ft,P,F,"FD");
-        const u=ft.properties.unit; if(u){ doc.setFont("helvetica","normal"); doc.setFontSize(5); doc.setTextColor(...MUTE); const cc=polyCentroid(ft,P,F); doc.text(u,cc[0],cc[1],{align:"center"}); } });
+      feats.forEach(ft=>{ if(sset.has(ft.properties.k)||!inBox(ft,F,b2)) return; doc.setFillColor(246,244,241); drawPoly(doc,ft,P,F,"FD"); });
       doc.setFillColor(250,236,238); doc.setDrawColor(...RED); doc.setLineWidth(.8); subject.forEach(ft=>drawPoly(doc,ft,P,F,"FD"));
+      subject.forEach(ft=>{ const u=ft.properties.unit; if(!u) return; const r0=ringsOf(ft.geometry)[0]; if(!r0) return; const pts=r0.map(pt=>F.pt(P.fwd(pt))), w=Math.max(...pts.map(q=>q[0]))-Math.min(...pts.map(q=>q[0]));
+        const fs=Math.max(3.5,Math.min(8,w/(u.length*0.6))); doc.setFont("helvetica","bold"); doc.setFontSize(fs); doc.setTextColor(...RED); const c=polyCentroid(ft,P,F); doc.text(u,c[0],c[1]+fs*0.17,{align:"center"}); });
       let omitted=0, omitLen=0; const cen=groupCentroid(subject,P,F);
       perimeterRings(subject).forEach(ring=>mergeRuns(ring).forEach(run=>{
         if(run.len<3){ if(run.len>0.01){ omitted++; omitLen+=run.len; } return; }
         const pa=F.pt(P.fwd(run.a)), pb=F.pt(P.fwd(run.b)), mid=[(pa[0]+pb[0])/2,(pa[1]+pb[1])/2]; let vx=mid[0]-cen[0], vy=mid[1]-cen[1]; const vl=Math.hypot(vx,vy)||1;
         dimension(doc,pa,pb,run.len.toFixed(2),[vx/vl,vy/vl]); }));
-      bar(F,b2.x+2,b2.y+b2.h-1); north(W-M-9,p2+7);
-      T((p.merge?`${p.members.length} plots`:pdfSafe(p.r.unit))+" · "+fInt(Math.round(p.r.area))+" sqm"+(p.merge?" total":""),W-M-20,p2+7.6,{s:9,b:true,c:RED,a:"right"});
+      bar(F,b2.x+2,b2.y+b2.h-1); north(b2.x+b2.w-8,b2.y+8);
+      T(`Subject: ${p.merge?`${p.members.length} merged plots`:pdfSafe(p.r.unit)} · ${fInt(Math.round(p.r.area))} sqm`,W/2,p2+h2-4.5,{s:8.5,b:true,c:RED,a:"center"});
       if(omitted) T(`${omitted} segment(s) under 3 m (${omitLen.toFixed(2)} m total) drawn but not dimensioned.`,M,p2+h2+5,{s:6.5,c:MUTE}); }
     if(doc.__mir) doc.__mir(true);
   };
@@ -14941,6 +14938,14 @@ const PL_PAT=[
 [/^(\d+) merged$/,"$1 مدمجة","$1 birleşik","$1个合并"],
 [/^(\d+) adjacent plots$/,"$1 قطع متجاورة","$1 bitişik parsel","$1个相邻地块"],
 [/^(\d+) plots combined$/,"$1 قطع مدمجة","$1 parsel birleştirildi","$1个地块合并"],
+[/^(\d+) options? selected from ([\d,]+) matching plots?(?: and ([\d,]+) merged blocks? of adjacent plots)?\.$/,
+  (m)=>`تم اختيار ${m[1]} من الخيارات من بين ${m[2]} قطعة مطابقة${m[3]?` و${m[3]} كتلة مدمجة من القطع المتجاورة`:""}.`,
+  (m)=>`${m[2]} uygun parsel${m[3]?` ve bitişik parsellerden oluşan ${m[3]} birleştirilmiş blok`:""} arasından ${m[1]} seçenek seçildi.`,
+  (m)=>`从${m[2]}个匹配地块${m[3]?`及${m[3]}个相邻地块合并组`:""}中遴选了${m[1]}个方案。`],
+[/^Technical annex — (.+)$/,"الملحق الفني — @1","Teknik ek — @1","技术附件——@1"],
+[/^TECHNICAL ANNEX · OPTION (\d+)$/,"الملحق الفني · الخيار $1","TEKNİK EK · SEÇENEK $1","技术附件·方案$1"],
+[/^Subject: (.+) · ([\d,]+) sqm$/,"القطعة محل التعاقد: @1 · $2 م²","Sözleşme parseli: @1 · $2 m²","合同地块：@1 · $2平方米"],
+[/^(\d+) segment\(s\) under 3 m \(([\d.]+) m total\) drawn but not dimensioned\.$/,"$1 أضلاع أقل من 3 م (إجمالي $2 م) مرسومة دون أبعاد.","3 m'den kısa $1 kenar ($2 m toplam) çizildi, ölçülendirilmedi.","$1条短于3米的边（共$2米）已绘出，未标注尺寸。"],
 [/^Option (\d+) — (.+)$/,"الخيار $1 — @2","Seçenek $1 — @2","方案$1——@2"],
 [/^OPTION (\d+)( \(continued\))?$/,(m)=>"الخيار "+m[1]+(m[2]?" (تابع)":""),(m)=>"SEÇENEK "+m[1]+(m[2]?" (devam)":""),(m)=>"方案"+m[1]+(m[2]?"（续）":"")],
 [/^Initial financial proposal — (.+)$/,"العرض المالي المبدئي — @1","Ön finansal teklif — @1","初步财务方案——@1"],
