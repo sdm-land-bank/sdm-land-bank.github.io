@@ -18690,7 +18690,7 @@ const KIND=k=>BK[k]||OB[k]||{l:k,w:10,len:10,h:5,c:"#ccc"};
 const isBld=k=>!!BK[k];
 const PL={on:false,tool:"road",rt:1,bk:"factory",tk:"palm",ok:"lamp",target:5000,v3:false,shp:"box",rsub:"road",psub:"draw",gsub:"area",gk:"lawn",how:"line",gaps:{},rdia:40,mp:{green:8,trees:true,lights:true},prof:null,phase:1,
   plan:null,undo:[],redo:[],sel:null,cur:null,nid:1,ver:0,dirty:new Set(["all"]),pm:null,block:null,menu:null};
-const KEYS=["tool","rt","bk","tk","ok","target","v3","shp","rsub","psub","gsub","gk","how","gaps","rdia","mp","prof","phase","tz","brief","lsub","sk","ew"];
+const KEYS=["tool","rt","bk","tk","ok","target","v3","shp","rsub","psub","gsub","gk","how","gaps","rdia","mp","prof","phase","tz","brief","lsub","sk","ew","gtype"];
 const blank=()=>({o:null,land:null,roads:[],plots:[],items:[],green:[],rounds:[],sec:0,gates:[]});
 function migrate(){ if(PL.tool==="auto"){ PL.tool="plot"; PL.psub="auto"; } else if(PL.tool==="tree"){ PL.tool="green"; PL.gsub="trees"; } else if(PL.tool==="obj") PL.tool="street"; if(!PL.gaps||typeof PL.gaps!=="object") PL.gaps={}; if(!PL.mp||typeof PL.mp!=="object") PL.mp={green:8,trees:true,lights:true}; }
 function load(o){ PL.plan=Object.assign(blank(),o.plan); if(!Array.isArray(PL.plan.gates)) PL.plan.gates=[]; KEYS.forEach(k=>{ if(o[k]!=null) PL[k]=o[k]; }); migrate(); }
@@ -19376,7 +19376,7 @@ function opts(){ const el=q("#plOpt"); if(!el) return; let h=""; const t=PL.tool
   const shape=()=>`<b>Shape</b>`+seg("shp",SHAPES,PL.shp);
   const rows=()=>{ const k=rowKind(); if(PL.tool==="street"&&isGate(k)) return `<b>Look</b>`+seg("ok",GATES.map(([v,l])=>["gate_"+v,l]),k); return `<b>How</b>`+seg("how",HOWS.filter(x=>x[0]!=="road"||ROADOK(k)),howOf())+(howOf()==="one"?"":`<label>every<input type="number" id="plGap" min="1" max="500" step="1" value="${gapOf(k)}" inputmode="numeric" aria-label="Spacing in metres"> m</label>`); };
   if(t==="land") h=seg("lsub",[["bnd","Boundary"],["site","Site"]],PL.lsub==="site"?"site":"bnd")+SEP+(PL.lsub==="site"?siteBar():shape());
-  else if(t==="road") h=seg("rsub",[["road","Road"],["round","Roundabout"],["gate","Gate"]],PL.rsub)+SEP+(PL.rsub==="gate"?`<b>Look</b>`+seg("gstyle",GATES,PL.gstyle||"portal")+`<span class="hi">${(PL.plan.gates||[]).length?(PL.plan.gates.length+" placed · the first is the main entrance"):"none yet — Master plan places them itself"}</span>`:PL.rsub==="round"?`<b>Across</b>`+seg("rdia",RDIA.map(d=>[d,d+" m"]),PL.rdia,1):seg("rt",RT.map((r,i)=>[i,`${r.l} · ${r.w} m`]),PL.rt,1));
+  else if(t==="road") h=seg("rsub",[["road","Road"],["round","Roundabout"],["gate","Gate"]],PL.rsub)+SEP+(PL.rsub==="gate"?`<b>Type</b>`+seg("gtype",[["sec","Secondary"],["emg","Emergency"]],PL.gtype||"sec")+`<b>Look</b>`+seg("gstyle",GATES,PL.gstyle||"portal")+`<span class="hi">${(PL.plan.gates||[]).length?(PL.plan.gates.length+" placed · the first is the main entrance"):"none yet — Master plan places them itself"}</span>`:PL.rsub==="round"?`<b>Across</b>`+seg("rdia",RDIA.map(d=>[d,d+" m"]),PL.rdia,1):seg("rt",RT.map((r,i)=>[i,`${r.l} · ${r.w} m`]),PL.rt,1));
   else if(t==="plot"){ const H=history(), sz=()=>`<b>Plot size</b>`+seg("target",[2500,5000,10000,20000].map(v=>[v,A.nf(v,0)+" m²"]),PL.target,1)+`<input type="number" id="plTg" min="300" step="100" value="${PL.target}" inputmode="numeric" aria-label="Plot size in m²">`+(H.n>=20?`<button type="button" id="plHist" title="The size that sold best: ${H.n} sold plots, middle size ${A.nf(H.med,0)} m²">From sales history</button>`:"");
     const phs=SEP+`<b>Phase</b>`+seg("phase",[[1,"1"],[2,"2"],[3,"3"]],PL.phase||1,1);
     h=seg("psub",[["draw","Draw"],["auto","Smart fill"],["master","Master plan"]],PL.psub)+SEP+(PL.psub==="auto"?sz()+phs+tzBtns():PL.psub==="master"?sz()+SEP+`<b>Green</b>`+seg("mpg",[4.3,5,8].map(v=>[v,v+"%"]),+prof().bud.green,1)+`<button type="button" data-tg="trees" class="${PL.mp.trees!==false?"on":""}">Trees</button><button type="button" data-tg="lights" class="${PL.mp.lights!==false?"on":""}">Lights</button><button type="button" id="plMk" class="mk">Make the plan</button>`+phs+tzBtns():shape()); }
@@ -19462,9 +19462,9 @@ function roadAt(g,tol){ let best=null, bd=1e9; PL.plan.roads.forEach(r=>{ const 
 
 // gates: points on the land boundary where the outer road comes in (the first one is the main entrance)
 function placeGate(g,pt){ const p=PL.plan; if(!p.land){ A.flash("Draw the land first — gates sit on its boundary"); return; } const Land=p.land.pts.map(Lc), tol=Math.max(30,30*mpp(pt));
-  const hit=(p.gates||[]).find(x=>lhyp(Lc(x.c),g)<Math.max(20,18*mpp(pt))); if(hit){ const want=PL.gstyle||"portal"; if(gdef(hit)!==want){ pushUndo(); hit.style=want; changed(["roads","items"]); A.flash("Gate changed to "+(GATES.find(x=>x[0]===want)||[0,want])[1].toLowerCase()+" · tap it again to remove"); return; } pushUndo(); p.gates=p.gates.filter(x=>x!==hit); if(hit.main&&p.gates.length) p.gates[0].main=true; changed(["roads","items"]); opts(); A.flash("Gate removed"); return; }
+  const hit=(p.gates||[]).find(x=>lhyp(Lc(x.c),g)<Math.max(20,18*mpp(pt))); if(hit&&!hit.main&&gType(hit)!==(PL.gtype||"sec")){ pushUndo(); hit.type=PL.gtype||"sec"; changed(["roads","items"]); A.flash("Gate changed to "+(hit.type==="emg"?"an emergency gate":"a secondary gate")+" · tap it again to change its look or remove it"); return; } if(hit){ const want=PL.gstyle||"portal"; if(gdef(hit)!==want){ pushUndo(); hit.style=want; changed(["roads","items"]); A.flash("Gate changed to "+(GATES.find(x=>x[0]===want)||[0,want])[1].toLowerCase()+" · tap it again to remove"); return; } pushUndo(); p.gates=p.gates.filter(x=>x!==hit); if(hit.main&&p.gates.length) p.gates[0].main=true; changed(["roads","items"]); opts(); A.flash("Gate removed"); return; }
   let best=null, bd=tol; for(let i=0;i<Land.length;i++){ const pr=projSeg(g,Land[i],Land[(i+1)%Land.length]); if(pr.d<bd){ bd=pr.d; best=pr.p; } }
-  if(!best){ A.flash("Tap on the land boundary to put a gate there"); return; } pushUndo(); if(!p.gates) p.gates=[]; const main=!p.gates.length; p.gates.push({id:newId(),c:Gc(best[0],best[1]),main,style:PL.gstyle||"portal"}); changed(["roads","items"]); opts(); A.flash(main?"Main entrance placed — services go next to it":"Gate "+p.gates.length+" placed"); }
+  if(!best){ A.flash("Tap on the land boundary to put a gate there"); return; } pushUndo(); if(!p.gates) p.gates=[]; const main=!p.gates.length; p.gates.push({id:newId(),c:Gc(best[0],best[1]),main,type:main?"main":(PL.gtype||"sec"),style:PL.gstyle||"portal"}); changed(["roads","items"]); opts(); A.flash(main?"Main entrance placed — services go next to it":"Gate "+p.gates.length+" placed"); }
 function offsetPoly(P,d){ // inward offset of a polygon (mitred corners); P is made counter-clockwise first
   let Q=lArea(P)<0?P.slice().reverse():P.slice(); const n=Q.length, L=[]; for(let i=0;i<n;i++){ const a=Q[i], b=Q[(i+1)%n], l=lhyp(a,b)||1, nv=[-(b[1]-a[1])/l,(b[0]-a[0])/l]; L.push({p:[a[0]+nv[0]*d,a[1]+nv[1]*d],u:[(b[0]-a[0])/l,(b[1]-a[1])/l]}); }
   const out=[]; for(let i=0;i<n;i++){ const A1=L[(i-1+n)%n], B1=L[i], den=A1.u[0]*B1.u[1]-A1.u[1]*B1.u[0]; if(Math.abs(den)<1e-6){ out.push(B1.p); continue; } const t=((B1.p[0]-A1.p[0])*B1.u[1]-(B1.p[1]-A1.p[1])*B1.u[0])/den; const x=[A1.p[0]+A1.u[0]*t,A1.p[1]+A1.u[1]*t]; out.push(lhyp(x,Q[i])>Math.abs(d)*4?B1.p:x); }
@@ -19636,7 +19636,7 @@ const MODS={m3670:{w:36,d:70,l:"36 × 70",src:"Industria October standard"},m365
 const BUD_WEST={ind:54.6,svc:21.8,green:4.3,road:17.2,util:2.1};   // Industria West land-use budget (IDA approved)
 const BUDL=[["ind","Industrial plots"],["svc","Services"],["green","Green areas"],["road","Roads & parking"],["util","Utilities"]];
 const USES={ind:"Industrial",log:"Logistics",svc:"Services",util:"Utilities"};
-const INDS=["Engineering","Food industries","Chemical & leather","Logistics","Logistics services","Mining & building materials","Pharmaceutical","Textile","Other"];
+const INDS=["Engineering","Food industries","Chemical & leather","Logistics","Logistics services","Mining & building materials","Pharmaceutical","Textile","Electronics","Other"];
 const USEC={ind:"#DCD2B8",log:"#E8C79A",svc:"#A9C4E0",util:"#C3BBD6"};
 const modA=e=>{ const m=MODS[e.m]||{w:36,d:70}; return m.w*m.d*(e.n||1); };
 const mixTxt=e=>{ const m=MODS[e.m]; return (m?m.l:e.m)+(e.n>1?" × "+e.n+" joined":"")+" · "+A.nf(modA(e),0)+" m²"; };
@@ -19693,7 +19693,11 @@ const RB_FIXED=[
   ["Gates only on access sides; no plot on an easement corridor","Site marks (Land › Site)","hard"],
   ["STP / lift station at the low point, downwind of Admin; substation at the power tie-in; tanks at the water tie-in","SID practice — Development to confirm","in use"],
   ["Wind from NNW unless changed","General climate (default) — change in Land › Site","in use"],
-  ["Green buffer width on housing / farm sides","Development / EIA — to confirm (entered in Land › Site)","to confirm"]];
+  ["Green buffer width on housing / farm sides","Development / EIA — to confirm (entered in Land › Site)","to confirm"],
+  ["Warehousing & Logistics nearest the main gate; clean sectors upwind / housing side; heavy sectors downwind","SID practice — Development to confirm","in use"],
+  ["Sector shares of the industrial land","Not in the brief — equal split until set (Rules › Sector shares)","to confirm"],
+  ["Warehousing plots count as Industrial land (not Services & Logistics)","Brief wording unclear — Development to confirm","to confirm"],
+  ["At least one emergency gate; fence chain-link with steel-rod at gates","Brief p.16–17","in use"]];
 // the brief's 3 groups, measured from the drawing (logistics and utility plots are counted with services, as the brief groups them)
 function briefMeasure(){ const B=budget(); if(B.land==null||!(B.land>0)) return null; let log=0; PL.plan.plots.forEach(x=>{ if(x.use==="log") log+=geoArea(x.pts); });
   const ind=B.a.ind-log, sl=B.a.svc+B.a.util+log, rl=B.a.road+B.a.green, L=B.land; return {land:L,ind,sl,rl,over:Math.max(0,B.a.ind+B.a.svc+B.a.util+B.a.green-L),pc:{ind:ind/L*100,sl:sl/L*100,rl:rl/L*100}}; }
@@ -19717,7 +19721,7 @@ function briefChecks(){ const b=PL.brief, out=[]; if(!b) return siteChecks(out);
   if(M) add(M.over>1?"fail":"ok",M.over>1?`Areas do not add up: plots and green cover ${A.fArea(M.over)} more than the land (something overlaps)`:"Areas add up to the land area (nothing counted twice)","Plan arithmetic",true);
   (b.must||[]).forEach(f=>{ const L=p.plots.filter(x=>facOf(x)===fnorm(f)); add(L.length?"ok":"fail",L.length?`${f}: plot ${L.map(x=>x.code||"(no code)").join(", ")}`:`${f}: no plot yet — Master plan names it, or choose it on a plot (Facility…)`,"Brief "+(S.must||""),true); });
   const G=p.gates||[]; add(G.some(g=>g.main)?"ok":p.land?"fail":"na",G.some(g=>g.main)?`Gates: ${G.length}, main entrance set`:"Main entrance: none yet — Road › Gate, or Master plan places the gates","Brief "+(S.gates||""),true);
-  if((b.gates||[]).length||b.fence) add("na",`Secondary and emergency gates by type${b.fence?`, ${b.fence} m steel-rod fence each side of every gate`:""}: checked from the next step`,"Brief "+(S.fence||S.gates||""),false);
+  zoneChecks(add,b,S);
   if(p.land&&b.area){ const la=geoArea(p.land.pts), C=[["the whole site",b.area]].concat((b.parcels||[]).map(x=>[x.n,x.a])); let best=null; C.forEach(([n,a])=>{ const d=Math.abs(la-a)/a; if(!best||d<best.d) best={n,a,d}; });
     add(best.d<=.01?"ok":"warn",`Land drawn ${A.fArea(la)} — ${best.d<=.01?"matches "+best.n:best.n+" in the brief is "+A.fArea(best.a)+" ("+(best.d*100).toFixed(1)+"% off)"}`,"Brief "+(S.area||""),false); }
   if((b.parcels||[]).length>1) add("na",`The brief has ${b.parcels.length} parcels: make one drawing per parcel for now (both together come in a later step)`,"Brief "+(S.parcels||""),false);
@@ -19745,6 +19749,7 @@ function briefH(){ const b=PL.brief, opt=[["","No brief"]].concat(Object.values(
   h+=`<table class="bf"><tr><th></th><th>Brief says</th><th>Page</th><th title="Ticked = checked by a person">✓</th></tr>`+BF_FIELDS(b).map(([k,l,v])=>`<tr><td>${l}</td><td>${v==null?"<i>— not found</i>":esc(String(v))}</td><td>${esc((b.src||{})[k]||"")}</td><td>${v==null?"":`<input type="checkbox" data-bk="${k}" ${b.ok&&b.ok[k]?"checked":""} aria-label="Checked">`}</td></tr>`).join("")+`</table>`;
   h+=`<div class="g4"><label>Industrial %<input type="number" step="0.1" min="0" max="100" data-bl="ind" value="${lu.ind!=null?lu.ind:""}"></label><label>Services & Logistics %<input type="number" step="0.1" min="0" max="100" data-bl="sl" value="${lu.sl!=null?lu.sl:""}"></label><label>Roads & Landscape %<input type="number" step="0.1" min="0" max="100" data-bl="rl" value="${lu.rl!=null?lu.rl:""}"></label><label>Tolerance ± points<input type="number" step="0.5" min="0" max="20" data-bl="tol" value="${b.tol!=null?b.tol:2}"></label></div>`;
   h+=`<div class="row"><span>Mandatory services</span><input type="text" id="plBm" value="${esc((b.must||[]).join(", "))}" style="flex:2;min-width:0" aria-label="Mandatory services, comma separated"></div>`;
+  h+=shareH(b);
   return h+`<div class="src">${esc(b.doc||"")}${b.notes?" · "+esc(b.notes):""}</div>`; }
 function wireBrief(el){ const s=el.querySelector("#plBf"); if(!s) return;
   s.onchange=()=>{ const v=s.value; if(!v) PL.brief=null; else if(BRIEFS[v]) PL.brief=JSON.parse(JSON.stringify(BRIEFS[v])); persist(); rulesUI(); A.flash(PL.brief?"Brief: "+PL.brief.name+" — the plan is checked against it":"No brief: the plan is checked against the profile only"); };
@@ -19757,6 +19762,7 @@ function wireBrief(el){ const s=el.querySelector("#plBf"); if(!s) return;
   el.querySelectorAll("[data-bl]").forEach(i=>{ i.onkeydown=e=>e.stopPropagation(); i.onchange=()=>{ const b=PL.brief, k=i.dataset.bl, v=+i.value; if(!b) return; const lim=k==="tol"?20:100;
     if(i.value===""||!(v>=0&&v<=lim)){ i.value=k==="tol"?b.tol:(b.lu&&b.lu[k]!=null?b.lu[k]:""); A.flash(`Enter a number from 0 to ${lim}`); return; }
     if(k==="tol") b.tol=v; else { b.lu=b.lu||{ind:null,sl:null,rl:null}; b.lu[k]=v; b.ok=b.ok||{}; b.ok.lu=false; } persist(); rulesUI(); }; });
+  wireShare(el);
   const m=el.querySelector("#plBm"); if(m){ m.onkeydown=e=>e.stopPropagation(); m.onchange=()=>{ const b=PL.brief; if(!b) return; b.must=m.value.split(/[,،;]/).map(x=>x.trim()).filter(Boolean); b.ok=b.ok||{}; b.ok.must=false; persist(); rulesUI(); }; } }
 // reading a brief PDF: pdf.js loaded only on this button, checked by its hash; no eval (the page's CSP forbids it)
 const PDFJS=["https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js","sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e"],
@@ -19875,6 +19881,75 @@ function siteDraw(ctx,poly){ const p=PL.plan, S=p.site, on=PL.tool==="land"&&PL.
   if(on2&&p.land){ const V=p.land.pts.map(P); let c=V[0]; V.forEach(q=>{ if(q[1]+q[0]*.2<c[1]+c[0]*.2) c=q; }); lbl([c[0]+70,c[1]+22],`Wind from ${windName(windFrom())}${!S||S.wind==null?" (default)":""}`,"#64D2FF"); }
   ctx.restore(); }
 (()=>{ const st=document.createElement("style"); st.textContent=`#plOpt select#plWd{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:7px;height:26px;padding:0 4px}#plOpt select#plWd option{color:#000}`; document.head.appendChild(st); })();
+
+/* ---------- V131: Smart master plan step 3 — sector zoning, gate types, fence ---------- */
+const SECTS=[["Warehousing & Logistics",/logist|warehous/i,"log","Logistics","#30D158"],["Food Processing",/food/i,"clean","Food industries","#FF9F0A"],["Pharmaceutical",/pharm/i,"clean","Pharmaceutical","#64D2FF"],
+  ["Electronics",/electr/i,"clean","Electronics","#5E5CE6"],["Engineering",/engineer/i,"gen","Engineering","#A1A1A6"],["Textile",/textil/i,"gen","Textile","#FF375F"],
+  ["Leather",/leather/i,"heavy","Chemical & leather","#A2845E"],["Building materials",/building|mining/i,"heavy","Mining & building materials","#C8A165"],["Chemicals",/chemic/i,"heavy","Chemical & leather","#FF453A"]];
+const secRow=v=>SECTS.find(r=>r[1].test(String(v||"")))||null;
+const secCol=v=>{ const r=secRow(v); return r?r[4]:"#D1D1D6"; };
+const SECT_BAD=[["Food Processing","Leather"],["Food Processing","Building materials"],["Food Processing","Chemicals"],["Pharmaceutical","Leather"],["Pharmaceutical","Building materials"],["Pharmaceutical","Chemicals"],["Electronics","Building materials"]];
+const badPair=(a,b)=>SECT_BAD.some(([x,y])=>(x===a&&y===b)||(x===b&&y===a));
+// the brief's sectors, in the dashboard's names, with their target share of the industrial plot area
+function briefSects(){ const b=PL.brief; if(!b) return []; const seen=new Set(), L=[]; (b.sect||[]).forEach(v=>{ const r=secRow(v); if(r&&!seen.has(r[0])){ seen.add(r[0]); L.push(r); } });
+  const sh=b.share||{}, isSet=r=>sh[r[0]]!=null&&sh[r[0]]!==""&&+sh[r[0]]>=0, fixed=L.filter(isSet).reduce((s,r)=>s+(+sh[r[0]]),0), nFree=L.filter(r=>!isSet(r)).length, rest=Math.max(0,100-fixed)/(nFree||1);
+  const raw=L.map(r=>isSet(r)?+sh[r[0]]:rest), tot=raw.reduce((s,v)=>s+v,0)||1;   /* sectors without a share split what is left equally; the shares are scaled to 100 if they add up to more */
+  return L.map((r,i)=>({n:r[0],g:r[2],ind:r[3],c:r[4],s:raw[i]/tot*100,set:isSet(r)})); }
+// blocks of industrial plots (services, utilities, facilities and pinned plots stay as they are)
+function indBlocks(p){ const B={}; p.plots.forEach(x=>{ if(x.pin||x.fac||x.use==="svc"||x.use==="util") return; const k=x.blk||String(x.code||"").split("-")[0]||"?"; (B[k]=B[k]||{k,L:[],a:0,sx:0,sz:0}).L.push(x); });
+  return Object.values(B).map(o=>{ o.L.forEach(x=>{ const a=geoArea(x.pts), c=lCent(x.pts.map(Lc)); o.a+=a; o.sx+=c[0]*a; o.sz+=c[1]*a; }); o.c=[o.sx/o.a,o.sz/o.a]; return o; }); }
+function zoneSectors(p,gc){ p=p||PL.plan; const S=briefSects(); if(!S.length) return 0; const BL=indBlocks(p); if(!BL.length) return 0;
+  if(!gc){ const mg=(p.gates||[]).find(g=>g.main)||(p.gates||[])[0]; gc=mg?Lc(mg.c):lCent(p.land?p.land.pts.map(Lc):BL.map(o=>o.c)); }
+  const tot=BL.reduce((s,o)=>s+o.a,0), w=windTo(), L=p.land?p.land.pts.map(Lc):null, K=L?sideKinds(L):{}, HE=Object.keys(K).filter(i=>K[i]==="housing"||K[i]==="farm").map(Number);
+  const hd=c=>{ if(!L||!HE.length) return 0; let d=1e9; HE.forEach(i=>{ d=Math.min(d,projSeg(c,L[i],L[(i+1)%L.length]).d); }); return Math.min(d,3000); };
+  BL.forEach(o=>{ o.dg=lhyp(o.c,gc); o.dw=(o.c[0]-gc[0])*w[0]+(o.c[1]-gc[1])*w[1]; o.h=hd(o.c); o.sec=null; });
+  const KEY={log:o=>o.dg, clean:o=>o.dw+.5*o.h, heavy:o=>-o.dw-.5*o.h, gen:o=>Math.abs(o.dw)};
+  ["log","clean","heavy","gen"].forEach(g=>{ const G=S.filter(s=>s.g===g); if(!G.length) return; const free=BL.filter(o=>!o.sec).sort((a,b)=>KEY[g](a)-KEY[g](b)); let i=0;
+    G.forEach(s=>{ const want=tot*s.s/100; let got=0; while(i<free.length&&got<want*.97){ const o=free[i++]; if(got>0&&got+o.a-want>want-got) { i--; break; } o.sec=s; got+=o.a; } }); });
+  // left over blocks (rounding): the sector furthest below its share takes the nearest one
+  BL.filter(o=>!o.sec).forEach(o=>{ const have={}; BL.forEach(q=>{ if(q.sec) have[q.sec.n]=(have[q.sec.n]||0)+q.a; }); const s=S.slice().sort((a,b)=>((have[a.n]||0)-tot*a.s/100)-((have[b.n]||0)-tot*b.s/100))[0]; o.sec=s; });
+  BL.forEach(o=>o.L.forEach(x=>{ x.sector=o.sec.n; x.ind=o.sec.ind; if(x.use==="log") x.use="ind"; })); return BL.length; }
+// plots of different sectors facing each other across a local road (within 30 m)
+let NBC=null;
+function sectorClashes(p){ p=p||PL.plan; if(NBC&&NBC.v===PL.ver) return NBC.r; const Q=p.plots.filter(x=>x.sector).map(x=>{ const V=x.pts.map(Lc), b=bbOf(V); return {x,V,b}; }), out=[], seen=new Set();
+  for(let i=0;i<Q.length;i++) for(let j=i+1;j<Q.length;j++){ const A2=Q[i], B2=Q[j]; if(A2.x.sector===B2.x.sector||!badPair(A2.x.sector,B2.x.sector)) continue; if(A2.b[2]+30<B2.b[0]||B2.b[2]+30<A2.b[0]||A2.b[3]+30<B2.b[1]||B2.b[3]+30<A2.b[1]) continue;
+    let d=1e9; A2.V.forEach(v=>{ d=Math.min(d,distEdge(v,B2.V)); }); B2.V.forEach(v=>{ d=Math.min(d,distEdge(v,A2.V)); }); if(d>30) continue;
+    const k=[A2.x.blk||"",B2.x.blk||""].sort().join("|"); if(seen.has(k)) continue; seen.add(k); out.push([A2.x,B2.x]); }
+  NBC={v:PL.ver,r:out}; return out; }
+// the fence: chain-link along the boundary, steel-rod for `tr` m each side of every gate, the gate openings left out
+function fenceLen(p){ p=p||PL.plan; if(!p.land) return null; const b=PL.brief, tr=b&&+b.fence>0?+b.fence:null, L=p.land.pts.map(Lc), n=L.length, cum=[0]; for(let i=0;i<n;i++) cum.push(cum[i]+lhyp(L[i],L[(i+1)%n])); const P=cum[n];
+  const Z=[], O=[]; (p.gates||[]).forEach(g=>{ const c=Lc(g.c), i=edgeAt(L,c), pr=projSeg(c,L[i],L[(i+1)%n]), s=cum[i]+pr.t*lhyp(L[i],L[(i+1)%n]), wg=(g.main?RT[0].w:RT[1].w); O.push([s-wg/2,s+wg/2]); Z.push([s-wg/2-(tr||0),s+wg/2+(tr||0)]); });
+  const uni=I=>{ const J=[]; I.forEach(([a,c])=>{ if(a<0){ J.push([a+P,P]); J.push([0,c]); } else if(c>P){ J.push([a,P]); J.push([0,c-P]); } else J.push([a,c]); }); J.sort((x,y)=>x[0]-y[0]); let t=0, e=-1e9, s0=0; J.forEach(([a,c])=>{ if(a>e){ if(e>-1e9) t+=e-s0; s0=a; e=c; } else e=Math.max(e,c); }); if(e>-1e9) t+=e-s0; return t; };
+  const z=uni(Z), o=uni(O); return {P,open:o,steel:tr?z-o:0,chain:P-z,tr,n:(p.gates||[]).length}; }
+// gate types (old drawings: the main gate is "main", the others "sec")
+const gType=g=>g.main?"main":(g.type==="emg"?"emg":"sec");
+// Master plan: no emergency gate yet -> one on another side that may have a gate (else the far end of the main side)
+function addEmgGate(G,CCW,p){ if(G.some(g=>g.type==="emg")) return 0; const K=sideKinds(CCW), hasAcc=Object.values(K).includes("access"), ok=i=>hasAcc?K[i]==="access":K[i]!=="noacc", MG=G.find(g=>g.main)||G[0]; if(!MG) return 0;
+  const me=edgeAt(CCW,MG.c); let bi=-1, bl=0; for(let i=0;i<CCW.length;i++){ if(i===me||!ok(i)) continue; const l=lhyp(CCW[i],CCW[(i+1)%CCW.length]); if(l>bl&&l>120){ bl=l; bi=i; } }
+  let c; if(bi>=0){ const a=CCW[bi], b=CCW[(bi+1)%CCW.length]; c=[(a[0]+b[0])/2,(a[1]+b[1])/2]; }
+  else { const a=CCW[me], b=CCW[(me+1)%CCW.length], L2=lhyp(a,b); if(L2<300) return 0; const u=[(b[0]-a[0])/L2,(b[1]-a[1])/L2], t=(MG.c[0]-a[0])*u[0]+(MG.c[1]-a[1])*u[1], f=t<L2/2?L2-60:60; if(G.some(g=>lhyp(g.c,[a[0]+u[0]*f,a[1]+u[1]*f])<120)) return 0; c=[a[0]+u[0]*f,a[1]+u[1]*f]; }
+  G.push({c,main:false,type:"emg"}); p.gates.push({id:newId(),c:Gc(c[0],c[1]),main:false,type:"emg",style:"portal"}); return 1; }
+// the zoning, gate and fence checks (inside the brief check)
+function zoneChecks(add,b,S){ const p=PL.plan, G=p.gates||[], tps=G.map(gType), BS=briefSects();
+  const wantE=(b.gates||[]).some(x=>/emerg/i.test(x)), wantS=(b.gates||[]).some(x=>/second/i.test(x));
+  if(p.land&&wantE){ const n=tps.filter(t=>t==="emg").length; add(n?"ok":"fail",n?`Emergency gates: ${n}`:"No emergency gate — Road › Gate › Emergency, or Make the plan","Brief "+(S.gates||""),true); }
+  if(p.land&&wantS){ const n=tps.filter(t=>t==="sec").length; add(n?"ok":"fail",n?`Secondary gates: ${n}`:"No secondary gate — Road › Gate › Secondary","Brief "+(S.gates||""),true); }
+  const F=fenceLen(p); if(F&&F.tr) add("ok",`Fence: ${A.fLen(F.chain)} chain-link · ${A.fLen(F.steel)} steel-rod (${F.tr} m each side of ${F.n} gate${F.n===1?"":"s"}) · ${A.fLen(F.open)} gate openings`,"Brief "+(S.fence||""),false);
+  if(BS.length&&p.plots.length){ const z=p.plots.filter(x=>x.sector); if(!z.length) add("warn","Sectors not zoned yet — Make the plan, or “Zone the sectors” above","Brief "+(S.sect||""),false);
+    else { const ar={}, tot=indBlocks(p).reduce((s,o)=>s+o.a,0); z.forEach(x=>{ ar[x.sector]=(ar[x.sector]||0)+geoArea(x.pts); });
+      BS.forEach(s=>{ const v=(ar[s.n]||0)/tot*100, ok=Math.abs(v-s.s)<=Math.max(3,s.s*.25); add(ok?"ok":"warn",`${s.n}: ${v.toFixed(1)}% of industrial land · target ${s.s.toFixed(1)}%${s.set?"":" (equal split — to confirm)"}`,"Brief "+(S.sect||"")+(s.set?" · shares set here":""),false); });
+      const C=sectorClashes(p); add(C.length?"warn":"ok",C.length?`${C.length} pair${C.length>1?"s":""} of blocks with clashing sectors face each other: ${C.slice(0,4).map(([x,y])=>`${x.blk} ${x.sector} / ${y.blk} ${y.sector}`).join(" · ")}${C.length>4?" …":""}`:"No clashing sectors side by side (draft list — to confirm)","Draft sector list — Development / EIA to confirm",false);
+      const lg=p.plots.filter(x=>/logist/i.test(x.sector||"")), mg=G.find(g=>g.main); if(lg.length&&mg){ const gc=Lc(mg.c), avg=L2=>L2.reduce((s,x)=>s+lhyp(lCent(x.pts.map(Lc)),gc),0)/L2.length, a=avg(lg), o=avg(z.filter(x=>!/logist/i.test(x.sector||""))); add(a<=o?"ok":"warn",`Logistics plots are on average ${A.fLen(a)} from the main gate (other industry ${A.fLen(o)})`,"Truck route",false); } } } }
+function shareH(b){ const L=briefSects(); if(!L.length) return ""; return `<div class="sec">Sector shares <small>of the industrial land · sectors left empty share the rest equally — to confirm</small></div><div class="g4">${L.map(s=>`<label><i class="dot" style="background:${s.c}"></i>${esc(s.n)}<input type="number" min="0" max="100" step="1" data-bs="${esc(s.n)}" value="${s.set?Math.round(s.s*10)/10:""}" placeholder="${(Math.round(s.s*10)/10)}"></label>`).join("")}</div><div class="row"><button type="button" id="plZone" title="Give the industrial blocks to the brief's sectors (logistics near the main gate, clean sectors upwind, heavy downwind)">Zone the sectors</button></div>`; }
+function wireShare(el){ el.querySelectorAll("[data-bs]").forEach(i=>{ i.onkeydown=e=>e.stopPropagation(); i.onchange=()=>{ const b=PL.brief; if(!b) return; const v=+i.value; b.share=b.share||{}; if(i.value===""){ delete b.share[i.dataset.bs]; } else if(v>=0&&v<=100) b.share[i.dataset.bs]=v; else { A.flash("Share from 0 to 100"); return; } persist(); rulesUI(); }; });
+  const z=el.querySelector("#plZone"); if(z) z.onclick=()=>{ if(!PL.plan.plots.length){ A.flash("No plots yet — make the plan or smart-fill first"); return; } pushUndo(); const n=zoneSectors(PL.plan); changed(["plots"]); A.flash(n?`${n} blocks zoned by sector — see the colours and Rules › Brief & site check`:"No industrial blocks to zone"); }; }
+// on the map: the sector of each block (outline colour + label) and the fence
+function zoneDraw(ctx,poly){ const p=PL.plan, P=c=>A.P(c); let big=true; if(p.land){ const V0=p.land.pts.map(P), xs=V0.map(v=>v[0]), ys=V0.map(v=>v[1]); big=Math.max(Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys))>260; }
+  const z=p.plots.filter(x=>x.sector); if(z.length){ z.forEach(x=>poly(x.pts.map(P),true,secCol(x.sector),1.6,null)); if(big){ const B={}; z.forEach(x=>{ const k=x.blk||""; (B[k]=B[k]||[]).push(x); }); ctx.save(); ctx.font=`700 10px ${A.FONT}`; ctx.textAlign="center"; ctx.textBaseline="middle";
+    Object.entries(B).forEach(([k,L2])=>{ let sx=0, sz=0; L2.forEach(x=>{ const c=lCent(x.pts.map(Lc)); sx+=c[0]; sz+=c[1]; }); const s=gScr([sx/L2.length,sz/L2.length]), t=k+" · "+(secRow(L2[0].sector)||[L2[0].sector])[0].replace(" & Logistics","").replace(" Processing","");
+      const w=ctx.measureText(t).width+10; ctx.fillStyle="rgba(20,20,22,.8)"; ctx.fillRect(s[0]-w/2,s[1]+8,w,15); ctx.fillStyle=secCol(L2[0].sector); ctx.fillText(t,s[0],s[1]+16); }); ctx.restore(); } }
+  const F=PL.brief&&+PL.brief.fence>0&&p.land&&big; if(F){ const L=p.land.pts.map(Lc), n=L.length, tr=+PL.brief.fence; (p.gates||[]).forEach(g=>{ const c=Lc(g.c), i=edgeAt(L,c), a=L[i], b2=L[(i+1)%n], l=lhyp(a,b2)||1, u=[(b2[0]-a[0])/l,(b2[1]-a[1])/l], wg=(g.main?RT[0].w:RT[1].w)/2;
+      [[wg,wg+tr],[-wg-tr,-wg]].forEach(([s0,s1])=>{ poly([gScr([c[0]+u[0]*s0,c[1]+u[1]*s0]),gScr([c[0]+u[0]*s1,c[1]+u[1]*s1])],false,"#1C1C1E",4.5,null); }); }); } }
 let rulesOn=false, AUD=null;
 // the plan check: plots on a road, on the landscape or on each other, landscape on a road, badly shaped plots (cached per change)
 function planAudit(){ if(AUD&&AUD.v===PL.ver) return AUD; const p=PL.plan, cor=[]; p.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let k=1;k<V.length;k++){ const A2=V[k-1], B2=V[k], L2=lhyp(A2,B2); if(L2<.5) continue; const nx2=-(B2[1]-A2[1])/L2*(r.w/2-.5), nz2=(B2[0]-A2[0])/L2*(r.w/2-.5); cor.push([[A2[0]+nx2,A2[1]+nz2],[B2[0]+nx2,B2[1]+nz2],[B2[0]-nx2,B2[1]-nz2],[A2[0]-nx2,A2[1]-nz2]]); } });
@@ -19978,10 +20053,11 @@ function masterPlan0(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw
     if(!(Math.abs(lArea(ring))>la*.3)){ A.flash("The land shape is too irregular for the ring road — draw the roads yourself, then use Smart fill"); throw new Error("spine"); }
     // gates sit on the boundary: each one is moved onto the nearest side; one left far from this land (an older land) is dropped
     p.gates=(p.gates||[]).filter(x=>{ const c=Lc(x.c); let best=null, bd=1e9; for(let i=0;i<CCW.length;i++){ const pr=projSeg(c,CCW[i],CCW[(i+1)%CCW.length]); if(pr.d<bd){ bd=pr.d; best=pr.p; } } if(!best||bd>60) return false; x.c=Gc(best[0],best[1]); return true; });
-    let G=p.gates.map(x=>({c:Lc(x.c),main:!!x.main})); if(!G.some(x=>x.main)&&G.length) G[0].main=true;
+    let G=p.gates.map(x=>({c:Lc(x.c),main:!!x.main,type:x.main?"main":(x.type==="emg"?"emg":"sec")})); if(!G.some(x=>x.main)&&G.length) G[0].main=true;
     if(!G.length){ let li=0, ll=0; const SKd=sideKinds(CCW), hasAcc=Object.values(SKd).includes("access"), okSide=i=>hasAcc?SKd[i]==="access":!SKd[i]||SKd[i]==="access"; for(let i=0;i<CCW.length;i++){ const l=lhyp(CCW[i],CCW[(i+1)%CCW.length]); if(l>ll&&okSide(i)){ ll=l; li=i; } } if(!ll) for(let i=0;i<CCW.length;i++){ const l=lhyp(CCW[i],CCW[(i+1)%CCW.length]); if(l>ll){ ll=l; li=i; } } const A0=CCW[li], B0=CCW[(li+1)%CCW.length], n=Math.max(1,Math.round(ll/500));
       for(let k=0;k<n;k++){ const f=(k+.5)/n; G.push({c:[A0[0]+(B0[0]-A0[0])*f,A0[1]+(B0[1]-A0[1])*f],main:false}); } G[Math.floor((n-1)/2)].main=true;
-      p.gates=G.map(x=>({id:newId(),c:Gc(x.c[0],x.c[1]),main:x.main})); }
+      p.gates=G.map(x=>({id:newId(),c:Gc(x.c[0],x.c[1]),main:x.main,type:x.main?"main":"sec"})); }
+    made.emg=addEmgGate(G,CCW,p);
     mkBuf(G);
     // the perimeter road: all round, only along the side(s) with gates (the outer road — as on the approved plans), or none
     const gateEdges=new Set(G.map(g2=>edgeAt(CCW,g2.c))), frontIds=new Set(); let ringRd=null;
@@ -20067,7 +20143,7 @@ function masterPlan0(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw
     const BL=Object.values(blks).map(L2=>({L:L2,d:Math.min(...L2.map(x=>lhyp(lCent(x.pts.map(Lc)),MGc))),a:L2.reduce((q2,x)=>q2+geoArea(x.pts),0)})).sort((a2,b2)=>a2.d-b2.d);
     const totA=BL.reduce((q2,b2)=>q2+b2.a,0); let acc=0; const nP={1:0,2:0};
     BL.forEach(b2=>{ const ph=acc<totA*.5?1:2; acc+=b2.a; const L3=secLetter(nP[ph]++)+ph; b2.L.forEach((x,i)=>{ if(x.pin) return; x.blk=L3; x.phase=ph; x.code=L3+"-"+(i+1); }); });
-    p.secs={1:nP[1],2:nP[2]};
+    p.secs={1:nP[1],2:nP[2]}; made.zones=zoneSectors(p,MGc);
     p.mpMade=true; PL.sel=null; if(!mo.noUndo) PL.undo.push(snap); if(PL.undo.length>80) PL.undo.shift(); PL.redo=[];
   }catch(er){ if(er&&er.message!=="spine") console.error("master plan",er); QUIET--; if(er&&er.message==="spine"){ PL.plan=JSON.parse(snap); O=null; changed(); return; } PL.plan=JSON.parse(snap); O=null; changed(); A.flash("The master plan could not be made — nothing was changed"); return; }
   QUIET--; GR=null; CG=null; changed(["all"]);
@@ -20333,7 +20409,7 @@ function draw2d(ctx,labels,now){ const p=PL.plan, sel=obj(PL.sel), Pp=A.P;
   ctx.save(); ctx.lineJoin="round"; ctx.lineCap="round";
   const circ=(c,r)=>{ const V=[]; for(let i=0;i<=40;i++){ const a=i/40*2*Math.PI; V.push(gScr([c[0]+Math.cos(a)*r,c[1]+Math.sin(a)*r])); } return V; };
   if(!layer||!layer.ok){ if(p.land) poly(p.land.pts.map(Pp),true,"#E6D9B8",2,"rgba(230,217,184,.25)"); p.green.forEach(x=>poly(x.pts.map(Pp),true,"#3E7F34",1.5,(GK[x.k]||GK.lawn).c)); p.roads.forEach(r=>poly(r.pts.map(Pp),false,"#3B3F45",Math.max(3,r.w/mpp([cvW()/2,cvH()/2])))); rbs().forEach(b=>{ poly(circ(b.c,b.r),true,"#3B3F45",2,"#3B3F45"); poly(circ(b.c,b.ri),true,"#E4DED0",1.5,"#6E9B5A"); }); p.plots.forEach(x=>poly(x.pts.map(Pp),true,"#fff",1.5,"rgba(246,241,230,.75)")); p.items.forEach(it=>poly(iCorners(it).map(gScr),true,"#B3263D",1.5,"rgba(233,217,168,.9)")); }
-  (p.gates||[]).forEach((gt,i)=>{ const s2=Pp(gt.c), t=gt.main?"Main gate":"Gate "+(i+1), st=gdef(gt);
+  (p.gates||[]).forEach((gt,i)=>{ const s2=Pp(gt.c), t=gt.main?"Main gate":gt.type==="emg"?"Emergency "+(i+1):"Gate "+(i+1), st=gdef(gt);
     if(!layer||!layer.ok){ const F=gateFrame(gt); if(F){ const W=GW[st]/2, a=gScr([F.c[0]-F.v[0]*W,F.c[1]-F.v[1]*W]), b=gScr([F.c[0]+F.v[0]*W,F.c[1]+F.v[1]*W]); ctx.lineCap="butt"; ctx.lineWidth=5; ctx.strokeStyle="#C62828"; ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); ctx.setLineDash([6,6]); ctx.strokeStyle="#fff"; ctx.stroke(); ctx.setLineDash([]); [a,b].forEach(q=>{ ctx.fillStyle="#E9E6DF"; ctx.fillRect(q[0]-4,q[1]-4,8,8); ctx.strokeStyle="#8E959E"; ctx.lineWidth=1; ctx.strokeRect(q[0]-4,q[1]-4,8,8); }); ctx.lineCap="round"; } }
     ctx.font=`800 10px ${A.FONT}`; ctx.textAlign="center"; ctx.textBaseline="middle"; const w=ctx.measureText(t).width+14, x=s2[0]-w/2, y=s2[1]-38;
     ctx.fillStyle="rgba(20,20,22,.85)"; ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(x,y,w,17,8.5); else ctx.rect(x,y,w,17); ctx.fill(); if(gt.main){ ctx.lineWidth=1.5; ctx.strokeStyle="#FFD60A"; ctx.stroke(); } ctx.fillStyle=gt.main?"#FFD60A":"#fff"; ctx.fillText(t,s2[0],y+9); });
@@ -20364,7 +20440,7 @@ function draw2d(ctx,labels,now){ const p=PL.plan, sel=obj(PL.sel), Pp=A.P;
   if(d&&d.k==="free"&&d.path.length>1){ const gc=d.ct==="green"?(GK[PL.gk]||GK.lawn).c:d.ct==="land"?"#E6D9B8":"#FFFFFF"; poly(d.path,true,gc,2.5,gc==="#FFFFFF"?"rgba(255,255,255,.15)":gc+"55");
     if(d.path.length>=3){ const pts=d.path.map(q=>A.U(q[0],q[1])), cc=A.centroid(d.path); labels.push({x:cc[0],y:cc[1],t1:A.fArea(geoArea(pts)),t2:"free hand",col:gc}); } }
   // selection
-  try{ siteDraw(ctx,poly); }catch(er){ console.warn("site draw",er); }
+  try{ siteDraw(ctx,poly); }catch(er){ console.warn("site draw",er); } try{ zoneDraw(ctx,poly); }catch(er){ console.warn("zone draw",er); }
   if(sel){ const t=PL.sel.t; if(t==="item"){ const V=iCorners(sel).map(gScr); poly(V,true,"#FFD60A",2,null,[6,4]); if(PL.tool==="select") handles().forEach(h=>{ if(h.k==="rot"){ ctx.beginPath(); ctx.moveTo(h.base[0],h.base[1]); ctx.lineTo(h.p[0],h.p[1]); ctx.strokeStyle="rgba(255,255,255,.85)"; ctx.lineWidth=1.5; ctx.stroke(); ctx.beginPath(); ctx.arc(h.p[0],h.p[1],10,0,7); ctx.fillStyle="#0A84FF"; ctx.fill(); ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.stroke(); } else { ctx.beginPath(); ctx.arc(h.p[0],h.p[1],7,0,7); ctx.fillStyle="#fff"; ctx.fill(); ctx.strokeStyle="#FFD60A"; ctx.lineWidth=2.5; ctx.stroke(); } });
       const C=iCorners(sel); labels.push({x:gScr(C[0])[0],y:gScr(C[0])[1],t1:A.nf(sel.len,1)+" × "+A.nf(sel.w,1)+" m",t2:A.nf(sel.h,1)+" m high",col:"#FFD60A",n:[0,-1],gap:12}); }
     else if(t==="round"){ poly(circ(Lc(sel.c),sel.r),true,"#FFD60A",2.5,null,[6,4]); const s=gScr(Lc(sel.c)); labels.push({x:s[0],y:s[1],t1:A.nf(sel.r*2,0)+" m",t2:"roundabout",col:"#FFD60A",n:[0,-1],gap:sel.r/mp+10}); }
@@ -20389,7 +20465,7 @@ function deactivate(leaving){ if(!PL.on) return; if(PL.cur) finishCur(); PL.on=f
 window.SID_3D={build(T3,F,L,W,h,k,id,K,opts){ if(!T) T=T3; return buildingAt(F,L,W,h,k,String(id),K,opts); }, tree(T3,K,x,z,sz,c,palm){ if(!T) T=T3; treeAt(K,x,z,sz,c,palm); }};
 window.SID_PLAN={get on(){ return PL.on; },get pl(){ return PL; },plotAt:planPlotAt,activate,deactivate,down,move,up,hover,cancel,undo,redo,del,esc:escK,enter:enterK,key,hint:hintTxt,draw2d,obstacles,tool:()=>PL.tool,setTool,
   state:PL,_t:{Lc,Gc,detectBlock,smartTap,stripFill,fillAll,shapeLoose,handles,refillAt,blockAt,hoverPreview,snapOutline,newDrawing,deleteDrawing,subdivide,stats,iCorners,fitOnPlot,autoPlots,placeBuilding,commitRoad,commitLand,commitPlot,commitGreen,graph,cgraph,rbs,noAccess,lArea,layer:()=>layer,veh:()=>VEH,scr,itemScreen,
-    alongRoad,rowAlong,rowPos,placeRound,keepClear,avoid,overlap,segClear,srvRoute,curType,hitAny,opts,masterPlan,masterFromRing,shapeOK,obbOf,planAudit,siteOf,siteTap,finishEas,syncEas,siteChecks,sideKinds,facTarget,briefChecks,briefMeasure,briefBud,parseBrief,pdfPages,nameFacilities,hardFails,BRIEFS}};
+    alongRoad,rowAlong,rowPos,placeRound,keepClear,avoid,overlap,segClear,srvRoute,curType,hitAny,opts,masterPlan,masterFromRing,shapeOK,obbOf,planAudit,zoneSectors,sectorClashes,fenceLen,briefSects,addEmgGate,siteOf,siteTap,finishEas,syncEas,siteChecks,sideKinds,facTarget,briefChecks,briefMeasure,briefBud,parseBrief,pdfPages,nameFacilities,hardFails,BRIEFS}};
 })();
 </script>
 
