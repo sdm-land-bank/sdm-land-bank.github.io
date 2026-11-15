@@ -18690,7 +18690,7 @@ const KIND=k=>BK[k]||OB[k]||{l:k,w:10,len:10,h:5,c:"#ccc"};
 const isBld=k=>!!BK[k];
 const PL={on:false,tool:"road",rt:1,bk:"factory",tk:"palm",ok:"lamp",target:5000,v3:false,shp:"box",rsub:"road",psub:"draw",gsub:"area",gk:"lawn",how:"line",gaps:{},rdia:40,mp:{green:8,trees:true,lights:true},prof:null,phase:1,
   plan:null,undo:[],redo:[],sel:null,cur:null,nid:1,ver:0,dirty:new Set(["all"]),pm:null,block:null,menu:null};
-const KEYS=["tool","rt","bk","tk","ok","target","v3","shp","rsub","psub","gsub","gk","how","gaps","rdia","mp","prof","phase","tz"];
+const KEYS=["tool","rt","bk","tk","ok","target","v3","shp","rsub","psub","gsub","gk","how","gaps","rdia","mp","prof","phase","tz","brief"];
 const blank=()=>({o:null,land:null,roads:[],plots:[],items:[],green:[],rounds:[],sec:0,gates:[]});
 function migrate(){ if(PL.tool==="auto"){ PL.tool="plot"; PL.psub="auto"; } else if(PL.tool==="tree"){ PL.tool="green"; PL.gsub="trees"; } else if(PL.tool==="obj") PL.tool="street"; if(!PL.gaps||typeof PL.gaps!=="object") PL.gaps={}; if(!PL.mp||typeof PL.mp!=="object") PL.mp={green:8,trees:true,lights:true}; }
 function load(o){ PL.plan=Object.assign(blank(),o.plan); if(!Array.isArray(PL.plan.gates)) PL.plan.gates=[]; KEYS.forEach(k=>{ if(o[k]!=null) PL[k]=o[k]; }); migrate(); }
@@ -18743,7 +18743,7 @@ async function plansInit(){ const kv=window.SID_KV; if(!kv){ return; } const me=
 async function openDrawing(id,first){ const kv=window.SID_KV, r=recOf(id); if(!r) return; if(!first&&PL.did&&PL.did!==id) flush(true);
   let raw=kv?await kv.get(dKey(id)):null, o=null; try{ o=raw?JSON.parse(raw):null; }catch(e){}
   if((!o||!o.plan||r.remote)&&SBC()&&cloudOK!==false){ const g=await SBC().from("sid_plans").select("data,updated_at").eq("id",id).maybeSingle(); if(g.data&&g.data.data){ o=g.data.data; r.remote=false; if(kv) kv.set(dKey(id),JSON.stringify(o)); } }
-  PL.plan=blank(); PL.prof=null; if(o&&o.plan) load(o); prof(); applyRoads(); PL.did=id; IDX.cur=id; saveIdx(); PL.undo=[]; PL.redo=[]; PL.sel=null; PL.cur=null; PL.drag=null; PL.nid=Math.max(0,...ids())+1; O=null; GR=null; CG=null; PL.dirty.add("all"); PL.ver++;
+  PL.plan=blank(); PL.prof=null; PL.brief=null; if(o&&o.plan) load(o); prof(); applyRoads(); PL.did=id; IDX.cur=id; saveIdx(); PL.undo=[]; PL.redo=[]; PL.sel=null; PL.cur=null; PL.drag=null; PL.nid=Math.max(0,...ids())+1; O=null; GR=null; CG=null; PL.dirty.add("all"); PL.ver++;
   if(q("#plPlans")){ plansUI(true); kpi(); card(); opts(); btns(); live(); rulesUI(); } if(A) A.need(); if(layer) map.triggerRepaint(); if(!first&&A) fitPlan(); }
 function planPoints(){ const p=PL.plan, pts=[]; if(p.land) pts.push(...p.land.pts); p.roads.forEach(r=>pts.push(...r.pts)); p.plots.forEach(x=>pts.push(...x.pts)); p.green.forEach(x=>pts.push(...x.pts)); p.items.forEach(i=>pts.push(i.c)); p.rounds.forEach(r=>pts.push(r.c)); return pts; }
 function fitPlan(){ const pts=planPoints(); if(!pts.length) return; let bb=[[1e9,1e9],[-1e9,-1e9]]; pts.forEach(c=>{ bb[0][0]=Math.min(bb[0][0],c[0]); bb[0][1]=Math.min(bb[0][1],c[1]); bb[1][0]=Math.max(bb[1][0],c[0]); bb[1][1]=Math.max(bb[1][1],c[1]); }); try{ map.fitBounds(bb,{padding:120,duration:900,pitch:PL.v3?60:0,bearing:map.getBearing(),maxZoom:19}); }catch(e){} }
@@ -19658,6 +19658,132 @@ function budget(){ const p=PL.plan, land=p.land?geoArea(p.land.pts):null, a={ind
   p.plots.forEach(x=>{ const u=x.use||"ind", ar=geoArea(x.pts); if(u==="svc") a.svc+=ar; else if(u==="util") a.util+=ar; else a.ind+=ar; });
   a.green=p.green.reduce((s2,x)=>s2+geoArea(x.pts),0); if(land!=null) a.road=Math.max(0,land-a.ind-a.svc-a.util-a.green); return {land,a}; }
 function mixActual(){ const M=prof().mix, cnt=M.map(()=>0); let n=0; PL.plan.plots.forEach(x=>{ const ar=geoArea(x.pts); let bi=0, bd=1e9; M.forEach((e,i)=>{ const d=Math.abs(Math.log(ar/modA(e))); if(d<bd){ bd=d; bi=i; } }); cnt[bi]++; n++; }); return {cnt,n}; }
+
+/* ---------- V129: Smart master plan step 1 — project brief, rule book, brief check ---------- */
+const BRIEFS={
+  aburawash:{id:"aburawash",name:"Abu Rawash",client:"Elsewedy Industrial Development",loc:"Rod Al Farag Corridor, Egypt",type:"Integrated Industrial City",area:6271493,
+    parcels:[{n:"Developmental Land I",a:3141663.80},{n:"Developmental Land II",a:3129830.39}],sect:["Food Processing","Engineering","Building materials","Warehousing & Logistics","Pharmaceutical"],
+    lu:{ind:65,sl:10,rl:25},tol:2,must:["Admin","Clinic","Training Center","STP"],gates:["Main gate","Secondary gates","Emergency gates"],fence:15,
+    doc:"Development Brief, Abu Rawash, REV0 07.07.2026",src:{name:"p.3",client:"p.3",loc:"p.3",type:"p.3",area:"p.3, p.5",parcels:"p.5",sect:"p.3",lu:"p.9",must:"p.9",gates:"p.16",fence:"p.16"},
+    notes:"Two parcels on both sides of the Rod El Farag axis (toll station between them). Flat land. Housing (villages) to the north-east.",ok:{}},
+  newasher:{id:"newasher",name:"New Asher Industrial City",client:"ARADY Industrial Development",loc:"Asher City, Egypt (Cairo–Ismailia–Fayed corridor)",type:"Industrial park",area:3107580,
+    parcels:[],sect:["Food Processing","Textile","Pharmaceutical","Engineering","Building materials","Leather","Electronics","Warehousing & Logistics"],
+    lu:{ind:65,sl:10,rl:25},tol:2,must:["Admin","Clinic","Training Center","STP"],gates:["Main gate","Secondary gates","Emergency gates"],fence:15,
+    doc:"Development Brief, New Asher, 14.07.2026",src:{name:"p.3",client:"p.3",loc:"p.3",type:"p.3",area:"p.3, p.6",sect:"p.3",lu:"p.11",must:"p.11",gates:"p.17",fence:"p.17"},
+    notes:"Access only from the 15 m service road along the Cairo–Fayed road (map p.6). Overhead high-voltage lines cross the land (photos p.6). Existing power station and industrial sewage lift station next to the land. Slight gradient.",ok:{}}};
+const FACS=["Admin","Sales center","Clinic","Training Center","Fire station","Security building","STP","Substation","Water tanks & pumps","Firefighting tank","Irrigation tank","Sewage lift station","RO plant"];
+const FAC_UTIL=/STP|substation|tank|lift station|RO plant/i;
+const fnorm=v=>String(v||"").toLowerCase().replace(/[^a-z]/g,"");
+const facOf=x=>fnorm(x&&x.fac);
+// rules with their source; "to confirm" = no approved value in hand, so nothing is invented
+const RB_FIXED=[
+  ["Plot module 36 × 70 m (2,520 m²), incubator 36 × 50 m, small units 20 × 31 / 23 × 42 / 34 × 62 m","Industria October Rev.4 + E1916 drawings (approved)","in use"],
+  ["Plots in back-to-back rows with a 6 m passage; every plot faces a road","Industria October Rev.4 (approved)","in use"],
+  ["Roads: 50 m spine · 24–32 m collector · 15 m local · 12 m service","October / West / E1916 drawings","in use"],
+  ["Plot no longer than 3.5 × its width","SID practice","in use"],
+  ["Admin next to the main gate; STP far from it","SID practice (October, Sadat) — Development to confirm","in use"],
+  ["Building coverage ≤ 50% of the plot","SID practice — IDA value to confirm","to confirm"],
+  ["Setbacks, maximum height, parking ratio","IDA planning conditions — not in hand","to confirm"],
+  ["Minimum green and services share","IDA planning conditions — not in hand","to confirm"],
+  ["High-voltage line corridor width","Electricity company / IDA — not in hand","to confirm"],
+  ["Secondary and emergency gate spacing","Development — to confirm","to confirm"],
+  ["Plot sizes for Admin, Clinic, Training Center, STP","Development — to confirm","to confirm"],
+  ["Sector neighbours (food and pharma away from leather, building materials, chemicals)","Development / EIA consultant — to confirm","to confirm"]];
+// the brief's 3 groups, measured from the drawing (logistics and utility plots are counted with services, as the brief groups them)
+function briefMeasure(){ const B=budget(); if(B.land==null||!(B.land>0)) return null; let log=0; PL.plan.plots.forEach(x=>{ if(x.use==="log") log+=geoArea(x.pts); });
+  const ind=B.a.ind-log, sl=B.a.svc+B.a.util+log, rl=B.a.road+B.a.green, L=B.land; return {land:L,ind,sl,rl,over:Math.max(0,B.a.ind+B.a.svc+B.a.util+B.a.green-L),pc:{ind:ind/L*100,sl:sl/L*100,rl:rl/L*100}}; }
+// services and utilities share for the Master plan when a brief is chosen (utilities keep the profile's share inside the brief's 10%)
+function briefBud(){ const P=prof().bud, b=PL.brief; if(!b||!b.lu||!(+b.lu.sl>0)) return P; const ut=Math.min(+P.util||0,+b.lu.sl); return Object.assign({},P,{svc:Math.max(0,+b.lu.sl-ut),util:ut}); }
+// Master plan with a brief: the mandatory facilities get named plots (services nearest the main gate, utilities like the STP farthest from it)
+function nameFacilities(p,gc){ const b=PL.brief; if(!b||!(b.must||[]).length) return 0; p.plots.forEach(x=>{ if(!x.pin&&x.fac) delete x.fac; });
+  const d=x=>lhyp(lCent(x.pts.map(Lc)),gc), want=b.must.filter(f=>!p.plots.some(x=>x.pin&&facOf(x)===fnorm(f))); let n=0;
+  const S=p.plots.filter(x=>!x.pin&&x.use==="svc").sort((a,c)=>d(a)-d(c));
+  want.filter(f=>!FAC_UTIL.test(f)).forEach(f=>{ const x=S.find(y=>!y.fac)||p.plots.filter(y=>!y.pin&&!y.fac&&(y.use||"ind")==="ind").sort((a,c)=>d(a)-d(c))[0]; if(!x) return; x.fac=f; x.use="svc"; x.ind="Services"; n++; });
+  want.filter(f=>FAC_UTIL.test(f)).forEach(f=>{ const x=p.plots.filter(y=>!y.pin&&!y.fac).sort((a,c)=>d(c)-d(a))[0]; if(!x) return; x.fac=f; x.use="util"; x.ind=undefined; n++; });
+  return n; }
+// the brief check: st = ok / warn / fail / na; hard = counts against "Ready for review"
+function briefChecks(){ const b=PL.brief, out=[]; if(!b) return out; const p=PL.plan, M=briefMeasure(), tol=+b.tol>=0?+b.tol:2, S=b.src||{};
+  const add=(st,t,src,hard)=>out.push({st,t,src,hard:!!hard});
+  if(!M) add("na","Land-use ratios: draw the land first","Brief "+(S.lu||""),true);
+  else if(!b.lu||[b.lu.ind,b.lu.sl,b.lu.rl].some(v=>v==null||v===""||isNaN(+v))) add("fail","Land-use ratios: not in the brief yet — fill them in above","Brief",true);
+  else { [["ind","Industrial plots"],["sl","Services & Logistics"],["rl","Roads & Landscape"]].forEach(([k,l])=>{ const t=+b.lu[k], v=M.pc[k], d=v-t, ok=Math.abs(d)<=tol;
+      add(ok?"ok":"fail",`${l}: plan ${v.toFixed(1)}% · brief ${t}% (± ${tol})${ok?"":` — ${d>0?"over":"under"} by ${Math.abs(d).toFixed(1)} points`}`,"Brief "+(S.lu||""),true); });
+    const tt=(+b.lu.ind)+(+b.lu.sl)+(+b.lu.rl); if(Math.abs(tt-100)>.05) add("warn",`The brief's shares add up to ${tt}%, not 100%`,"Brief",false); }
+  if(M) add(M.over>1?"fail":"ok",M.over>1?`Areas do not add up: plots and green cover ${A.fArea(M.over)} more than the land (something overlaps)`:"Areas add up to the land area (nothing counted twice)","Plan arithmetic",true);
+  (b.must||[]).forEach(f=>{ const L=p.plots.filter(x=>facOf(x)===fnorm(f)); add(L.length?"ok":"fail",L.length?`${f}: plot ${L.map(x=>x.code||"(no code)").join(", ")}`:`${f}: no plot yet — Master plan names it, or choose it on a plot (Facility…)`,"Brief "+(S.must||""),true); });
+  const G=p.gates||[]; add(G.some(g=>g.main)?"ok":p.land?"fail":"na",G.some(g=>g.main)?`Gates: ${G.length}, main entrance set`:"Main entrance: none yet — Road › Gate, or Master plan places the gates","Brief "+(S.gates||""),true);
+  if((b.gates||[]).length||b.fence) add("na",`Secondary and emergency gates by type${b.fence?`, ${b.fence} m steel-rod fence each side of every gate`:""}: checked from the next step`,"Brief "+(S.fence||S.gates||""),false);
+  if(p.land&&b.area){ const la=geoArea(p.land.pts), C=[["the whole site",b.area]].concat((b.parcels||[]).map(x=>[x.n,x.a])); let best=null; C.forEach(([n,a])=>{ const d=Math.abs(la-a)/a; if(!best||d<best.d) best={n,a,d}; });
+    add(best.d<=.01?"ok":"warn",`Land drawn ${A.fArea(la)} — ${best.d<=.01?"matches "+best.n:best.n+" in the brief is "+A.fArea(best.a)+" ("+(best.d*100).toFixed(1)+"% off)"}`,"Brief "+(S.area||""),false); }
+  if((b.parcels||[]).length>1) add("na",`The brief has ${b.parcels.length} parcels: make one drawing per parcel for now (both together come in a later step)`,"Brief "+(S.parcels||""),false);
+  const F=BF_FIELDS(b).filter(x=>x[2]!=null), nc=F.filter(x=>!(b.ok&&b.ok[x[0]])).length;
+  add(nc?"warn":"ok",nc?`${nc} brief value${nc>1?"s":""} not ticked as checked by a person`:"Every brief value is ticked as checked","Brief",false);
+  return out; }
+const BF_FIELDS=b=>[["name","Project",b.name],["client","Client",b.client],["loc","Location",b.loc],["type","Type",b.type],["area","Land area",b.area?A.fArea(b.area):null],
+  ["parcels","Parcels",(b.parcels||[]).length?b.parcels.map(x=>x.n+": "+A.fArea(x.a)).join(" · "):(b.area?"One site (no parcels listed)":null)],["sect","Target sectors",(b.sect||[]).length?b.sect.join(", "):null],
+  ["lu","Land use",b.lu&&b.lu.ind!=null?`Industrial ${b.lu.ind}% · Services & Logistics ${b.lu.sl}% · Roads & Landscape ${b.lu.rl}%`:null],["must","Mandatory services",(b.must||[]).length?b.must.join(", "):null],
+  ["gates","Gates",(b.gates||[]).length?b.gates.join(", "):null],["fence","Fence at gates",b.fence?`steel-rod fence ${b.fence} m each side of every gate`:null]];
+const BCOL={ok:"#34C759",warn:"#FF9F0A",fail:"#FF453A",na:"#8E8E93"};
+// hard failures: the brief's hard rules + the plan's own checks (road access, overlaps)
+function hardFails(){ let n=briefChecks().filter(x=>x.hard&&x.st==="fail").length; const st=stats(), au=planAudit(); if(st.warn) n++; if(au.onRoad+au.onGreen+au.pp+au.gRoad) n++; return n; }
+function briefCheckH(){ const b=PL.brief; if(!b) return `<div class="src">No brief chosen — choose one above to check the plan against it.</div>`; const L=briefChecks(), hf=hardFails();
+  const head=PL.plan.land?(hf?`<div class="bfh bad">${hf} hard failure${hf>1?"s":""} — not ready for review</div>`:`<div class="bfh good">Ready for review — 0 hard failures</div>`):`<div class="bfh">Draw the land (or make the master plan) to check it</div>`;
+  return head+L.map(x=>`<div class="ck"><i class="dot" style="background:${BCOL[x.st]}"></i><span>${esc(x.t)}${x.hard?"":" <small>(advice)</small>"}<small class="bsrc">${esc(x.src||"")}</small></span></div>`).join(""); }
+function ruleBookH(){ const b=PL.brief, R=[]; if(b){ const S=b.src||{}; if(b.lu) R.push([`Land use: Industrial ${b.lu.ind}% · Services & Logistics ${b.lu.sl}% · Roads & Landscape ${b.lu.rl}% (± ${b.tol} points)`,"Brief "+(S.lu||""),"hard"]);
+    if((b.must||[]).length) R.push([`Mandatory services: ${b.must.join(", ")}`,"Brief "+(S.must||""),"hard"]); if((b.gates||[]).length) R.push([b.gates.join(", "),"Brief "+(S.gates||""),"in use"]); if(b.fence) R.push([`Steel-rod fence ${b.fence} m each side of every gate`,"Brief "+(S.fence||""),"next step"]); }
+  const all=R.concat(RB_FIXED), col={hard:"#FF453A","in use":"#34C759","to confirm":"#FF9F0A","next step":"#8E8E93"};
+  return `<details class="rb"><summary>Rule book · ${all.length} rules · ${all.filter(r=>r[2]==="to confirm").length} to confirm</summary>${all.map(r=>`<div class="ck"><i class="dot" style="background:${col[r[2]]||"#8E8E93"}"></i><span>${esc(r[0])}<small class="bsrc">${esc(r[1])} · ${esc(r[2])}</small></span></div>`).join("")}<div class="src">Values marked “to confirm” are not used as limits until Development gives the source. Nothing is guessed.</div></details>`; }
+function briefH(){ const b=PL.brief, opt=[["","No brief"]].concat(Object.values(BRIEFS).map(x=>[x.id,x.name+" (RFP)"])); if(b&&!BRIEFS[b.id]) opt.push([b.id,(b.name||"Brief")+" (from PDF)"]);
+  let h=`<div class="sec">Project brief <small>what the consultant brief asks for</small></div><div class="row bfr"><span>Brief</span><select id="plBf">${opt.map(([k,l])=>`<option value="${esc(k)}" ${(b?b.id:"")===k?"selected":""}>${esc(l)}</option>`).join("")}</select><button type="button" id="plBfR" title="Read a Development Brief PDF (same template as the RFPs)">Read PDF…</button><input type="file" id="plBfF" accept="application/pdf,.pdf" hidden></div>`;
+  if(!b) return h+`<div class="src">Choose a brief to check this plan against it: land-use ratios, mandatory services, gates and land area. With a brief, Master plan gives services the brief's share and names the mandatory facilities.</div>`;
+  const lu=b.lu||{};
+  h+=`<table class="bf"><tr><th></th><th>Brief says</th><th>Page</th><th title="Ticked = checked by a person">✓</th></tr>`+BF_FIELDS(b).map(([k,l,v])=>`<tr><td>${l}</td><td>${v==null?"<i>— not found</i>":esc(String(v))}</td><td>${esc((b.src||{})[k]||"")}</td><td>${v==null?"":`<input type="checkbox" data-bk="${k}" ${b.ok&&b.ok[k]?"checked":""} aria-label="Checked">`}</td></tr>`).join("")+`</table>`;
+  h+=`<div class="g4"><label>Industrial %<input type="number" step="0.1" min="0" max="100" data-bl="ind" value="${lu.ind!=null?lu.ind:""}"></label><label>Services & Logistics %<input type="number" step="0.1" min="0" max="100" data-bl="sl" value="${lu.sl!=null?lu.sl:""}"></label><label>Roads & Landscape %<input type="number" step="0.1" min="0" max="100" data-bl="rl" value="${lu.rl!=null?lu.rl:""}"></label><label>Tolerance ± points<input type="number" step="0.5" min="0" max="20" data-bl="tol" value="${b.tol!=null?b.tol:2}"></label></div>`;
+  h+=`<div class="row"><span>Mandatory services</span><input type="text" id="plBm" value="${esc((b.must||[]).join(", "))}" style="flex:2;min-width:0" aria-label="Mandatory services, comma separated"></div>`;
+  return h+`<div class="src">${esc(b.doc||"")}${b.notes?" · "+esc(b.notes):""}</div>`; }
+function wireBrief(el){ const s=el.querySelector("#plBf"); if(!s) return;
+  s.onchange=()=>{ const v=s.value; if(!v) PL.brief=null; else if(BRIEFS[v]) PL.brief=JSON.parse(JSON.stringify(BRIEFS[v])); persist(); rulesUI(); A.flash(PL.brief?"Brief: "+PL.brief.name+" — the plan is checked against it":"No brief: the plan is checked against the profile only"); };
+  const f=el.querySelector("#plBfF"); el.querySelector("#plBfR").onclick=()=>f.click();
+  f.onchange=async()=>{ const file=f.files&&f.files[0]; f.value=""; if(!file) return; A.flash("Reading the brief…");
+    try{ const pages=await pdfPages(file), b=parseBrief(pages,file.name), miss=["name","area","lu","must","sect"].filter(k=>b[k]==null||(Array.isArray(b[k])&&!b[k].length)).length;
+      PL.brief=b; persist(); rulesUI(); A.flash(`Brief read: ${b.name||file.name} · ${pages.length} pages${miss?` · ${miss} key item${miss>1?"s":""} not found — fill them in`:""} · tick each value once you have checked it against the PDF`); }
+    catch(e){ console.warn("brief",e); A.flash("This PDF could not be read: "+((e&&e.message)||e)); } };
+  el.querySelectorAll("[data-bk]").forEach(c=>c.onchange=()=>{ const b=PL.brief; if(!b) return; b.ok=b.ok||{}; b.ok[c.dataset.bk]=c.checked; persist(); rulesUI(true); });
+  el.querySelectorAll("[data-bl]").forEach(i=>{ i.onkeydown=e=>e.stopPropagation(); i.onchange=()=>{ const b=PL.brief, k=i.dataset.bl, v=+i.value; if(!b) return; const lim=k==="tol"?20:100;
+    if(i.value===""||!(v>=0&&v<=lim)){ i.value=k==="tol"?b.tol:(b.lu&&b.lu[k]!=null?b.lu[k]:""); A.flash(`Enter a number from 0 to ${lim}`); return; }
+    if(k==="tol") b.tol=v; else { b.lu=b.lu||{ind:null,sl:null,rl:null}; b.lu[k]=v; b.ok=b.ok||{}; b.ok.lu=false; } persist(); rulesUI(); }; });
+  const m=el.querySelector("#plBm"); if(m){ m.onkeydown=e=>e.stopPropagation(); m.onchange=()=>{ const b=PL.brief; if(!b) return; b.must=m.value.split(/[,،;]/).map(x=>x.trim()).filter(Boolean); b.ok=b.ok||{}; b.ok.must=false; persist(); rulesUI(); }; } }
+// reading a brief PDF: pdf.js loaded only on this button, checked by its hash; no eval (the page's CSP forbids it)
+const PDFJS=["https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js","sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e"],
+  PDFJSW=["https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js","sha384-SnzOobpRMLXZ52iJvZm/C0fYw0OQemTXzTjIsdsfMcrCtCEe9qgzxTd3RSklO5x2"];
+let PDFL=null;
+function pdfLib(){ if(PDFL) return PDFL; PDFL=(async()=>{ if(!window.pdfjsLib) await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=PDFJS[0]; s.integrity=PDFJS[1]; s.crossOrigin="anonymous"; s.onload=res; s.onerror=()=>rej(new Error("the PDF reader could not be loaded")); document.head.appendChild(s); });
+    const r=await fetch(PDFJSW[0],{integrity:PDFJSW[1],mode:"cors"}); if(!r.ok) throw new Error("the PDF reader could not be loaded"); const t=await r.text();
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([t],{type:"text/javascript"})); return window.pdfjsLib; })(); PDFL.catch(()=>{ PDFL=null; }); return PDFL; }
+async function pdfPages(file){ const L=await pdfLib(), doc=await L.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false}).promise, out=[];
+  for(let i=1;i<=doc.numPages;i++){ const tc=await (await doc.getPage(i)).getTextContent(), rows=[];
+    tc.items.forEach(it=>{ if(!it.str||!it.str.trim()) return; const y=it.transform[5]; let r=rows.find(r2=>Math.abs(r2.y-y)<3); if(!r){ r={y,it:[]}; rows.push(r); } r.it.push(it); });
+    rows.sort((a,c)=>c.y-a.y); out.push(rows.map(r=>{ const L=r.it.sort((a,c)=>a.transform[4]-c.transform[4]); let t="", end=null; L.forEach(x=>{ const x0=x.transform[4], fs=Math.abs(x.transform[0])||10; if(end!=null&&x0-end>fs*.18&&!/\s$/.test(t)&&!/^\s/.test(x.str)) t+=" "; t+=x.str; end=x0+(x.width||0); }); return t.replace(/\s+/g," ").trim(); }).join("\n")); }
+  return out; }
+// the Development Brief template: "Project Name …", "Land Area …", "Target Sectors …", "Developmental Land I: …", "Land-use ratios: …", "Mandatory service facilities (…)"
+function parseBrief(pages,fname){ const T=pages.join("\n"), pg=re=>{ for(let i=0;i<pages.length;i++) if(re.test(pages[i])) return "p."+(i+1); return ""; };
+  const one=re=>{ const x=T.match(re); return x?x[1].replace(/\s+/g," ").replace(/\s+([,.;:)])/g,"$1").replace(/\(\s+/g,"(").trim():null; }, num=v=>{ if(v==null) return null; const n=+String(v).replace(/[,\s]/g,""); return isFinite(n)&&n>0?n:null; };
+  const b={id:"pdf-"+fnorm(fname).slice(0,24),doc:fname,src:{},ok:{},tol:2,notes:"Read from the PDF — check every value against it."};
+  const R={name:/Project Name\s+([^\n]+)/,client:/\bClient\s+([^\n]+)/,loc:/\bLocation\s+([^\n]+)/,type:/Development Type\s+([^\n]+)/};
+  Object.entries(R).forEach(([k,re])=>{ b[k]=one(re); if(b[k]) b.src[k]=pg(re); });
+  const AR=/Land Area\s+([\d][\d,\.\s]*?)\s*(?:m²|m2|sq|SQM)/i; b.area=num(one(AR)); if(b.area) b.src.area=pg(AR);
+  const SR=/Target Sectors\s+([\s\S]+?)(?:\n\s*(?:\d+\.\d|[A-Z][A-Z ]{6,}|Arady|ARADY|Disclaimer)|$)/; const st=one(SR);
+  b.sect=st?st.split(/,|\band\b/).map(x=>x.trim().replace(/\.$/,"")).filter(x=>x&&x.length<40).map(x=>x.charAt(0).toUpperCase()+x.slice(1)).map(x=>x.replace(/^Pharma$/i,"Pharmaceutical").replace(/^Building material$/i,"Building materials")):[]; if(b.sect.length) b.src.sect=pg(/Target Sectors/);
+  const PR=/Developmental Land\s+([IVX\d]+)\s*:\s*([\d][\d,\.\s]*?)\s*m/g; b.parcels=[...T.matchAll(PR)].map(x=>({n:"Developmental Land "+x[1],a:num(x[2])})).filter(x=>x.a); if(b.parcels.length) b.src.parcels=pg(/Developmental Land/);
+  const LR=/Industrial\s*(\d+(?:\.\d+)?)\s*%[\s\S]{0,60}?Services\s*(?:&|and)\s*Logistics\s*\)?\s*(\d+(?:\.\d+)?)\s*%[\s\S]{0,60}?Roads?\s*(?:&|and)\s*Landscape\s*\)?\s*(\d+(?:\.\d+)?)\s*%/i, lm=T.match(LR);
+  b.lu=lm?{ind:+lm[1],sl:+lm[2],rl:+lm[3]}:null; if(lm) b.src.lu=pg(/Land\s*-\s*use ratios|Industrial\s*\d+(?:\.\d+)?\s*%/i);
+  const MR=/Mandatory service facilities\s*\(([^)]+)\)/i, ms=one(MR); b.must=ms?ms.split(/,/).map(x=>x.trim()).filter(Boolean):[]; if(b.must.length) b.src.must=pg(MR);
+  const GT=[["Main gate",/Main Gate/i],["Secondary gates",/Secondary Gates/i],["Emergency gates",/Emergency (?:Gates|Exits)/i]].filter(x=>x[1].test(T)); b.gates=GT.map(x=>x[0]); if(b.gates.length) b.src.gates=pg(/Emergency (?:Gates|Exits)|Secondary Gates/i);
+  const FR=/approximately\s+(\d+(?:\.\d+)?)\s*m(?:eters|etres)?\s+on each side of\s+the\s+Main Gate/i, fm=T.replace(/\n/g," ").match(FR); b.fence=fm?+fm[1]:null; if(fm) b.src.fence=pg(/on each side of/i);
+  return b; }
+(()=>{ const st=document.createElement("style"); st.textContent=`#plRules table.bf{width:100%;border-collapse:collapse;font-size:11px;margin:4px 0}#plRules table.bf td,#plRules table.bf th{padding:3px 4px;vertical-align:top;text-align:left;border-bottom:1px solid rgba(255,255,255,.08)}#plRules table.bf td:first-child{opacity:.7;white-space:nowrap}#plRules table.bf input{width:16px;height:16px}
+#plRules .bfh{margin:4px 0 6px;padding:7px 9px;border-radius:9px;font-weight:700;font-size:12px;background:rgba(255,255,255,.08)}#plRules .bfh.good{background:rgba(52,199,89,.22)}#plRules .bfh.bad{background:rgba(255,69,58,.22)}
+#plRules .bsrc{display:block;opacity:.55;font-size:10px}#plRules details.rb{margin-top:8px}#plRules details.rb summary{cursor:pointer;font-weight:600;font-size:12px;padding:4px 0}#plRules .bfr span{flex:0 0 auto}#plRules .bfr select{flex:1;min-width:0}#plRules .bfr button{white-space:nowrap;flex:0 0 auto}#plRules input[type=text]{height:28px;border-radius:7px;border:0;padding:0 7px;background:rgba(255,255,255,.12);color:inherit}`; document.head.appendChild(st); })();
 let rulesOn=false, AUD=null;
 // the plan check: plots on a road, on the landscape or on each other, landscape on a road, badly shaped plots (cached per change)
 function planAudit(){ if(AUD&&AUD.v===PL.ver) return AUD; const p=PL.plan, cor=[]; p.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let k=1;k<V.length;k++){ const A2=V[k-1], B2=V[k], L2=lhyp(A2,B2); if(L2<.5) continue; const nx2=-(B2[1]-A2[1])/L2*(r.w/2-.5), nz2=(B2[0]-A2[0])/L2*(r.w/2-.5); cor.push([[A2[0]+nx2,A2[1]+nz2],[B2[0]+nx2,B2[1]+nz2],[B2[0]-nx2,B2[1]-nz2],[A2[0]-nx2,A2[1]-nz2]]); } });
@@ -19679,12 +19805,12 @@ function rulesUI(soft){ const el=q("#plRules"); if(!el) return; el.hidden=!rules
     [Math.abs(tot-100)<.5?"#34C759":"#FF9F0A",Math.abs(tot-100)<.5?"Mix shares add up to 100%":`Mix shares add up to ${Math.round(tot)}% — they are scaled to 100%`]];
   const budH=`<table><tr><th>Use</th><th>Target</th><th>Plan</th><th>Area</th></tr>${bud}<tr><td><b>Total land</b></td><td></td><td></td><td><b>${B.land!=null?A.fArea(B.land):"—"}</b></td></tr></table>`;
   const ckH=ck.map(([c,t])=>`<div class="ck">${dot(c)}<span>${esc(t)}</span></div>`).join("");
-  if(soft&&el.querySelector("#plBud")){ el.querySelector("#plBud").innerHTML=budH; el.querySelector("#plCk").innerHTML=ckH; el.querySelectorAll(".mx .act").forEach((x,i)=>x.textContent=MA.n?Math.round(MA.cnt[i]/MA.n*100)+"%":"—"); wireBud(el); return; }
+  if(soft&&el.querySelector("#plBud")){ el.querySelector("#plBud").innerHTML=budH; el.querySelector("#plCk").innerHTML=ckH; { const bk=el.querySelector("#plBk"); if(bk) bk.innerHTML=briefCheckH(); } el.querySelectorAll(".mx .act").forEach((x,i)=>x.textContent=MA.n?Math.round(MA.cnt[i]/MA.n*100)+"%":"—"); wireBud(el); return; }
   const H=history(), rm=P.id==="recent"?recentMix():null;
   el.innerHTML=`<div class="hd">Park rules<button type="button" class="x" id="plRX" aria-label="Close">×</button></div>
     <div class="row" style="margin-top:8px"><span>Profile</span><select id="plPf">${Object.entries(PROFS).map(([k,v])=>`<option value="${k}" ${k===P.id?"selected":""}>${esc(v.l)}</option>`).join("")}</select></div>
     <div class="src">${esc((PROFS[P.id]||PROFS.recent).note)}${rm?` · ${rm.n} plots sold since 2024`:""}</div>
-    <div class="sec">Plot mix <small>target · plan, share of plots</small></div>
+    ${briefH()}<div class="sec">Plot mix <small>target · plan, share of plots</small></div>
     ${P.mix.map((e,i)=>`<div class="row mx"><span title="${esc((MODS[e.m]||{}).src||"")}">${esc(mixTxt(e))}</span><input type="number" min="0" max="100" step="1" data-m="${i}" value="${e.s}">%<b class="act" style="width:38px;text-align:right">${MA.n?Math.round(MA.cnt[i]/MA.n*100)+"%":"—"}</b><button type="button" data-rm="${i}" aria-label="Remove">×</button></div>`).join("")}
     <div class="row"><select id="plAm">${Object.entries(MODS).map(([k,v])=>`<option value="${k}">${esc(v.l)} m</option>`).join("")}</select>×<input type="number" id="plAn" min="1" max="32" value="1" aria-label="Modules joined"><button type="button" id="plAdd">Add size</button></div>
     <div class="sec">Roads and passages <small>metres</small></div>
@@ -19692,10 +19818,10 @@ function rulesUI(soft){ const el=q("#plRules"); if(!el) return; el.hidden=!rules
       <label>Local road<input type="number" data-r="loc" min="6" max="40" value="${P.roads.loc}"></label><label>Passage between rows<input type="number" id="plPs" min="0" max="20" value="${P.passage}"></label></div>
     <div class="row" style="margin-top:6px"><span>Perimeter road</span><select id="plRing"><option value="gate" ${(P.ring||"gate")==="gate"?"selected":""}>Only on the gate side(s)</option><option value="all" ${P.ring==="all"?"selected":""}>All round the land</option><option value="none" ${P.ring==="none"?"selected":""}>None</option></select></div>
     <div class="sec">Land-use budget <small>IDA table layout</small></div><div id="plBud">${budH}</div>
-    <div class="sec">Checks</div><div id="plCk">${ckH}</div>
+    <div class="sec">Checks</div><div id="plCk">${ckH}</div><div class="sec">Brief check</div><div id="plBk">${briefCheckH()}</div>${ruleBookH()}
     <div class="row" style="margin-top:8px"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="plRf" ${PL.mp.live!==false?"checked":""} style="width:18px;height:18px"> Re-plan the plots while I move a road, the land, a green area or a roundabout</label></div>
     <div class="src">Targets start from the Industria West budget approved by IDA; plot sizes from the October, West and Phase 3 drawings${H.n?` and ${H.n} sold plots`:""}. Smart fill and Master plan use this profile.</div>`;
-  wireBud(el); if(A.arrange) A.arrange();
+  wireBud(el); wireBrief(el); if(A.arrange) A.arrange();
   q("#plRX").onclick=()=>{ rulesOn=false; rulesUI(); btns(); };
   q("#plPf").onchange=e=>{ PL.prof=profOf(e.target.value); applyRoads(); PL.target=mixTop()[0]||PL.target; persist(); rulesUI(); opts(); A.flash("Profile: "+PROFS[PL.prof.id].l+" — plot size "+A.nf(PL.target,0)+" m²"); };
   el.querySelectorAll("[data-m]").forEach(i=>i.onchange=()=>{ const v=Math.max(0,Math.min(100,+i.value||0)); P.mix[+i.dataset.m].s=v; PL.target=mixTop()[0]||PL.target; persist(); rulesUI(); opts(); });
@@ -19842,8 +19968,9 @@ function masterPlan0(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw
       buf.forEach(Q=>{ const a=[(Q[0][0]+Q[3][0])/2,(Q[0][1]+Q[3][1])/2], b=[(Q[1][0]+Q[2][0])/2,(Q[1][1]+Q[2][1])/2]; rowPos([a,b],13,6).forEach((sp2,i)=>{ if(add.length<900) add.push(placeObject(i%3===2?"shrub":"tree",sp2.p,0)); }); });
       p.items.push(...add); }
     // 7. services and utilities: the plots nearest the main entrance until the budget's shares are reached
-    const bud=prof().bud, MGc=MG.c, small=MB.w*MB.d*2.2, byD=p.plots.map(x=>({x,d:lhyp(lCent(x.pts.map(Lc)),MGc),a:geoArea(x.pts)})).sort((a2,b2)=>(a2.a>small)-(b2.a>small)||a2.d-b2.d); let sv=0, ut=0;   // services take the small plots nearest the main entrance
+    const bud=briefBud(), MGc=MG.c, small=MB.w*MB.d*2.2, byD=p.plots.map(x=>({x,d:lhyp(lCent(x.pts.map(Lc)),MGc),a:geoArea(x.pts)})).sort((a2,b2)=>(a2.a>small)-(b2.a>small)||a2.d-b2.d); let sv=0, ut=0;   // services take the small plots nearest the main entrance
     byD.forEach(o=>{ if(o.x.pin) return; if(sv<la*(+bud.svc||0)/100*.9){ o.x.use="svc"; o.x.ind="Services"; sv+=o.a; } else if(ut<la*(+bud.util||0)/100*.9){ o.x.use="util"; o.x.ind=undefined; ut+=o.a; } });
+    made.fac=nameFacilities(p,MGc);
     // 8. phases: blocks nearest the main entrance first, half the plot area in Phase 1; blocks coded A1, B1 … then A2, B2 …
     const blks={}; p.plots.forEach(x=>{ const k=x.blk||x.code.split("-")[0]; (blks[k]=blks[k]||[]).push(x); });
     const BL=Object.values(blks).map(L2=>({L:L2,d:Math.min(...L2.map(x=>lhyp(lCent(x.pts.map(Lc)),MGc))),a:L2.reduce((q2,x)=>q2+geoArea(x.pts),0)})).sort((a2,b2)=>a2.d-b2.d);
@@ -19853,7 +19980,7 @@ function masterPlan0(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw
     p.mpMade=true; PL.sel=null; if(!mo.noUndo) PL.undo.push(snap); if(PL.undo.length>80) PL.undo.shift(); PL.redo=[];
   }catch(er){ if(er&&er.message!=="spine") console.error("master plan",er); QUIET--; if(er&&er.message==="spine"){ PL.plan=JSON.parse(snap); O=null; changed(); return; } PL.plan=JSON.parse(snap); O=null; changed(); A.flash("The master plan could not be made — nothing was changed"); return; }
   QUIET--; GR=null; CG=null; changed(["all"]);
-  const st=stats(); A.flash(`Master plan: ${p.plots.length} plots in ${made.sectors} blocks (Phase 1 and 2) · ${(p.gates||[]).length} gates, ring road · green: ${made.green.boul} boulevard strips, ${made.green.gate} gate squares, ${made.green.pocket} corner pockets${made.removed?` · ${made.removed} overlapping plots removed`:""} · average ${st.avg!=null?A.fArea(st.avg):"—"} · ${made.roads} roads · ${st.green?A.fArea(st.green)+" landscape":"no landscape"} · ${st.trees} trees, ${st.lamps} lights · sizes from ${H.n?H.n+" sold plots":"your choice"} — Undo brings back what was there`); fitPlan(); }
+  const st=stats(); A.flash(`Master plan: ${p.plots.length} plots in ${made.sectors} blocks (Phase 1 and 2) · ${(p.gates||[]).length} gates, ring road · green: ${made.green.boul} boulevard strips, ${made.green.gate} gate squares, ${made.green.pocket} corner pockets${made.removed?` · ${made.removed} overlapping plots removed`:""} · average ${st.avg!=null?A.fArea(st.avg):"—"} · ${made.roads} roads · ${st.green?A.fArea(st.green)+" landscape":"no landscape"} · ${st.trees} trees, ${st.lamps} lights · sizes from ${H.n?H.n+" sold plots":"your choice"} ${made.fac?` · ${made.fac} brief facilities named`:""}${PL.brief?` · brief check: ${hardFails()?hardFails()+" hard failure(s), see Rules":"ready for review"}`:""} — Undo brings back what was there`); fitPlan(); }
 // no land drawn: a closed ring of road is enough — tap inside it and its inner area becomes the land; the ring stays as the perimeter road
 function masterFromRing(g){ const p=PL.plan; if(p.land){ A.flash("Press “Make the plan” in the bar above"); return; }
   if(!p.roads.length){ A.flash("Draw the land, or draw a closed ring of road and tap inside it"); return; }
@@ -19966,8 +20093,8 @@ function card(soft){ const el=q("#plCard"); if(!el) return; const s=obj(PL.sel);
     acts=`<select id="plCK" aria-label="Type">${keys.map(k=>`<option value="${k}" ${k===s.k?"selected":""}>${esc(list[k].l)}</option>`).join("")}</select><button type="button" id="plCS">Exact sizes</button><button type="button" id="plCDup">Duplicate</button>`; }
   else if(t==="plot"){ const a=geoArea(s.pts), b=PL.plan.items.find(i=>isBld(i.k)&&i.plot===s.id); hd="Plot "+(s.code||""); big=A.fArea(a); sub=`${A.fArea2(a)?A.fArea2(a)+" · ":""}perimeter ${A.fLen(A.pathLen(s.pts.concat([s.pts[0]])))}${b?" · "+KIND(b.k).l+" on it":" · empty"}`;
     if(noAccess().includes(s.id)) w="This plot does not touch a road";
-    sub+=` · ${USES[s.use||"ind"]}${s.ind?" · "+s.ind:""}${s.mod&&MODS[s.mod]?" · module "+MODS[s.mod].l+(s.n>1?" × "+s.n:""):""}${s.phase?" · phase "+s.phase:""}${window.SID_TOPO2?window.SID_TOPO2.planTxt(s):""}`;
-    acts=`<select id="plCU" class="u" aria-label="Plot use">${Object.entries(USES).map(([k,v])=>`<option value="${k}" ${(s.use||"ind")===k?"selected":""}>${v}</option>`).join("")}</select><select id="plCI" class="u" aria-label="Industry"><option value="">Industry…</option>${INDS.map(v=>`<option ${s.ind===v?"selected":""}>${v}</option>`).join("")}</select>${String(s.code||"").includes("-")?`<button type="button" id="plCIs" title="Give every plot of this sector the same use and industry">Whole sector ${esc(String(s.code).split("-")[0])}</button>`:""}<button type="button" id="plCPin" title="A pinned plot never changes when roads or the land move">${s.pin?"📌 Pinned":"Pin"}</button>${s.blk?`<select id="plCRp" class="u" aria-label="Plan this block again"><option value="">Re-plan block ${esc(s.blk)}…</option><option value="mix">with the profile mix</option>${prof().mix.map((e,i)=>`<option value="${i}">all ${esc(mixTxt(e))}</option>`).join("")}</select>`:""}<select id="plCB" aria-label="Build on this plot"><option value="">${b?"Change building…":"Build…"}</option>${Object.entries(BK).map(([k,v])=>`<option value="${k}">${esc(v.l)}</option>`).join("")}</select>`; }
+    sub+=` · ${USES[s.use||"ind"]}${s.fac?" · "+s.fac:""}${s.ind?" · "+s.ind:""}${s.mod&&MODS[s.mod]?" · module "+MODS[s.mod].l+(s.n>1?" × "+s.n:""):""}${s.phase?" · phase "+s.phase:""}${window.SID_TOPO2?window.SID_TOPO2.planTxt(s):""}`;
+    acts=`<select id="plCU" class="u" aria-label="Plot use">${Object.entries(USES).map(([k,v])=>`<option value="${k}" ${(s.use||"ind")===k?"selected":""}>${v}</option>`).join("")}</select><select id="plCI" class="u" aria-label="Industry"><option value="">Industry…</option>${INDS.map(v=>`<option ${s.ind===v?"selected":""}>${v}</option>`).join("")}</select><select id="plCF" class="u" aria-label="Facility"><option value="">Facility…</option>${FACS.map(v=>`<option ${s.fac===v?"selected":""}>${v}</option>`).join("")}</select>${String(s.code||"").includes("-")?`<button type="button" id="plCIs" title="Give every plot of this sector the same use and industry">Whole sector ${esc(String(s.code).split("-")[0])}</button>`:""}<button type="button" id="plCPin" title="A pinned plot never changes when roads or the land move">${s.pin?"📌 Pinned":"Pin"}</button>${s.blk?`<select id="plCRp" class="u" aria-label="Plan this block again"><option value="">Re-plan block ${esc(s.blk)}…</option><option value="mix">with the profile mix</option>${prof().mix.map((e,i)=>`<option value="${i}">all ${esc(mixTxt(e))}</option>`).join("")}</select>`:""}<select id="plCB" aria-label="Build on this plot"><option value="">${b?"Change building…":"Build…"}</option>${Object.entries(BK).map(([k,v])=>`<option value="${k}">${esc(v.l)}</option>`).join("")}</select>`; }
   else if(t==="road"){ let L=0; for(let i=1;i<s.pts.length;i++) L+=A.dist(s.pts[i-1],s.pts[i]); hd="Road"; big=A.fLen(L); sub=`${s.w} m wide · about ${A.fArea(L*s.w)} of road`;
     acts=`<select id="plCR" aria-label="Road type">${RT.map((r,i)=>`<option value="${i}" ${r.k===s.t?"selected":""}>${esc(r.l)} · ${r.w} m</option>`).join("")}</select>`; }
   else if(t==="land"){ const a=geoArea(s.pts); hd="Land"; big=A.fArea(a); sub=`${A.fArea2(a)?A.fArea2(a)+" · ":""}perimeter ${A.fLen(A.pathLen(s.pts.concat([s.pts[0]])))}`; }
@@ -19986,6 +20113,7 @@ function card(soft){ const el=q("#plCard"); if(!el) return; const s=obj(PL.sel);
   const crp=q("#plCRp"); if(crp) crp.onchange=()=>{ const o=obj(PL.sel); if(!o||!crp.value) return; PL.sel=null; replanBlock(o,crp.value==="mix"?null:+crp.value); };
   const cu=q("#plCU"); if(cu) cu.onchange=()=>{ const o=obj(PL.sel); if(!o) return; pushUndo(); o.use=cu.value; changed(["plots"]); };
   const ci=q("#plCI"); if(ci) ci.onchange=()=>{ const o=obj(PL.sel); if(!o) return; pushUndo(); o.ind=ci.value||undefined; if(o.ind&&/logist/i.test(o.ind)&&(o.use||"ind")==="ind") o.use="log"; changed(["plots"]); };
+  const cf=q("#plCF"); if(cf) cf.onchange=()=>{ const o=obj(PL.sel); if(!o) return; pushUndo(); o.fac=cf.value||undefined; if(o.fac) o.use=FAC_UTIL.test(o.fac)?"util":"svc"; changed(["plots"]); };
   const cis=q("#plCIs"); if(cis) cis.onclick=()=>{ const o=obj(PL.sel); if(!o) return; const L=String(o.code).split("-")[0]; pushUndo(); let n=0; PL.plan.plots.forEach(x=>{ if(String(x.code||"").split("-")[0]===L){ x.use=o.use||"ind"; x.ind=o.ind; n++; } }); changed(["plots"]); A.flash(`${n} plots in sector ${L}: ${USES[o.use||"ind"]}${o.ind?" · "+o.ind:""}`); };
   const cb=q("#plCB"); if(cb) cb.onchange=()=>{ if(!cb.value) return; const pl=obj(PL.sel); placeBuilding(cb.value,pl,null); };
   const cr=q("#plCR"); if(cr) cr.onchange=()=>{ const o=obj(PL.sel); if(!o) return; pushUndo(); const r=RT[+cr.value]; o.t=r.k; o.w=r.w; changed(["roads","plots"]); };
@@ -20169,7 +20297,7 @@ function deactivate(leaving){ if(!PL.on) return; if(PL.cur) finishCur(); PL.on=f
 window.SID_3D={build(T3,F,L,W,h,k,id,K,opts){ if(!T) T=T3; return buildingAt(F,L,W,h,k,String(id),K,opts); }, tree(T3,K,x,z,sz,c,palm){ if(!T) T=T3; treeAt(K,x,z,sz,c,palm); }};
 window.SID_PLAN={get on(){ return PL.on; },get pl(){ return PL; },plotAt:planPlotAt,activate,deactivate,down,move,up,hover,cancel,undo,redo,del,esc:escK,enter:enterK,key,hint:hintTxt,draw2d,obstacles,tool:()=>PL.tool,setTool,
   state:PL,_t:{Lc,Gc,detectBlock,smartTap,stripFill,fillAll,shapeLoose,handles,refillAt,blockAt,hoverPreview,snapOutline,newDrawing,deleteDrawing,subdivide,stats,iCorners,fitOnPlot,autoPlots,placeBuilding,commitRoad,commitLand,commitPlot,commitGreen,graph,cgraph,rbs,noAccess,lArea,layer:()=>layer,veh:()=>VEH,scr,itemScreen,
-    alongRoad,rowAlong,rowPos,placeRound,keepClear,avoid,overlap,segClear,srvRoute,curType,hitAny,opts,masterPlan,masterFromRing,shapeOK,obbOf,planAudit}};
+    alongRoad,rowAlong,rowPos,placeRound,keepClear,avoid,overlap,segClear,srvRoute,curType,hitAny,opts,masterPlan,masterFromRing,shapeOK,obbOf,planAudit,briefChecks,briefMeasure,briefBud,parseBrief,pdfPages,nameFacilities,hardFails,BRIEFS}};
 })();
 </script>
 
