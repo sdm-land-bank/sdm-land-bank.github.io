@@ -19697,14 +19697,17 @@ const RB_FIXED=[
   ["Warehousing & Logistics nearest the main gate; clean sectors upwind / housing side; heavy sectors downwind","SID practice — Development to confirm","in use"],
   ["Sector shares of the industrial land","Not in the brief — equal split until set (Rules › Sector shares)","to confirm"],
   ["Warehousing plots count as Industrial land (not Services & Logistics)","Brief wording unclear — Development to confirm","to confirm"],
-  ["At least one emergency gate; fence chain-link with steel-rod at gates","Brief p.16–17","in use"]];
+  ["At least one emergency gate; fence chain-link with steel-rod at gates","Brief p.16–17","in use"],
+  ["Fit to the brief: plots to services / green pockets in exact steps, aim within half the tolerance","Brief land-use ratios","in use"],
+  ["Phase 1 = blocks along the main road from the main gate, about half the plot area","SID practice — Development to confirm","in use"],
+  ["Land-use ratios count for the whole project when parcels are linked","Brief p.5 (two parcels) — to confirm","to confirm"]];
 // the brief's 3 groups, measured from the drawing (logistics and utility plots are counted with services, as the brief groups them)
 function briefMeasure(){ const B=budget(); if(B.land==null||!(B.land>0)) return null; let log=0; PL.plan.plots.forEach(x=>{ if(x.use==="log") log+=geoArea(x.pts); });
   const ind=B.a.ind-log, sl=B.a.svc+B.a.util+log, rl=B.a.road+B.a.green, L=B.land; return {land:L,ind,sl,rl,over:Math.max(0,B.a.ind+B.a.svc+B.a.util+B.a.green-L),pc:{ind:ind/L*100,sl:sl/L*100,rl:rl/L*100}}; }
 // services and utilities share for the Master plan when a brief is chosen (utilities keep the profile's share inside the brief's 10%)
 function briefBud(){ const P=prof().bud, b=PL.brief; if(!b||!b.lu||!(+b.lu.sl>0)) return P; const ut=Math.min(+P.util||0,+b.lu.sl); return Object.assign({},P,{svc:Math.max(0,+b.lu.sl-ut),util:ut}); }
 // Master plan with a brief: the mandatory facilities get named plots (services nearest the main gate, utilities like the STP farthest from it)
-function nameFacilities(p,gc){ const b=PL.brief; if(!b||!(b.must||[]).length) return 0; p.plots.forEach(x=>{ if(!x.pin&&x.fac) delete x.fac; });
+function nameFacilities(p,gc){ const b=PL.brief; if(!b||!(b.must||[]).length||b.facHere===false) return 0; p.plots.forEach(x=>{ if(!x.pin&&x.fac) delete x.fac; });
   const d=x=>lhyp(lCent(x.pts.map(Lc)),gc), want=b.must.filter(f=>!p.plots.some(x=>x.pin&&facOf(x)===fnorm(f))); let n=0;
   const S=p.plots.filter(x=>!x.pin&&x.use==="svc").sort((a,c)=>d(a)-d(c));
   want.filter(f=>!FAC_UTIL.test(f)).forEach(f=>{ const x=S.find(y=>!y.fac)||p.plots.filter(y=>!y.pin&&!y.fac&&(y.use||"ind")==="ind").sort((a,c)=>d(a)-d(c))[0]; if(!x) return; x.fac=f; x.use="svc"; x.ind="Services"; n++; });
@@ -19716,12 +19719,12 @@ function briefChecks(){ const b=PL.brief, out=[]; if(!b) return siteChecks(out);
   if(!M) add("na","Land-use ratios: draw the land first","Brief "+(S.lu||""),true);
   else if(!b.lu||[b.lu.ind,b.lu.sl,b.lu.rl].some(v=>v==null||v===""||isNaN(+v))) add("fail","Land-use ratios: not in the brief yet — fill them in above","Brief",true);
   else { [["ind","Industrial plots"],["sl","Services & Logistics"],["rl","Roads & Landscape"]].forEach(([k,l])=>{ const t=+b.lu[k], v=M.pc[k], d=v-t, ok=Math.abs(d)<=tol;
-      add(ok?"ok":"fail",`${l}: plan ${v.toFixed(1)}% · brief ${t}% (± ${tol})${ok?"":` — ${d>0?"over":"under"} by ${Math.abs(d).toFixed(1)} points`}`,"Brief "+(S.lu||""),true); });
+      const PJ=(b.proj||[]).some(id=>id!==PL.did); add(ok?"ok":(PJ?"warn":"fail"),`${PJ?"This parcel — ":""}${l}: plan ${v.toFixed(1)}% · brief ${t}% (± ${tol})${ok?"":` — ${d>0?"over":"under"} by ${Math.abs(d).toFixed(1)} points`}`,"Brief "+(S.lu||""),!PJ); });
     const tt=(+b.lu.ind)+(+b.lu.sl)+(+b.lu.rl); if(Math.abs(tt-100)>.05) add("warn",`The brief's shares add up to ${tt}%, not 100%`,"Brief",false); }
   if(M) add(M.over>1?"fail":"ok",M.over>1?`Areas do not add up: plots and green cover ${A.fArea(M.over)} more than the land (something overlaps)`:"Areas add up to the land area (nothing counted twice)","Plan arithmetic",true);
-  (b.must||[]).forEach(f=>{ const L=p.plots.filter(x=>facOf(x)===fnorm(f)); add(L.length?"ok":"fail",L.length?`${f}: plot ${L.map(x=>x.code||"(no code)").join(", ")}`:`${f}: no plot yet — Master plan names it, or choose it on a plot (Facility…)`,"Brief "+(S.must||""),true); });
+  (b.must||[]).forEach(f=>{ const L=p.plots.filter(x=>facOf(x)===fnorm(f)), here=b.facHere!==false; add(L.length?"ok":(here?"fail":"na"),L.length?`${f}: plot ${L.map(x=>x.code||"(no code)").join(", ")}`:here?`${f}: no plot yet — Master plan names it, or choose it on a plot (Facility…)`:`${f}: in another parcel of the project`,"Brief "+(S.must||""),here); });
   const G=p.gates||[]; add(G.some(g=>g.main)?"ok":p.land?"fail":"na",G.some(g=>g.main)?`Gates: ${G.length}, main entrance set`:"Main entrance: none yet — Road › Gate, or Master plan places the gates","Brief "+(S.gates||""),true);
-  zoneChecks(add,b,S);
+  zoneChecks(add,b,S); projectChecks(add,b,S); phaseChecks(add);
   if(p.land&&b.area){ const la=geoArea(p.land.pts), C=[["the whole site",b.area]].concat((b.parcels||[]).map(x=>[x.n,x.a])); let best=null; C.forEach(([n,a])=>{ const d=Math.abs(la-a)/a; if(!best||d<best.d) best={n,a,d}; });
     add(best.d<=.01?"ok":"warn",`Land drawn ${A.fArea(la)} — ${best.d<=.01?"matches "+best.n:best.n+" in the brief is "+A.fArea(best.a)+" ("+(best.d*100).toFixed(1)+"% off)"}`,"Brief "+(S.area||""),false); }
   if((b.parcels||[]).length>1) add("na",`The brief has ${b.parcels.length} parcels: make one drawing per parcel for now (both together come in a later step)`,"Brief "+(S.parcels||""),false);
@@ -19749,7 +19752,7 @@ function briefH(){ const b=PL.brief, opt=[["","No brief"]].concat(Object.values(
   h+=`<table class="bf"><tr><th></th><th>Brief says</th><th>Page</th><th title="Ticked = checked by a person">✓</th></tr>`+BF_FIELDS(b).map(([k,l,v])=>`<tr><td>${l}</td><td>${v==null?"<i>— not found</i>":esc(String(v))}</td><td>${esc((b.src||{})[k]||"")}</td><td>${v==null?"":`<input type="checkbox" data-bk="${k}" ${b.ok&&b.ok[k]?"checked":""} aria-label="Checked">`}</td></tr>`).join("")+`</table>`;
   h+=`<div class="g4"><label>Industrial %<input type="number" step="0.1" min="0" max="100" data-bl="ind" value="${lu.ind!=null?lu.ind:""}"></label><label>Services & Logistics %<input type="number" step="0.1" min="0" max="100" data-bl="sl" value="${lu.sl!=null?lu.sl:""}"></label><label>Roads & Landscape %<input type="number" step="0.1" min="0" max="100" data-bl="rl" value="${lu.rl!=null?lu.rl:""}"></label><label>Tolerance ± points<input type="number" step="0.5" min="0" max="20" data-bl="tol" value="${b.tol!=null?b.tol:2}"></label></div>`;
   h+=`<div class="row"><span>Mandatory services</span><input type="text" id="plBm" value="${esc((b.must||[]).join(", "))}" style="flex:2;min-width:0" aria-label="Mandatory services, comma separated"></div>`;
-  h+=shareH(b);
+  h+=shareH(b)+fitH(b)+projH(b);
   return h+`<div class="src">${esc(b.doc||"")}${b.notes?" · "+esc(b.notes):""}</div>`; }
 function wireBrief(el){ const s=el.querySelector("#plBf"); if(!s) return;
   s.onchange=()=>{ const v=s.value; if(!v) PL.brief=null; else if(BRIEFS[v]) PL.brief=JSON.parse(JSON.stringify(BRIEFS[v])); persist(); rulesUI(); A.flash(PL.brief?"Brief: "+PL.brief.name+" — the plan is checked against it":"No brief: the plan is checked against the profile only"); };
@@ -19762,7 +19765,7 @@ function wireBrief(el){ const s=el.querySelector("#plBf"); if(!s) return;
   el.querySelectorAll("[data-bl]").forEach(i=>{ i.onkeydown=e=>e.stopPropagation(); i.onchange=()=>{ const b=PL.brief, k=i.dataset.bl, v=+i.value; if(!b) return; const lim=k==="tol"?20:100;
     if(i.value===""||!(v>=0&&v<=lim)){ i.value=k==="tol"?b.tol:(b.lu&&b.lu[k]!=null?b.lu[k]:""); A.flash(`Enter a number from 0 to ${lim}`); return; }
     if(k==="tol") b.tol=v; else { b.lu=b.lu||{ind:null,sl:null,rl:null}; b.lu[k]=v; b.ok=b.ok||{}; b.ok.lu=false; } persist(); rulesUI(); }; });
-  wireShare(el);
+  wireShare(el); wireFit(el);
   const m=el.querySelector("#plBm"); if(m){ m.onkeydown=e=>e.stopPropagation(); m.onchange=()=>{ const b=PL.brief; if(!b) return; b.must=m.value.split(/[,،;]/).map(x=>x.trim()).filter(Boolean); b.ok=b.ok||{}; b.ok.must=false; persist(); rulesUI(); }; } }
 // reading a brief PDF: pdf.js loaded only on this button, checked by its hash; no eval (the page's CSP forbids it)
 const PDFJS=["https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js","sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e"],
@@ -19950,6 +19953,60 @@ function zoneDraw(ctx,poly){ const p=PL.plan, P=c=>A.P(c); let big=true; if(p.la
       const w=ctx.measureText(t).width+10; ctx.fillStyle="rgba(20,20,22,.8)"; ctx.fillRect(s[0]-w/2,s[1]+8,w,15); ctx.fillStyle=secCol(L2[0].sector); ctx.fillText(t,s[0],s[1]+16); }); ctx.restore(); } }
   const F=PL.brief&&+PL.brief.fence>0&&p.land&&big; if(F){ const L=p.land.pts.map(Lc), n=L.length, tr=+PL.brief.fence; (p.gates||[]).forEach(g=>{ const c=Lc(g.c), i=edgeAt(L,c), a=L[i], b2=L[(i+1)%n], l=lhyp(a,b2)||1, u=[(b2[0]-a[0])/l,(b2[1]-a[1])/l], wg=(g.main?RT[0].w:RT[1].w)/2;
       [[wg,wg+tr],[-wg-tr,-wg]].forEach(([s0,s1])=>{ poly([gScr([c[0]+u[0]*s0,c[1]+u[1]*s0]),gScr([c[0]+u[0]*s1,c[1]+u[1]*s1])],false,"#1C1C1E",4.5,null); }); }); } }
+
+/* ---------- V132: Smart master plan step 4 — fit to the brief, phasing, project of parcels ---------- */
+// moves the plan towards the brief's land-use targets; returns what it did and where it ended
+function fitBrief(p,gc){ p=p||PL.plan; const b=PL.brief; if(!b||!b.lu||[b.lu.ind,b.lu.sl,b.lu.rl].some(v=>v==null||v===""||isNaN(+v))||!p.land) return null;
+  if(!gc){ const mg=(p.gates||[]).find(g=>g.main)||(p.gates||[])[0]; gc=mg?Lc(mg.c):lCent(p.land.pts.map(Lc)); }
+  const M=briefMeasure(); if(!M) return null; const tol=+b.tol>=0?+b.tol:2, aim=Math.max(.25,tol*.5), L=M.land, T={ind:+b.lu.ind,sl:+b.lu.sl,rl:+b.lu.rl}; let ind=M.ind, sl=M.sl, rl=M.rl;
+  const AR=new Map(); p.plots.forEach(x=>AR.set(x,geoArea(x.pts))); const C=new Map(), cOf=x=>{ if(!C.has(x)) C.set(x,lCent(x.pts.map(Lc))); return C.get(x); }, dG=x=>lhyp(cOf(x),gc);
+  const free=x=>!x.pin&&!x.fac, isInd=x=>(x.use||"ind")==="ind";
+  // candidate lists, worked out once
+  const toSvc=p.plots.filter(x=>free(x)&&isInd(x)).sort((a,c)=>dG(a)-dG(c)), toInd=p.plots.filter(x=>free(x)&&x.use==="svc").sort((a,c)=>dG(c)-dG(a));
+  const G0=p.green.filter(g=>g.k!=="eas").map(g=>g.pts.map(Lc)), gd=x=>{ const c=cOf(x); let d=1e9; for(const g of G0){ const e=distEdge(c,g); if(e<d) d=e; if(d<50) break; } return d; };
+  const modA2=x=>x.mod&&MODS[x.mod]?MODS[x.mod].w*MODS[x.mod].d*(x.n||1):null, odd=x=>{ const m=modA2(x); return m&&AR.get(x)<m*.85; };
+  const toGreen=toSvc.slice().map(x=>({x,s:(odd(x)?0:1)*1e9+Math.min(gd(x),5000)*1e4+AR.get(x)})).sort((a,c)=>a.s-c.s).map(o=>o.x);
+  const used=new Set(), next=list=>{ while(list.length){ const x=list.shift(); if(!used.has(x)&&p.plots.includes(x)) return x; } return null; };
+  const mv={svc:0,ind:0,green:0,plot:0}, pc=v=>v/L*100;
+  for(let it=0;it<600;it++){ const d={ind:pc(ind)-T.ind,sl:pc(sl)-T.sl,rl:pc(rl)-T.rl}; if(Math.abs(d.ind)<=aim&&Math.abs(d.sl)<=aim&&Math.abs(d.rl)<=aim) break;
+    if(d.sl<-aim&&d.ind>-tol){ const x=next(toSvc); if(x){ used.add(x); x.use="svc"; x.ind="Services"; delete x.sector; const a=AR.get(x); ind-=a; sl+=a; mv.svc++; continue; } }
+    if(d.sl>aim&&d.ind<tol){ const x=next(toInd); if(x){ used.add(x); x.use="ind"; x.ind=undefined; const a=AR.get(x); sl-=a; ind+=a; mv.ind++; continue; } }
+    if(d.ind>aim&&d.rl<tol){ const x=next(toGreen); if(x){ used.add(x); const a=AR.get(x); if(pc(a)>(d.ind+aim)) { continue; } p.plots=p.plots.filter(y=>y!==x); p.green.push({id:newId(),k:"lawn",fit:1,from:JSON.parse(JSON.stringify(x)),pts:x.pts}); ind-=a; rl+=a; mv.green++; continue; } }
+    if(d.ind<-aim&&d.rl>-tol){ const g=p.green.filter(q=>q.from).sort((a,c)=>geoArea(a.pts)-geoArea(c.pts))[0]; if(g){ p.green=p.green.filter(q=>q!==g); const x=g.from; delete x.sector; p.plots.push(x); const a=geoArea(x.pts); AR.set(x,a); used.add(x); ind+=a; rl-=a; mv.plot++; continue; } }
+    break; }
+  const out={mv,pc:{ind:pc(ind),sl:pc(sl),rl:pc(rl)},tol}; out.ok=Math.abs(out.pc.ind-T.ind)<=tol&&Math.abs(out.pc.sl-T.sl)<=tol&&Math.abs(out.pc.rl-T.rl)<=tol; PL.lastFit=out; return out; }
+const fitTxt=f=>!f?"":`${f.mv.green?f.mv.green+" plot"+(f.mv.green>1?"s":"")+" → green · ":""}${f.mv.plot?f.mv.plot+" green pocket"+(f.mv.plot>1?"s":"")+" → plots · ":""}${f.mv.svc?f.mv.svc+" plot"+(f.mv.svc>1?"s":"")+" → services · ":""}${f.mv.ind?f.mv.ind+" services → industry · ":""}now ${f.pc.ind.toFixed(1)} / ${f.pc.sl.toFixed(1)} / ${f.pc.rl.toFixed(1)}%${f.ok?"":" — still outside the brief: change the roads, plot sizes or green by hand"}`;
+// phasing: distance along the main road from the main gate, the side distance counted 1.5x
+const ph1Share=()=>{ const v=+(PL.mp&&PL.mp.ph1); return v>=10&&v<=90?v/100:.5; };
+function phaseKey(p,L2,gc){ const mr=p.roads.filter(r=>r.t==="main").sort((a,c)=>lhyp(Lc(a.pts[0]),gc)-lhyp(Lc(c.pts[0]),gc))[0]; const cs=L2.map(x=>lCent(x.pts.map(Lc)));
+  if(!mr) return Math.min(...cs.map(c=>lhyp(c,gc))); const a=Lc(mr.pts[0]), b=Lc(mr.pts[mr.pts.length-1]), s0=lhyp(a,gc)<lhyp(b,gc)?a:b, s1=s0===a?b:a, l=lhyp(s0,s1)||1, u=[(s1[0]-s0[0])/l,(s1[1]-s0[1])/l];
+  return Math.min(...cs.map(c=>{ const al=(c[0]-gc[0])*u[0]+(c[1]-gc[1])*u[1], pe=Math.abs((c[0]-gc[0])*u[1]-(c[1]-gc[1])*u[0]); return (al<0?-al*2:al)+1.5*pe; })); }
+// the other parcels of the project (their saved drawings), measured the same way
+let PJC={};
+function measurePlan(pl){ if(!pl||!pl.land) return null; const land=geoArea(pl.land.pts); let ind=0, sv=0, ut=0, lg=0, gr=0; (pl.plots||[]).forEach(x=>{ const a=geoArea(x.pts), u=x.use||"ind"; if(u==="svc") sv+=a; else if(u==="util") ut+=a; else { ind+=a; if(u==="log") lg+=a; } }); (pl.green||[]).forEach(g=>gr+=geoArea(g.pts));
+  const road=Math.max(0,land-ind-sv-ut-gr); return {land,ind:ind-lg,sl:sv+ut+lg,rl:road+gr,fac:(pl.plots||[]).filter(x=>x.fac).map(x=>x.fac)}; }
+async function loadProj(){ const b=PL.brief, kv=window.SID_KV; if(!b||!(b.proj||[]).length||!kv) return; let did=0;
+  for(const id of b.proj){ if(id===PL.did||(PJC[id]&&PJC[id].t>Date.now()-60000)) continue; PJC[id]={t:Date.now(),loading:true}; try{ const raw=await kv.get(dKey(id)), o=raw?JSON.parse(raw):null; PJC[id]={t:Date.now(),m:o?measurePlan(o.plan):null,name:((IDX&&IDX.list.find(r=>r.id===id))||{}).name||"drawing"}; did++; }catch(e){ PJC[id]={t:Date.now(),err:String(e&&e.message||e)}; } }
+  if(did&&rulesOn) rulesUI(true); }
+function projectChecks(add,b,S){ const ids=(b.proj||[]).filter(id=>id!==PL.did); if(!ids.length) return; const me=briefMeasure(); if(!me) return; const facMe=PL.plan.plots.filter(x=>x.fac).map(x=>x.fac);
+  const parts=[{m:{land:me.land,ind:me.ind,sl:me.sl,rl:me.rl,fac:facMe}}]; let wait=0, bad=0; ids.forEach(id=>{ const c=PJC[id]; if(!c||c.loading) wait++; else if(!c.m) bad++; else parts.push(c); });
+  if(wait){ add("na",`Loading the other parcel${ids.length>1?"s":""} of the project…`,"Project",false); loadProj(); return; }
+  if(bad) add("warn",`${bad} linked drawing${bad>1?"s have":" has"} no land — draw it or unlink it`,"Project",false);
+  const T={land:0,ind:0,sl:0,rl:0}; parts.forEach(o=>{ T.land+=o.m.land; T.ind+=o.m.ind; T.sl+=o.m.sl; T.rl+=o.m.rl; }); const tol=+b.tol>=0?+b.tol:2, n=parts.length;
+  if(b.lu) [["ind","Industrial plots"],["sl","Services & Logistics"],["rl","Roads & Landscape"]].forEach(([k,l])=>{ const v=T[k]/T.land*100, t=+b.lu[k], d=v-t, ok=Math.abs(d)<=tol; add(ok?"ok":"fail",`Project (${n} parcels): ${l} ${v.toFixed(1)}% · brief ${t}% (± ${tol})${ok?"":` — ${d>0?"over":"under"} by ${Math.abs(d).toFixed(1)} points`}`,"Brief "+(S.lu||"")+" · whole project",true); });
+  (b.must||[]).forEach(f=>{ const c=parts.reduce((s,o)=>s+(o.m.fac||[]).filter(x=>fnorm(x)===fnorm(f)).length,0); add(c?"ok":"fail",c?`Project: ${f} ×${c}`:`Project: no ${f} in any parcel`,"Brief "+(S.must||"")+" · whole project",true); });
+  if(b.area){ const d=Math.abs(T.land-b.area)/b.area; add(d<=.01?"ok":"warn",`Project land ${A.fArea(T.land)} — brief ${A.fArea(b.area)}${d>.01?` (${(d*100).toFixed(1)}% off)`:""}`,"Brief "+(S.area||""),false); } }
+function phaseChecks(add){ const p=PL.plan; if(!p.plots.length||!p.plots.some(x=>x.phase)) return; const a1=p.plots.filter(x=>x.phase===1).reduce((s,x)=>s+geoArea(x.pts),0), at=p.plots.reduce((s,x)=>s+geoArea(x.pts),0);
+  add("ok",`Phase 1: ${p.plots.filter(x=>x.phase===1).length} plots, ${(a1/at*100).toFixed(0)}% of the plot area (target ${Math.round(ph1Share()*100)}%) along the main road`,"Phasing — SID practice",false);
+  const f2=p.plots.filter(x=>x.fac&&x.phase===2); if(f2.length) add("warn",`${f2.map(x=>x.fac+" ("+(x.code||"")+")").join(", ")} in Phase 2 — Phase 1 needs ${f2.length>1?"them":"it"}: build ${f2.length>1?"them":"it"} with Phase 1`,"Phasing",false); }
+function fitH(b){ const f=PL.lastFit; return `<div class="sec">Fit & phases</div><div class="row"><button type="button" id="plFit" title="Move the plan towards the brief's land-use targets: plots to services or green pockets (or back) in small exact steps">Fit to the brief</button><label>Phase 1 share<input type="number" id="plPh1" min="10" max="90" step="5" value="${Math.round(ph1Share()*100)}" style="width:56px">%</label></div>${f?`<div class="src">Last fit: ${esc(fitTxt(f))}</div>`:""}`; }
+function projH(b){ const L=(IDX&&IDX.list||[]).filter(r=>r.id!==PL.did&&!r.archived); const on=new Set(b.proj||[]);
+  return `<div class="sec">Project parcels <small>other drawings of the same project</small></div>${L.length?`<div class="pj">${L.slice(0,30).map(r=>`<label><input type="checkbox" data-pj="${esc(r.id)}" ${on.has(r.id)?"checked":""}> ${esc(r.name||"Drawing")}${r.updated?` <small style="opacity:.6">· saved ${esc(fmtDT(r.updated))}</small>`:""}</label>`).join("")}</div>`:`<div class="src">No other drawings yet — make one drawing per parcel, then link them here.</div>`}<label class="pj1"><input type="checkbox" id="plFacHere" ${b.facHere!==false?"checked":""}> The mandatory facilities are in this parcel</label>`; }
+function wireFit(el){ const f=el.querySelector("#plFit"); if(f) f.onclick=()=>{ const b=PL.brief; if(!b||!b.lu){ A.flash("Choose a brief with land-use ratios first"); return; } if(!PL.plan.plots.length){ A.flash("No plots yet — make the plan first"); return; } pushUndo(); const r=fitBrief(PL.plan); if(PL.plan.plots.some(x=>x.sector)) zoneSectors(PL.plan); changed(["all"]); rulesUI(); A.flash(r?"Fit to the brief: "+fitTxt(r)+" — Undo brings it back":"Nothing to fit"); };
+  const ph=el.querySelector("#plPh1"); if(ph){ ph.onkeydown=e=>e.stopPropagation(); ph.onchange=()=>{ const v=+ph.value; if(!(v>=10&&v<=90)){ A.flash("Phase 1 share from 10 to 90%"); ph.value=Math.round(ph1Share()*100); return; } PL.mp.ph1=v; persist(); A.flash(`Phase 1 share ${v}% — Make the plan to apply`); }; }
+  el.querySelectorAll("[data-pj]").forEach(c=>c.onchange=()=>{ const b=PL.brief; if(!b) return; const s=new Set(b.proj||[]); if(c.checked) s.add(c.dataset.pj); else s.delete(c.dataset.pj); b.proj=[...s]; delete PJC[c.dataset.pj]; persist(); rulesUI(); loadProj(); });
+  const fh=el.querySelector("#plFacHere"); if(fh) fh.onchange=()=>{ const b=PL.brief; if(!b) return; b.facHere=fh.checked; persist(); rulesUI(true); A.flash(fh.checked?"Master plan names the mandatory facilities in this parcel":"No mandatory facilities in this parcel — another parcel of the project has them"); }; }
+(()=>{ const st=document.createElement("style"); st.textContent=`#plRules .pj{display:flex;flex-direction:column;gap:4px;max-height:140px;overflow:auto;margin:4px 0}#plRules .pj label,#plRules label.pj1{display:flex;gap:7px;align-items:center;font-size:12px}#plRules .pj input,#plRules label.pj1 input{width:16px;height:16px}`; document.head.appendChild(st); })();
 let rulesOn=false, AUD=null;
 // the plan check: plots on a road, on the landscape or on each other, landscape on a road, badly shaped plots (cached per change)
 function planAudit(){ if(AUD&&AUD.v===PL.ver) return AUD; const p=PL.plan, cor=[]; p.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let k=1;k<V.length;k++){ const A2=V[k-1], B2=V[k], L2=lhyp(A2,B2); if(L2<.5) continue; const nx2=-(B2[1]-A2[1])/L2*(r.w/2-.5), nz2=(B2[0]-A2[0])/L2*(r.w/2-.5); cor.push([[A2[0]+nx2,A2[1]+nz2],[B2[0]+nx2,B2[1]+nz2],[B2[0]-nx2,B2[1]-nz2],[A2[0]-nx2,A2[1]-nz2]]); } });
@@ -20122,7 +20179,7 @@ function masterPlan0(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw
     // 5c. green pockets: odd corner plots (cut corners, slanted block ends, under-size) become lawn until the green share is reached
     const gTarget=la*(+prof().bud.green||0)/100; let gNow=p.green.reduce((q2,x)=>q2+geoArea(x.pts),0);
     const modArea=x=>x.mod&&MODS[x.mod]?MODS[x.mod].w*MODS[x.mod].d*(x.n||1):null, odd=p.plots.map(x=>{ const ar=geoArea(x.pts), ma=modArea(x); return {x,ar,sc:x.pin?0:(ma&&ar<ma*.6?2:0)}; }).filter(o=>o.sc>0).sort((a2,b2)=>b2.sc-a2.sc||a2.ar-b2.ar);
-    for(const o of odd){ if(gNow>=gTarget) break; p.plots=p.plots.filter(x=>x!==o.x); p.green.push({id:newId(),k:"lawn",pts:o.x.pts}); gNow+=o.ar; gst.pocket++; }
+    for(const o of odd){ if(gNow>=gTarget) break; p.plots=p.plots.filter(x=>x!==o.x); p.green.push({id:newId(),k:"lawn",from:JSON.parse(JSON.stringify(o.x)),pts:o.x.pts}); gNow+=o.ar; gst.pocket++; }
     made.green=gst;
     // 6. trees and street lights: on the road verges, never inside a plot or the landscape; shrubs and trees in the park and the buffer
     const PLs=p.plots.map(x=>x.pts.map(Lc)), GRs=p.green.map(x=>x.pts.map(Lc)), skip=pt=>PLs.some(P=>lInPoly(pt,P))||GRs.some(P=>lInPoly(pt,P));
@@ -20137,17 +20194,17 @@ function masterPlan0(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw
     // 7. services and utilities: the plots nearest the main entrance until the budget's shares are reached
     const bud=briefBud(), MGc=MG.c, small=MB.w*MB.d*2.2, byD=p.plots.map(x=>({x,d:lhyp(lCent(x.pts.map(Lc)),MGc),a:geoArea(x.pts)})).sort((a2,b2)=>(a2.a>small)-(b2.a>small)||a2.d-b2.d); let sv=0, ut=0;   // services take the small plots nearest the main entrance
     byD.forEach(o=>{ if(o.x.pin) return; if(sv<la*(+bud.svc||0)/100*.9){ o.x.use="svc"; o.x.ind="Services"; sv+=o.a; } else if(ut<la*(+bud.util||0)/100*.9){ o.x.use="util"; o.x.ind=undefined; ut+=o.a; } });
-    made.fac=nameFacilities(p,MGc);
+    made.fac=nameFacilities(p,MGc); made.fit=fitBrief(p,MGc);
     // 8. phases: blocks nearest the main entrance first, half the plot area in Phase 1; blocks coded A1, B1 … then A2, B2 …
     const blks={}; p.plots.forEach(x=>{ const k=x.blk||x.code.split("-")[0]; (blks[k]=blks[k]||[]).push(x); });
-    const BL=Object.values(blks).map(L2=>({L:L2,d:Math.min(...L2.map(x=>lhyp(lCent(x.pts.map(Lc)),MGc))),a:L2.reduce((q2,x)=>q2+geoArea(x.pts),0)})).sort((a2,b2)=>a2.d-b2.d);
+    const BL=Object.values(blks).map(L2=>({L:L2,d:phaseKey(p,L2,MGc),a:L2.reduce((q2,x)=>q2+geoArea(x.pts),0)})).sort((a2,b2)=>a2.d-b2.d);
     const totA=BL.reduce((q2,b2)=>q2+b2.a,0); let acc=0; const nP={1:0,2:0};
-    BL.forEach(b2=>{ const ph=acc<totA*.5?1:2; acc+=b2.a; const L3=secLetter(nP[ph]++)+ph; b2.L.forEach((x,i)=>{ if(x.pin) return; x.blk=L3; x.phase=ph; x.code=L3+"-"+(i+1); }); });
+    BL.forEach(b2=>{ const ph=acc<totA*ph1Share()?1:2; acc+=b2.a; const L3=secLetter(nP[ph]++)+ph; b2.L.forEach((x,i)=>{ if(x.pin) return; x.blk=L3; x.phase=ph; x.code=L3+"-"+(i+1); }); });
     p.secs={1:nP[1],2:nP[2]}; made.zones=zoneSectors(p,MGc);
     p.mpMade=true; PL.sel=null; if(!mo.noUndo) PL.undo.push(snap); if(PL.undo.length>80) PL.undo.shift(); PL.redo=[];
   }catch(er){ if(er&&er.message!=="spine") console.error("master plan",er); QUIET--; if(er&&er.message==="spine"){ PL.plan=JSON.parse(snap); O=null; changed(); return; } PL.plan=JSON.parse(snap); O=null; changed(); A.flash("The master plan could not be made — nothing was changed"); return; }
   QUIET--; GR=null; CG=null; changed(["all"]);
-  const st=stats(); A.flash(`Master plan: ${p.plots.length} plots in ${made.sectors} blocks (Phase 1 and 2) · ${(p.gates||[]).length} gates, ring road · green: ${made.green.boul} boulevard strips, ${made.green.gate} gate squares, ${made.green.pocket} corner pockets${made.removed?` · ${made.removed} overlapping plots removed`:""} · average ${st.avg!=null?A.fArea(st.avg):"—"} · ${made.roads} roads · ${st.green?A.fArea(st.green)+" landscape":"no landscape"} · ${st.trees} trees, ${st.lamps} lights · sizes from ${H.n?H.n+" sold plots":"your choice"} ${made.fac?` · ${made.fac} brief facilities named`:""}${PL.brief?` · brief check: ${hardFails()?hardFails()+" hard failure(s), see Rules":"ready for review"}`:""} — Undo brings back what was there`); fitPlan(); }
+  const st=stats(); A.flash(`Master plan: ${p.plots.length} plots in ${made.sectors} blocks (Phase 1 and 2) · ${(p.gates||[]).length} gates, ring road · green: ${made.green.boul} boulevard strips, ${made.green.gate} gate squares, ${made.green.pocket} corner pockets${made.removed?` · ${made.removed} overlapping plots removed`:""} · average ${st.avg!=null?A.fArea(st.avg):"—"} · ${made.roads} roads · ${st.green?A.fArea(st.green)+" landscape":"no landscape"} · ${st.trees} trees, ${st.lamps} lights · sizes from ${H.n?H.n+" sold plots":"your choice"} ${made.fac?` · ${made.fac} brief facilities named`:""}${PL.brief?` · brief check: ${hardFails()?hardFails()+" hard failure(s), see Rules":"ready for review"}`:""} ${made.fit?` · fit to the brief: ${fitTxt(made.fit)}`:""} — Undo brings back what was there`); fitPlan(); }
 // no land drawn: a closed ring of road is enough — tap inside it and its inner area becomes the land; the ring stays as the perimeter road
 function masterFromRing(g){ const p=PL.plan; if(p.land){ A.flash("Press “Make the plan” in the bar above"); return; }
   if(!p.roads.length){ A.flash("Draw the land, or draw a closed ring of road and tap inside it"); return; }
@@ -20465,7 +20522,7 @@ function deactivate(leaving){ if(!PL.on) return; if(PL.cur) finishCur(); PL.on=f
 window.SID_3D={build(T3,F,L,W,h,k,id,K,opts){ if(!T) T=T3; return buildingAt(F,L,W,h,k,String(id),K,opts); }, tree(T3,K,x,z,sz,c,palm){ if(!T) T=T3; treeAt(K,x,z,sz,c,palm); }};
 window.SID_PLAN={get on(){ return PL.on; },get pl(){ return PL; },plotAt:planPlotAt,activate,deactivate,down,move,up,hover,cancel,undo,redo,del,esc:escK,enter:enterK,key,hint:hintTxt,draw2d,obstacles,tool:()=>PL.tool,setTool,
   state:PL,_t:{Lc,Gc,detectBlock,smartTap,stripFill,fillAll,shapeLoose,handles,refillAt,blockAt,hoverPreview,snapOutline,newDrawing,deleteDrawing,subdivide,stats,iCorners,fitOnPlot,autoPlots,placeBuilding,commitRoad,commitLand,commitPlot,commitGreen,graph,cgraph,rbs,noAccess,lArea,layer:()=>layer,veh:()=>VEH,scr,itemScreen,
-    alongRoad,rowAlong,rowPos,placeRound,keepClear,avoid,overlap,segClear,srvRoute,curType,hitAny,opts,masterPlan,masterFromRing,shapeOK,obbOf,planAudit,zoneSectors,sectorClashes,fenceLen,briefSects,addEmgGate,siteOf,siteTap,finishEas,syncEas,siteChecks,sideKinds,facTarget,briefChecks,briefMeasure,briefBud,parseBrief,pdfPages,nameFacilities,hardFails,BRIEFS}};
+    alongRoad,rowAlong,rowPos,placeRound,keepClear,avoid,overlap,segClear,srvRoute,curType,hitAny,opts,masterPlan,masterFromRing,shapeOK,obbOf,planAudit,fitBrief,phaseKey,measurePlan,loadProj,projectChecks,zoneSectors,sectorClashes,fenceLen,briefSects,addEmgGate,siteOf,siteTap,finishEas,syncEas,siteChecks,sideKinds,facTarget,briefChecks,briefMeasure,briefBud,parseBrief,pdfPages,nameFacilities,hardFails,BRIEFS}};
 })();
 </script>
 
