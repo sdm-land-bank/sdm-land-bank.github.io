@@ -2906,6 +2906,9 @@ html[data-look="modules"][data-text="large"] body{font-size:13.75px}
 <style>@keyframes sidBootA{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}</style></div></div>
 <script>(function(){var t0=Date.now(),iv=setInterval(function(){var s=Math.round((Date.now()-t0)/1000),e=document.getElementById("sidBootT");if(!e){clearInterval(iv);return;}if(s>=8)e.textContent="("+s+" s — slow connection, the page is still downloading)";},1000);
 document.addEventListener("DOMContentLoaded",function(){clearInterval(iv);var b=document.getElementById("sidBoot");if(b)b.remove();});})();</script>
+<script>/* V137.3: remember a person's first touch of the map, so the first-load "fit to the plots" never undoes their zoom */
+(function(){function m(e){var t=e.target;if(t&&t.closest&&t.closest(".maplibregl-map"))window.__sidUserMoved=1;}["wheel","pointerdown","touchstart","dblclick","gesturestart"].forEach(function(k){document.addEventListener(k,m,{capture:true,passive:true});});
+document.addEventListener("keydown",function(e){if(/^(\+|-|=|Arrow)/.test(e.key)&&document.activeElement&&document.activeElement.closest&&document.activeElement.closest(".maplibregl-map"))window.__sidUserMoved=1;},true);})();</script>
 
 <div class="app">
   <aside class="rail">
@@ -9415,7 +9418,7 @@ function addLayers(){
   initOverlay();
   S.mapReady=true;
   $("#maperr").hidden=true;
-  if(!S.fitted){ S.fitted=true; fitPlots(); }
+  if(!S.fitted){ S.fitted=true; if(!window.__sidUserMoved) fitPlots(); }   // V137.3: never jump back after the person has started to zoom / move
   }catch(err){ console.error(err); mapError("Could not build the plot layers: "+err.message); }
 }
 /* Colour comes from a compiled match expression on the immutable `k` property.
@@ -9920,9 +9923,10 @@ function draw(){
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
 
 function showMap(){
-  $("#mapwrap").hidden=false;
+  const wasHidden=$("#mapwrap").hidden; $("#mapwrap").hidden=false;
   if(!map) return;
   map.resize(); ensureLayers(); refreshPaint();
+  const fk=[S.view,S.park,[...S.sel].sort().join(","),S.pfStage||""].join("|"); if(!wasHidden&&fk===showMap.fk) return; showMap.fk=fk;
   if(S.park==="all"&&!S.sel.size) fitPortfolio(); else fitPlots();
 }
 /* Frame the whole estate, pipeline land included — that is the point of the home page. */
@@ -16552,6 +16556,7 @@ if(typeof laraRun==="function"){ const lrV762=laraRun;
    V75 — auto sign-out after 1 hour of inactivity (saves database, storage and bandwidth overnight)
    ========================================================================== */
 (function(){
+if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;   /* local test copy only */
 const LIMIT=60*60e3, WARN=55*60e3, KEY="sid.lastActive", FLAG="sid.autoLogout";
 let mem=0, lastWrite=0, out=false, bar=null;
 const rd=()=>{ let v=0; try{ v=Number(localStorage.getItem(KEY))||0; }catch(e){} return Math.max(mem,v); };
@@ -24830,7 +24835,11 @@ body.ws-on #tpSec{left:calc(var(--ws-w,340px) + 12px)!important}
 #wsBar .ws-acts .sk-b svg{width:15px;height:15px}
 #wsBar .ws-acts .sk-b span{display:inline!important;font-size:11.5px}
 #wsBar .ws-acts .sk-b:disabled{opacity:.35;cursor:default}
-#wsBar #plOpt.ws-tidy{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;align-items:stretch!important;gap:10px!important;padding:10px!important}
+#wsBar #plOpt.ws-tidy{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;align-items:stretch!important;gap:10px!important;padding:10px!important;overflow:visible!important;max-width:100%!important;box-sizing:border-box!important}
+#wsBar .ws-og,#wsBar .ws-or,#wsBar .ws-oh{min-width:0;max-width:100%;box-sizing:border-box}
+#wsBar .ws-or>button{max-width:100%;white-space:normal!important;height:auto!important;min-height:30px;text-align:center}
+#wsBar .ws-bd,#wsBar .ws-sec,#wsBar .ws-sc{min-width:0;max-width:100%}
+#wsBar .ws-bd{overflow-x:hidden}
 #wsBar #plOpt.ws-tidy>.sk-bar{display:none!important}
 #wsBar .ws-og{display:flex;flex-direction:column;gap:6px}
 #wsBar .ws-og+.ws-og{border-top:1px solid rgba(255,255,255,.08);padding-top:10px}
@@ -24839,15 +24848,29 @@ body.ws-on #tpSec{left:calc(var(--ws-w,340px) + 12px)!important}
 #wsBar .ws-or>button,#wsBar .ws-seg>button{margin:0!important;height:30px;padding:0 11px!important;border-radius:8px!important;font-size:11.5px!important;font-weight:600;line-height:1}
 #wsBar .ws-or>input{width:84px!important;height:30px;box-sizing:border-box;border-radius:8px}
 #wsBar .ws-or>span,#wsBar .ws-or>small{font-size:11.5px;opacity:.8}
-#wsBar .ws-seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:3px;padding:3px;border-radius:10px;background:rgba(255,255,255,.07)}
-#wsBar .ws-seg>button{width:100%;border:0!important;background:transparent!important;color:#fff!important;padding:0 3px!important;font-size:11px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+#wsBar .ws-seg{display:flex;flex-wrap:wrap;gap:3px;padding:3px;border-radius:10px;background:rgba(255,255,255,.07);min-width:0;max-width:100%;box-sizing:border-box}
+#wsBar .ws-seg>button{flex:1 1 auto;min-width:0;width:auto!important;border:0!important;background:transparent!important;color:#fff!important;padding:0 8px!important;font-size:11.5px!important;white-space:nowrap;letter-spacing:-.01em}
 #wsBar .ws-seg>button.on{background:#fff!important;color:#9e1f35!important}
 #wsBar .ws-or>button.ws-main{flex:1 1 100%;height:36px;background:linear-gradient(160deg,#d23a55,#9e1f35)!important;color:#fff!important;border:0!important;font-size:12.5px!important}
 #wsBar #plBud table{width:100%;border-collapse:collapse;font-size:11px}
-#wsBar #plBud th,#wsBar #plBud td{padding:4px 3px;white-space:nowrap;vertical-align:middle}
+#wsBar #plBud th,#wsBar #plBud td{padding:4px 3px;vertical-align:middle}
+#wsBar #plBud th:first-child,#wsBar #plBud td:first-child{width:34%}
 #wsBar #plBud td:first-child{white-space:normal}
 #wsBar #plBud th:nth-child(n+3),#wsBar #plBud td:nth-child(n+3){text-align:right}
 #wsBar #plBud input{width:50px!important;padding:2px 4px!important;margin-right:2px}
+/* V137.3 strict fit: grids of fields and status lines inside the bar wrap, never overflow */
+#wsBar #plRules .g4{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(128px,1fr))!important;gap:6px 10px!important;min-width:0}
+#wsBar #plRules .g4>label{display:flex!important;flex-wrap:wrap;align-items:center;gap:5px;min-width:0;white-space:normal!important;line-height:1.25}
+#wsBar #plRules .g4>label input{width:56px!important;min-width:0;flex:none;margin-left:auto}
+#wsBar #plRules .row{flex-wrap:wrap;min-width:0}
+#wsBar #plRules .row>*{min-width:0;max-width:100%}
+#wsBar .ws-or>span,#wsBar .ws-or>small,#wsBar .ws-or>i{white-space:normal!important;min-width:0;max-width:100%}
+#wsBar #plRules table{width:100%!important;max-width:100%!important;table-layout:fixed!important}
+#wsBar #plRules td,#wsBar #plRules th{white-space:normal!important;overflow-wrap:anywhere;min-width:0}
+#wsBar #plRules td input[type=checkbox]{margin:0}
+/* V137.3 top bar: fixed at the top right in the builder (dragging it moved it off-screen) */
+body.ws-on #skUI .sk-top{position:absolute!important;top:8px!important;right:8px!important;left:auto!important;bottom:auto!important;transform:none!important;max-width:calc(100% - 16px)!important}
+body.ws-on #skUI .sk-top>.sk-bar,body.ws-on #skUI .sk-top>.sk-rs{display:none!important}
 /* V137.2 layout: nothing on top of anything */
 body.sk-on .sk-full .maplibregl-ctrl-bottom-right{max-width:min(440px,52%)}
 body.sk-on .sk-full .maplibregl-ctrl-attrib-inner{white-space:normal;line-height:1.3;font-size:10px}
@@ -24966,7 +24989,7 @@ function mount(){ const on=document.body.classList.contains("sk-on")&&document.b
   if(!on){ const tp=$("#tpPanel"); if(tp&&tp.closest("#wsBar")) document.body.appendChild(tp); relayout(); return; }
   const first=!bar; build(); width(); if(first){ ST.open.draw=1; save(); }
   SECS.forEach(S=>{ const bd=bar.querySelector(`.ws-sec[data-s="${S.id}"] .ws-bd`); S.panels.forEach(pid=>{ const el=home(pid); if(el&&el.parentNode!==bd){ el.classList.remove("sk-min"); bd.appendChild(el); } }); });
-  stepify(); polish(); paint(); relayout(); }
+  stepify(); polish(); paint(); relayout(); topOnScreen(); }
 const MODE=new Set(["psub","lsub","rsub","gsub"]), MAIN=new Set(["plMk","plCoOk","plCoMp","plEf","plFr","plCoOpen"]);
 let omo=null, tidyT=0, tidyC=0; const tidyGuard=()=>{ const n=Date.now(); if(n-tidyT>1000){ tidyT=n; tidyC=0; } return ++tidyC<30; };   /* never more than 30 regroups a second, whatever happens */
 function tidyOpt(){ const o=$("#plOpt"); if(!o||!o.closest("#wsBar")) return; if(omo) omo.disconnect(); o.classList.add("ws-tidy");
@@ -24994,7 +25017,7 @@ function polish(){ try{
   const k=$("#plKpi"); if(k&&k.closest("#wsBar")){ if(k.onclick&&!k.querySelector(".t+*")){ k.onclick(); } k.onclick=null; }
   const tip=(sel,t)=>document.querySelectorAll(sel).forEach(e=>{ if(!e.title) e.title=t; });
   tip("#plTg","Your own plot size in m²"); tip("#plTzM","Leave out plots steeper than this slope (%)"); tip("#plCoOpen","Paste or type the corner coordinates, or import a KML / KMZ file");
-  tip("#plRules input[data-m]","Target share of the plots in this size (%)"); tip("#plGap","Spacing between items (m)");
+  tip("#plRules input[data-m]","Target share of the plots in this size (%)"); const pn=$("#plPN"); if(pn) pn.title=pn.textContent.replace(/▾/g,"").trim(); tip("#plGap","Spacing between items (m)");
   const tp=$("#tpPanel"); if(tp&&tp.closest("#wsBar")){ const tools=[...tp.querySelectorAll(".tp-gp")].find(g=>g.querySelector("[data-t]")); const rd=tp.querySelector("#tpRd"); if(tools&&rd&&rd.nextElementSibling!==tools) rd.after(tools); }
 }catch(e){ console.error("workspace polish",e); } }
 function paint(){ if(!bar) return; bar.classList.toggle("mini",!!ST.mini); const fb=bar.querySelector("#wsFold"); fb.innerHTML=svg(ST.mini?"unfold":"fold"); fb.title=ST.mini?"Open the side bar":"Fold the side bar";
@@ -25006,8 +25029,23 @@ function paint(){ if(!bar) return; bar.classList.toggle("mini",!!ST.mini); const
     const bd=el.querySelector(".ws-bd"); let em=bd.querySelector(".ws-empty"); const has=[...bd.children].some(c=>!c.classList.contains("ws-empty")&&!c.hidden);
     if(!has&&open){ if(!em){ em=document.createElement("div"); em.className="ws-empty"; bd.appendChild(em); } em.textContent=S.id==="levels"?"Land Levels is off — press On.":"Nothing to show yet."; } else if(em) em.remove(); }); }
 /* keep everything in step: mode changes, the planner rebuilding its panels, Land Levels opening late */
+function endSection(){ try{ const TP=window.SID_TOPO&&SID_TOPO._t&&SID_TOPO._t.TP; if(!TP||!TP.tool) return;
+    if(TP.tool==="prof"&&TP.pts&&TP.pts.length>=2){ const d=document.getElementById("tpDone"); if(d) d.click(); }
+    else if(TP.pts&&TP.pts.length){ const c=document.getElementById("tpClr"); if(c) c.click(); }
+    const on=document.querySelector("#tpPanel [data-t].on"); if(on) on.click(); }catch(e){ console.error("end section",e); } }
+/* the top bar: the old panel code pins it with !important inline styles (and squeezes it to 8 px when it thinks it does not fit) */
+function unpinTop(t){ ["left","top","right","bottom","inset","width","height","max-height","overflow-y","transform","animation"].forEach(k=>t.style.removeProperty(k)); delete t.dataset.moved; delete t.dataset.fw; delete t.dataset.mh; delete t.dataset.auto; }
+function topOnScreen(){ try{ const t=document.querySelector("#skUI .sk-top"); if(!t) return;
+    if(document.body.classList.contains("ws-on")){ if(t.getAttribute("style")) unpinTop(t); return; }   /* builder: fixed by CSS, never pinned */
+    const r=t.getBoundingClientRect(); if(!r.width) return;
+    if(r.right>innerWidth+2||r.left<-2||r.top<-2||r.top>innerHeight-30||r.width<160) unpinTop(t); }catch(e){} }
+/* in the builder the top bar cannot be dragged (it stays at the top right) */
+document.addEventListener("pointerdown",e=>{ if(!document.body.classList.contains("ws-on")) return; const t=e.target.closest&&e.target.closest("#skUI .sk-top"); if(!t) return; if(e.target.closest("button,input,select,a,label")) return; e.stopPropagation(); },true);
+addEventListener("resize",()=>setTimeout(topOnScreen,200));
+if(typeof window.go==="function"){ const g0=window.go; window.go=function(v){ try{ if(typeof S!=="undefined"&&S.view!==v) endSection(); }catch(e){} return g0.apply(this,arguments); }; }
 let t=0, lastSig=""; const sig=()=>{ const b=document.body.classList, tp=document.getElementById("tpPanel"), pt=document.getElementById("plTools"); return [b.contains("sk-on"),b.contains("sk-build"),!!(plan()&&plan().on),tp?(tp.parentNode===document.body?"b":"x"):"-",pt?(pt.closest("#wsBar")?"w":"o"):"-",document.getElementById("plRules")?(document.getElementById("plRules").closest("#wsBar")?"w":"o"):"-"].join(""); };
-const soon=()=>{ const g=sig(); if(g===lastSig) return; cancelAnimationFrame(t); t=requestAnimationFrame(()=>{ mount(); lastSig=sig(); }); };
+let lastMode=""; const modeKey=()=>(document.body.classList.contains("sk-on")?"S":"-")+(document.body.classList.contains("sk-build")?"B":"-");
+const soon=()=>{ const mk=modeKey(); if(lastMode&&mk!==lastMode){ endSection(); setTimeout(topOnScreen,300); } lastMode=mk; const g=sig(); if(g===lastSig) return; cancelAnimationFrame(t); t=requestAnimationFrame(()=>{ mount(); lastSig=sig(); }); };
 new MutationObserver(soon).observe(document.body,{attributes:true,attributeFilter:["class"],childList:true});
 document.addEventListener("click",e=>{ if(e.target.closest&&e.target.closest("#plTools [data-pt],#plOpt button,#tpPanel,#plRB,#tpSkBtn,.sk-top [data-mode]")) setTimeout(()=>{ polish(); paint(); },120); },true);
 addEventListener("resize",()=>{ if(document.body.classList.contains("ws-on")) relayout(); });
