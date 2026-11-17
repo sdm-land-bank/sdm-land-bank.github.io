@@ -24393,7 +24393,12 @@ const sale=r=>r.status==="sold"||r.status==="reserved";
 const acc=k=>{ try{ return window.SID_MLFIX?SID_MLFIX.acc(k):null; }catch(e){ return null; } };
 
 /* ---------- rules ---------- */
-function issues(){ const out=[], R=S.rows.filter(r=>!r.dup), add=(dept,rule,sev,park,text,key,ref)=>{ out.push({dept,rule,sev,park,text,key,acc:acc(key),...ref}); };
+let SIGC={};   // fingerprint cache for one issues() run
+function soAcc(park,dept,id){ const s=C.sign[park]&&C.sign[park][dept]; if(!s) return null;
+  if(!s.clr){ const kk=park+"|"+dept; if(!(kk in SIGC)) SIGC[kk]=sig(park,dept); return SIGC[kk]===s.sig?{why:"Signed off"+(s.note?": "+s.note:""),by:s.by,at:s.at,so:true}:null; }   // older sign-off (before V136): clears while its data is unchanged
+  if(!s.clr.length) return null; if(!s._set||s._n!==s.clr.length){ s._set=new Set(s.clr); s._n=s.clr.length; }
+  return s._set.has(id)?{why:"Signed off"+(s.note?": "+s.note:""),by:s.by,at:s.at,so:true}:null; }
+function issues(){ SIGC={}; const out=[], R=S.rows.filter(r=>!r.dup), add=(dept,rule,sev,park,text,key,ref)=>{ out.push({dept,rule,sev,park,text,key,acc:acc(key)||soAcc(park,dept,key+"|"+rule),...ref}); };
   const rk=(r,rule)=>rule?"c|"+rule+"|"+r.park+"|"+r.unit:"r|"+r.park+"|"+r.unit;
   R.forEach(r=>{ const linked=r._plots&&r._plots.length;
     /* Development: the drawing against the MDS */
@@ -24427,8 +24432,14 @@ function sig(park,dept){ const ks=OWN[dept]; let s=""; S.rows.filter(r=>r.park==
   let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(36)+"."+s.length; }
 async function signLoad(force){ if(!online()) return C.sign; if(!force&&C.at&&Date.now()-C.at<30000) return C.sign; const r=await SB.from("sid_kv").select("value").eq("key","chk:signoff").maybeSingle(); C.sign=(r.data&&r.data.value)||{}; C.at=Date.now(); return C.sign; }
 async function signSet(park,dept,open,note){ if(!canWrite()) throw new Error("your role cannot save (it needs register edit rights)"); await signLoad(true);
-  (C.sign[park]=C.sign[park]||{})[dept]={by:myName(),at:new Date().toISOString(),sig:sig(park,dept),open,note:note||""};
-  const r=await SB.from("sid_kv").upsert({key:"chk:signoff",value:C.sign,updated_at:new Date().toISOString()}); if(r.error) throw r.error; }
+  const mine=issues().filter(i=>i.park===park&&i.dept===dept), old=mine.filter(i=>i.acc&&i.acc.so).map(i=>i.key+"|"+i.rule);
+  const clr=[...new Set(old.concat(open||[]))];   // items the earlier sign-off still clears + the ones open now
+  (C.sign[park]=C.sign[park]||{})[dept]={by:myName(),at:new Date().toISOString(),sig:sig(park,dept),open:(open||[]).length,note:note||"",clr};
+  await signSave(); }
+async function signSave(){ const v=JSON.parse(JSON.stringify(C.sign,(k,x)=>k==="_set"||k==="_n"?undefined:x));
+  const r=await SB.from("sid_kv").upsert({key:"chk:signoff",value:v,updated_at:new Date().toISOString()}); if(r.error) throw r.error; }
+async function signUnclear(park,dept,ids){ if(!canWrite()) throw new Error("your role cannot save (it needs register edit rights)"); await signLoad(true);
+  const s=C.sign[park]&&C.sign[park][dept]; if(!s||!s.clr) return; const kill=new Set(ids); s.clr=s.clr.filter(x=>!kill.has(x)); delete s._set; await signSave(); }
 function light(park,dept,n){ const s=C.sign[park]&&C.sign[park][dept]; if(!s) return {cls:n?"red":"grey",txt:n?n+" open":"not checked"};
   return s.sig===sig(park,dept)?{cls:"green",txt:"signed "+day(s.at)}:{cls:"amber",txt:"changed since sign-off"}; }
 
@@ -24444,32 +24455,37 @@ function view(){ const I=issues(), open=I.filter(i=>!i.acc), by={}; open.forEach
 function overview(by){ return `<div class="ck-tw"><table class="ck-t"><thead><tr><th>Project</th>${D.map(d=>`<th>${d[1]}</th>`).join("")}</tr></thead><tbody>${parks().filter(p=>C.park==="all"||C.park===p).map(p=>`<tr><td><b>${esc(pname(p))}</b></td>${D.map(([d])=>{ const n=by[p+"|"+d]||0, L=light(p,d,n), s=C.sign[p]&&C.sign[p][d];
     return `<td><button class="ck-l" data-p="${p}" data-d="${d}" title="${s?esc("Signed by "+s.by+(s.note?" — "+s.note:"")):""}"><i class="${L.cls}"></i><span>${L.txt}${L.cls==="green"||L.cls==="amber"?(n?` · ${n} open`:""):""}</span></button></td>`; }).join("")}</tr>`).join("")}</tbody></table></div>
   <p class="ck-n"><i class="ckd green"></i> signed, nothing changed since · <i class="ckd amber"></i> signed, but its columns changed since · <i class="ckd red"></i> open issues, not signed · <i class="ckd grey"></i> nothing open, not signed</p>`; }
-function deptView(d,I){ const mine=I.filter(i=>i.dept===d&&(C.park==="all"||i.park===C.park)), open=mine.filter(i=>!i.acc), ac=mine.filter(i=>i.acc);
+function deptView(d,I){ const mine=I.filter(i=>i.dept===d&&(C.park==="all"||i.park===C.park)), open=mine.filter(i=>!i.acc); let ac=mine.filter(i=>i.acc);
   const groups={}; open.forEach(i=>{ (groups[i.rule]=groups[i.rule]||[]).push(i); });
   const ps=C.park==="all"?parks():[C.park]; const can=isAdm()||myDept()===d;
-  return `<div class="ck-sign">${ps.map(p=>{ const n=open.filter(i=>i.park===p).length, L=light(p,d,n); return `<div class="ck-sp"><i class="ckd ${L.cls}"></i><b>${esc(pname(p))}</b><span>${n} open · ${L.txt}</span>${can?`<button class="ebtn" data-sign="${p}">Sign off</button>`:""}</div>`; }).join("")}</div>
+  return `<div class="ck-sign">${ps.map(p=>{ const n=open.filter(i=>i.park===p).length, L=light(p,d,n); return `<div class="ck-sp"><i class="ckd ${L.cls}"></i><b>${esc(pname(p))}</b><span>${n} open · ${L.txt}</span>${can?`<button class="ebtn" data-sign="${p}" title="${n?`Clears the ${n} open item(s) of ${esc(pname(p))} from the list, with one reason`:"Sign off"}">${n?`Sign off · clear ${n}`:"Sign off"}</button>`:""}</div>`; }).join("")}</div>
    ${!can?`<p class="ck-n">You can look; only ${DN[d]} (or an administrator) signs off this list.</p>`:""}
    ${Object.keys(groups).length?Object.entries(groups).sort((a,b)=>b[1][0].sev-a[1][0].sev||b[1].length-a[1].length).map(([rule,list])=>`<details class="ck-g" ${list[0].sev>=2?"open":""}><summary><span class="ck-sev s${list[0].sev}"></span>${esc(RULES[rule]||rule)} <b>${list.length}</b></summary>
      <div class="ck-list">${list.slice(0,300).map((i,ix)=>`<div class="ck-it" data-i="${esc(i.key)}"><span class="ck-pk">${esc(pname(i.park))}</span><span class="ck-tx">${esc(i.text)}</span><span class="ck-b"><button data-a="open">Open</button>${can?`<button data-a="ok">Not an issue</button>`:""}</span></div>`).join("")}${list.length>300?`<p class="ck-n">+${list.length-300} more — narrow by project or use Excel</p>`:""}</div></details>`).join("")
    :`<p class="ck-ok">Nothing open for ${DN[d]}${C.park!=="all"?" in "+esc(pname(C.park)):""}.</p>`}
-   ${ac.length?`<details class="ck-g" open><summary>Accepted as not an issue — with the reason typed <b>${ac.length}</b></summary><div class="ck-list">${ac.slice(0,200).map(i=>`<div class="ck-it" data-i="${esc(i.key)}"><span class="ck-pk">${esc(pname(i.park))}</span><span class="ck-tx">${esc(i.text)}<br><small>Reason: <b>${esc(i.acc.why)}</b> — ${esc(i.acc.by)}${i.acc.at?" · "+esc(day(i.acc.at)):""}</small></span><span class="ck-b"><button data-a="open">Open</button>${can?`<button data-a="reopen">Reopen</button>`:""}</span></div>`).join("")}</div></details>`:""}`; }
+   ${(()=>{ const so=ac.filter(i=>i.acc.so), bp={}; so.forEach(i=>{ (bp[i.park]=bp[i.park]||[]).push(i); });
+     return Object.entries(bp).map(([p,list])=>`<details class="ck-g"><summary>Cleared by the sign-off of ${esc(pname(p))} <b>${list.length}</b> <small>— ${esc(list[0].acc.by)} · ${esc(day(list[0].acc.at))}${C.sign[p][d].note?" · “"+esc(C.sign[p][d].note)+"”":""}</small>${can?` <button class="ebtn" data-unclear="${p}">Reopen all</button>`:""}</summary><div class="ck-list">${list.slice(0,200).map(i=>`<div class="ck-it" data-i="${esc(i.key)}" data-r="${esc(i.rule)}"><span class="ck-pk">${esc(pname(i.park))}</span><span class="ck-tx">${esc(i.text)}</span><span class="ck-b"><button data-a="open">Open</button>${can?`<button data-a="reopen">Reopen</button>`:""}</span></div>`).join("")}${list.length>200?`<p class="ck-n">+${list.length-200} more — use Excel</p>`:""}</div></details>`).join(""); })()}
+   ${(ac=ac.filter(i=>!i.acc.so)).length?`<details class="ck-g" open><summary>Accepted as not an issue — with the reason typed <b>${ac.length}</b></summary><div class="ck-list">${ac.slice(0,200).map(i=>`<div class="ck-it" data-i="${esc(i.key)}"><span class="ck-pk">${esc(pname(i.park))}</span><span class="ck-tx">${esc(i.text)}<br><small>Reason: <b>${esc(i.acc.why)}</b> — ${esc(i.acc.by)}${i.acc.at?" · "+esc(day(i.acc.at)):""}</small></span><span class="ck-b"><button data-a="open">Open</button>${can?`<button data-a="reopen">Reopen</button>`:""}</span></div>`).join("")}</div></details>`:""}`; }
 function wire(){ const root=document.querySelector(".ck-page"); if(!root) return; const I=issues(), byKey=new Map(I.map(i=>[i.key+"|"+i.rule,i])), find=k=>I.find(i=>i.key===k);
   root.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ C.tab=b.dataset.t; C.touched=true; repaint(); });
   root.querySelector("#ckPark").onchange=e=>{ C.park=e.target.value; repaint(); };
   root.querySelector("#ckXlsx").onclick=()=>xlsx(I);
   root.querySelectorAll(".ck-l").forEach(b=>b.onclick=()=>{ C.tab=b.dataset.d; C.park=b.dataset.p; C.touched=true; repaint(); });
-  root.querySelectorAll("[data-sign]").forEach(b=>b.onclick=async()=>{ const p=b.dataset.sign, d=C.tab, n=I.filter(i=>i.dept===d&&i.park===p&&!i.acc).length;
-    let note=""; if(n){ note=prompt(`${n} issue(s) are still open for ${pname(p)}. Sign off anyway? Write why (or Cancel):`,""); if(note===null) return; if(!note.trim()){ toast("Write a short reason to sign off with open issues",true); return; } }
-    b.disabled=true; try{ await signSet(p,d,n,note); toast(`${DN[d]} signed off ${pname(p)}`); repaint(); }catch(e){ b.disabled=false; toast("Not saved: "+(e.message||e),true); } });
-  root.querySelectorAll(".ck-it[data-i]").forEach(el=>{ const it=find(el.dataset.i); if(!it) return;
+  root.querySelectorAll("[data-sign]").forEach(b=>b.onclick=async()=>{ const p=b.dataset.sign, d=C.tab, op=I.filter(i=>i.dept===d&&i.park===p&&!i.acc).map(i=>i.key+"|"+i.rule), n=op.length;
+    let note=""; if(n){ note=prompt(`Sign off ${pname(p)} for ${DN[d]}?\nThe ${n} open item(s) will be cleared from the list in one go (you can reopen them later).\nReason (shown to the team):`,"Checked and signed off"); if(note===null) return; note=note.trim(); if(!note){ toast("Write a short reason to sign off with open items",true); return; } }
+    b.disabled=true; try{ await signSet(p,d,op,note); toast(n?`${DN[d]} signed off ${pname(p)} — ${n} item(s) cleared`:`${DN[d]} signed off ${pname(p)}`); repaint(); }catch(e){ b.disabled=false; toast("Not saved: "+(e.message||e),true); } });
+  root.querySelectorAll("[data-unclear]").forEach(b=>b.onclick=async ev=>{ ev.preventDefault(); ev.stopPropagation(); const p=b.dataset.unclear, d=C.tab, ids=I.filter(i=>i.dept===d&&i.park===p&&i.acc&&i.acc.so).map(i=>i.key+"|"+i.rule);
+    if(!confirm(`Put the ${ids.length} cleared item(s) of ${pname(p)} back on the open list? The sign-off itself stays.`)) return;
+    b.disabled=true; try{ await signUnclear(p,d,ids); toast("Reopened "+ids.length); repaint(); }catch(e){ b.disabled=false; toast("Not saved: "+(e.message||e),true); } });
+  root.querySelectorAll(".ck-it[data-i]").forEach(el=>{ const it=el.dataset.r?byKey.get(el.dataset.i+"|"+el.dataset.r):find(el.dataset.i); if(!it) return;
     el.querySelectorAll("[data-a]").forEach(b=>b.onclick=async()=>{ if(b.dataset.a==="open") openIt(it,b);
-      if(b.dataset.a==="reopen"){ try{ await SID_MLFIX.accSet(it.key,""); toast("Reopened"); repaint(); }catch(e){ toast("Not saved: "+(e.message||e),true); } }
+      if(b.dataset.a==="reopen"){ try{ if(it.acc&&it.acc.so) await signUnclear(it.park,it.dept,[it.key+"|"+it.rule]); else await SID_MLFIX.accSet(it.key,""); toast("Reopened"); repaint(); }catch(e){ toast("Not saved: "+(e.message||e),true); } }
       if(b.dataset.a==="ok"){ const why=prompt("Why is this not an issue? (shown to the team)",""); if(!why||!why.trim()) return; try{ await SID_MLFIX.accSet(it.key,why.trim()); toast("Saved"); repaint(); }catch(e){ toast("Not saved: "+(e.message||e),true); } } }); }); }
 function openIt(it,btn){ if(it.plot){ const k=it.plot.k; if(S.park!=="all"&&S.park!==it.plot.park){ S.park=it.plot.park; const s=document.getElementById("parkSel"); if(s) s.value=S.park; } showPlots([k]); return; }
   const r=it.row; if(!r) return;
   if(it.dept==="dev"&&window.SID_MLFIX){ try{ edInit(); }catch(e){} ED.q=String(r.unit||""); ED.cf={}; ED.vs={}; ED.sort=null; ED.show="all"; go("editor"); setTimeout(()=>{ const c=document.querySelector(`#edBody .er[data-id="${r._id}"] .ml-fix`); if(c) SID_MLFIX.rowPop(c,r._id); },500); return; }
   try{ edInit(); go("editor"); setTimeout(()=>openRowForm(r._id),300); }catch(e){ toast("Could not open the row",true); } }
-function xlsx(I){ const A=[["Department","Project","Rule","Severity","Issue","Accepted","Reason","By"]].concat(I.filter(i=>C.park==="all"||i.park===C.park).map(i=>[DN[i.dept],pname(i.park),RULES[i.rule]||i.rule,["low","medium","high"][i.sev]||"",i.text,i.acc?"yes":"",i.acc?i.acc.why:"",i.acc?i.acc.by:""]));
+function xlsx(I){ const A=[["Department","Project","Rule","Severity","Issue","Accepted","Reason","By"]].concat(I.filter(i=>C.park==="all"||i.park===C.park).map(i=>[DN[i.dept],pname(i.park),RULES[i.rule]||i.rule,["low","medium","high"][i.sev]||"",i.text,i.acc?(i.acc.so?"sign-off":"yes"):"",i.acc?i.acc.why:"",i.acc?i.acc.by:""]));
   const wb=XLSX.utils.book_new(), ws=XLSX.utils.aoa_to_sheet(A); ws["!cols"]=[{wch:16},{wch:24},{wch:40},{wch:9},{wch:70},{wch:9},{wch:30},{wch:16}]; XLSX.utils.book_append_sheet(wb,ws,"Checks");
   const sg=[["Project","Department","Light","Signed by","Signed at","Open at sign-off","Note"]]; parks().forEach(p=>D.forEach(([d,l])=>{ const s=C.sign[p]&&C.sign[p][d], n=I.filter(i=>i.park===p&&i.dept===d&&!i.acc).length; sg.push([pname(p),l,light(p,d,n).txt,s?s.by:"",s?s.at.slice(0,10):"",s?s.open:"",s?s.note:""]); }));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sg),"Sign-offs"); XLSX.writeFile(wb,"Department checks "+new Date().toISOString().slice(0,10)+".xlsx"); }
@@ -24483,7 +24499,7 @@ if(typeof edStartEdit==="function"){ const e0=edStartEdit; window.edStartEdit=fu
     if(o&&me&&o!==me&&!isAdm()&&!warned.has(c.k)){ warned.add(c.k); toast(`“${c.label}” belongs to ${DN[o]}. You can change it; their check light will show it changed.`); } }catch(e){} return e0.apply(this,arguments); }; }
 
 if(typeof render==="function"){ const r0=render; window.render=function(){ const out=r0.apply(this,arguments); try{ if(S.view==="checks"){ repaint(); signLoad().then(()=>{ if(S.view==="checks") repaint(); }); } }catch(e){ console.error("checks page",e); } return out; }; }
-window.SID_CHK={issues,sig,signLoad,light,RULES,OWN,view,get state(){ return C; }};
+window.SID_CHK={issues,sig,signLoad,signSet,signUnclear,light,RULES,OWN,view,get state(){ return C; }};
 })();
 
 
