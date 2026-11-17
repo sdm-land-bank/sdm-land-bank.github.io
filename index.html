@@ -18808,7 +18808,7 @@ function planPlotAt(pt){ if(PL.cur||PL.drag) return null; const g=ground(pt), p=
     return {unit:pl.code||"Plot",status:b?KIND(b.k).l:(pl.mod&&MODS[pl.mod]?MODS[pl.mod].l+(pl.n>1?" × "+pl.n:"")+" module":"Planned plot"),color:b?KIND(b.k).c:null,ink:b?"#111":null,sub:"Your plan · "+(IDX&&recOf(PL.did)?recOf(PL.did).name:"drawing"),area:geoArea(pl.pts),dims:A.obbDims(pl.pts)}; } return null; }
 addEventListener("pagehide",()=>{ try{ flush(true); }catch(e){} });
 function pushUndo(){ if(QUIET) return; PL.undo.push(JSON.stringify(PL.plan)); if(PL.undo.length>80) PL.undo.shift(); PL.redo=[]; }
-function changed(what){ PL.ver++; (what||["all"]).forEach(w=>PL.dirty.add(w)); persist(); kpi(); card(); if(rulesOn) rulesUI(true); if(A) A.need(); if(layer) map.triggerRepaint(); }
+function changed(what){ PL.ver++; (what||["all"]).forEach(w=>PL.dirty.add(w)); persist(); kpi(); card(); try{ btns(); }catch(e){} if(rulesOn) rulesUI(true); if(A) A.need(); if(layer) map.triggerRepaint(); }
 function undo(){ if(PL.cur){ if(PL.cur.pts&&PL.cur.pts.length>1){ PL.cur.pts.pop(); live(); A.need(); return; } PL.cur=null; live(); A.need(); return; }
   if(!PL.undo.length){ A.flash("Nothing to undo"); return; } PL.redo.push(JSON.stringify(PL.plan)); PL.plan=JSON.parse(PL.undo.pop()); O=null; fixSel(); changed(); }
 function redo(){ if(!PL.redo.length) return; PL.undo.push(JSON.stringify(PL.plan)); PL.plan=JSON.parse(PL.redo.pop()); O=null; fixSel(); changed(); }
@@ -19373,7 +19373,7 @@ function buildUI(){ const host=A.ui(); if(!host) return; ui=document.createEleme
   opts(); btns(); kpi(); card(); live(); plansUI();
   if(A.movable){ A.movable(q("#plTools"),"plTools",true); A.movable(q("#plOpt"),"plOpt"); A.movable(q("#plKpi"),"plKpi"); A.movable(q("#plCard"),"plCard"); A.movable(q("#plLive"),"plLive"); A.movable(q("#plPlans"),"plPlans"); A.movable(q("#plRules"),"plRules"); } prof(); applyRoads(); rulesUI(); try{ if(window.SID_WS) setTimeout(SID_WS.mount,0); }catch(e){} }
 function set3d(on){ PL.v3=on; persist(); btns(); map.easeTo({pitch:on?60:0,bearing:on&&Math.abs(map.getBearing())<1?-20:map.getBearing(),duration:900}); A.flash(on?"3D view — twist two fingers to turn, Move tool to look around":"Flat view"); }
-function btns(){ if(!ui) return; document.querySelectorAll("#plTools [data-pt]").forEach(b=>{ const on=b.dataset.pt===PL.tool; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on); });
+function btns(){ try{ if(window.SID_WS) SID_WS.paintSoon(); }catch(e){} if(!ui) return; document.querySelectorAll("#plTools [data-pt]").forEach(b=>{ const on=b.dataset.pt===PL.tool; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on); });
   q("#plUndo").disabled=!PL.undo.length&&!PL.cur; q("#plRedo").disabled=!PL.redo.length; const b3=q("#pl3d"); if(b3) b3.classList.toggle("on",!!PL.v3); const rb=q("#plRB"); if(rb) rb.classList.toggle("on",rulesOn); }
 const tzOf=()=>PL.tz||(PL.tz={avoid:false,max:6,low:false,lowDepth:1});
 function tzBtns(){ const z=tzOf(); return `<i class="sep"></i><span class="tzg"><b title="Heights: Copernicus 30 m model (2011–15) or your uploaded survey">Terrain</b><button type="button" data-tz="avoid" class="${z.avoid?"on":""}" title="Leave out plots steeper than this">Avoid slopes ></button><input type="number" id="plTzM" min="1" max="30" step="1" value="${z.max}" inputmode="numeric" aria-label="Steepest slope in percent"> %<button type="button" data-tz="low" class="${z.low?"on":""}" title="Mark plots on a low spot where water would collect (▼)">Flag low spots</button></span>`; }
@@ -20831,7 +20831,7 @@ async function activate(api){ A=api; if(PL.on) return; PL.on=true; PL.cur=null; 
   else A.flash("Build mode — start with Land or Roads, then Plots › Smart fill, then Build and Green"); A.need(); }
 function deactivate(leaving){ if(!PL.on) return; if(PL.cur) finishCur(); PL.on=false; PL.drag=null; closeMenu(); flush(true); removeEventListener("resize",placeKpi);
   try{ map.off("styledata",onStyle); if(map.getLayer("sid-plan3d")) map.removeLayer("sid-plan3d"); }catch(e){} layer=null; VEH=[];
-  if(ui){ ui.remove(); ui=null; } ["plTools","plOpt","plKpi","plLive","plCard","plPlans","plRules"].forEach(id=>{ const e=document.getElementById(id); if(e&&e.closest("#wsBar")) e.remove(); }); const b3=q("#pl3d"); if(b3) b3.remove(); const rb=q("#plRB"); if(rb) rb.remove(); if(!leaving&&map.getPitch()>.5) map.easeTo({pitch:0,duration:600}); }
+  if(ui){ ui.remove(); ui=null; } ["plTools","plOpt","plKpi","plLive","plCard","plPlans","plRules","plUndo","plRedo","plClr"].forEach(id=>{ const e=document.getElementById(id); if(e&&e.closest("#wsBar")) e.remove(); }); const b3=q("#pl3d"); if(b3) b3.remove(); const rb=q("#plRB"); if(rb) rb.remove(); if(!leaving&&map.getPitch()>.5) map.easeTo({pitch:0,duration:600}); }
 // the building and tree models, shared with the AR table view (sold factories and warehouses)
 window.SID_3D={build(T3,F,L,W,h,k,id,K,opts){ if(!T) T=T3; return buildingAt(F,L,W,h,k,String(id),K,opts); }, tree(T3,K,x,z,sz,c,palm){ if(!T) T=T3; treeAt(K,x,z,sz,c,palm); }};
 window.SID_PLAN={get on(){ return PL.on; },get pl(){ return PL; },plotAt:planPlotAt,activate,deactivate,down,move,up,hover,cancel,undo,redo,del,esc:escK,enter:enterK,key,hint:hintTxt,draw2d,obstacles,tool:()=>PL.tool,setTool,
@@ -24790,7 +24790,7 @@ body.ws-on #wsBar{display:flex}
 #wsBar .ws-sec.cmp #plTools .sk-b{height:38px!important}
 #wsBar .ws-sec.cmp #plTools .sk-b span{display:none!important}
 #wsBar #plOpt{display:flex!important;flex-wrap:wrap;gap:6px;padding:8px!important;border-radius:10px!important;background:rgba(255,255,255,.05)!important;align-items:center}
-#wsBar #plOpt:empty{display:none!important}
+#wsBar #plOpt:empty,#wsBar #plOpt.ws-tidy:not(:has(.ws-og)){display:none!important}
 #wsBar #plKpi{padding:4px!important;cursor:default}
 #wsBar #plPlans{padding:2px!important}
 /* Smart master plan: steps */
@@ -24821,6 +24821,48 @@ body.ws-on .sk-full{left:var(--ws-w,340px)!important;width:calc(100vw - var(--ws
 body.ws-on #skUI{left:var(--ws-w,340px)!important}
 body.ws-on #plRB,body.ws-on #tpSkBtn{display:none!important}
 body.ws-on #tpSec{left:calc(var(--ws-w,340px) + 12px)!important}
+/* V137.2 Draw section: tools 3 x 3, actions row, options in tidy groups */
+#wsBar #plTools{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
+#wsBar #plTools .sk-b{height:52px!important}
+#wsBar .ws-sec.cmp #plTools{grid-template-columns:repeat(9,minmax(0,1fr))!important;gap:3px!important}
+#wsBar .ws-acts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 6px}
+#wsBar .ws-acts .sk-b{display:flex!important;flex-direction:row!important;align-items:center;justify-content:center;gap:6px;height:32px!important;width:auto!important;border-radius:9px;background:rgba(255,255,255,.07);color:#fff;border:0;font-size:11.5px;font-weight:600;cursor:pointer}
+#wsBar .ws-acts .sk-b svg{width:15px;height:15px}
+#wsBar .ws-acts .sk-b span{display:inline!important;font-size:11.5px}
+#wsBar .ws-acts .sk-b:disabled{opacity:.35;cursor:default}
+#wsBar #plOpt.ws-tidy{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;align-items:stretch!important;gap:10px!important;padding:10px!important}
+#wsBar #plOpt.ws-tidy>.sk-bar{display:none!important}
+#wsBar .ws-og{display:flex;flex-direction:column;gap:6px}
+#wsBar .ws-og+.ws-og{border-top:1px solid rgba(255,255,255,.08);padding-top:10px}
+#wsBar .ws-oh{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;opacity:.6}
+#wsBar .ws-or{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#wsBar .ws-or>button,#wsBar .ws-seg>button{margin:0!important;height:30px;padding:0 11px!important;border-radius:8px!important;font-size:11.5px!important;font-weight:600;line-height:1}
+#wsBar .ws-or>input{width:84px!important;height:30px;box-sizing:border-box;border-radius:8px}
+#wsBar .ws-or>span,#wsBar .ws-or>small{font-size:11.5px;opacity:.8}
+#wsBar .ws-seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:3px;padding:3px;border-radius:10px;background:rgba(255,255,255,.07)}
+#wsBar .ws-seg>button{width:100%;border:0!important;background:transparent!important;color:#fff!important;padding:0 3px!important;font-size:11px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+#wsBar .ws-seg>button.on{background:#fff!important;color:#9e1f35!important}
+#wsBar .ws-or>button.ws-main{flex:1 1 100%;height:36px;background:linear-gradient(160deg,#d23a55,#9e1f35)!important;color:#fff!important;border:0!important;font-size:12.5px!important}
+#wsBar #plBud table{width:100%;border-collapse:collapse;font-size:11px}
+#wsBar #plBud th,#wsBar #plBud td{padding:4px 3px;white-space:nowrap;vertical-align:middle}
+#wsBar #plBud td:first-child{white-space:normal}
+#wsBar #plBud th:nth-child(n+3),#wsBar #plBud td:nth-child(n+3){text-align:right}
+#wsBar #plBud input{width:50px!important;padding:2px 4px!important;margin-right:2px}
+/* V137.2 layout: nothing on top of anything */
+body.sk-on .sk-full .maplibregl-ctrl-bottom-right{max-width:min(440px,52%)}
+body.sk-on .sk-full .maplibregl-ctrl-attrib-inner{white-space:normal;line-height:1.3;font-size:10px}
+body.ws-on #skHint{top:62px!important;bottom:auto!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:max-content!important;max-width:min(640px,calc(100% - 40px))!important;white-space:normal!important}
+body.ws-on #plLive{bottom:64px!important}
+body.ws-on #plCard{bottom:64px!important;max-height:calc(100dvh - 140px);overflow:auto}
+body.ws-on:has(#tpSec:not([hidden])) #plCard{top:62px!important;bottom:auto!important}
+body.ws-on #tpSec{right:auto!important;max-width:calc(100vw - var(--ws-w,340px) - 24px)!important}
+#wsBar .ws-gh small{display:block;font-weight:500;font-size:10.5px;opacity:.6;margin-top:1px}
+#wsBar .ws-gh .gt{display:flex;flex-direction:column;min-width:0}
+#wsBar #plKpi>.t{display:none!important}
+#wsBar #plKpi{cursor:default!important}
+#wsBar .ws-qv{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+#wsBar .ws-qv b{width:100%;font-size:10px;letter-spacing:.06em;text-transform:uppercase;opacity:.6}
+#tpPanel .tp-row.off[data-k="img"] span::after{content:" · satellite map only";opacity:.75;font-weight:400}
 @media (max-width:760px){
   #wsBar{top:auto;right:0;width:auto;height:min(56dvh,480px);border-right:0;border-top:1px solid rgba(255,255,255,.14);border-radius:16px 16px 0 0;box-shadow:0 -8px 24px rgba(0,0,0,.3)}
   #wsBar.mini{height:auto;width:auto}
@@ -24858,13 +24900,23 @@ const SECS=[
    tb:()=>`<button type="button" class="ws-pill${ST.cmp.draw?" on":""}" data-cmp="draw" title="Show the tools as small icons">Icons only</button>`},
   {id:"plan",t:"Smart master plan",ic:"plan",panels:["plRules"],sub:()=>"Brief → site → zoning → fit → options → outputs",
    on:()=>!!(window.__plRulesOn&&__plRulesOn()), set:v=>{ if(window.__plRulesSet) __plRulesSet(v); },
-   tb:()=>`<button type="button" class="ws-pill go" data-ws="mk" title="Make the master plan on the land">Make the master plan</button><button type="button" class="ws-pill" data-ws="steps1" title="Open every step">Open all</button><button type="button" class="ws-pill" data-ws="steps0" title="Close every step">Close all</button>`},
+   tb:()=>`<button type="button" class="ws-pill go" data-ws="mk" title="Make the master plan on the land">Make the master plan</button><button type="button" class="ws-pill" data-ws="site" title="Mark the site: sides, easement corridors, tie-in points, low point, wind (Draw › Land › Site)">Mark the site</button><button type="button" class="ws-pill" data-ws="steps1" title="Open every step">Open all</button><button type="button" class="ws-pill" data-ws="steps0" title="Close every step">Close all</button>`},
   {id:"levels",t:"Land Levels",ic:"levels",panels:["tpPanel"],sub:()=>{ const t=topo(); return t&&t.on?"On · heights, contours, slope, sections":"Off · open to switch on"; },
    on:()=>{ const t=topo(); return !!(t&&t.on); }, set:v=>{ const t=topo(); if(t&&t.setOn) t.setOn(v); },
-   tb:()=>{ const t=topo(); return `<button type="button" class="ws-pill${t&&t.on?" on":""}" data-ws="lvon">${t&&t.on?"On":"Off"}</button>`; }},
+   tb:()=>{ const t=topo(), on=!!(t&&t.on); if(!on) return `<button type="button" class="ws-pill go" data-ws="lvon" title="Switch Land Levels on">Switch on</button>`; const cur=quickNow(), tool=(t._t&&t._t.TP&&t._t.TP.tool)||"";
+     return `<button type="button" class="ws-pill on" data-ws="lvon" title="Switch Land Levels off">On</button><div class="ws-qv"><b>Quick view</b>${QV.map(([k,l,tip])=>`<button type="button" class="ws-pill${cur===k?" on":""}" data-ws="qv:${k}" title="${esc(tip)}">${l}</button>`).join("")}</div>`; }},
   {id:"kpi",t:"Plan numbers",ic:"kpi",panels:["plKpi"],sub:()=>"Areas, plots, shares of the land"},
   {id:"files",t:"Drawings",ic:"files",panels:["plPlans"],sub:()=>"Open, save, share your drawings"}];
 let bar=null, mo=null, rmo=null;
+/* Land Levels quick views: set the four analysis layers in one tap */
+const QV=[["contours","Contours","Hillshade and contour lines"],["slope","Slope","Slope colours (measured over ~60 m) with contours"],["height","Height colours","Colour by height with contours"],["clean","Clean","Only the plan and the map"]];
+const QVS={contours:{hs:1,ct:1,col:0,slp:0},slope:{hs:0,ct:1,col:0,slp:1},height:{hs:1,ct:1,col:1,slp:0},clean:{hs:0,ct:0,col:0,slp:0}};
+function quickNow(){ const g=k=>{ const c=$(`#tpPanel [data-c="${k}"]`); return c?(c.checked?1:0):null; }; for(const [k,v] of Object.entries(QVS)){ if(Object.entries(v).every(([l,on])=>g(l)===on)) return k; } return ""; }
+function quick(k){ const v=QVS[k]; if(!v) return; Object.entries(v).forEach(([l,on])=>{ const c=$(`#tpPanel [data-c="${l}"]`); if(c&&c.checked!==!!on) c.click(); }); setTimeout(paint,200); }
+/* step order follows the work, each with one line saying what it is for */
+const STEP=[["Project brief","Choose the RFP the plan must meet: shares, services, gates"],["Profile","Where plot sizes come from (sales history or a park)"],["Plot mix","Plot sizes and their share of the plots"],["Roads and","Road and passage widths, perimeter road"],["Land-use","Target shares: industry, services, green, roads"],["Sector shares","Zone the land into sectors by the brief's shares"],["Fit &","Fit the plots to the brief, then phase them along the main road"],["Project parcels","Group plots into parcels for one project"],["Options &","Make 3 options, compare, use one, then export (table, Excel, DXF, KML, GeoJSON)"],["Checks","What the plan meets and misses"],["Brief &","The plan against the brief and the site marks"],["Rule book","Every planning rule used, and the ones to confirm"]];
+const stepRank=t=>{ const i=STEP.findIndex(([k])=>t.indexOf(k)===0); return i<0?99:i; };
+const stepNote=t=>{ const x=STEP.find(([k])=>t.indexOf(k)===0); return x?x[1]:""; };
 function build(){ if(bar) return bar; bar=document.createElement("div"); bar.id="wsBar"; bar.setAttribute("role","complementary"); bar.setAttribute("aria-label","Build workspace");
   bar.innerHTML=`<div class="ws-hd"><div><b>Build workspace</b><small>Every tool in one place</small></div><button type="button" class="ws-ib" id="wsFold" title="Fold the side bar">${svg("fold")}</button></div>
    <div class="ws-sc">${SECS.map(S=>`<div class="ws-sec" data-s="${S.id}"><button type="button" class="ws-sh" aria-expanded="false" title="${esc(S.t)}"><span class="ws-ic">${svg(S.ic)}</span><span class="tt"><b>${esc(S.t)}</b><span class="ws-sub"></span></span><span class="chev">▶</span></button><div class="ws-tb"></div><div class="ws-bd"></div></div>`).join("")}</div><div class="ws-rz" title="Drag to make the bar wider or narrower"></div>`;
@@ -24879,15 +24931,18 @@ function build(){ if(bar) return bar; bar=document.createElement("div"); bar.id=
     const a=b.dataset.ws;
     if(a==="lvon"){ const S=SECS.find(x=>x.id==="levels"); S.set(!S.on()); setTimeout(paint,300); }
     if(a==="steps1"||a==="steps0"){ bar.querySelectorAll("#plRules .ws-grp").forEach(g=>{ g.classList.toggle("open",a==="steps1"); ST.grp[g.dataset.k]=a==="steps1"?1:0; }); save(); }
+    if(a==="site"){ const p=plan(); if(!p) return; p.setTool("land"); setTimeout(()=>{ const sb=$('#plOpt button[data-o="lsub"][data-v="site"]'); if(sb&&!sb.classList.contains("on")) sb.click(); ST.open.draw=1; save(); paint(); const d=bar.querySelector('.ws-sec[data-s="draw"]'); if(d) d.scrollIntoView({block:"nearest",behavior:"smooth"}); },80); }
+    if(a&&a.indexOf("qv:")===0) quick(a.slice(3));
+    if(a&&a.indexOf("lt:")===0){ const tb=$(`#tpPanel [data-t="${a.slice(3)}"]`); if(tb) tb.click(); setTimeout(paint,150); }
     if(a==="mk"){ const p=plan(); if(!p) return; p.setTool("plot"); setTimeout(()=>{ const sb=$('#plOpt button[data-o="psub"][data-v="master"]'); if(sb&&!sb.classList.contains("on")) sb.click(); setTimeout(()=>{ const m=$("#plMk"); if(m) m.click(); else if(p._t&&p._t.masterAsk) p._t.masterAsk(); },120); },80); } });
   /* drag the right edge to change the width */
   const rz=bar.querySelector(".ws-rz"); let d=null;
-  rz.addEventListener("pointerdown",e=>{ d={x:e.clientX,w:ST.w}; try{ rz.setPointerCapture(e.pointerId); }catch(_){} e.preventDefault(); });
+  rz.addEventListener("pointerdown",e=>{ d={x:e.clientX,w:bar.getBoundingClientRect().width}; ST.wSet=1; try{ rz.setPointerCapture(e.pointerId); }catch(_){} e.preventDefault(); });
   rz.addEventListener("pointermove",e=>{ if(!d) return; ST.w=Math.max(280,Math.min(560,d.w+e.clientX-d.x)); width(); });
   const up=()=>{ if(!d) return; d=null; save(); relayout(); }; rz.addEventListener("pointerup",up); rz.addEventListener("pointercancel",up);
   return bar; }
-function width(){ const w=ST.mini?58:ST.w; if(bar) bar.style.setProperty("--ws-w",w+"px"); document.body.style.setProperty("--ws-w",w+"px"); }
-function relayout(){ width(); try{ if(typeof map!=="undefined"&&map&&map.resize) requestAnimationFrame(()=>map.resize()); }catch(e){} }
+function width(){ const w=ST.mini?58:(ST.wSet?ST.w:(innerWidth<1280?300:340)); if(bar) bar.style.setProperty("--ws-w",w+"px"); document.body.style.setProperty("--ws-w",w+"px"); }
+let lastW=null; function relayout(){ width(); const on=document.body.classList.contains("ws-on"), w=on?(ST.mini?58:(ST.wSet?ST.w:(innerWidth<1280?300:340))):0, key=w+"|"+innerWidth+"|"+innerHeight; if(key===lastW) return; lastW=key; try{ if(typeof map!=="undefined"&&map&&map.resize) requestAnimationFrame(()=>map.resize()); }catch(e){} }
 /* the Park rules panel is one long list: fold it into numbered steps that open one by one */
 function stepify(){ const r=$("#plRules"); if(!r||!r.closest("#wsBar")) return; if(rmo) rmo.disconnect();
   try{ const kids=[...r.children].filter(c=>!c.classList.contains("ws-grp")&&!c.classList.contains("sk-bar")&&!c.classList.contains("sk-rs")&&!c.classList.contains("hd"));
@@ -24897,9 +24952,10 @@ function stepify(){ const r=$("#plRules"); if(!r||!r.closest("#wsBar")) return; 
         if(c.matches("details.rb")){ start("Rule book"); cur.nodes.push(c); return; }
         if(!cur) start("Profile"); cur.nodes.push(c); });
       old.forEach(g=>g.remove());
-      groups.forEach((g,i)=>{ const k=g.title.split(/\s+/).slice(0,2).join(" "); if(ST.grp[k]==null) ST.grp[k]=i<2?1:0;
+      groups.sort((a,b)=>stepRank(a.title)-stepRank(b.title));
+      groups.forEach((g,i)=>{ const k=g.title.split(/\s+/).slice(0,2).join(" "); if(ST.grp[k]==null) ST.grp[k]=i<1?1:0;
         const w=document.createElement("div"); w.className="ws-grp"+(ST.grp[k]?" open":""); w.dataset.k=k;
-        w.innerHTML=`<button type="button" class="ws-gh" data-g="${esc(k)}"><i>${i+1}</i>${esc(g.title)}<span class="chev">▶</span></button><div class="ws-gb"></div>`;
+        w.innerHTML=`<button type="button" class="ws-gh" data-g="${esc(k)}"><i>${i+1}</i><span class="gt">${esc(g.title)}${stepNote(g.title)?`<small>${esc(stepNote(g.title))}</small>`:""}</span><span class="chev">▶</span></button><div class="ws-gb"></div>`;
         const gb=w.lastElementChild; g.nodes.forEach(n=>gb.appendChild(n)); r.appendChild(w); }); }
   }catch(e){ console.error("workspace steps",e); }
   if(!rmo) rmo=new MutationObserver(()=>stepify()); rmo.observe(r,{childList:true}); }
@@ -24908,22 +24964,55 @@ function home(id){ const el=document.getElementById(id); if(!el) return null; re
 function mount(){ const on=document.body.classList.contains("sk-on")&&document.body.classList.contains("sk-build")&&!!plan()&&plan().on;
   document.body.classList.toggle("ws-on",on);
   if(!on){ const tp=$("#tpPanel"); if(tp&&tp.closest("#wsBar")) document.body.appendChild(tp); relayout(); return; }
-  build(); width();
+  const first=!bar; build(); width(); if(first){ ST.open.draw=1; save(); }
   SECS.forEach(S=>{ const bd=bar.querySelector(`.ws-sec[data-s="${S.id}"] .ws-bd`); S.panels.forEach(pid=>{ const el=home(pid); if(el&&el.parentNode!==bd){ el.classList.remove("sk-min"); bd.appendChild(el); } }); });
-  stepify(); paint(); relayout(); }
+  stepify(); polish(); paint(); relayout(); }
+const MODE=new Set(["psub","lsub","rsub","gsub"]), MAIN=new Set(["plMk","plCoOk","plCoMp","plEf","plFr","plCoOpen"]);
+let omo=null, tidyT=0, tidyC=0; const tidyGuard=()=>{ const n=Date.now(); if(n-tidyT>1000){ tidyT=n; tidyC=0; } return ++tidyC<30; };   /* never more than 30 regroups a second, whatever happens */
+function tidyOpt(){ const o=$("#plOpt"); if(!o||!o.closest("#wsBar")) return; if(omo) omo.disconnect(); o.classList.add("ws-tidy");
+  try{ o.querySelectorAll(":scope>span.tzg").forEach(w=>{ while(w.firstChild) o.insertBefore(w.firstChild,w); w.remove(); });   /* Terrain group: unwrap so it gets a heading like the others */
+    const kids=[...o.childNodes].filter(n=>!(n.nodeType===1&&(n.classList.contains("sk-bar")||n.classList.contains("sk-rs")||n.classList.contains("ws-og")))&&!(n.nodeType===3&&!n.textContent.trim()));
+    if(kids.length&&tidyGuard()){ o.querySelectorAll(":scope>.ws-og").forEach(g=>g.remove()); o.classList.add("ws-tidy");
+      let g=null, row=null; const newG=()=>{ g=document.createElement("div"); g.className="ws-og"; o.appendChild(g); row=null; };
+      const newRow=cls=>{ row=document.createElement("div"); row.className=cls||"ws-or"; g.appendChild(row); };
+      newG();
+      kids.forEach(n=>{ if(n.nodeType===1&&n.matches("i.sep")){ n.remove(); newG(); return; }
+        if(n.nodeType===1&&n.tagName==="B"){ const h=document.createElement("div"); h.className="ws-oh"; h.textContent=n.textContent; n.remove(); g.appendChild(h); row=null; return; }
+        const isMode=n.nodeType===1&&n.tagName==="BUTTON"&&MODE.has(n.dataset.o||"");
+        if(isMode){ if(!row||!row.classList.contains("ws-seg")) newRow("ws-seg"); }
+        else if(!row||row.classList.contains("ws-seg")) newRow();
+        if(n.nodeType===1&&MAIN.has(n.id)) n.classList.add("ws-main");
+        row.appendChild(n); });
+      const mk=["plMk","plCoOk","plCoMp"].map(id=>document.getElementById(id)).filter(b=>b&&o.contains(b));   /* the main action goes last, under every setting */
+      if(mk.length){ newG(); newRow(); mk.forEach(b=>{ b.classList.add("ws-main"); row.appendChild(b); }); }
+      o.querySelectorAll(".ws-og").forEach(x=>{ if(!x.querySelector("button,input,select")) x.remove(); }); }
+  }catch(e){ console.error("workspace options",e); }
+  if(!omo) omo=new MutationObserver(()=>tidyOpt()); omo.observe(o,{childList:true}); }
+function polish(){ try{
+  tidyOpt();
+  const tl=$("#plTools"); if(tl&&tl.closest("#wsBar")){ const bd=tl.parentNode; let ac=bd.querySelector(".ws-acts"); if(!ac){ ac=document.createElement("div"); ac.className="ws-acts"; bd.insertBefore(ac,tl); } ["plUndo","plRedo","plClr"].forEach(id=>{ const b=document.getElementById(id); if(b&&b.parentNode!==ac) ac.appendChild(b); }); }
+  const k=$("#plKpi"); if(k&&k.closest("#wsBar")){ if(k.onclick&&!k.querySelector(".t+*")){ k.onclick(); } k.onclick=null; }
+  const tip=(sel,t)=>document.querySelectorAll(sel).forEach(e=>{ if(!e.title) e.title=t; });
+  tip("#plTg","Your own plot size in m²"); tip("#plTzM","Leave out plots steeper than this slope (%)"); tip("#plCoOpen","Paste or type the corner coordinates, or import a KML / KMZ file");
+  tip("#plRules input[data-m]","Target share of the plots in this size (%)"); tip("#plGap","Spacing between items (m)");
+  const tp=$("#tpPanel"); if(tp&&tp.closest("#wsBar")){ const tools=[...tp.querySelectorAll(".tp-gp")].find(g=>g.querySelector("[data-t]")); const rd=tp.querySelector("#tpRd"); if(tools&&rd&&rd.nextElementSibling!==tools) rd.after(tools); }
+}catch(e){ console.error("workspace polish",e); } }
 function paint(){ if(!bar) return; bar.classList.toggle("mini",!!ST.mini); const fb=bar.querySelector("#wsFold"); fb.innerHTML=svg(ST.mini?"unfold":"fold"); fb.title=ST.mini?"Open the side bar":"Fold the side bar";
   SECS.forEach(S=>{ const el=bar.querySelector(`.ws-sec[data-s="${S.id}"]`); let open=!!ST.open[S.id];
     if(S.id==="plan"&&S.on) open=S.on();
     if(S.id==="levels"&&S.on&&!S.on()) open=false;
     el.classList.toggle("open",open); el.classList.toggle("cmp",!!ST.cmp[S.id]); el.querySelector(".ws-sh").setAttribute("aria-expanded",open);
-    el.querySelector(".ws-sub").textContent=S.sub?S.sub():""; el.querySelector(".ws-tb").innerHTML=S.tb?S.tb():"";
+    const sub=S.sub?S.sub():"", tbh=S.tb?S.tb():""; if(el._sub!==sub){ el._sub=sub; el.querySelector(".ws-sub").textContent=sub; } if(el._tbh!==tbh){ el._tbh=tbh; el.querySelector(".ws-tb").innerHTML=tbh; }   /* touch the page only when something changed (no flicker while dragging) */
     const bd=el.querySelector(".ws-bd"); let em=bd.querySelector(".ws-empty"); const has=[...bd.children].some(c=>!c.classList.contains("ws-empty")&&!c.hidden);
     if(!has&&open){ if(!em){ em=document.createElement("div"); em.className="ws-empty"; bd.appendChild(em); } em.textContent=S.id==="levels"?"Land Levels is off — press On.":"Nothing to show yet."; } else if(em) em.remove(); }); }
 /* keep everything in step: mode changes, the planner rebuilding its panels, Land Levels opening late */
-let t=0; const soon=()=>{ cancelAnimationFrame(t); t=requestAnimationFrame(mount); };
+let t=0, lastSig=""; const sig=()=>{ const b=document.body.classList, tp=document.getElementById("tpPanel"), pt=document.getElementById("plTools"); return [b.contains("sk-on"),b.contains("sk-build"),!!(plan()&&plan().on),tp?(tp.parentNode===document.body?"b":"x"):"-",pt?(pt.closest("#wsBar")?"w":"o"):"-",document.getElementById("plRules")?(document.getElementById("plRules").closest("#wsBar")?"w":"o"):"-"].join(""); };
+const soon=()=>{ const g=sig(); if(g===lastSig) return; cancelAnimationFrame(t); t=requestAnimationFrame(()=>{ mount(); lastSig=sig(); }); };
 new MutationObserver(soon).observe(document.body,{attributes:true,attributeFilter:["class"],childList:true});
-document.addEventListener("click",e=>{ if(e.target.closest&&e.target.closest("#plTools [data-pt],#plOpt button,#tpPanel,#plRB,#tpSkBtn,.sk-top [data-mode]")) setTimeout(paint,120); },true);
-window.SID_WS={mount,paint,stepify,get state(){ return ST; },get bar(){ return bar; }};
+document.addEventListener("click",e=>{ if(e.target.closest&&e.target.closest("#plTools [data-pt],#plOpt button,#tpPanel,#plRB,#tpSkBtn,.sk-top [data-mode]")) setTimeout(()=>{ polish(); paint(); },120); },true);
+addEventListener("resize",()=>{ if(document.body.classList.contains("ws-on")) relayout(); });
+let pT=0; const paintSoon=()=>{ clearTimeout(pT); pT=setTimeout(()=>{ if(bar&&document.body.classList.contains("ws-on")) paint(); },40); };
+window.SID_WS={mount,paint,paintSoon,stepify,get state(){ return ST; },get bar(){ return bar; }};
 })();
 </script>
 </body>
