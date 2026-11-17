@@ -2899,6 +2899,14 @@ html[data-look="modules"][data-text="large"] body{font-size:13.75px}
 </style>
 <style id="perf-css">#map:not(.poi-names) .poi:not(:hover):not(.on) .poi-n{-webkit-backdrop-filter:none;backdrop-filter:none}</style></head>
 <body>
+<div id="sidBoot" style="position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:radial-gradient(circle at 20% 0%,#4a1520,#121214 60%);color:#fff;font:500 14px -apple-system,BlinkMacSystemFont,'SF Pro Text',Inter,system-ui,sans-serif">
+<div style="text-align:center;padding:24px"><div style="font-size:20px;font-weight:700;letter-spacing:.01em">SID Dashboard</div>
+<div style="margin-top:10px;opacity:.75">Loading… <span id="sidBootT"></span></div>
+<div style="margin:16px auto 0;width:180px;height:3px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden"><div style="width:40%;height:100%;background:#d23a55;border-radius:3px;animation:sidBootA 1.2s ease-in-out infinite"></div></div>
+<style>@keyframes sidBootA{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}</style></div></div>
+<script>(function(){var t0=Date.now(),iv=setInterval(function(){var s=Math.round((Date.now()-t0)/1000),e=document.getElementById("sidBootT");if(!e){clearInterval(iv);return;}if(s>=8)e.textContent="("+s+" s — slow connection, the page is still downloading)";},1000);
+document.addEventListener("DOMContentLoaded",function(){clearInterval(iv);var b=document.getElementById("sidBoot");if(b)b.remove();});})();</script>
+
 <div class="app">
   <aside class="rail">
     <div class="brand">
@@ -4075,7 +4083,7 @@ function buildNav(){
   $$("#nav .nav-item").forEach(b=>b.onclick=()=>go(b.dataset.view));
 }
 function buildRest(){
-
+  if(!S.reg||!S.reg.parks) return;   // V137.1: the register is not loaded yet; the normal load calls this again
   const parks=Object.entries(S.reg.parks);
   $("#parkSel").innerHTML=`<option value="all">All parks (${parks.length})</option>`+
     parks.map(([id,p])=>`<option value="${id}" ${S.park===id?"selected":""}>${esc(p.name)}</option>`).join("");
