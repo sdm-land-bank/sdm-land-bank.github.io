@@ -19322,7 +19322,7 @@ const TOOLS=[["select","Select","Select, move, turn and resize (V)"],["hand","Mo
   ["green","Green","Landscape areas and trees: rows, along roads, one by one (G · T trees)"],["street","Street","Street lights, trucks and signs (O)"],["eraser","Eraser","Tap something to remove it (E)"]];
 const SHAPES=[["box","Box"],["free","Free hand"],["pts","Corners"]], HOWS=[["line","Line"],["road","Along a road"],["free","Free hand"],["one","One by one"]];
 const shpHint=w=>PL.shp==="free"?`Draw the ${w} with your finger or pencil — let go to close it`:PL.shp==="pts"?`Tap the corners of the ${w} · tap the first corner to close`:`Drag a box for the ${w} · or tap its corners`;
-function curType(){ const t=PL.tool; if(t==="land") return PL.lsub==="site"?null:"land"; if(t==="road") return PL.rsub==="round"||PL.rsub==="gate"?null:"road"; if(t==="plot") return PL.psub==="auto"||PL.psub==="master"?null:"plot";
+function curType(){ const t=PL.tool; if(t==="land") return PL.lsub==="site"||PL.lsub==="coords"?null:"land"; if(t==="road") return PL.rsub==="round"||PL.rsub==="gate"?null:"road"; if(t==="plot") return PL.psub==="auto"||PL.psub==="master"?null:"plot";
   if(t==="green"&&PL.gsub==="area") return "green"; if(rowTool()&&howOf()==="line") return "row"; return null; }
 const rowTool=()=>PL.tool==="street"||(PL.tool==="green"&&PL.gsub==="trees");
 const rowKind=()=>PL.tool==="street"?PL.ok:PL.tk;
@@ -19330,7 +19330,7 @@ const howOf=()=>{ const k=rowKind(); if(PL.tool==="street"&&isGate(k)) return "o
 const gapOf=k=>PL.gaps[k]||GAP[k]||8;
 const isOpen=t=>t==="road"||t==="row";
 function hintTxt(){ const t=PL.tool;
-  if(t==="land") return PL.lsub==="site"?siteHint():shpHint("land"); if(t==="road"&&PL.rsub==="gate") return "Tap the land boundary where a gate from the outer road comes in · the first gate is the main entrance (services go next to it) · tap a gate again to remove it";
+  if(t==="land") return PL.lsub==="site"?siteHint():PL.lsub==="coords"?"Enter the boundary coordinates (or import a KML / KMZ, or tap the corner points on the map) · check the numbered points · then Confirm land":shpHint("land"); if(t==="road"&&PL.rsub==="gate") return "Tap the land boundary where a gate from the outer road comes in · the first gate is the main entrance (services go next to it) · tap a gate again to remove it";
   if(t==="road") return PL.rsub==="round"?"Tap a junction (or a road) to put a roundabout there · cars drive round it":"Tap points along the road · tap the last point (or double-tap) to finish · cars start driving at once";
   if(t==="plot"&&PL.psub==="master") return "Master plan: choose the plot size and landscape share, then press Make the plan — roads, roundabout, service roads, plots, park, trees and lights are made for the whole land · no land? Make the plan fills every block your roads close · tap inside a road ring for a full plan with its own roads";
   if(t==="plot") return PL.psub==="auto"?"Smart fill: tap an empty block between the roads — plots keep clear of the landscape · choose the plot size above":shpHint("plot")+" — it lines up with the nearest road";
@@ -19375,7 +19375,7 @@ function opts(){ const el=q("#plOpt"); if(!el) return; let h=""; const t=PL.tool
   const seg=(o,list,cur,num)=>list.map(([v,l])=>`<button type="button" data-o="${o}" data-v="${v}"${num?' data-n="1"':""} class="${String(v)===String(cur)?"on":""}">${l}</button>`).join("");
   const shape=()=>`<b>Shape</b>`+seg("shp",SHAPES,PL.shp);
   const rows=()=>{ const k=rowKind(); if(PL.tool==="street"&&isGate(k)) return `<b>Look</b>`+seg("ok",GATES.map(([v,l])=>["gate_"+v,l]),k); return `<b>How</b>`+seg("how",HOWS.filter(x=>x[0]!=="road"||ROADOK(k)),howOf())+(howOf()==="one"?"":`<label>every<input type="number" id="plGap" min="1" max="500" step="1" value="${gapOf(k)}" inputmode="numeric" aria-label="Spacing in metres"> m</label>`); };
-  if(t==="land") h=seg("lsub",[["bnd","Boundary"],["site","Site"]],PL.lsub==="site"?"site":"bnd")+SEP+(PL.lsub==="site"?siteBar():shape());
+  if(t==="land") h=seg("lsub",[["bnd","Boundary"],["coords","Coordinates"],["site","Site"]],PL.lsub==="site"||PL.lsub==="coords"?PL.lsub:"bnd")+SEP+(PL.lsub==="site"?siteBar()+`<button type="button" id="plFr" title="Find the real roads next to each side of the land (OpenStreetMap routing service) and offer the access side">Find roads</button>`:PL.lsub==="coords"?coBar():shape());
   else if(t==="road") h=seg("rsub",[["road","Road"],["round","Roundabout"],["gate","Gate"]],PL.rsub)+SEP+(PL.rsub==="gate"?`<b>Type</b>`+seg("gtype",[["sec","Secondary"],["emg","Emergency"]],PL.gtype||"sec")+`<b>Look</b>`+seg("gstyle",GATES,PL.gstyle||"portal")+`<span class="hi">${(PL.plan.gates||[]).length?(PL.plan.gates.length+" placed · the first is the main entrance"):"none yet — Master plan places them itself"}</span>`:PL.rsub==="round"?`<b>Across</b>`+seg("rdia",RDIA.map(d=>[d,d+" m"]),PL.rdia,1):seg("rt",RT.map((r,i)=>[i,`${r.l} · ${r.w} m`]),PL.rt,1));
   else if(t==="plot"){ const H=history(), sz=()=>`<b>Plot size</b>`+seg("target",[2500,5000,10000,20000].map(v=>[v,A.nf(v,0)+" m²"]),PL.target,1)+`<input type="number" id="plTg" min="300" step="100" value="${PL.target}" inputmode="numeric" aria-label="Plot size in m²">`+(H.n>=20?`<button type="button" id="plHist" title="The size that sold best: ${H.n} sold plots, middle size ${A.nf(H.med,0)} m²">From sales history</button>`:"");
     const phs=SEP+`<b>Phase</b>`+seg("phase",[[1,"1"],[2,"2"],[3,"3"]],PL.phase||1,1);
@@ -19391,7 +19391,7 @@ function opts(){ const el=q("#plOpt"); if(!el) return; let h=""; const t=PL.tool
     const b=e.target.closest("button[data-o]"); if(!b) return; const o=b.dataset.o, v=b.dataset.n?+b.dataset.v:b.dataset.v; if(PL[o]===v) return; PL[o]=v; if(o==="ok"&&isGate(v)) PL.gl=v;
     if(PL.cur&&PL.cur.t!==curType()) finishCur(); closeMenu(); persist(); opts(); live(); A.hint(); A.need(); };
   const tzm=q("#plTzM"); if(tzm){ tzm.onkeydown=e=>e.stopPropagation(); tzm.onchange=()=>{ const v=+tzm.value; if(v>=1&&v<=30){ tzOf().max=v; persist(); if(tzOf().avoid&&PL.plan.plots.length&&window.SID_TOPO2) window.SID_TOPO2.planPass(PL,tzCb()); } else { A.flash("Steepest slope between 1 and 30 %"); tzm.value=tzOf().max; } }; }
-  siteWire();
+  siteWire(); coWire();
   const tg=q("#plTg"); if(tg){ tg.onkeydown=e=>e.stopPropagation(); tg.onchange=()=>{ const v=+tg.value; if(v>=300&&v<=1e6){ PL.target=Math.round(v); persist(); opts(); } else { A.flash("Plot size between 300 and 1,000,000 m²"); tg.value=PL.target; } }; }
   const gp=q("#plGap"); if(gp){ gp.onkeydown=e=>e.stopPropagation(); gp.onchange=()=>{ const v=+gp.value, k=rowKind(); if(v>=1&&v<=500){ PL.gaps[k]=Math.round(v*10)/10; persist(); A.hint(); live(); A.need(); } else { A.flash("Spacing between 1 and 500 m"); gp.value=gapOf(k); } }; } }
 // on narrower screens (iPad upright) the choices bar would run under the plan numbers: the numbers move down below it
@@ -19700,7 +19700,10 @@ const RB_FIXED=[
   ["At least one emergency gate; fence chain-link with steel-rod at gates","Brief p.16–17","in use"],
   ["Fit to the brief: plots to services / green pockets in exact steps, aim within half the tolerance","Brief land-use ratios","in use"],
   ["Phase 1 = blocks along the main road from the main gate, about half the plot area","SID practice — Development to confirm","in use"],
-  ["Land-use ratios count for the whole project when parcels are linked","Brief p.5 (two parcels) — to confirm","to confirm"]];
+  ["Land-use ratios count for the whole project when parcels are linked","Brief p.5 (two parcels) — to confirm","to confirm"],
+  ["3 options compared; score weights sellable 30 · brief fit 25 · sales-size match 20 · road 15 · compliance 10","Brief Stage 1 (≥3 options + evaluation matrix) — weights SID to confirm","to confirm"],
+  ["Utility plots named: substation, water tanks, firefighting tank, irrigation tank, sewage lift station","Brief p.18–22 (utility buildings) — sizes to confirm","in use"],
+  ["Egypt Red Belt coordinates use the published datum shift (about ±5 m): check a known point","EPSG 22992 parameters","to confirm"]];
 // the brief's 3 groups, measured from the drawing (logistics and utility plots are counted with services, as the brief groups them)
 function briefMeasure(){ const B=budget(); if(B.land==null||!(B.land>0)) return null; let log=0; PL.plan.plots.forEach(x=>{ if(x.use==="log") log+=geoArea(x.pts); });
   const ind=B.a.ind-log, sl=B.a.svc+B.a.util+log, rl=B.a.road+B.a.green, L=B.land; return {land:L,ind,sl,rl,over:Math.max(0,B.a.ind+B.a.svc+B.a.util+B.a.green-L),pc:{ind:ind/L*100,sl:sl/L*100,rl:rl/L*100}}; }
@@ -19752,7 +19755,7 @@ function briefH(){ const b=PL.brief, opt=[["","No brief"]].concat(Object.values(
   h+=`<table class="bf"><tr><th></th><th>Brief says</th><th>Page</th><th title="Ticked = checked by a person">✓</th></tr>`+BF_FIELDS(b).map(([k,l,v])=>`<tr><td>${l}</td><td>${v==null?"<i>— not found</i>":esc(String(v))}</td><td>${esc((b.src||{})[k]||"")}</td><td>${v==null?"":`<input type="checkbox" data-bk="${k}" ${b.ok&&b.ok[k]?"checked":""} aria-label="Checked">`}</td></tr>`).join("")+`</table>`;
   h+=`<div class="g4"><label>Industrial %<input type="number" step="0.1" min="0" max="100" data-bl="ind" value="${lu.ind!=null?lu.ind:""}"></label><label>Services & Logistics %<input type="number" step="0.1" min="0" max="100" data-bl="sl" value="${lu.sl!=null?lu.sl:""}"></label><label>Roads & Landscape %<input type="number" step="0.1" min="0" max="100" data-bl="rl" value="${lu.rl!=null?lu.rl:""}"></label><label>Tolerance ± points<input type="number" step="0.5" min="0" max="20" data-bl="tol" value="${b.tol!=null?b.tol:2}"></label></div>`;
   h+=`<div class="row"><span>Mandatory services</span><input type="text" id="plBm" value="${esc((b.must||[]).join(", "))}" style="flex:2;min-width:0" aria-label="Mandatory services, comma separated"></div>`;
-  h+=shareH(b)+fitH(b)+projH(b);
+  h+=shareH(b)+fitH(b)+projH(b)+optH();
   return h+`<div class="src">${esc(b.doc||"")}${b.notes?" · "+esc(b.notes):""}</div>`; }
 function wireBrief(el){ const s=el.querySelector("#plBf"); if(!s) return;
   s.onchange=()=>{ const v=s.value; if(!v) PL.brief=null; else if(BRIEFS[v]) PL.brief=JSON.parse(JSON.stringify(BRIEFS[v])); persist(); rulesUI(); A.flash(PL.brief?"Brief: "+PL.brief.name+" — the plan is checked against it":"No brief: the plan is checked against the profile only"); };
@@ -19765,7 +19768,7 @@ function wireBrief(el){ const s=el.querySelector("#plBf"); if(!s) return;
   el.querySelectorAll("[data-bl]").forEach(i=>{ i.onkeydown=e=>e.stopPropagation(); i.onchange=()=>{ const b=PL.brief, k=i.dataset.bl, v=+i.value; if(!b) return; const lim=k==="tol"?20:100;
     if(i.value===""||!(v>=0&&v<=lim)){ i.value=k==="tol"?b.tol:(b.lu&&b.lu[k]!=null?b.lu[k]:""); A.flash(`Enter a number from 0 to ${lim}`); return; }
     if(k==="tol") b.tol=v; else { b.lu=b.lu||{ind:null,sl:null,rl:null}; b.lu[k]=v; b.ok=b.ok||{}; b.ok.lu=false; } persist(); rulesUI(); }; });
-  wireShare(el); wireFit(el);
+  wireShare(el); wireFit(el); wireOpts(el);
   const m=el.querySelector("#plBm"); if(m){ m.onkeydown=e=>e.stopPropagation(); m.onchange=()=>{ const b=PL.brief; if(!b) return; b.must=m.value.split(/[,،;]/).map(x=>x.trim()).filter(Boolean); b.ok=b.ok||{}; b.ok.must=false; persist(); rulesUI(); }; } }
 // reading a brief PDF: pdf.js loaded only on this button, checked by its hash; no eval (the page's CSP forbids it)
 const PDFJS=["https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js","sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e"],
@@ -19950,7 +19953,8 @@ function wireShare(el){ el.querySelectorAll("[data-bs]").forEach(i=>{ i.onkeydow
 function zoneDraw(ctx,poly){ const p=PL.plan, P=c=>A.P(c); let big=true; if(p.land){ const V0=p.land.pts.map(P), xs=V0.map(v=>v[0]), ys=V0.map(v=>v[1]); big=Math.max(Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys))>260; }
   const z=p.plots.filter(x=>x.sector); if(z.length){ z.forEach(x=>poly(x.pts.map(P),true,secCol(x.sector),1.6,null)); if(big){ const B={}; z.forEach(x=>{ const k=x.blk||""; (B[k]=B[k]||[]).push(x); }); ctx.save(); ctx.font=`700 10px ${A.FONT}`; ctx.textAlign="center"; ctx.textBaseline="middle";
     Object.entries(B).forEach(([k,L2])=>{ let sx=0, sz=0; L2.forEach(x=>{ const c=lCent(x.pts.map(Lc)); sx+=c[0]; sz+=c[1]; }); const s=gScr([sx/L2.length,sz/L2.length]), t=k+" · "+(secRow(L2[0].sector)||[L2[0].sector])[0].replace(" & Logistics","").replace(" Processing","");
-      const w=ctx.measureText(t).width+10; ctx.fillStyle="rgba(20,20,22,.8)"; ctx.fillRect(s[0]-w/2,s[1]+8,w,15); ctx.fillStyle=secCol(L2[0].sector); ctx.fillText(t,s[0],s[1]+16); }); ctx.restore(); } }
+      const w=ctx.measureText(t).width+10; let bx0=1e9, bx1=-1e9; L2.forEach(x=>x.pts.forEach(c=>{ const q2=P(c); if(q2[0]<bx0) bx0=q2[0]; if(q2[0]>bx1) bx1=q2[0]; })); if(bx1-bx0<w+4) return;   /* the label must fit inside its block on screen */
+      ctx.fillStyle="rgba(20,20,22,.8)"; ctx.fillRect(s[0]-w/2,s[1]+8,w,15); ctx.fillStyle=secCol(L2[0].sector); ctx.fillText(t,s[0],s[1]+16); }); ctx.restore(); } }
   const F=PL.brief&&+PL.brief.fence>0&&p.land&&big; if(F){ const L=p.land.pts.map(Lc), n=L.length, tr=+PL.brief.fence; (p.gates||[]).forEach(g=>{ const c=Lc(g.c), i=edgeAt(L,c), a=L[i], b2=L[(i+1)%n], l=lhyp(a,b2)||1, u=[(b2[0]-a[0])/l,(b2[1]-a[1])/l], wg=(g.main?RT[0].w:RT[1].w)/2;
       [[wg,wg+tr],[-wg-tr,-wg]].forEach(([s0,s1])=>{ poly([gScr([c[0]+u[0]*s0,c[1]+u[1]*s0]),gScr([c[0]+u[0]*s1,c[1]+u[1]*s1])],false,"#1C1C1E",4.5,null); }); }); } }
 
@@ -20007,6 +20011,308 @@ function wireFit(el){ const f=el.querySelector("#plFit"); if(f) f.onclick=()=>{ 
   el.querySelectorAll("[data-pj]").forEach(c=>c.onchange=()=>{ const b=PL.brief; if(!b) return; const s=new Set(b.proj||[]); if(c.checked) s.add(c.dataset.pj); else s.delete(c.dataset.pj); b.proj=[...s]; delete PJC[c.dataset.pj]; persist(); rulesUI(); loadProj(); });
   const fh=el.querySelector("#plFacHere"); if(fh) fh.onchange=()=>{ const b=PL.brief; if(!b) return; b.facHere=fh.checked; persist(); rulesUI(true); A.flash(fh.checked?"Master plan names the mandatory facilities in this parcel":"No mandatory facilities in this parcel — another parcel of the project has them"); }; }
 (()=>{ const st=document.createElement("style"); st.textContent=`#plRules .pj{display:flex;flex-direction:column;gap:4px;max-height:140px;overflow:auto;margin:4px 0}#plRules .pj label,#plRules label.pj1{display:flex;gap:7px;align-items:center;font-size:12px}#plRules .pj input,#plRules label.pj1 input{width:16px;height:16px}`; document.head.appendChild(st); })();
+
+/* ---------- V133: Smart master plan step 5 — 3 options, comparison matrix, outputs ---------- */
+const OPTS=[{k:"A",prof:"october",l:"Standard 36 × 70"},{k:"B",prof:"recent",l:"Sales median plot",med:1},{k:"C",prof:"west",l:"Large plots"}];
+/* the plot size of an option: one 36 × 70 module (A), the middle size of the plots sold (B), the large-plot module (C) */
+const optTarget=o=>{ if(o.med){ const H=history(); if(H.n&&H.med) return Math.max(300,Math.round(H.med/250)*250); } return mixTop()[0]||PL.target; };
+const OPT_W={sell:30,fit:25,match:20,road:15,comp:10};
+function optMetrics(){ const p=PL.plan, M=briefMeasure(), b=PL.brief, land=M?M.land:(p.land?geoArea(p.land.pts):0); let sell=0, n=0; const ar=[];
+  p.plots.forEach(x=>{ const u=x.use||"ind"; if(u==="ind"||u==="log"){ const a=geoArea(x.pts); sell+=a; n++; ar.push(a); } });
+  let rl=0; p.roads.forEach(r=>{ for(let i=1;i<r.pts.length;i++) rl+=lhyp(Lc(r.pts[i-1]),Lc(r.pts[i])); });
+  const H=history(); let match=null; if(H.n&&ar.length){ const c={}; BUCKETS.forEach(k=>c[k]=0); ar.forEach(a=>{ let bb=BUCKETS[0], d=1e9; BUCKETS.forEach(k=>{ const e=Math.abs(Math.log(a/k)); if(e<d){ d=e; bb=k; } }); c[bb]++; }); match=1-.5*BUCKETS.reduce((s,k)=>s+Math.abs(c[k]/ar.length-(H.share[k]||0)),0); }
+  const dev=M&&b&&b.lu?Math.abs(M.pc.ind-b.lu.ind)+Math.abs(M.pc.sl-b.lu.sl)+Math.abs(M.pc.rl-b.lu.rl):null, ck=briefChecks();
+  return {plots:p.plots.length,sell,sellPc:land?sell/land*100:null,avg:n?sell/n:null,road:rl,roadPer:sell?rl/(sell/1000):null,pc:M?M.pc:null,dev,match,hard:hardFails(),warn:ck.filter(c=>c.st==="warn").length,clash:p.plots.some(x=>x.sector)?sectorClashes(p).length:null}; }
+function scoreOpts(L){ const mx=k=>Math.max(...L.map(o=>o[k]||0)), mn=k=>Math.min(...L.filter(o=>o[k]>0).map(o=>o[k]));
+  return L.map(o=>{ const v={sell:mx("sell")?o.sell/mx("sell")*100:null,fit:o.dev==null?null:Math.max(0,100-o.dev*10),match:o.match==null?null:o.match*100,road:o.roadPer?mn("roadPer")/o.roadPer*100:null,comp:o.hard?0:Math.max(0,100-5*o.warn)};
+    let s=0, w=0; Object.keys(OPT_W).forEach(k=>{ if(v[k]!=null){ s+=v[k]*OPT_W[k]; w+=OPT_W[k]; } }); return w?s/w:null; }); }
+let OPTBUSY=false;
+async function makeOptions(){ const p0=PL.plan; if(!p0.land){ A.flash("Draw the land first"); return; } if(OPTBUSY) return; OPTBUSY=true;
+  const snap=JSON.stringify(p0), prof0=JSON.stringify(PL.prof), tg0=PL.target, res=[];
+  try{ for(const o of OPTS){ A.flash(`Making option ${o.k} of 3 — ${o.l}…`); await new Promise(r=>setTimeout(r,80));
+      PL.plan=JSON.parse(snap); PL.prof=profOf(o.prof); applyRoads(); PL.target=optTarget(o); o.t=PL.target; masterPlan({noUndo:true}); if(!PL.plan.mpMade) throw new Error("option "+o.k+" could not be made");
+      res.push(Object.assign({k:o.k,l:o.l,prof:o.prof,tg:o.t},optMetrics())); } }
+  catch(e){ console.warn("options",e); A.flash("The options could not all be made: "+(e.message||e)); }
+  finally{ PL.plan=JSON.parse(snap); PL.prof=JSON.parse(prof0); applyRoads(); PL.target=tg0; O=null; GR=null; CG=null; OPTBUSY=false; }
+  if(res.length){ pushUndo(); const sc=scoreOpts(res); res.forEach((o,i)=>o.score=sc[i]); PL.plan.opts={t:Date.now(),list:res}; }
+  changed(["all"]); if(rulesOn) rulesUI(); if(res.length===3){ const b=res.slice().sort((a,c)=>(c.score||0)-(a.score||0))[0]; A.flash(`3 options made — preferred: ${b.k} (${b.l}), score ${b.score!=null?b.score.toFixed(0):"—"} · see Rules › Options · your plan is unchanged until you press Use`); } }
+function useOption(k){ const L=PL.plan.opts&&PL.plan.opts.list, o=L&&L.find(x=>x.k===k); if(!o) return; const keep=PL.plan.opts; A.flash(`Planning option ${o.k} — ${o.l}…`);
+  setTimeout(()=>{ PL.prof=profOf(o.prof); applyRoads(); PL.target=o.tg||optTarget(o); masterPlan(); PL.plan.opts=keep; PL.plan.optUsed=k; persist(); if(rulesOn) rulesUI(); },40); }
+const nf0=v=>v==null?"—":A.nf(v,0), pct=v=>v==null?"—":v.toFixed(1)+"%";
+function optH(){ const p=PL.plan, L=p.opts&&p.opts.list; let h=`<div class="sec">Options & outputs</div><div class="row"><button type="button" id="plMk3" title="Plan this land three ways (standard 36 × 70, market mix, large plots) and compare them">Make 3 options</button></div>`;
+  if(L&&L.length){ const best=L.slice().sort((a,c)=>(c.score||0)-(a.score||0))[0], col=f=>L.map(o=>`<td>${f(o)}</td>`).join("");
+    h+=`<table class="bf opt"><tr><th></th>${L.map(o=>`<th>${o.k}${o===best?' <span class="pref">Preferred</span>':""}${p.optUsed===o.k?' <span class="used">in use</span>':""}<br><small>${esc(o.l)}${o.tg?" · "+A.nf(o.tg,0)+" m²":""}</small></th>`).join("")}</tr>
+      <tr><td>Plots</td>${col(o=>nf0(o.plots))}</tr><tr><td>Sellable area</td>${col(o=>A.fArea(o.sell))}</tr><tr><td>Sellable % of land</td>${col(o=>pct(o.sellPc))}</tr><tr><td>Average plot</td>${col(o=>o.avg?A.fArea(o.avg):"—")}</tr>
+      <tr><td>Industrial / S&L / R&L</td>${col(o=>o.pc?`${o.pc.ind.toFixed(1)} / ${o.pc.sl.toFixed(1)} / ${o.pc.rl.toFixed(1)}`:"—")}</tr><tr><td>Off the brief</td>${col(o=>o.dev==null?"—":o.dev.toFixed(1)+" pts")}</tr>
+      <tr><td>Sales-size match</td>${col(o=>o.match==null?"—":Math.round(o.match*100)+"%")}</tr><tr><td>Road length</td>${col(o=>A.fLen(o.road))}</tr><tr><td>Road per 1,000 m² sold</td>${col(o=>o.roadPer==null?"—":A.nf(o.roadPer,1)+" m")}</tr>
+      <tr><td>Hard failures · advice</td>${col(o=>`${o.hard} · ${o.warn}`)}</tr><tr><td>Sector clashes</td>${col(o=>o.clash==null?"—":o.clash)}</tr><tr><td><b>Score</b></td>${col(o=>`<b>${o.score!=null?o.score.toFixed(0):"—"}</b>`)}</tr>
+      <tr><td></td>${col(o=>`<button type="button" data-useopt="${o.k}">Use ${o.k}</button>`)}</tr></table>
+      <div class="src">Score weights: sellable ${OPT_W.sell} · brief fit ${OPT_W.fit} · sales-size match ${OPT_W.match} · road per m² sold ${OPT_W.road} · compliance ${OPT_W.comp} (SID to confirm). Made ${esc(fmtDT(p.opts.t))}; make them again after changing the land, site or brief.</div>`; }
+  return h+`<div class="row"><button type="button" id="plOutT" title="Land-use table in the IDA layout, brief groups, facilities, fence and all checks — print or save as PDF">Land-use table</button><button type="button" id="plOutX" title="Every plot with its sizes, side lengths and centre + land use + checks">Plot schedule (Excel)</button><button type="button" id="plOutD" title="AutoCAD DXF in UTM zone 36N metres, layers by use">CAD (DXF)</button></div><div class="row"><button type="button" id="plOutK" title="Google Earth file: boundary, plots, roads, green, gates in folders">KML</button><button type="button" id="plOutZ" title="Google Earth file, zipped">KMZ</button><button type="button" id="plOutG" title="GIS file (GeoJSON, WGS84) for QGIS / ArcGIS with every attribute">GIS (GeoJSON)</button></div><div class="src">A plan with hard failures is exported stamped DRAFT. AutoCAD: open the DXF and Save As DWG (a browser cannot write DWG itself). CAD coordinates are UTM zone 36N metres.</div>`; }
+function wireOpts(el){ const m=el.querySelector("#plMk3"); if(m) m.onclick=()=>makeOptions();
+  el.querySelectorAll("[data-useopt]").forEach(b=>b.onclick=()=>useOption(b.dataset.useopt));
+  const t=el.querySelector("#plOutT"); if(t) t.onclick=()=>outTable(); const x=el.querySelector("#plOutX"); if(x) x.onclick=()=>outBook(); const ek=el.querySelector("#plOutK"); if(ek) ek.onclick=()=>outKml(); const ez=el.querySelector("#plOutZ"); if(ez) ez.onclick=()=>outKmz(); const eg=el.querySelector("#plOutG"); if(eg) eg.onclick=()=>outGeoJSON(); const d=el.querySelector("#plOutD"); if(d) d.onclick=()=>outCad(); }
+/* ----- outputs ----- */
+const FED=4200.83;
+const outName=()=>{ const r=IDX&&IDX.list.find(x=>x.id===PL.did); return ((PL.brief&&PL.brief.name)||(r&&r.name)||"Master plan").replace(/[\\/:*?"<>|]+/g," ").trim(); };
+// width / depth from the plot's bounding rectangle; side lengths by the direction each side faces
+function plotGeom(x){ const V=x.pts.map(Lc), o=obbOf(V), a=o?o.e.u1-o.e.u0:null, b=o?o.e.v1-o.e.v0:null, S={N:0,E:0,S:0,W:0}, cw=lArea(V)<0;
+  for(let i=0;i<V.length;i++){ const p=V[i], q=V[(i+1)%V.length], l=lhyp(p,q); if(l<.05) continue; let n=[(q[1]-p[1])/l,-(q[0]-p[0])/l]; if(cw) n=[-n[0],-n[1]]; const m=[(p[0]+q[0])/2+n[0]*.3,(p[1]+q[1])/2+n[1]*.3]; if(lInPoly(m,V)) n=[-n[0],-n[1]];
+    const k=Math.abs(n[1])>=Math.abs(n[0])?(n[1]<0?"N":"S"):(n[0]>0?"E":"W"); S[k]+=l; }
+  const c=lCent(V), g=Gc(c[0],c[1]); return {w:a&&b?Math.min(a,b):null,d:a&&b?Math.max(a,b):null,S,c:g}; }
+const USE_AR={ind:"صناعي",log:"لوجستي",svc:"خدمات",util:"مرافق"};
+function outTable(){ const p=PL.plan, B=budget(); if(B.land==null){ A.flash("Draw the land first"); return; } const b=PL.brief, hf=hardFails(), L=B.land, ck=briefChecks(), F=fenceLen(p), M=briefMeasure();
+  const row=(ar,en,a)=>`<tr><td>${ar}</td><td>${en}</td><td>${A.nf(a,0)}</td><td>${A.nf(a/FED,2)}</td><td>${(a/L*100).toFixed(2)}%</td></tr>`;
+  const ida=row("أراضي صناعية","Industrial plots",B.a.ind)+row("خدمات","Services",B.a.svc)+row("مسطحات خضراء","Green areas",B.a.green)+row("طرق وانتظار سيارات","Roads & parking",B.a.road)+row("مرافق","Utilities",B.a.util)+`<tr class="t"><td>الإجمالي</td><td>Total land</td><td>${A.nf(L,0)}</td><td>${A.nf(L/FED,2)}</td><td>100%</td></tr>`;
+  const grp=M&&b&&b.lu?[["Industrial","ind"],["Services & Logistics","sl"],["Roads & Landscape","rl"]].map(([l,k])=>{ const v=M.pc[k], t=+b.lu[k], ok=Math.abs(v-t)<=(+b.tol||2); return `<tr><td>${l}</td><td>${A.nf(M[k],0)}</td><td>${v.toFixed(1)}%</td><td>${t}%</td><td class="${ok?"ok":"bad"}">${ok?"within ±"+(+b.tol||2):"outside"}</td></tr>`; }).join(""):"";
+  const facs=p.plots.filter(x=>x.fac).map(x=>`<tr><td>${esc(x.fac)}</td><td>${esc(x.code||"")}</td><td>${A.nf(geoArea(x.pts),0)}</td><td>${x.phase||"—"}</td></tr>`).join("");
+  const byU={}; p.plots.forEach(x=>{ const k=(x.use||"ind")+"|"+(x.phase||"—"); byU[k]=byU[k]||{n:0,a:0}; byU[k].n++; byU[k].a+=geoArea(x.pts); });
+  const uses=Object.entries(byU).sort().map(([k,v])=>{ const [u,ph]=k.split("|"); return `<tr><td>${USE_AR[u]||u} · ${USES[u]||u}</td><td>${ph}</td><td>${v.n}</td><td>${A.nf(v.a,0)}</td></tr>`; }).join("");
+  const cks=ck.map(c=>`<tr><td class="${c.st==="ok"?"ok":c.st==="fail"?"bad":c.st==="warn"?"wa":""}">${c.st==="ok"?"✓":c.st==="fail"?"✗":c.st==="warn"?"!":"–"}</td><td>${esc(c.t)}${c.hard?"":" <i>(advice)</i>"}</td><td>${esc(c.src||"")}</td></tr>`).join("");
+  const html=`<!doctype html><html lang="en"><head><meta charset="UTF-8"><title>${esc(outName())} — land-use table</title><style>body{font:13px -apple-system,Segoe UI,Arial,sans-serif;color:#1c1c1e;margin:24px;max-width:900px}h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:22px 0 6px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #c7c7cc;padding:5px 7px;text-align:left;vertical-align:top}th{background:#f2f2f7}tr.t td{font-weight:700;background:#f2f2f7}.ok{color:#1e7d32}.bad{color:#c62828;font-weight:700}.wa{color:#b26a00}.draft{background:#c62828;color:#fff;padding:8px 12px;border-radius:8px;font-weight:700;margin:8px 0}.src{color:#636366;font-size:11px;margin-top:6px}button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid #8e8e93;background:#fff;cursor:pointer}@media print{button{display:none}body{margin:10mm}}</style></head><body>
+<button onclick="window.print()">Print / save as PDF</button>
+<h1>${esc(outName())} — Land-use budget · ميزانية استعمالات الأراضي</h1><div class="src">${b?esc([b.client,b.loc,b.type].filter(Boolean).join(" · ")):""} · made ${esc(new Date().toLocaleString())} · measured from the drawing in the SID Land Bank Build tab</div>
+${hf?`<div class="draft">DRAFT — ${hf} hard failure${hf>1?"s":""}: not ready for review (see the checks below)</div>`:`<div class="src" style="color:#1e7d32;font-weight:700">Ready for review — 0 hard failures</div>`}
+<h2>IDA layout</h2><table><tr><th>الاستعمال</th><th>Use</th><th>Area m²</th><th>Feddan</th><th>%</th></tr>${ida}</table><div class="src">Roads & parking = land minus plots and green. Green includes easement corridors and buffers. 1 feddan = 4,200.83 m².</div>
+${grp?`<h2>Brief groups</h2><table><tr><th>Group</th><th>Area m²</th><th>Plan</th><th>Brief</th><th></th></tr>${grp}</table><div class="src">${esc(b.doc||"")}</div>`:""}
+<h2>Plots by use and phase</h2><table><tr><th>Use</th><th>Phase</th><th>Plots</th><th>Area m²</th></tr>${uses||'<tr><td colspan="4">No plots</td></tr>'}</table>
+${facs?`<h2>Facilities</h2><table><tr><th>Facility</th><th>Plot</th><th>Area m²</th><th>Phase</th></tr>${facs}</table>`:""}
+${F?`<h2>Fence</h2><table><tr><th>Perimeter</th><th>Chain-link</th><th>Steel-rod at gates</th><th>Gate openings</th><th>Gates</th></tr><tr><td>${A.nf(F.P,0)} m</td><td>${A.nf(F.chain,0)} m</td><td>${A.nf(F.steel,0)} m${F.tr?` (${F.tr} m each side)`:""}</td><td>${A.nf(F.open,0)} m</td><td>${F.n}</td></tr></table>`:""}
+<h2>Brief & site check</h2><table><tr><th></th><th>Check</th><th>Source</th></tr>${cks||'<tr><td colspan="3">No brief chosen</td></tr>'}</table>
+<div class="src">Values marked “to confirm” in the rule book are not used as limits until Development gives the source.</div></body></html>`;
+  const w=window.open("","_blank"); if(!w){ A.flash("The browser blocked the new window — allow pop-ups for this site"); return; } w.document.open(); w.document.write(html); w.document.close(); }
+function outExcel(){ if(!window.XLSX){ A.flash("The Excel library is not loaded yet — try again in a moment"); return; } const p=PL.plan; if(!p.plots.length){ A.flash("No plots yet"); return; } const hf=hardFails(), B=budget(), L=B.land;
+  const head=["Code","Block","Phase","Use","Sector / industry","Facility","Area m²","Width m","Depth m","North side m","East side m","South side m","West side m","Centre longitude","Centre latitude","Pinned"];
+  const rows=p.plots.slice().sort((a,c)=>String(a.code||"").localeCompare(String(c.code||""),undefined,{numeric:true})).map(x=>{ const g=plotGeom(x), r1=v=>v==null?null:Math.round(v*100)/100;
+    return [x.code||"",x.blk||String(x.code||"").split("-")[0],x.phase||null,USES[x.use||"ind"]||x.use,x.sector||x.ind||"",x.fac||"",Math.round(geoArea(x.pts)*100)/100,r1(g.w),r1(g.d),r1(g.S.N),r1(g.S.E),r1(g.S.S),r1(g.S.W),+g.c[0].toFixed(7),+g.c[1].toFixed(7),x.pin?"yes":""]; });
+  const note=[[outName()+" — plot schedule",hf?`DRAFT — ${hf} hard failure(s): not ready for review`:"Ready for review — 0 hard failures","made "+new Date().toLocaleString()],[]];
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(note.concat([head],rows)),"Plots");
+  const lu=[["Use","Area m²","Feddan","% of land"]].concat([["Industrial plots",B.a.ind],["Services",B.a.svc],["Green areas",B.a.green],["Roads & parking",B.a.road],["Utilities",B.a.util],["Total land",L]].map(([l,a])=>[l,Math.round(a),Math.round(a/FED*100)/100,L?Math.round(a/L*10000)/100:null]));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(lu),"Land use");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Status","Check","Hard / advice","Source"]].concat(briefChecks().map(c=>[c.st,c.t,c.hard?"hard":"advice",c.src||""]))),"Checks");
+  XLSX.writeFile(wb,outName()+" - plot schedule"+(hf?" DRAFT":"")+".xlsx"); A.flash(`Plot schedule: ${rows.length} plots${hf?" — stamped DRAFT ("+hf+" hard failures)":""}`); }
+// WGS84 -> UTM zone 36N (EPSG:32636, central meridian 33°E) in metres
+function utm36(lon,lat){ const a=6378137, f=1/298.257223563, k0=.9996, e2=f*(2-f), ep=e2/(1-e2), l0=33*Math.PI/180, ph=lat*Math.PI/180, la=lon*Math.PI/180, sn=Math.sin(ph), cs=Math.cos(ph), tn=Math.tan(ph);
+  const N=a/Math.sqrt(1-e2*sn*sn), T=tn*tn, C=ep*cs*cs, Aa=cs*(la-l0), M=a*((1-e2/4-3*e2*e2/64-5*e2*e2*e2/256)*ph-(3*e2/8+3*e2*e2/32+45*e2*e2*e2/1024)*Math.sin(2*ph)+(15*e2*e2/256+45*e2*e2*e2/1024)*Math.sin(4*ph)-(35*e2*e2*e2/3072)*Math.sin(6*ph));
+  return [k0*N*(Aa+(1-T+C)*Aa**3/6+(5-18*T+T*T+72*C-58*ep)*Aa**5/120)+500000, k0*(M+N*tn*(Aa*Aa/2+(5-T+9*C+4*C*C)*Aa**4/24+(61-58*T+T*T+600*C-330*ep)*Aa**6/720))]; }
+function outDxf(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land first"); return; } const hf=hardFails(), out=[], w=(c,v)=>{ out.push(String(c)); out.push(String(v)); };
+  const LAY=[["BOUNDARY",7],["ROAD_CENTRE",8],["ROAD_TEXT",8],["PLOT_INDUSTRIAL",2],["PLOT_LOGISTICS",3],["PLOT_SERVICES",5],["PLOT_UTILITIES",6],["PLOT_TEXT",7],["GREEN",3],["EASEMENT",6],["GATES",1],["FENCE_STEEL",1],["SITE",4],["NOTES",1]];
+  const xy=g=>utm36(g[0],g[1]), poly=(ly,pts,closed)=>{ w(0,"POLYLINE"); w(8,ly); w(66,1); w(70,closed?1:0); pts.forEach(g=>{ const q=xy(g); w(0,"VERTEX"); w(8,ly); w(10,q[0].toFixed(3)); w(20,q[1].toFixed(3)); w(30,0); }); w(0,"SEQEND"); w(8,ly); };
+  const text=(ly,g,h,s)=>{ const q=xy(g); w(0,"TEXT"); w(8,ly); w(10,q[0].toFixed(3)); w(20,q[1].toFixed(3)); w(30,0); w(40,h); w(1,String(s).replace(/[\r\n]+/g," ")); w(72,1); w(11,q[0].toFixed(3)); w(21,q[1].toFixed(3)); w(31,0); };
+  w(0,"SECTION"); w(2,"HEADER"); w(9,"$ACADVER"); w(1,"AC1009"); w(0,"ENDSEC");
+  w(0,"SECTION"); w(2,"TABLES"); w(0,"TABLE"); w(2,"LAYER"); w(70,LAY.length); LAY.forEach(([n,c])=>{ w(0,"LAYER"); w(2,n); w(70,0); w(62,c); w(6,"CONTINUOUS"); }); w(0,"ENDTAB"); w(0,"ENDSEC");
+  w(0,"SECTION"); w(2,"ENTITIES");
+  poly("BOUNDARY",p.land.pts,true);
+  p.roads.forEach(r=>{ poly("ROAD_CENTRE",r.pts,false); const m=r.pts[Math.floor((r.pts.length-1)/2)], n2=r.pts[Math.min(r.pts.length-1,Math.floor((r.pts.length-1)/2)+1)]; text("ROAD_TEXT",[(m[0]+n2[0])/2,(m[1]+n2[1])/2],3,r.w+" m"); });
+  const LY={ind:"PLOT_INDUSTRIAL",log:"PLOT_LOGISTICS",svc:"PLOT_SERVICES",util:"PLOT_UTILITIES"};
+  p.plots.forEach(x=>{ poly(LY[x.use||"ind"]||"PLOT_INDUSTRIAL",x.pts,true); const c=lCent(x.pts.map(Lc)), g=Gc(c[0],c[1]); text("PLOT_TEXT",g,4,(x.code||"")+(x.fac?" "+x.fac:"")); const g2=Gc(c[0],c[1]+6); text("PLOT_TEXT",g2,2.5,A.nf(geoArea(x.pts),0)+" m2"); });
+  p.green.forEach(g=>poly(g.k==="eas"?"EASEMENT":"GREEN",g.pts,true));
+  const S=p.site; if(S){ S.eas.forEach(e=>{ poly("EASEMENT",e.pts,false); text("EASEMENT",e.pts[0],4,(EAS_K[e.k]||"Easement")+(e.w?" "+e.w+" m corridor":" width not entered")); }); S.pts.forEach(q=>text("SITE",q.c,4,PT_K[q.k]||q.k)); }
+  (p.gates||[]).forEach((g,i)=>text("GATES",g.c,5,g.main?"Main gate":g.type==="emg"?"Emergency gate "+(i+1):"Gate "+(i+1)));
+  if(PL.brief&&+PL.brief.fence>0){ const Lx=p.land.pts.map(Lc), n=Lx.length, tr=+PL.brief.fence; (p.gates||[]).forEach(g=>{ const c=Lc(g.c), i=edgeAt(Lx,c), a=Lx[i], b2=Lx[(i+1)%n], l=lhyp(a,b2)||1, u=[(b2[0]-a[0])/l,(b2[1]-a[1])/l], wg=(g.main?RT[0].w:RT[1].w)/2;
+    [[wg,wg+tr],[-wg-tr,-wg]].forEach(([s0,s1])=>poly("FENCE_STEEL",[Gc(c[0]+u[0]*s0,c[1]+u[1]*s0),Gc(c[0]+u[0]*s1,c[1]+u[1]*s1)],false)); }); }
+  const lc=lCent(p.land.pts.map(Lc)); if(hf) text("NOTES",Gc(lc[0],lc[1]),25,`DRAFT - ${hf} hard failure(s) - not ready for review`);
+  w(0,"ENDSEC"); w(0,"EOF");
+  const blob=new Blob([out.join("\r\n")+"\r\n"],{type:"application/dxf"}), u=URL.createObjectURL(blob), a=document.createElement("a"); a.href=u; a.download=outName()+" - master plan"+(hf?" DRAFT":"")+".dxf"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),60000);
+  A.flash(`CAD file: ${p.plots.length} plots, ${p.roads.length} roads · UTM zone 36N metres${hf?" · stamped DRAFT ("+hf+" hard failures)":""}`); }
+(()=>{ const st=document.createElement("style"); st.textContent=`#plRules table.opt td,#plRules table.opt th{font-size:10.5px;padding:3px}#plRules table.opt button{height:24px;padding:0 7px;font-size:11px}#plRules .pref{background:#34C759;color:#000;border-radius:5px;padding:0 4px;font-size:9px}#plRules .used{background:#FFD60A;color:#000;border-radius:5px;padding:0 4px;font-size:9px}`; document.head.appendChild(st); })();
+
+/* ---------- V134: land from coordinates, roads around the land, full exports ---------- */
+// transverse Mercator both ways on any ellipsoid (Snyder); E = {a, f, k0, lon0, lat0, fe, fn} in degrees / metres
+const TM={utm36:{a:6378137,f:1/298.257223563,k0:.9996,lon0:33,lat0:0,fe:500000,fn:0,l:"UTM zone 36N (WGS84)"},utm35:{a:6378137,f:1/298.257223563,k0:.9996,lon0:27,lat0:0,fe:500000,fn:0,l:"UTM zone 35N (WGS84)"},
+  etm:{a:6378200,f:1/298.3,k0:1,lon0:31,lat0:30,fe:615000,fn:810000,l:"Egypt Red Belt (ETM, Helmert 1906)",shift:[-130,110,-13]}};
+function tmM(E,ph){ const e2=E.f*(2-E.f); return E.a*((1-e2/4-3*e2*e2/64-5*e2**3/256)*ph-(3*e2/8+3*e2*e2/32+45*e2**3/1024)*Math.sin(2*ph)+(15*e2*e2/256+45*e2**3/1024)*Math.sin(4*ph)-(35*e2**3/3072)*Math.sin(6*ph)); }
+function tmFwd(lon,lat,E){ const e2=E.f*(2-E.f), ep=e2/(1-e2), R=Math.PI/180, ph=lat*R, sn=Math.sin(ph), cs=Math.cos(ph), tn=Math.tan(ph), N=E.a/Math.sqrt(1-e2*sn*sn), T=tn*tn, C=ep*cs*cs, Aa=cs*(lon-E.lon0)*R, M=tmM(E,ph), M0=tmM(E,E.lat0*R);
+  return [E.fe+E.k0*N*(Aa+(1-T+C)*Aa**3/6+(5-18*T+T*T+72*C-58*ep)*Aa**5/120), E.fn+E.k0*(M-M0+N*tn*(Aa*Aa/2+(5-T+9*C+4*C*C)*Aa**4/24+(61-58*T+T*T+600*C-330*ep)*Aa**6/720))]; }
+function tmInv(x,y,E){ const e2=E.f*(2-E.f), ep=e2/(1-e2), R=Math.PI/180, M=tmM(E,E.lat0*R)+(y-E.fn)/E.k0, mu=M/(E.a*(1-e2/4-3*e2*e2/64-5*e2**3/256)), e1=(1-Math.sqrt(1-e2))/(1+Math.sqrt(1-e2));
+  const p1=mu+(3*e1/2-27*e1**3/32)*Math.sin(2*mu)+(21*e1*e1/16-55*e1**4/32)*Math.sin(4*mu)+(151*e1**3/96)*Math.sin(6*mu)+(1097*e1**4/512)*Math.sin(8*mu), sn=Math.sin(p1), cs=Math.cos(p1), tn=Math.tan(p1);
+  const N1=E.a/Math.sqrt(1-e2*sn*sn), T1=tn*tn, C1=ep*cs*cs, R1=E.a*(1-e2)/Math.pow(1-e2*sn*sn,1.5), D=(x-E.fe)/(N1*E.k0);
+  const lat=p1-(N1*tn/R1)*(D*D/2-(5+3*T1+10*C1-4*C1*C1-9*ep)*D**4/24+(61+90*T1+298*C1+45*T1*T1-252*ep-3*C1*C1)*D**6/720), lon=E.lon0*R+(D-(1+2*T1+C1)*D**3/6+(5-2*C1+28*T1-3*C1*C1+8*ep+24*T1*T1)*D**5/120)/cs;
+  return [lon/R,lat/R]; }
+// a datum shift of three metres-offsets (old Egyptian datum -> WGS84), through earth-centred coordinates
+function shiftDatum(lon,lat,E,dir){ const W=TM.utm36, R=Math.PI/180, from=dir>0?E:W, to=dir>0?W:E, s=E.shift.map(v=>v*dir), e2=from.f*(2-from.f), ph=lat*R, la=lon*R, N=from.a/Math.sqrt(1-e2*Math.sin(ph)**2);
+  const X=N*Math.cos(ph)*Math.cos(la)+s[0], Y=N*Math.cos(ph)*Math.sin(la)+s[1], Z=N*(1-e2)*Math.sin(ph)+s[2], f2=to.f*(2-to.f), p=Math.hypot(X,Y); let p2=Math.atan2(Z,p*(1-f2));
+  for(let i=0;i<6;i++){ const N2=to.a/Math.sqrt(1-f2*Math.sin(p2)**2); p2=Math.atan2(Z+f2*N2*Math.sin(p2),p); } return [Math.atan2(Y,X)/R,p2/R]; }
+const crsToLL=(x,y,k)=>{ const E=TM[k]; let g=tmInv(x,y,E); if(E.shift) g=shiftDatum(g[0],g[1],E,1); return g; };
+const llToCrs=(lon,lat,k)=>{ const E=TM[k]; let g=[lon,lat]; if(E.shift) g=shiftDatum(lon,lat,E,-1); return tmFwd(g[0],g[1],E); };
+const CO_FMT=[["auto","Auto"],["latlon","Latitude, Longitude"],["lonlat","Longitude, Latitude"],["utm36","UTM 36N: Easting, Northing"],["utm35","UTM 35N: Easting, Northing"],["etm","Egypt Red Belt: E, N (approx.)"]];
+// reads pasted boundary points; returns {pts:[[lon,lat]…], how, skipped}
+function parseCoords(txt,fmt){ if(!fmt||(fmt!=="latlon"&&fmt!=="lonlat"&&!TM[fmt])) fmt="auto"; const out=[], bad=[]; let how=null, amb=false; const inE=(la,lo)=>la>=21&&la<=32.5&&lo>=24&&lo<=37.5;
+  String(txt||"").split(/\r?\n|;/).forEach((ln,li)=>{ let s=ln.trim(); if(!s) return;
+    const dms=[...s.matchAll(/(-?\d+(?:\.\d+)?)\s*[°ºd]\s*(?:(\d+(?:\.\d+)?)\s*['’′m]\s*)?(?:(\d+(?:\.\d+)?)\s*(?:"|”|″|''|s)\s*)?([NSEWnsew])?/g)];
+    if(dms.length>=2){ const v=dms.slice(0,2).map(m=>{ let d=Math.abs(+m[1])+(+m[2]||0)/60+(+m[3]||0)/3600; const h=(m[4]||"").toUpperCase(); if(h==="S"||h==="W"||+m[1]<0) d=-d; return {d,h}; });
+      let la, lo; if(/[EW]/.test(v[0].h)||/[NS]/.test(v[1].h)){ lo=v[0].d; la=v[1].d; } else if(fmt==="lonlat"){ lo=v[0].d; la=v[1].d; } else { la=v[0].d; lo=v[1].d; } out.push([lo,la]); how=how||"degrees, minutes, seconds"; return; }
+    while(/\d,\d{3}(?!\d)/.test(s)) s=s.replace(/(\d),(\d{3})(?!\d)/g,"$1$2");
+    let n=(s.match(/-?\d+(?:\.\d+)?/g)||[]).map(Number); if(n.length<2){ bad.push(li+1); return; }
+    let kml3=false; if(n.length>=3&&!Number.isInteger(n[0])&&Math.abs(n[0])<=180&&Math.abs(n[1])<=180&&Math.abs(n[2])<9000&&/^\s*-?[\d.]+\s*,\s*-?[\d.]+\s*,\s*-?[\d.]+\s*$/.test(s)) kml3=true;   /* "lon,lat,height" as Google Earth writes it */
+    if(n.length>=3&&!kml3){ const big=Math.abs(n[1])>1000&&Math.abs(n[2])>1000, deg=Math.abs(n[1])<=180&&Math.abs(n[2])<=180&&!Number.isInteger(n[1]); if(Number.isInteger(n[0])&&Math.abs(n[0])<100000&&(big||deg)&&!(Math.abs(n[0])>1000&&big&&Math.abs(n[2])<1000)) n=n.slice(1); }
+    const a=n[0], b=n[1]; let f=fmt;
+    if(f==="auto"){ if(Math.abs(a)<=180&&Math.abs(b)<=180){ if(kml3) f="lonlat"; else { f=inE(a,b)&&!inE(b,a)?"latlon":inE(b,a)&&!inE(a,b)?"lonlat":"latlon"; if(inE(a,b)&&inE(b,a)) amb=true; } }
+      else { const N=Math.max(a,b), E=Math.min(a,b); f=N>2000000?"utm36":"etm"; } }
+    if(f==="latlon"){ out.push([b,a]); how=how||"latitude, longitude"; } else if(f==="lonlat"){ out.push([a,b]); how=how||"longitude, latitude"; }
+    else { const N=TM[f].shift?null:Math.max(a,b); const e=TM[f].shift?a:(a>b?b:a), nn=TM[f].shift?b:N; out.push(crsToLL(e,nn,f)); how=how||TM[f].l; } });
+  const pts=out.filter(p=>isFinite(p[0])&&isFinite(p[1])); if(pts.length>2){ const a=pts[0], z=pts[pts.length-1]; if(A.dist(a,z)<.5) pts.pop(); }
+  return {pts:pts.map(r9),how,skipped:bad,amb}; }
+// KML text -> the biggest outline in it; KMZ -> its first .kml
+function kmlOutline(txt){ const d=new DOMParser().parseFromString(txt,"text/xml"), L=[...d.getElementsByTagName("coordinates")].map(c=>c.textContent.trim().split(/\s+/).map(t=>t.split(",").map(Number)).filter(v=>v.length>=2&&isFinite(v[0])&&isFinite(v[1])).map(v=>[v[0],v[1]])).filter(P=>P.length>=3);
+  if(!L.length) return null; L.forEach(P=>{ if(A.dist(P[0],P[P.length-1])<.5) P.pop(); }); return L.filter(P=>P.length>=3).sort((a,b)=>geoArea(b)-geoArea(a))[0]||null; }
+async function kmzText(buf){ const u=new Uint8Array(buf), dv=new DataView(buf); let e=-1; for(let i=u.length-22;i>=Math.max(0,u.length-66000);i--) if(dv.getUint32(i,true)===0x06054b50){ e=i; break; } if(e<0) throw new Error("not a KMZ (zip) file");
+  let o=dv.getUint32(e+16,true); const n=dv.getUint16(e+10,true);
+  for(let k=0;k<n;k++){ if(dv.getUint32(o,true)!==0x02014b50) break; const m=dv.getUint16(o+10,true), cs=dv.getUint32(o+20,true), nl=dv.getUint16(o+28,true), xl=dv.getUint16(o+30,true), cl=dv.getUint16(o+32,true), lo=dv.getUint32(o+42,true), name=new TextDecoder().decode(u.subarray(o+46,o+46+nl));
+    if(/\.kml$/i.test(name)){ const st=lo+30+dv.getUint16(lo+26,true)+dv.getUint16(lo+28,true), raw=u.subarray(st,st+cs); if(m===0) return new TextDecoder().decode(raw);
+      if(m!==8||typeof DecompressionStream==="undefined") throw new Error("this KMZ cannot be opened in this browser — save it as KML"); return await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text(); }
+    o+=46+nl+xl+cl; } throw new Error("no KML inside the KMZ"); }
+// the points waiting for confirmation
+function coSet(pts,how){ PL.cprev=pts&&pts.length?{pts,how:how||""}:null; opts(); A.need(); if(PL.cprev&&pts.length>=2){ let bb=[[1e9,1e9],[-1e9,-1e9]]; pts.forEach(c=>{ bb[0][0]=Math.min(bb[0][0],c[0]); bb[0][1]=Math.min(bb[0][1],c[1]); bb[1][0]=Math.max(bb[1][0],c[0]); bb[1][1]=Math.max(bb[1][1],c[1]); }); try{ map.fitBounds(bb,{padding:140,duration:900,maxZoom:18}); }catch(e){} } }
+function coDialog(){ let d=q("#plCoDlg"); if(d){ d.remove(); return; } d=document.createElement("div"); d.id="plCoDlg";
+  d.innerHTML=`<div class="hd">Land from coordinates<button type="button" class="x" id="plCoX" aria-label="Close">×</button></div>
+    <div class="src">One point per line, going round the land in order. Examples:<br>30.300000, 31.700000 &nbsp;·&nbsp; 30°18'00"N 31°42'00"E &nbsp;·&nbsp; 374991.54 3352744.13 (UTM) &nbsp;·&nbsp; 1 374991.54 3352744.13 (with point number)</div>
+    <textarea id="plCoT" spellcheck="false" placeholder="Paste the coordinates here"></textarea>
+    <div class="row"><span>Format</span><select id="plCoF">${CO_FMT.map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}</select></div>
+    <div class="row"><button type="button" id="plCoGo" class="mk">Show on the map</button><button type="button" id="plCoK">Import KML / KMZ…</button><input type="file" id="plCoFile" accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz" hidden></div>
+    <div class="src" id="plCoMsg">The points are only shown first. Check them on the map, then press Confirm land.</div>`;
+  (q("#plUI")||document.body).appendChild(d); const t=d.querySelector("#plCoT"); d.addEventListener("pointerdown",e=>e.stopPropagation()); t.onkeydown=e=>e.stopPropagation(); if(PL.cprev) t.value=PL.cprev.pts.map(p=>p[1].toFixed(7)+", "+p[0].toFixed(7)).join("\n");
+  d.querySelector("#plCoX").onclick=()=>d.remove();
+  d.querySelector("#plCoGo").onclick=()=>{ const r=parseCoords(t.value,d.querySelector("#plCoF").value), m=d.querySelector("#plCoMsg");
+    if(r.pts.length<3){ m.textContent=r.pts.length?`Only ${r.pts.length} point${r.pts.length>1?"s":""} read — a land needs at least 3.`:"No coordinates could be read — one point per line, two numbers each."; m.style.color="#FF9F0A"; return; }
+    const far=r.pts.filter(p=>!(p[1]>=21&&p[1]<=32.5&&p[0]>=24&&p[0]<=37.5)).length; coSet(r.pts,r.how);
+    m.style.color=far?"#FF9F0A":""; m.textContent=`${r.pts.length} points read as ${r.how} · ${A.fArea(geoArea(r.pts))}${r.skipped.length?` · line${r.skipped.length>1?"s":""} ${r.skipped.slice(0,6).join(", ")} skipped`:""}${far?` · ${far} point${far>1?"s are":" is"} outside Egypt — check the format`:""}${r.amb?" · these numbers could also be longitude first: if the land is in the wrong place, choose “Longitude, Latitude” and press Show again":""}. Check them on the map, then Confirm land.`; if(r.amb&&!far) m.style.color="#FFD60A"; if(!far){ const msg=m.textContent; d.remove(); A.flash(msg); } };
+  const f=d.querySelector("#plCoFile"); d.querySelector("#plCoK").onclick=()=>f.click();
+  f.onchange=async()=>{ const file=f.files&&f.files[0]; f.value=""; if(!file) return; const m=d.querySelector("#plCoMsg");
+    try{ const txt=/\.kmz$/i.test(file.name)?await kmzText(await file.arrayBuffer()):await file.text(), P=kmlOutline(txt); if(!P){ m.textContent="No outline found in this file."; m.style.color="#FF9F0A"; return; }
+      t.value=P.map(p=>p[1].toFixed(7)+", "+p[0].toFixed(7)).join("\n"); coSet(P.map(r9),"KML outline"); m.style.color=""; m.textContent=`${file.name}: ${P.length} points · ${A.fArea(geoArea(P))} — the biggest outline in the file. Check it on the map, then Confirm land.`; const msg=m.textContent; d.remove(); A.flash(msg); }
+    catch(e){ console.warn("kml",e); m.textContent="This file could not be read: "+((e&&e.message)||e); m.style.color="#FF9F0A"; } }; }
+function coConfirm(andPlan){ const c=PL.cprev; if(!c||c.pts.length<3){ A.flash("At least 3 points are needed"); return; } const pts=c.pts.slice(); PL.cprev=null; const d=q("#plCoDlg"); if(d) d.remove();
+  commitLand(pts); PL.lsub="bnd"; opts(); try{ fitPlan(); }catch(e){}
+  if(andPlan){ A.flash("Land confirmed — making the master plan…"); setTimeout(masterPlan,60); } }
+function coTap(g){ const c=PL.cprev||{pts:[],how:"tapped on the map"}; c.pts.push(r9(Gc(g[0],g[1]))); PL.cprev=c; opts(); A.need(); A.flash(`Point ${c.pts.length} added${c.pts.length>=3?" · "+A.fArea(geoArea(c.pts)):""}`); }
+function coBar(){ const c=PL.cprev, n=c?c.pts.length:0; let h=`<button type="button" id="plCoOpen">Enter coordinates…</button>`;
+  if(n) h+=`<span class="hi">${n} point${n>1?"s":""}${n>=3?" · "+A.fArea(geoArea(c.pts)):""}${c.how?" · "+esc(c.how):""}</span><button type="button" id="plCoUndo">Undo point</button><button type="button" id="plCoCancel">Clear</button>`+(n>=3?`<button type="button" id="plCoOk" class="mk">Confirm land</button><button type="button" id="plCoMp" class="mk">Confirm + master plan</button>`:"");
+  else h+=`<span class="hi">or tap the corner points on the map</span>`; return h; }
+function coWire(){ const o=q("#plCoOpen"); if(o) o.onclick=()=>coDialog(); const u=q("#plCoUndo"); if(u) u.onclick=()=>{ if(PL.cprev){ PL.cprev.pts.pop(); if(!PL.cprev.pts.length) PL.cprev=null; opts(); A.need(); } };
+  const c=q("#plCoCancel"); if(c) c.onclick=()=>{ PL.cprev=null; opts(); A.need(); }; const k=q("#plCoOk"); if(k) k.onclick=()=>coConfirm(false); const m=q("#plCoMp"); if(m) m.onclick=()=>coConfirm(true);
+  const fr=q("#plFr"); if(fr) fr.onclick=()=>findRoads(); }
+// the roads next to the land: nearest real road to points along every side (public OpenStreetMap routing service)
+let FRBUSY=false;
+async function findRoads(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land first"); return; } if(FRBUSY) return; FRBUSY=true; const L=p.land.pts, n=L.length, S=siteOf(p);
+  const sides=L.map((a,i)=>({i,a,b:L[(i+1)%n],len:A.dist(a,L[(i+1)%n])})).filter(s=>s.len>=40).sort((x,y)=>y.len-x.len).slice(0,14), res=[]; let fail=0;
+  A.flash(`Looking for the roads next to ${sides.length} side${sides.length>1?"s":""} of the land…`);
+  try{ for(const s of sides){ let best=null; for(const f of [.25,.5,.75]){ const c=[s.a[0]+(s.b[0]-s.a[0])*f,s.a[1]+(s.b[1]-s.a[1])*f];
+        try{ const r=await fetch(`https://router.project-osrm.org/nearest/v1/driving/${c[0].toFixed(6)},${c[1].toFixed(6)}?number=1`), j=await r.json(), w=j&&j.waypoints&&j.waypoints[0]; if(w&&w.location){ const d=A.dist(c,w.location); if(!best||d<best.d) best={d,name:w.name||"",at:w.location}; } else fail++; }catch(e){ fail++; }
+        await new Promise(r2=>setTimeout(r2,120)); }
+      if(best) res.push({c:r9([(s.a[0]+s.b[0])/2,(s.a[1]+s.b[1])/2]),d:Math.round(best.d),name:best.name,len:Math.round(s.len)}); } }
+  finally{ FRBUSY=false; }
+  if(!res.length){ A.flash("The road service did not answer — try again later, or mark the access side by hand"); return; }
+  pushUndo(); S.found={t:Date.now(),sides:res}; const near=res.filter(r=>r.d<=60); let add=0;
+  const named=near.filter(r=>r.name), pick=named.length?named:near.slice().sort((x,y)=>x.d-y.d).slice(0,1);
+  if(!S.sides.some(s=>s.k==="access")) pick.forEach(r=>{ const Lx=L.map(Lc), i=edgeAt(Lx,Lc(r.c)); if(!S.sides.some(s=>edgeAt(Lx,Lc(s.c))===i)){ S.sides.push({c:r.c,k:"access",auto:1}); add++; } });
+  changed(["land"]); opts();
+  A.flash(near.length?`${near.length} side${near.length>1?"s are":" is"} on a road: ${near.slice(0,3).map(r=>(r.name||"unnamed road")+" "+r.d+" m").join(" · ")}${add?` — ${add} marked as access side${add>1?"s":""}${near.length>add?" (the named road or the nearest one; tap another side to add it)":""} · tap a side to change it`:""}`:`No road within 60 m of the land — the nearest is ${Math.min(...res.map(r=>r.d))} m away: mark the access side by hand`); }
+function coDraw(ctx,poly){ const P=c=>A.P(c), c=PL.cprev; ctx.save(); ctx.font=`700 11px ${A.FONT}`; ctx.textAlign="center"; ctx.textBaseline="middle";
+  const tag=(s,t,col,bg)=>{ const w=ctx.measureText(t).width+10; ctx.fillStyle=bg||"rgba(20,20,22,.85)"; ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(s[0]-w/2,s[1]-8,w,16,8); else ctx.rect(s[0]-w/2,s[1]-8,w,16); ctx.fill(); ctx.fillStyle=col||"#fff"; ctx.fillText(t,s[0],s[1]+.5); };
+  if(c&&c.pts.length){ const V=c.pts.map(P); if(V.length>=2) poly(V,V.length>=3,"#FFD60A",2.5,V.length>=3?"rgba(255,214,10,.14)":null,[8,5]);
+    if(V.length>=2) for(let i=0;i<V.length;i++){ const j=(i+1)%V.length; if(j===0&&V.length<3) break; if(Math.hypot(V[j][0]-V[i][0],V[j][1]-V[i][1])>70) tag([(V[i][0]+V[j][0])/2,(V[i][1]+V[j][1])/2],A.fLen(A.dist(c.pts[i],c.pts[j])),"#FFD60A"); }
+    V.forEach((s,i)=>{ ctx.beginPath(); ctx.arc(s[0],s[1],10,0,7); ctx.fillStyle="#FFD60A"; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle="#1C1C1E"; ctx.stroke(); ctx.fillStyle="#1C1C1E"; ctx.fillText(String(i+1),s[0],s[1]+.5); }); }
+  const S=PL.plan.site, F=S&&S.found; if(F&&PL.plan.land&&PL.tool==="land"&&PL.lsub==="site"){ const V0=PL.plan.land.pts.map(P), xs=V0.map(v=>v[0]), ys=V0.map(v=>v[1]); if(Math.max(Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys))>220) F.sides.forEach(r=>{ const s=P(r.c); tag([s[0],s[1]+20],`${r.d<=60?"on":""} ${r.name||"road"} · ${r.d} m`.trim(),r.d<=60?"#30D158":"#FF9F0A"); }); }
+  ctx.restore(); }
+// utility plots get their names (the brief's utility buildings); sizes stay "to confirm"
+const UTIL_AUTO=["Substation","Water tanks & pumps","Firefighting tank","Irrigation tank","Sewage lift station"];
+function nameUtilities(p,gc){ const b=PL.brief; if(!b||b.facHere===false) return 0; let n=0; UTIL_AUTO.forEach(f=>{ if(p.plots.some(x=>facOf(x)===fnorm(f))) return; const L=p.plots.filter(y=>!y.pin&&!y.fac&&y.use==="util"); if(!L.length) return;
+    const tp=facTarget(p,f,gc), d=y=>lhyp(lCent(y.pts.map(Lc)),tp||gc); L.sort((a,c)=>d(a)-d(c))[0].fac=f; n++; }); return n; }
+/* ----- exports ----- */
+const xmlEsc=v=>String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const saveBlob=(blob,name)=>{ const u=URL.createObjectURL(blob), a=document.createElement("a"); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),60000); };
+// a road as an outline (centre line widened to its width), in geo coordinates
+function roadOutline(r){ const V=r.pts.map(Lc), Lf=[], Rt=[], h=r.w/2; for(let i=0;i<V.length;i++){ const a=V[Math.max(0,i-1)], b=V[Math.min(V.length-1,i+1)], l=lhyp(a,b)||1, n=[-(b[1]-a[1])/l,(b[0]-a[0])/l]; Lf.push([V[i][0]+n[0]*h,V[i][1]+n[1]*h]); Rt.push([V[i][0]-n[0]*h,V[i][1]-n[1]*h]); } return {L:Lf.map(c=>Gc(c[0],c[1])),R:Rt.map(c=>Gc(c[0],c[1]))}; }
+function planFeatures(){ const p=PL.plan, F=[]; if(p.land) F.push({t:"Boundary",g:"Polygon",c:p.land.pts,pr:{name:outName(),area_m2:Math.round(geoArea(p.land.pts))}});
+  p.plots.forEach(x=>{ const g=plotGeom(x); F.push({t:"Plots",g:"Polygon",c:x.pts,pr:{name:x.code||"",code:x.code||"",block:x.blk||"",phase:x.phase||null,use:USES[x.use||"ind"]||x.use,sector:x.sector||x.ind||"",facility:x.fac||"",area_m2:Math.round(geoArea(x.pts)*100)/100,width_m:g.w?+g.w.toFixed(2):null,depth_m:g.d?+g.d.toFixed(2):null},u:x.use||"ind"}); });
+  p.roads.forEach(r=>{ const o=roadOutline(r); F.push({t:"Roads",g:"Polygon",c:o.L.concat(o.R.slice().reverse()),pr:{name:(RT.find(t=>t.k===r.t)||{l:"Road"}).l+" "+r.w+" m",type:r.t,width_m:r.w,length_m:Math.round(A.pathLen(r.pts))}}); });
+  rbs().forEach((b,i)=>{ const R=[]; for(let k=0;k<32;k++){ const t=k/32*2*Math.PI; R.push(Gc(b.c[0]+Math.cos(t)*b.r,b.c[1]+Math.sin(t)*b.r)); } F.push({t:"Roads",g:"Polygon",c:R,pr:{name:"Roundabout "+(i+1),type:"roundabout",diameter_m:Math.round(b.r*2)}}); });
+  p.green.forEach(g=>F.push({t:"Green",g:"Polygon",c:g.pts,pr:{name:(GK[g.k]||GK.lawn).l,kind:g.k,area_m2:Math.round(geoArea(g.pts))},k:g.k}));
+  (p.gates||[]).forEach((g,i)=>F.push({t:"Gates",g:"Point",c:g.c,pr:{name:g.main?"Main gate":g.type==="emg"?"Emergency gate "+(i+1):"Gate "+(i+1),type:gType(g)}}));
+  const S=p.site; if(S){ S.eas.forEach(e=>F.push({t:"Site",g:"LineString",c:e.pts,pr:{name:EAS_K[e.k]||"Easement",corridor_m:e.w||null}})); S.pts.forEach(q2=>F.push({t:"Site",g:"Point",c:q2.c,pr:{name:PT_K[q2.k]||q2.k}})); }
+  return F; }
+function outGeoJSON(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land first"); return; } const hf=hardFails(), F=planFeatures();
+  const fc={type:"FeatureCollection",name:outName(),crs:{type:"name",properties:{name:"urn:ogc:def:crs:OGC:1.3:CRS84"}},status:hf?`DRAFT - ${hf} hard failure(s)`:"Ready for review",features:F.map(f=>({type:"Feature",properties:Object.assign({layer:f.t},f.pr),geometry:f.g==="Polygon"?{type:"Polygon",coordinates:[f.c.concat([f.c[0]])]}:f.g==="LineString"?{type:"LineString",coordinates:f.c}:{type:"Point",coordinates:f.c}}))};
+  saveBlob(new Blob([JSON.stringify(fc)],{type:"application/geo+json"}),outName()+" - master plan"+(hf?" DRAFT":"")+".geojson"); A.flash(`GIS file (GeoJSON, WGS84): ${F.length} features`); }
+function kmlText(){ const hf=hardFails(), F=planFeatures(), ST={Boundary:["ff00d7ff","00ffffff",3],ind:["ff5a6e78","99b8d2dc",1],log:["ff3c8ce8","999ac7e8",1],svc:["ffb46e3c","99e0c4a9",1],util:["ff8c5a78","99d6bbc3",1],Roads:["ff454f3b","cc454f3b",1],Green:["ff347f3e","9952a56f",1],eas:["fff25abf","66f25abf",1]};
+  const sty=Object.entries(ST).map(([k,v])=>`<Style id="s_${k}"><LineStyle><color>${v[0]}</color><width>${v[2]}</width></LineStyle><PolyStyle><color>${v[1]}</color></PolyStyle></Style>`).join("");
+  const crd=c=>c.map(q2=>q2[0].toFixed(7)+","+q2[1].toFixed(7)+",0").join(" "), desc=pr=>"<![CDATA["+Object.entries(pr).filter(([k,v])=>k!=="name"&&v!=null&&v!=="").map(([k,v])=>`<b>${k.replace(/_/g," ")}</b>: ${xmlEsc(v)}`).join("<br>")+"]]>";
+  const pm=f=>{ const sid=f.t==="Plots"?f.u:f.t==="Green"?(f.k==="eas"?"eas":"Green"):f.t==="Boundary"?"Boundary":f.t==="Roads"?"Roads":null; const geo=f.g==="Polygon"?`<Polygon><outerBoundaryIs><LinearRing><coordinates>${crd(f.c.concat([f.c[0]]))}</coordinates></LinearRing></outerBoundaryIs></Polygon>`:f.g==="LineString"?`<LineString><coordinates>${crd(f.c)}</coordinates></LineString>`:`<Point><coordinates>${crd([f.c])}</coordinates></Point>`;
+    return `<Placemark><name>${xmlEsc(f.pr.name)}</name><description>${desc(f.pr)}</description>${sid?`<styleUrl>#s_${sid}</styleUrl>`:""}${geo}</Placemark>`; };
+  const folders=["Boundary","Plots","Roads","Green","Gates","Site"].map(t=>{ const L=F.filter(f=>f.t===t); return L.length?`<Folder><name>${t} (${L.length})</name>${L.map(pm).join("")}</Folder>`:""; }).join("");
+  return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${xmlEsc(outName())}${hf?" - DRAFT":""}</name><description>${hf?`DRAFT - ${hf} hard failure(s): not ready for review`:"Ready for review - 0 hard failures"} · SID Land Bank Build tab · ${xmlEsc(new Date().toLocaleString())}</description>${sty}${folders}</Document></kml>`; }
+function outKml(){ if(!PL.plan.land){ A.flash("Draw the land first"); return; } saveBlob(new Blob([kmlText()],{type:"application/vnd.google-earth.kml+xml"}),outName()+" - master plan"+(hardFails()?" DRAFT":"")+".kml"); A.flash("KML file made — opens in Google Earth"); }
+// a zip with one stored file (no compression needed for a KMZ)
+let CRCT=null; const crc32=u=>{ if(!CRCT){ CRCT=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; CRCT[n]=c>>>0; } } let c=0xFFFFFFFF; for(let i=0;i<u.length;i++) c=CRCT[(c^u[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; };
+function zipOne(name,data){ const nm=new TextEncoder().encode(name), crc=crc32(data), n=nm.length, sz=data.length, out=new Uint8Array(30+n+sz+46+n+22), dv=new DataView(out.buffer); let o=0;
+  dv.setUint32(o,0x04034b50,true); dv.setUint16(o+4,20,true); dv.setUint16(o+6,0x0800,true); dv.setUint16(o+8,0,true); dv.setUint16(o+10,0,true); dv.setUint16(o+12,0x21,true); dv.setUint32(o+14,crc,true); dv.setUint32(o+18,sz,true); dv.setUint32(o+22,sz,true); dv.setUint16(o+26,n,true); dv.setUint16(o+28,0,true); out.set(nm,o+30); out.set(data,o+30+n); o+=30+n+sz; const cd=o;
+  dv.setUint32(o,0x02014b50,true); dv.setUint16(o+4,20,true); dv.setUint16(o+6,20,true); dv.setUint16(o+8,0x0800,true); dv.setUint16(o+10,0,true); dv.setUint16(o+12,0,true); dv.setUint16(o+14,0x21,true); dv.setUint32(o+16,crc,true); dv.setUint32(o+20,sz,true); dv.setUint32(o+24,sz,true); dv.setUint16(o+28,n,true); dv.setUint32(o+42,0,true); out.set(nm,o+46); o+=46+n;
+  dv.setUint32(o,0x06054b50,true); dv.setUint16(o+8,1,true); dv.setUint16(o+10,1,true); dv.setUint32(o+12,o-cd,true); dv.setUint32(o+16,cd,true); return out; }
+function outKmz(){ if(!PL.plan.land){ A.flash("Draw the land first"); return; } saveBlob(new Blob([zipOne("doc.kml",new TextEncoder().encode(kmlText()))],{type:"application/vnd.google-earth.kmz"}),outName()+" - master plan"+(hardFails()?" DRAFT":"")+".kmz"); A.flash("KMZ file made — opens in Google Earth"); }
+// the AutoCAD drawing: everything on its own layer, in UTM zone 36N metres
+function outCad(){ const p=PL.plan; if(!p.land){ A.flash("Draw the land first"); return; } const hf=hardFails(), out=[], w=(c,v)=>{ out.push(String(c)); out.push(String(v)); };
+  const LAY=[["BOUNDARY",7],["BOUNDARY_POINTS",1],["ROAD_CENTRE",8],["ROAD_EDGE",9],["ROAD_TEXT",8],["ROUNDABOUT",9],["PLOT_INDUSTRIAL",2],["PLOT_LOGISTICS",3],["PLOT_SERVICES",5],["PLOT_UTILITIES",6],["PLOT_TEXT",7],["PLOT_DIM",8],["SECTOR_TEXT",4],["GREEN",3],["EASEMENT",6],["GATES",1],["FENCE_STEEL",1],["SITE",4],["TABLE_COORDINATES",7],["TABLE_LANDUSE",7],["TITLE",7],["NOTES",1]];
+  const xy=g=>utm36(g[0],g[1]), f3=v=>v.toFixed(3), poly=(ly,pts,closed)=>{ if(pts.length<2) return; w(0,"POLYLINE"); w(8,ly); w(66,1); w(70,closed?1:0); pts.forEach(g=>{ const q2=xy(g); w(0,"VERTEX"); w(8,ly); w(10,f3(q2[0])); w(20,f3(q2[1])); w(30,0); }); w(0,"SEQEND"); w(8,ly); };
+  const txtXY=(ly,x,y,h,s,rot,left)=>{ w(0,"TEXT"); w(8,ly); w(10,f3(x)); w(20,f3(y)); w(30,0); w(40,h); w(1,String(s).replace(/[\r\n]+/g," ")); if(rot) w(50,rot.toFixed(2)); if(!left){ w(72,1); w(11,f3(x)); w(21,f3(y)); w(31,0); } };
+  const text=(ly,g,h,s,rot)=>{ const q2=xy(g); txtXY(ly,q2[0],q2[1],h,s,rot); }, lineXY=(ly,a,b)=>{ w(0,"LINE"); w(8,ly); w(10,f3(a[0])); w(20,f3(a[1])); w(30,0); w(11,f3(b[0])); w(21,f3(b[1])); w(31,0); };
+  w(0,"SECTION"); w(2,"HEADER"); w(9,"$ACADVER"); w(1,"AC1009"); w(0,"ENDSEC");
+  w(0,"SECTION"); w(2,"TABLES"); w(0,"TABLE"); w(2,"LAYER"); w(70,LAY.length); LAY.forEach(([n,c])=>{ w(0,"LAYER"); w(2,n); w(70,0); w(62,c); w(6,"CONTINUOUS"); }); w(0,"ENDTAB"); w(0,"ENDSEC");
+  w(0,"SECTION"); w(2,"ENTITIES");
+  const LP=p.land.pts, U=LP.map(xy), la=geoArea(LP), H=Math.max(3,Math.sqrt(la)/260); poly("BOUNDARY",LP,true);
+  U.forEach((q2,i)=>{ w(0,"CIRCLE"); w(8,"BOUNDARY_POINTS"); w(10,f3(q2[0])); w(20,f3(q2[1])); w(30,0); w(40,(H*.5).toFixed(2)); txtXY("BOUNDARY_POINTS",q2[0]+H,q2[1]+H,H,"P"+(i+1),0,true); });
+  LP.forEach((a,i)=>{ const b=LP[(i+1)%LP.length], ua=U[i], ub=U[(i+1)%U.length], l=A.dist(a,b); if(l<H*6) return; let ang=Math.atan2(ub[1]-ua[1],ub[0]-ua[0])*180/Math.PI; if(ang>90) ang-=180; if(ang<=-90) ang+=180; txtXY("BOUNDARY_POINTS",(ua[0]+ub[0])/2,(ua[1]+ub[1])/2,H*.8,l.toFixed(2)+" m",ang); });
+  p.roads.forEach(r=>{ poly("ROAD_CENTRE",r.pts,false); const o=roadOutline(r); poly("ROAD_EDGE",o.L,false); poly("ROAD_EDGE",o.R,false); const k=Math.floor((r.pts.length-1)/2), a=r.pts[k], b=r.pts[Math.min(r.pts.length-1,k+1)], ua=xy(a), ub=xy(b); let ang=Math.atan2(ub[1]-ua[1],ub[0]-ua[0])*180/Math.PI; if(ang>90) ang-=180; if(ang<=-90) ang+=180;
+    txtXY("ROAD_TEXT",(ua[0]+ub[0])/2,(ua[1]+ub[1])/2,Math.min(4,r.w*.25),(RT.find(t=>t.k===r.t)||{l:"Road"}).l.toUpperCase()+" "+r.w+" m",ang); });
+  rbs().forEach(b=>{ const c=xy(Gc(b.c[0],b.c[1])); [b.r,b.ri].forEach(rr=>{ if(!(rr>0)) return; w(0,"CIRCLE"); w(8,"ROUNDABOUT"); w(10,f3(c[0])); w(20,f3(c[1])); w(30,0); w(40,rr.toFixed(3)); }); });
+  const LY={ind:"PLOT_INDUSTRIAL",log:"PLOT_LOGISTICS",svc:"PLOT_SERVICES",util:"PLOT_UTILITIES"};
+  p.plots.forEach(x=>{ poly(LY[x.use||"ind"]||"PLOT_INDUSTRIAL",x.pts,true); const V=x.pts.map(Lc), c=lCent(V), g=plotGeom(x), th=Math.max(1.2,Math.min(4,(g.w||30)/9)), cu=xy(Gc(c[0],c[1]));
+    txtXY("PLOT_TEXT",cu[0],cu[1]+th*.9,th,(x.code||"")+(x.fac?" "+x.fac:"")); txtXY("PLOT_TEXT",cu[0],cu[1]-th*.9,th*.65,A.nf(geoArea(x.pts),0)+" m2");
+    for(let i=0;i<V.length;i++){ const a=V[i], b=V[(i+1)%V.length], l=lhyp(a,b); if(l<8) continue; const m=[(a[0]+b[0])/2,(a[1]+b[1])/2], dn=lhyp(m,c)||1, off=Math.min(th*1.4,dn*.25), q2=[m[0]+(c[0]-m[0])/dn*off,m[1]+(c[1]-m[1])/dn*off], ua=xy(Gc(a[0],a[1])), ub=xy(Gc(b[0],b[1])), uq=xy(Gc(q2[0],q2[1]));
+      let ang=Math.atan2(ub[1]-ua[1],ub[0]-ua[0])*180/Math.PI; if(ang>90) ang-=180; if(ang<=-90) ang+=180; txtXY("PLOT_DIM",uq[0],uq[1],th*.45,l.toFixed(2),ang); } });
+  const BK2={}; p.plots.forEach(x=>{ if(x.sector){ const k=x.blk||""; (BK2[k]=BK2[k]||[]).push(x); } }); Object.entries(BK2).forEach(([k,L2])=>{ let sx=0, sz=0; L2.forEach(x=>{ const c=lCent(x.pts.map(Lc)); sx+=c[0]; sz+=c[1]; }); text("SECTOR_TEXT",Gc(sx/L2.length,sz/L2.length+14),5,"BLOCK "+k+" - "+String(L2[0].sector).toUpperCase()); });
+  p.green.forEach(g=>poly(g.k==="eas"?"EASEMENT":"GREEN",g.pts,true));
+  const S=p.site; if(S){ S.eas.forEach(e=>{ poly("EASEMENT",e.pts,false); text("EASEMENT",e.pts[0],H,(EAS_K[e.k]||"Easement").toUpperCase()+(e.w?" - "+e.w+" m CORRIDOR":" - WIDTH NOT ENTERED")); }); S.pts.forEach(q2=>text("SITE",q2.c,H,(PT_K[q2.k]||q2.k).toUpperCase())); }
+  (p.gates||[]).forEach((g,i)=>text("GATES",g.c,H*1.2,g.main?"MAIN GATE":g.type==="emg"?"EMERGENCY GATE "+(i+1):"GATE "+(i+1)));
+  if(PL.brief&&+PL.brief.fence>0){ const Lx=LP.map(Lc), n=Lx.length, tr=+PL.brief.fence; (p.gates||[]).forEach(g=>{ const c=Lc(g.c), i=edgeAt(Lx,c), a=Lx[i], b2=Lx[(i+1)%n], l=lhyp(a,b2)||1, u=[(b2[0]-a[0])/l,(b2[1]-a[1])/l], wg=(g.main?RT[0].w:RT[1].w)/2;
+    [[wg,wg+tr],[-wg-tr,-wg]].forEach(([s0,s1])=>poly("FENCE_STEEL",[Gc(c[0]+u[0]*s0,c[1]+u[1]*s0),Gc(c[0]+u[0]*s1,c[1]+u[1]*s1)],false)); }); }
+  // title, north arrow and the two tables, to the right of the land
+  const xs=U.map(q2=>q2[0]), ys=U.map(q2=>q2[1]), X0=Math.max(...xs)+H*14, Y1=Math.max(...ys); let y=Y1; const row=(ly,s,h)=>{ txtXY(ly,X0,y,h||H,s,0,true); y-=(h||H)*1.9; };
+  row("TITLE",outName().toUpperCase()+" - MASTER PLAN",H*2); row("TITLE",(hf?`DRAFT - ${hf} HARD FAILURE(S) - NOT READY FOR REVIEW`:"READY FOR REVIEW - 0 HARD FAILURES")+"   "+new Date().toISOString().slice(0,10)); row("TITLE","COORDINATES: UTM ZONE 36N (WGS84), METRES - SID LAND BANK BUILD TAB"); y-=H;
+  const nx=X0+H*46, ny=Y1-H*3; lineXY("TITLE",[nx,ny-H*5],[nx,ny]); lineXY("TITLE",[nx,ny],[nx-H,ny-H*2]); lineXY("TITLE",[nx,ny],[nx+H,ny-H*2]); txtXY("TITLE",nx,ny+H*.8,H*1.5,"N");
+  row("TABLE_COORDINATES","BOUNDARY POINTS",H*1.3); row("TABLE_COORDINATES","POINT      EASTING         NORTHING        SIDE TO NEXT (m)"); U.forEach((q2,i)=>row("TABLE_COORDINATES",("P"+(i+1)).padEnd(8)+q2[0].toFixed(3).padStart(12)+q2[1].toFixed(3).padStart(16)+A.dist(LP[i],LP[(i+1)%LP.length]).toFixed(2).padStart(14))); y-=H;
+  const B=budget(), M=briefMeasure(), b=PL.brief; row("TABLE_LANDUSE","LAND-USE BUDGET",H*1.3); row("TABLE_LANDUSE","USE                      AREA m2        FEDDAN        %");
+  [["INDUSTRIAL PLOTS",B.a.ind],["SERVICES",B.a.svc],["GREEN AREAS",B.a.green],["ROADS & PARKING",B.a.road],["UTILITIES",B.a.util],["TOTAL LAND",B.land]].forEach(([l,a])=>row("TABLE_LANDUSE",l.padEnd(22)+A.nf(a,0).padStart(12)+(a/FED).toFixed(2).padStart(13)+(a/B.land*100).toFixed(2).padStart(9)));
+  if(M&&b&&b.lu){ y-=H*.5; row("TABLE_LANDUSE",`BRIEF: INDUSTRIAL ${M.pc.ind.toFixed(1)}% (${b.lu.ind})  SERVICES & LOGISTICS ${M.pc.sl.toFixed(1)}% (${b.lu.sl})  ROADS & LANDSCAPE ${M.pc.rl.toFixed(1)}% (${b.lu.rl})`); }
+  row("TABLE_LANDUSE",`PLOTS ${p.plots.length}   ROADS ${p.roads.length}   GATES ${(p.gates||[]).length}`);
+  if(hf){ const lc=lCent(LP.map(Lc)); text("NOTES",Gc(lc[0],lc[1]),H*4,`DRAFT - ${hf} HARD FAILURE(S)`); }
+  w(0,"ENDSEC"); w(0,"EOF");
+  saveBlob(new Blob([out.join("\r\n")+"\r\n"],{type:"application/dxf"}),outName()+" - master plan"+(hf?" DRAFT":"")+".dxf");
+  A.flash(`AutoCAD file: ${p.plots.length} plots with dimensions, ${p.roads.length} roads with edges, boundary points and tables · UTM zone 36N${hf?" · stamped DRAFT":""} — in AutoCAD: Save As DWG`); }
+// the Excel workbook: project, boundary, plots, corners, roads, green, gates & facilities, land use, checks
+function outBook(){ if(!window.XLSX){ A.flash("The Excel library is not loaded yet — try again in a moment"); return; } const p=PL.plan; if(!p.land){ A.flash("Draw the land first"); return; } const hf=hardFails(), B=budget(), L=B.land, b=PL.brief, wb=XLSX.utils.book_new(), r2=v=>v==null?null:Math.round(v*100)/100, sh=(n,rows)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),n);
+  const M=briefMeasure(), F=fenceLen(p), LP=p.land.pts;
+  sh("Project",[["Project",outName()],["Status",hf?`DRAFT — ${hf} hard failure(s): not ready for review`:"Ready for review — 0 hard failures"],["Made",new Date().toLocaleString()],["Client",b&&b.client||""],["Location",b&&b.loc||""],["Type",b&&b.type||""],["Brief",b&&b.doc||"none"],["Target sectors",b&&(b.sect||[]).join(", ")||""],
+    ["Land area m²",r2(L)],["Land area feddan",r2(L/FED)],["Perimeter m",r2(A.pathLen(LP.concat([LP[0]])))],["Plots",p.plots.length],["Sellable (industrial + logistics) m²",r2(B.a.ind)],["Roads",p.roads.length],["Gates",(p.gates||[]).length],
+    ["Industrial % (brief)",M?r2(M.pc.ind):null,b&&b.lu?b.lu.ind:null],["Services & Logistics % (brief)",M?r2(M.pc.sl):null,b&&b.lu?b.lu.sl:null],["Roads & Landscape % (brief)",M?r2(M.pc.rl):null,b&&b.lu?b.lu.rl:null],
+    ["Fence chain-link m",F?r2(F.chain):null],["Fence steel-rod m",F?r2(F.steel):null],["Coordinates","WGS84 longitude / latitude and UTM zone 36N metres"]]);
+  sh("Boundary",[["Point","Latitude","Longitude","UTM 36N Easting","UTM 36N Northing","Side to next point m","Bearing to next °"]].concat(LP.map((c,i)=>{ const n=LP[(i+1)%LP.length], u=utm36(c[0],c[1]), a=Lc(c), d=Lc(n); let br=Math.atan2(d[0]-a[0],-(d[1]-a[1]))*180/Math.PI; if(br<0) br+=360; return ["P"+(i+1),+c[1].toFixed(7),+c[0].toFixed(7),r2(u[0]),r2(u[1]),r2(A.dist(c,n)),r2(br)]; })));
+  const PS=p.plots.slice().sort((a,c)=>String(a.code||"").localeCompare(String(c.code||""),undefined,{numeric:true}));
+  sh("Plots",[["Code","Block","Phase","Use","Sector / industry","Facility","Area m²","Area feddan","Width m","Depth m","North side m","East side m","South side m","West side m","Centre latitude","Centre longitude","Centre UTM E","Centre UTM N","Pinned"]].concat(PS.map(x=>{ const g=plotGeom(x), u=utm36(g.c[0],g.c[1]), a=geoArea(x.pts);
+    return [x.code||"",x.blk||String(x.code||"").split("-")[0],x.phase||null,USES[x.use||"ind"]||x.use,x.sector||x.ind||"",x.fac||"",r2(a),Math.round(a/FED*1000)/1000,r2(g.w),r2(g.d),r2(g.S.N),r2(g.S.E),r2(g.S.S),r2(g.S.W),+g.c[1].toFixed(7),+g.c[0].toFixed(7),r2(u[0]),r2(u[1]),x.pin?"yes":""]; })));
+  const CR=[["Plot","Corner","Latitude","Longitude","UTM 36N Easting","UTM 36N Northing"]]; PS.forEach(x=>x.pts.forEach((c,i)=>{ const u=utm36(c[0],c[1]); CR.push([x.code||"",i+1,+c[1].toFixed(7),+c[0].toFixed(7),r2(u[0]),r2(u[1])]); })); sh("Plot corners",CR);
+  sh("Roads",[["Road","Type","Width m","Length m","Area m² (about)"]].concat(p.roads.map((r,i)=>{ const l=A.pathLen(r.pts); return ["R"+(i+1),(RT.find(t=>t.k===r.t)||{l:r.t}).l,r.w,r2(l),Math.round(l*r.w)]; })).concat(rbs().map((o,i)=>["Roundabout "+(i+1),"Roundabout",r2(o.r*2),null,Math.round(Math.PI*o.r*o.r)])));
+  sh("Green",[["Kind","Area m²","Centre latitude","Centre longitude"]].concat(p.green.map(g=>{ const c=lCent(g.pts.map(Lc)), gg=Gc(c[0],c[1]); return [(GK[g.k]||GK.lawn).l,r2(geoArea(g.pts)),+gg[1].toFixed(7),+gg[0].toFixed(7)]; })));
+  sh("Gates & facilities",[["Item","Type / plot","Latitude","Longitude","UTM E","UTM N","Area m²","Phase"]].concat((p.gates||[]).map((g,i)=>{ const u=utm36(g.c[0],g.c[1]); return [g.main?"Main gate":g.type==="emg"?"Emergency gate "+(i+1):"Gate "+(i+1),gType(g),+g.c[1].toFixed(7),+g.c[0].toFixed(7),r2(u[0]),r2(u[1]),null,null]; }))
+    .concat(p.plots.filter(x=>x.fac).map(x=>{ const g=plotGeom(x), u=utm36(g.c[0],g.c[1]); return [x.fac,x.code||"",+g.c[1].toFixed(7),+g.c[0].toFixed(7),r2(u[0]),r2(u[1]),r2(geoArea(x.pts)),x.phase||null]; })));
+  sh("Land use",[["Use","Area m²","Feddan","% of land"]].concat([["Industrial plots",B.a.ind],["Services",B.a.svc],["Green areas",B.a.green],["Roads & parking",B.a.road],["Utilities",B.a.util],["Total land",L]].map(([l,a])=>[l,Math.round(a),r2(a/FED),L?r2(a/L*100):null])));
+  sh("Checks",[["Status","Check","Hard / advice","Source"]].concat(briefChecks().map(c=>[c.st,c.t,c.hard?"hard":"advice",c.src||""])));
+  XLSX.writeFile(wb,outName()+" - master plan data"+(hf?" DRAFT":"")+".xlsx"); A.flash(`Excel workbook: 9 sheets, ${p.plots.length} plots with corner coordinates${hf?" — stamped DRAFT":""}`); }
+(()=>{ const st=document.createElement("style"); st.textContent=`#plCoDlg{position:fixed;z-index:9000;right:18px;top:250px;pointer-events:auto;width:min(420px,calc(100vw - 36px));background:rgba(28,28,30,.94);color:#fff;border-radius:16px;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.45);backdrop-filter:saturate(185%) blur(22px);-webkit-backdrop-filter:saturate(185%) blur(22px);font:13px -apple-system,Inter,Segoe UI,sans-serif}
+#plCoDlg .hd{font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}#plCoDlg .x{width:30px;height:30px;border-radius:15px;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:18px;cursor:pointer}
+#plCoDlg textarea{width:100%;height:170px;margin:8px 0;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font:12px ui-monospace,Menlo,monospace;padding:8px;box-sizing:border-box;resize:vertical}
+#plCoDlg .row{display:flex;gap:8px;align-items:center;margin:6px 0}#plCoDlg .row span{flex:0 0 auto}#plCoDlg select{flex:1;min-width:0;height:30px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25)}#plCoDlg select option{color:#000}
+#plCoDlg button:not(.x){height:32px;border:0;border-radius:9px;background:rgba(255,255,255,.14);color:#fff;font-weight:600;padding:0 12px;cursor:pointer}#plCoDlg button.mk{background:#FFD60A;color:#1C1C1E}#plCoDlg .src{opacity:.7;font-size:11px;line-height:1.45}`; document.head.appendChild(st); })();
 let rulesOn=false, AUD=null;
 // the plan check: plots on a road, on the landscape or on each other, landscape on a road, badly shaped plots (cached per change)
 function planAudit(){ if(AUD&&AUD.v===PL.ver) return AUD; const p=PL.plan, cor=[]; p.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let k=1;k<V.length;k++){ const A2=V[k-1], B2=V[k], L2=lhyp(A2,B2); if(L2<.5) continue; const nx2=-(B2[1]-A2[1])/L2*(r.w/2-.5), nz2=(B2[0]-A2[0])/L2*(r.w/2-.5); cor.push([[A2[0]+nx2,A2[1]+nz2],[B2[0]+nx2,B2[1]+nz2],[B2[0]-nx2,B2[1]-nz2],[A2[0]-nx2,A2[1]-nz2]]); } });
@@ -20194,7 +20500,7 @@ function masterPlan0(mo){ mo=mo||{}; const p=PL.plan; if(!p.land){ A.flash("Draw
     // 7. services and utilities: the plots nearest the main entrance until the budget's shares are reached
     const bud=briefBud(), MGc=MG.c, small=MB.w*MB.d*2.2, byD=p.plots.map(x=>({x,d:lhyp(lCent(x.pts.map(Lc)),MGc),a:geoArea(x.pts)})).sort((a2,b2)=>(a2.a>small)-(b2.a>small)||a2.d-b2.d); let sv=0, ut=0;   // services take the small plots nearest the main entrance
     byD.forEach(o=>{ if(o.x.pin) return; if(sv<la*(+bud.svc||0)/100*.9){ o.x.use="svc"; o.x.ind="Services"; sv+=o.a; } else if(ut<la*(+bud.util||0)/100*.9){ o.x.use="util"; o.x.ind=undefined; ut+=o.a; } });
-    made.fac=nameFacilities(p,MGc); made.fit=fitBrief(p,MGc);
+    made.fac=nameFacilities(p,MGc); made.fit=fitBrief(p,MGc); made.fac+=nameUtilities(p,MGc);
     // 8. phases: blocks nearest the main entrance first, half the plot area in Phase 1; blocks coded A1, B1 … then A2, B2 …
     const blks={}; p.plots.forEach(x=>{ const k=x.blk||x.code.split("-")[0]; (blks[k]=blks[k]||[]).push(x); });
     const BL=Object.values(blks).map(L2=>({L:L2,d:phaseKey(p,L2,MGc),a:L2.reduce((q2,x)=>q2+geoArea(x.pts),0)})).sort((a2,b2)=>a2.d-b2.d);
@@ -20242,7 +20548,7 @@ function down(pt,e){ const now=performance.now(), g=ground(pt), t=PL.tool, D={pi
     lastTap={t:now,p:pt}; const ll=atP(pt,{edges:ct!=="road"});
     if(!c||c.t!==ct){ PL.cur={t:ct,pts:[ll]}; PL.sel=null; card(); } else { c.pts.push(ll); delete c.hv; }
     PL.drag=Object.assign(D,{k:"vert",first:PL.cur.pts.length===1}); live(); return; }
-  if(t==="road"||t==="plot"||t==="build"||(t==="land"&&PL.lsub==="site")){ PL.drag=Object.assign(D,{k:"tap"}); return; }   // roundabout, smart fill, build menu
+  if(t==="road"||t==="plot"||t==="build"||(t==="land"&&(PL.lsub==="site"||PL.lsub==="coords"))){ PL.drag=Object.assign(D,{k:"tap"}); return; }   // roundabout, smart fill, build menu
   if(rowTool()){ PL.drag=Object.assign(D,{k:howOf()==="road"?"tap":"row",path:[g]}); return; }
   if(t==="eraser"){ PL.drag=Object.assign(D,{k:"erase",did:false}); eraseAt(pt); return; }
   if(t==="select"){ const s=obj(PL.sel); if(s){ for(const h of handles()){ if(A.hyp(pt,h.p)<18){ PL.drag=Object.assign(D,{k:"handle",h,orig:JSON.parse(JSON.stringify(s)),changed:false}); return; } } }
@@ -20281,7 +20587,7 @@ function up(pt,e,cx){ const d=PL.drag; PL.drag=null; if(!d) return; const g=grou
   if(cx){ PL.drag=d; cancel(); return; }   // pointer cancelled (iPad system gesture): a move or resize is put back, nothing half-done is kept
   if(d.k==="free"){ if(!d.moved||d.path.length<3){ lastTap={t:performance.now(),p:d.start}; PL.cur={t:d.ct,pts:[atP(d.start,{edges:true})]}; live(); A.need(); return; }   // a tap starts corners
     let S=A.rdp(d.path.concat([d.path[0]]),2.5); S.pop(); const pts=S.map(p=>r9(A.U(p[0],p[1]))); if(pts.length>=3&&Math.abs(lArea(pts.map(Lc)))>4) commitShape(d.ct,pts); else A.flash("Too small — draw a bigger shape"); A.need(); return; }
-  if(d.k==="tap"&&!d.moved){ if(PL.tool==="plot"){ if(PL.psub==="master"){ if(!PL.plan.land) masterFromRing(g); else A.flash("Press “Make the plan” in the bar above"); } else smartTap(g); } else if(PL.tool==="land"&&PL.lsub==="site") siteTap(g,pt); else if(PL.tool==="road"){ if(PL.rsub==="gate") placeGate(g,pt); else placeRound(g,pt); }
+  if(d.k==="tap"&&!d.moved){ if(PL.tool==="plot"){ if(PL.psub==="master"){ if(!PL.plan.land) masterFromRing(g); else A.flash("Press “Make the plan” in the bar above"); } else if(PL.plan.land&&!PL.plan.roads.length&&!PL.plan.plots.length&&lInPoly(g,PL.plan.land.pts.map(Lc))){ A.flash("Empty land — making the master plan…"); setTimeout(masterPlan,60); } else smartTap(g); } else if(PL.tool==="land"&&PL.lsub==="coords") coTap(g); else if(PL.tool==="land"&&PL.lsub==="site") siteTap(g,pt); else if(PL.tool==="road"){ if(PL.rsub==="gate") placeGate(g,pt); else placeRound(g,pt); }
     else if(rowTool()){ const h=roadAt(g,10*mpp(pt)); if(h) alongRoad(h.r,rowKind()); else A.flash("Tap a road — the row goes along both sides of it"); }
     else if(PL.tool==="build"){ const pl=plotAt(g), has=pl&&PL.plan.items.find(i=>isBld(i.k)&&i.plot===pl.id);
       menu(pt,pl?`Plot ${pl.code||""} · ${A.fArea(geoArea(pl.pts))}${has?" · now "+KIND(has.k).l:""}`:"Build here",Object.entries(BK).map(([k,v])=>[k,v.l,pl?"fits the plot":(A.nf(v.len,0)+" × "+A.nf(v.w,0)+" m"),k===PL.bk?"#FFD60A":null]),k=>{ PL.bk=k; persist(); opts(); placeBuilding(k,pl,g); }); }
@@ -20304,7 +20610,7 @@ function delObj(h){ const p=PL.plan; if(h.t==="plot"){ p.plots=p.plots.filter(x=
 function del(){ if(!PL.sel) return false; if(!obj(PL.sel)){ PL.sel=null; card(); return false; } pushUndo(); delObj(PL.sel); return true; }
 function cancel(){ const d=PL.drag; PL.drag=null; if(!d) return; clearTimeout(rfT); if(d.base){ const B=JSON.parse(d.base), p=PL.plan; p.plots=B.plots; p.items=B.items; p.green=B.green; p.roads=B.roads; p.secs=B.secs; } if((d.k==="move"||d.k==="handle")&&d.changed){ const s=obj(PL.sel); if(s) Object.assign(s,d.orig); PL.undo.pop(); PL.liveId=null; if(layer&&layer.g) clearG(layer.g.live); changed(); }
   if(d.k==="vert"&&PL.cur){ if(PL.cur.box) PL.cur=null; else { PL.cur.pts.pop(); if(!PL.cur.pts.length) PL.cur=null; } live(); } }
-function escK(){ if(PL.ecur){ PL.ecur=null; opts(); A.need(); return true; } if(q("#plMenu")||q("#plDims")){ closeMenu(); return true; } if(PL.cur){ if(PL.cur.pts&&PL.cur.pts.length>=(PL.cur.t==="road"?2:3)) finishCur(); else { PL.cur=null; live(); } A.need(); return true; } if(PL.sel){ PL.sel=null; card(); A.need(); return true; } return false; }
+function escK(){ if(q("#plCoDlg")){ q("#plCoDlg").remove(); return true; } if(PL.ecur){ PL.ecur=null; opts(); A.need(); return true; } if(q("#plMenu")||q("#plDims")){ closeMenu(); return true; } if(PL.cur){ if(PL.cur.pts&&PL.cur.pts.length>=(PL.cur.t==="road"?2:3)) finishCur(); else { PL.cur=null; live(); } A.need(); return true; } if(PL.sel){ PL.sel=null; card(); A.need(); return true; } return false; }
 function enterK(){ if(PL.ecur){ finishEas(); return true; } if(PL.cur){ finishCur(); return true; } if(q("#plDims")){ const b=q("#plDA"); if(b) b.click(); return true; } return false; }
 function key(lk){ const K={v:["select"],h:["hand"],l:["land"],r:["road",{rsub:"road"}],k:["road",{rsub:"round"}],p:["plot",{psub:"draw"}],a:["plot",{psub:"auto"}],b:["build"],g:["green",{gsub:"area"}],t:["green",{gsub:"trees"}],o:["street"],e:["eraser"]};
   if(K[lk]){ setTool(K[lk][0],K[lk][1]); return true; } if(lk==="3"){ set3d(!PL.v3); return true; } return false; }
@@ -20497,7 +20803,7 @@ function draw2d(ctx,labels,now){ const p=PL.plan, sel=obj(PL.sel), Pp=A.P;
   if(d&&d.k==="free"&&d.path.length>1){ const gc=d.ct==="green"?(GK[PL.gk]||GK.lawn).c:d.ct==="land"?"#E6D9B8":"#FFFFFF"; poly(d.path,true,gc,2.5,gc==="#FFFFFF"?"rgba(255,255,255,.15)":gc+"55");
     if(d.path.length>=3){ const pts=d.path.map(q=>A.U(q[0],q[1])), cc=A.centroid(d.path); labels.push({x:cc[0],y:cc[1],t1:A.fArea(geoArea(pts)),t2:"free hand",col:gc}); } }
   // selection
-  try{ siteDraw(ctx,poly); }catch(er){ console.warn("site draw",er); } try{ zoneDraw(ctx,poly); }catch(er){ console.warn("zone draw",er); }
+  try{ siteDraw(ctx,poly); }catch(er){ console.warn("site draw",er); } try{ zoneDraw(ctx,poly); }catch(er){ console.warn("zone draw",er); } try{ coDraw(ctx,poly); }catch(er){ console.warn("coords draw",er); }
   if(sel){ const t=PL.sel.t; if(t==="item"){ const V=iCorners(sel).map(gScr); poly(V,true,"#FFD60A",2,null,[6,4]); if(PL.tool==="select") handles().forEach(h=>{ if(h.k==="rot"){ ctx.beginPath(); ctx.moveTo(h.base[0],h.base[1]); ctx.lineTo(h.p[0],h.p[1]); ctx.strokeStyle="rgba(255,255,255,.85)"; ctx.lineWidth=1.5; ctx.stroke(); ctx.beginPath(); ctx.arc(h.p[0],h.p[1],10,0,7); ctx.fillStyle="#0A84FF"; ctx.fill(); ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.stroke(); } else { ctx.beginPath(); ctx.arc(h.p[0],h.p[1],7,0,7); ctx.fillStyle="#fff"; ctx.fill(); ctx.strokeStyle="#FFD60A"; ctx.lineWidth=2.5; ctx.stroke(); } });
       const C=iCorners(sel); labels.push({x:gScr(C[0])[0],y:gScr(C[0])[1],t1:A.nf(sel.len,1)+" × "+A.nf(sel.w,1)+" m",t2:A.nf(sel.h,1)+" m high",col:"#FFD60A",n:[0,-1],gap:12}); }
     else if(t==="round"){ poly(circ(Lc(sel.c),sel.r),true,"#FFD60A",2.5,null,[6,4]); const s=gScr(Lc(sel.c)); labels.push({x:s[0],y:s[1],t1:A.nf(sel.r*2,0)+" m",t2:"roundabout",col:"#FFD60A",n:[0,-1],gap:sel.r/mp+10}); }
@@ -20522,7 +20828,7 @@ function deactivate(leaving){ if(!PL.on) return; if(PL.cur) finishCur(); PL.on=f
 window.SID_3D={build(T3,F,L,W,h,k,id,K,opts){ if(!T) T=T3; return buildingAt(F,L,W,h,k,String(id),K,opts); }, tree(T3,K,x,z,sz,c,palm){ if(!T) T=T3; treeAt(K,x,z,sz,c,palm); }};
 window.SID_PLAN={get on(){ return PL.on; },get pl(){ return PL; },plotAt:planPlotAt,activate,deactivate,down,move,up,hover,cancel,undo,redo,del,esc:escK,enter:enterK,key,hint:hintTxt,draw2d,obstacles,tool:()=>PL.tool,setTool,
   state:PL,_t:{Lc,Gc,detectBlock,smartTap,stripFill,fillAll,shapeLoose,handles,refillAt,blockAt,hoverPreview,snapOutline,newDrawing,deleteDrawing,subdivide,stats,iCorners,fitOnPlot,autoPlots,placeBuilding,commitRoad,commitLand,commitPlot,commitGreen,graph,cgraph,rbs,noAccess,lArea,layer:()=>layer,veh:()=>VEH,scr,itemScreen,
-    alongRoad,rowAlong,rowPos,placeRound,keepClear,avoid,overlap,segClear,srvRoute,curType,hitAny,opts,masterPlan,masterFromRing,shapeOK,obbOf,planAudit,fitBrief,phaseKey,measurePlan,loadProj,projectChecks,zoneSectors,sectorClashes,fenceLen,briefSects,addEmgGate,siteOf,siteTap,finishEas,syncEas,siteChecks,sideKinds,facTarget,briefChecks,briefMeasure,briefBud,parseBrief,pdfPages,nameFacilities,hardFails,BRIEFS}};
+    alongRoad,rowAlong,rowPos,placeRound,keepClear,avoid,overlap,segClear,srvRoute,curType,hitAny,opts,masterPlan,masterFromRing,shapeOK,obbOf,planAudit,parseCoords,kmlOutline,kmzText,coSet,coConfirm,coTap,coDialog,findRoads,nameUtilities,planFeatures,kmlText,zipOne,outKml,outKmz,outGeoJSON,outCad,outBook,tmFwd,tmInv,crsToLL,llToCrs,makeOptions,useOption,optMetrics,scoreOpts,outTable,outExcel,outDxf,utm36,plotGeom,fitBrief,phaseKey,measurePlan,loadProj,projectChecks,zoneSectors,sectorClashes,fenceLen,briefSects,addEmgGate,siteOf,siteTap,finishEas,syncEas,siteChecks,sideKinds,facTarget,briefChecks,briefMeasure,briefBud,parseBrief,pdfPages,nameFacilities,hardFails,BRIEFS}};
 })();
 </script>
 
@@ -24193,6 +24499,212 @@ if(typeof canSee==="function"){ const cs=canSee; canSee=function(id){ if(id==="m
     try{ buildChrome(); }catch(e){} return; } }catch(e){} if(n<240) setTimeout(()=>seed(n+1),500); })(0);
 })();
 
+</script>
+
+<style id="gfCss">
+.gf-box{margin:8px 0 6px;border:1px solid rgba(0,0,0,.12);border-radius:11px;padding:8px 10px;font-size:12px;display:flex;flex-direction:column;gap:5px;background:rgba(127,127,127,.04)}
+.gf-box.ok{border-color:rgba(48,164,108,.45)}
+.gf-box.bad{border-color:rgba(229,72,77,.55);background:rgba(229,72,77,.05)}
+.gf-box.warn{border-color:rgba(255,159,10,.55);background:rgba(255,159,10,.05)}
+.gf-r{display:grid;grid-template-columns:92px 1fr auto;gap:8px;align-items:baseline}
+.gf-r .t{color:var(--mute,#7c818b);font-size:11px}
+.gf-r .c{font:650 13px/1.2 ui-monospace,Menlo,monospace;word-break:break-all}
+.gf-r .a{font-variant-numeric:tabular-nums;color:var(--ink-2,#555);white-space:nowrap}
+.gf-sep{border-top:1px dashed rgba(127,127,127,.35)}
+.gf-v{font-weight:650;font-size:11.5px}
+.gf-box.ok .gf-v{color:#1f7a4c}.gf-box.bad .gf-v{color:#c22d33}.gf-box.warn .gf-v{color:#a15c00}
+.gf-fx{font-size:11px;color:var(--ink-2,#555)}
+.gf-hint{font-size:10.8px;line-height:1.4;color:var(--mute,#7c818b);border-left:3px solid #0a64c8;padding:2px 0 2px 7px}
+.gf-btns{display:flex;gap:6px;flex-wrap:wrap}
+.gf-btn{border:1px solid rgba(10,100,200,.45);background:rgba(10,100,200,.07);color:#0a64c8;border-radius:8px;font:600 11.5px/1 inherit;padding:6px 10px;cursor:pointer}
+.gf-btn.sec{border-color:rgba(127,127,127,.4);background:transparent;color:inherit}
+.gf-pop .gf-in{width:100%;padding:8px 10px;border:1px solid rgba(0,0,0,.2);border-radius:9px;font:650 14px ui-monospace,Menlo,monospace;background:transparent;color:inherit;box-sizing:border-box}
+.gf-pop .gf-chk{font-size:11.5px;min-height:16px}
+.gf-pop .gf-chk.ok{color:#1f7a4c}.gf-pop .gf-chk.bad{color:#c22d33}.gf-pop .gf-chk.warn{color:#a15c00}
+.gf-sug{display:flex;flex-wrap:wrap;gap:5px}
+.gf-sug button{border:1px solid rgba(0,0,0,.16);background:transparent;color:inherit;border-radius:99px;padding:4px 9px;font:11px/1.2 inherit;cursor:pointer}
+.gf-sug button b{font-family:ui-monospace,Menlo,monospace}
+.gf-sug button.top{border-color:rgba(48,164,108,.6);background:rgba(48,164,108,.1)}
+.gf-pop textarea{width:100%;box-sizing:border-box;font:inherit;padding:6px 8px;border:1px solid rgba(0,0,0,.15);border-radius:8px;background:transparent;color:inherit;resize:vertical}
+.gf-log{margin:0;padding-left:16px;font-size:11px;color:var(--ink-2,#555)}
+.gf-pop .mf-pri{margin-top:2px}
+body.sid-public .gf-box{display:none!important}
+</style>
+<script id="gfJs">
+(function(){
+const GF={items:{},log:[],at:0,pop:null,busy:false};
+const KEY="gis:codefix";
+const online=()=>{ try{ return !!sbReady(); }catch(e){ return false; } };
+const canWrite=()=>{ try{ return !!sbCanWrite(); }catch(e){ return false; } };
+const isDev=()=>{ try{ if(window.SID_MPC&&SID_MPC.isDev) return !!SID_MPC.isDev(); return !!(SBME&&(SBME.is_admin||SBME.role==="development")); }catch(e){ return false; } };
+const canEdit=()=>online()&&canWrite()&&isDev();
+const me=()=>{ try{ return (SBME&&SBME.name)||(SBU&&SBU.email)||"—"; }catch(e){ return "—"; } };
+const fmt=n=>n==null||n===""||!isFinite(n)?"—":fInt(n);
+const day=iso=>{ try{ return new Date(iso).toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}); }catch(e){ return "—"; } };
+const pname=p=>(S.reg.parks[p]&&S.reg.parks[p].name)||p;
+const uk=u=>{ try{ return ukey(String(u||"")); }catch(e){ return String(u||"").toLowerCase(); } };
+const units=r=>{ try{ return expandUnits(r.unit,r.park); }catch(e){ return [r.unit]; } };
+const inTest=park=>{ try{ const t=window.SID_MPC&&SID_MPC.state&&SID_MPC.state.test; return !!(t&&t.park===park); }catch(e){ return false; } };
+const near=(a,b)=>!a||!b||Math.hypot((a[0]-b[0])*Math.cos(a[1]*Math.PI/180)*111320,(a[1]-b[1])*110574)<3;
+const featOf=k=>S.geo&&S.geo.features.find(f=>f.properties.k===k);
+const drawn=p=>p.gfU!==undefined?p.gfU:(p.unit||"");          /* the code in the drawing file */
+const drawnAr=p=>p.gfU!==undefined?p.gfAr:p.unitAr;
+
+/* ---- put the corrections on the live drawing (runs before every link) ---- */
+function applyFix(){
+  if(!S.geo||!S.geo.features) return;
+  const byK=new Map(); S.geo.features.forEach(f=>byK.set(f.properties.park+"|"+f.properties.k,f));
+  S.geo.features.forEach(f=>{ const p=f.properties; if(p.gfU===undefined||inTest(p.park)) return; const x=GF.items[p.park+"|"+p.k];
+    if(!x||x.stale){ p.unit=p.gfU; if(p.gfAr) p.unitAr=p.gfAr; delete p.gfU; delete p.gfAr; if(!p.unit) delete p.unit; } });
+  Object.entries(GF.items).forEach(([id,x])=>{ const f=byK.get(id);
+    if(!f){ x.stale=true; return; } const p=f.properties; if(inTest(p.park)) return;
+    if(!near(x.c,p.c)||String(drawn(p))!==String(x.from||"")){ x.stale=true; if(p.gfU!==undefined){ p.unit=p.gfU; if(p.gfAr) p.unitAr=p.gfAr; delete p.gfU; delete p.gfAr; if(!p.unit) delete p.unit; } return; }
+    x.stale=false; if(p.gfU===undefined){ p.gfU=p.unit||""; if(p.unitAr) p.gfAr=p.unitAr; }
+    p.unit=x.to; delete p.unitAr; }); }
+if(typeof bind==="function"){ const b0=bind; window.bind=function(){ try{ applyFix(); }catch(e){ console.warn("gis code fixes",e); } return b0.apply(this,arguments); }; }
+
+async function load(force){ if(!online()) return; if(!force&&GF.at&&Date.now()-GF.at<60000) return;
+  const r=await SB.from("sid_kv").select("value").eq("key",KEY).maybeSingle(); if(r.error) throw r.error;
+  const v=(r.data&&r.data.value)||{}; GF.items=v.items||{}; GF.log=Array.isArray(v.log)?v.log:[]; GF.at=Date.now(); }
+function refresh(){ try{ bind(); }catch(e){ console.error("bind",e); }
+  try{ if(typeof map!=="undefined"&&map&&map.getSource("plots")) map.getSource("plots").setData(S.geo); }catch(e){}
+  try{ refreshPaint(); }catch(e){}
+  try{ if(typeof initOverlay==="function") initOverlay(); }catch(e){}
+  try{ if(window.SID_MLFIX){ SID_MLFIX.classify(); } }catch(e){}
+  try{ if(document.getElementById("edGrid")&&typeof edFilter==="function"){ if(window.SID_MAPLINK&&SID_MAPLINK.define) SID_MAPLINK.define(); edFilter(); edPaint(true); edChrome(); } }catch(e){}
+  try{ const el=document.getElementById("selpanel"); if(el&&!el.hidden&&S.sel&&S.sel.size) showSelection(); }catch(e){}
+  try{ kpisRefresh(); }catch(e){} }
+
+async function save(k,to,why){
+  if(!canEdit()) throw new Error("only Development or an administrator can change GIS plot codes");
+  if(Array.isArray(k)&&why===undefined) why=to;
+  const list=Array.isArray(k)?k:[{k,to}], at=new Date().toISOString();
+  const fs=list.map(x=>{ const f=featOf(x.k); if(!f) throw new Error("plot not found on the map"); return {f,to:x.to,was:f.properties.unit||""}; });
+  await load(true);
+  fs.forEach(({f,to,was})=>{ const p=f.properties, id=p.park+"|"+p.k, from=drawn(p);
+    if(String(to)===String(from)) delete GF.items[id];
+    else GF.items[id]={park:p.park,k:p.k,from,to,c:p.c||null,g:p.gis||null,by:me(),at,why:why||""};
+    GF.log.unshift({park:p.park,k:p.k,from:was,to:to||from,drawing:from,by:me(),at,why:why||""}); });
+  GF.log=GF.log.slice(0,1000);
+  const r=await SB.from("sid_kv").upsert({key:KEY,value:{items:GF.items,log:GF.log},updated_at:new Date().toISOString()}); if(r.error) throw r.error;
+  GF.at=Date.now(); refresh(); }
+
+/* ---- what the card says ---- */
+function compare(k){
+  const f=featOf(k), x=S.plots.get(k); if(!f) return null; const p=f.properties, r=x&&x.row, how=x&&x.how;
+  const o={p,r,how,rows:(x&&x.rows)||[],fix:GF.items[p.park+"|"+k],cls:"ok",v:""};
+  const same=r&&p.unit&&(how==="exact"||how==="combined"||units(r).some(u=>uk(u)===uk(p.unit)));
+  const dupes=p.unit?S.geo.features.filter(q=>q!==f&&q.properties.park===p.park&&q.properties.unit&&uk(q.properties.unit)===uk(p.unit)).length:0;
+  const pk=r&&r._plots?r._plots:[], dsum=pk.length>1?pk.reduce((a,kk)=>a+((featOf(kk)||{properties:{}}).properties.gis||0),0):p.gis;
+  o.dsum=dsum; o.multi=pk.length>1; o.ad=r&&r.area&&dsum?Math.abs(dsum-r.area)/r.area:null;
+  if(!p.unit){ o.cls="bad"; o.v="This plot has no code in the GIS drawing — it cannot link to the MDS by code"+(r?" (linked today only because one MDS row has the same area)":""); }
+  else if(!r){ o.cls="bad"; o.v="No MDS row has the code "+p.unit+" — no sales, price or client data can be linked"; }
+  else if(dupes){ o.cls="bad"; o.v="The code "+p.unit+" is used by "+(dupes+1)+" plots in the GIS drawing — each plot needs its own code"; }
+  else if(how==="smart"||!same&&how!=="block"&&how!=="sub"){ o.cls="bad"; o.v="Codes differ — linked today only by the smart check (same area). Make the GIS code "+r.unit; }
+  else if(how==="sub"){ o.cls="warn"; o.v="The MDS splits this plot: linked through the sub-plot code "+r.unit+" (the drawing has one plot "+p.unit+")"; }
+  else if(how==="block"){ o.cls="warn"; o.v="Linked through the block code "+r.unit+" in the MDS (the drawing has the plot code)"; }
+  else if(o.ad!=null&&o.ad>.1){ o.cls="warn"; o.v="Codes match · areas differ by "+(o.ad*100).toFixed(0)+"% — check the drawing or the MDS area"; }
+  else { o.cls="ok"; o.v="Codes match"+(o.ad!=null?" · area difference "+(o.ad<.0005?"none":(o.ad*100).toFixed(1)+"%"):""); }
+  return o; }
+function boxHtml(k){ const o=compare(k); if(!o) return ""; const p=o.p, r=o.r, fx=o.fix&&!o.fix.stale?o.fix:null;
+  return `<div class="gf-box ${o.cls}" data-k="${esc(k)}">
+    <div class="gf-r"><span class="t">GIS drawing</span><b class="c">${esc(p.unit||"no code")}</b><span class="a">${fmt(p.gis)} sqm</span></div>
+    ${fx?`<div class="gf-fx">Code corrected from <b>${esc(fx.from||"no code")}</b> by ${esc(fx.by)}, ${day(fx.at)}${fx.why?" — "+esc(fx.why):""}</div>`:""}
+    <div class="gf-sep"></div>
+    <div class="gf-r"><span class="t">MDS register</span><b class="c">${r?esc(r.unit||"—"):"—"}</b><span class="a">${r?fmt(r.area)+" sqm":"no row"}</span></div>
+    ${o.multi&&r?`<div class="gf-fx">One MDS deal over ${r._plots.length} drawn plots · drawn total ${fmt(o.dsum)} sqm</div>`:""}
+    <div class="gf-v">${o.cls==="ok"?"✓ ":o.cls==="bad"?"✗ ":"! "}${esc(o.v)}</div>
+    <div class="gf-hint">Development: the plot code in the GIS drawing must be exactly the same as the MDS register code — that is how the map links each plot to its MDS data (status, price, client, collection).</div>
+    ${canEdit()?`<div class="gf-btns"><button type="button" class="gf-btn" data-gf="edit">Change GIS code…</button>${fx?'<button type="button" class="gf-btn sec" data-gf="undo">Back to the drawing code</button>':""}</div>`:""}
+  </div>`; }
+
+/* ---- edit popover ---- */
+function closePop(){ if(!GF.pop) return; GF.pop.remove(); GF.pop=null; document.removeEventListener("mousedown",outside,true); document.removeEventListener("keydown",onKey,true); }
+function outside(e){ if(GF.pop&&!GF.pop.contains(e.target)) closePop(); }
+function onKey(e){ if(e.key==="Escape"){ e.stopPropagation(); closePop(); } }
+function suggestions(k){ const o=compare(k), p=o.p, out=[], seen=new Set();
+  const push=(code,label,top)=>{ if(!code||seen.has(uk(code))||uk(code)===uk(p.unit)) return; seen.add(uk(code)); out.push({code,label,top}); };
+  if(o.r&&o.r.unit&&!units(o.r).some(u=>uk(u)===uk(p.unit))&&!/,/.test(o.r.unit)) push(o.r.unit,"linked MDS row · "+fmt(o.r.area)+" sqm",true);
+  if(p.gis){ S.rows.filter(r=>!r.dup&&r.park===p.park&&r.unit&&!/,/.test(r.unit)&&!(r._plots&&r._plots.length)&&r.area&&Math.abs(r.area-p.gis)/p.gis<=.1)
+    .map(r=>({r,d:Math.abs(r.area-p.gis)/p.gis})).sort((a,b)=>a.d-b.d).slice(0,8)
+    .forEach(({r,d})=>push(r.unit,"MDS row, no plot · "+fmt(r.area)+" sqm"+(d<.0005?" · same area":" · ±"+(d*100).toFixed(1)+"%"),d<=.02)); }
+  return out; }
+function check(k,v){ const f=featOf(k), p=f.properties; v=String(v||"").trim();
+  if(!v) return {cls:"bad",t:"Write the plot code",ok:false};
+  if(v.length>40) return {cls:"bad",t:"Too long for a plot code",ok:false};
+  if(/,/.test(v)) return {cls:"bad",t:"One code per plot — a deal over several plots is set in the MDS register (A-1,A-2)",ok:false};
+  const other=S.geo.features.find(q=>q!==f&&q.properties.park===p.park&&q.properties.unit&&uk(q.properties.unit)===uk(v));
+  if(other) return {cls:"bad",t:`${other.properties.unit} is already the code of another plot in this drawing (${fmt(other.properties.gis)} sqm)`+(p.unit?" — if the two codes are swapped in the drawing, swap them below in one step":" — correct that plot first"),ok:false,swap:p.unit?other.properties.k:null,other:other.properties.unit};
+  if(uk(v)===uk(p.unit)) return {cls:"warn",t:"Same as the current code",ok:false};
+  const rows=S.rows.filter(r=>!r.dup&&r.park===p.park&&r.unit&&units(r).some(u=>uk(u)===uk(v)));
+  if(!rows.length) return {cls:"warn",t:"No MDS row has this code — the plot will show “No MDS row” until the register has it",ok:true};
+  const r=rows[0], st=(STATUS[r.status]||STATUS.unknown).label, d=p.gis&&r.area?Math.abs(r.area-p.gis)/r.area:null;
+  return {cls:d!=null&&d>.1?"warn":"ok",t:`MDS row found: ${r.unit} · ${fmt(r.area)} sqm · ${st}${r.company||r.client?" · "+(r.company||r.client):""}${d!=null?(d>.1?" — area differs by "+(d*100).toFixed(0)+"%":" — area ±"+(d*100).toFixed(1)+"%"):""}`,ok:true}; }
+function openEdit(anchor,k){
+  closePop(); const o=compare(k); if(!o) return; const p=o.p, sug=suggestions(k), hist=GF.log.filter(l=>l.park===p.park&&l.k===k).slice(0,5);
+  const sold=o.r&&(o.r.status==="sold"||o.r.status==="reserved");
+  const d=document.createElement("div"); d.className="mf-pop gf-pop"; d.setAttribute("role","dialog");
+  d.innerHTML=`<div class="mf-hd"><b>Change GIS code</b><span class="mf-sub">${esc(pname(p.park))} · drawing code <b>${esc(drawn(p)||"none")}</b> · ${fmt(p.gis)} sqm drawn</span><button class="mf-x" aria-label="Close">×</button></div>
+   <div class="mf-b">
+    ${sold?`<div class="mf-warn" id="gfSold" hidden>This plot is linked today to ${esc(o.r.unit)} (${(STATUS[o.r.status]||STATUS.unknown).label}${o.r.company||o.r.client?" to "+esc(o.r.company||o.r.client):""}). A new code links it to another MDS row — make sure the drawing is the one that is wrong.</div>`:""}
+    <label class="mf-h" for="gfIn">New code on the GIS drawing</label>
+    <input class="gf-in" id="gfIn" value="${esc(p.unit||"")}" autocomplete="off" spellcheck="false">
+    <div class="gf-chk" id="gfChk"></div>
+    ${sug.length?`<div class="mf-h">Suggestions <small>from the MDS register</small></div><div class="gf-sug">${sug.map(s=>`<button type="button" class="${s.top?"top":""}" data-c="${esc(s.code)}"><b>${esc(s.code)}</b> · ${esc(s.label)}</button>`).join("")}</div>`:""}
+    <div class="mf-h">Reason <small>optional, for the team</small></div>
+    <div class="gf-sug">${["Drawing label wrong","Typo in the drawing","Codes swapped in the drawing","Plot renumbered"].map(c=>`<button type="button" data-why="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+    <textarea id="gfWhy" rows="2" placeholder="Why the drawing code is wrong"></textarea>
+    <button class="mf-pri" id="gfSave" disabled>Save the GIS code</button>
+    <button class="gf-btn" id="gfSwap" hidden style="align-self:flex-start"></button>
+    <p class="mf-n">Changes the plot code on the live map for everyone and links the plot again to the MDS register. The CAD file is not changed — the list of corrections (Excel below) tells Development what to fix in the next master plan upload.</p>
+    ${hist.length?`<div class="mf-h">Changes to this plot</div><ul class="gf-log">${hist.map(l=>`<li><b>${esc(l.from||"no code")}</b> → <b>${esc(l.to||"no code")}</b> · ${esc(l.by)}, ${day(l.at)}${l.why?" — "+esc(l.why):""}</li>`).join("")}</ul>`:""}
+    <button type="button" class="gf-btn sec" id="gfXls" style="align-self:flex-start">All GIS code corrections (${Object.keys(GF.items).length}) — Excel</button>
+   </div>`;
+  document.body.appendChild(d); GF.pop=d;
+  const W=Math.min(420,innerWidth-16); d.style.width=W+"px"; const rc=anchor.getBoundingClientRect(), h=d.offsetHeight;
+  let top=rc.bottom+6; if(top+h>innerHeight-8) top=Math.max(8,Math.min(rc.top-h-6,innerHeight-h-8)); d.style.top=top+"px"; d.style.left=Math.min(Math.max(8,rc.left),innerWidth-W-8)+"px";
+  setTimeout(()=>{ document.addEventListener("mousedown",outside,true); document.addEventListener("keydown",onKey,true); },0);
+  const inp=d.querySelector("#gfIn"), chk=d.querySelector("#gfChk"), sv=d.querySelector("#gfSave");
+  const sw=d.querySelector("#gfSold");
+  const swb=d.querySelector("#gfSwap");
+  const upd=()=>{ const c=check(k,inp.value); chk.className="gf-chk "+c.cls; chk.textContent=c.t; sv.disabled=!c.ok;
+    swb.hidden=!c.swap; if(c.swap){ swb.dataset.k=c.swap; swb.textContent=`Swap the codes: this plot → ${c.other}, the other plot → ${p.unit}`; }
+    if(sw){ const v=inp.value.trim(); sw.hidden=!v||uk(v)===uk(p.unit)||units(o.r).some(u=>uk(u)===uk(v)); } };
+  inp.oninput=upd; inp.onkeydown=e=>{ if(e.key==="Enter"&&!sv.disabled) sv.click(); }; upd(); setTimeout(()=>{ inp.focus(); inp.select(); },30);
+  d.querySelector(".mf-x").onclick=closePop;
+  d.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{ inp.value=b.dataset.c; upd(); inp.focus(); });
+  d.querySelectorAll("[data-why]").forEach(b=>b.onclick=()=>{ d.querySelector("#gfWhy").value=b.dataset.why; });
+  d.querySelector("#gfXls").onclick=()=>exportXls();
+  swb.onclick=async()=>{ const ok2=swb.dataset.k, v=inp.value.trim(), c=check(k,v); if(!c.swap||c.swap!==ok2) return; swb.disabled=true; const o2=c.other;
+    try{ await save([{k,to:o2},{k:ok2,to:p.unit}],d.querySelector("#gfWhy").value.trim()||"Codes swapped in the drawing"); closePop(); toast(`Codes swapped: ${p.unit} ↔ ${o2}`); }
+    catch(e){ swb.disabled=false; toast("Not saved: "+(e.message||e),true); } };
+  sv.onclick=async()=>{ const v=inp.value.trim(), c=check(k,v); if(!c.ok) return; sv.disabled=true; sv.textContent="Saving…";
+    try{ await save(k,v,d.querySelector("#gfWhy").value.trim()); closePop(); toast(`GIS code changed to ${v} — the plot is linked again to the MDS register`); }
+    catch(e){ sv.disabled=false; sv.textContent="Save the GIS code"; toast("Not saved: "+(e.message||e),true); } }; }
+function exportXls(){ try{ if(typeof XLSX==="undefined") throw new Error("Excel library not loaded");
+  const rows=Object.values(GF.items).sort((a,b)=>String(a.park).localeCompare(b.park)||String(a.from).localeCompare(String(b.from),undefined,{numeric:true}))
+    .map(x=>({"Project":pname(x.park),"Code in the drawing (CAD)":x.from||"(no code)","Correct code (MDS)":x.to,"Drawn area sqm":x.g==null?"":x.g,"Still applied":x.stale?"No — the drawing changed since":"Yes","Changed by":x.by,"When":day(x.at),"Reason":x.why||"","Longitude":x.c?x.c[0]:"","Latitude":x.c?x.c[1]:""}));
+  if(!rows.length){ toast("No GIS code corrections yet"); return; }
+  const ws=XLSX.utils.json_to_sheet(rows), wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"GIS code corrections");
+  XLSX.writeFile(wb,"GIS code corrections "+new Date().toISOString().slice(0,10)+".xlsx"); }catch(e){ toast("Excel not made: "+(e.message||e),true); } }
+
+/* ---- card hook ---- */
+if(typeof showSelection==="function"){ const s0=showSelection; window.showSelection=function(){ const out=s0.apply(this,arguments);
+  try{ const el=document.getElementById("selpanel"); const old=el&&el.querySelector(".gf-box"); if(old) old.remove();
+    if(el&&!el.hidden&&S.sel&&S.sel.size===1&&online()&&!document.body.classList.contains("sid-public")){ const k=[...S.sel][0], h=boxHtml(k);
+      const it=el.querySelector(".sp-item"), ih=it&&it.querySelector(".sp-ih");
+      if(h&&it){ (ih||it).insertAdjacentHTML(ih?"afterend":"afterbegin",h); const b=it.querySelector(".gf-box");
+        const e1=b.querySelector('[data-gf="edit"]'); if(e1) e1.onclick=()=>openEdit(e1,k);
+        const u1=b.querySelector('[data-gf="undo"]'); if(u1) u1.onclick=async()=>{ const f=featOf(k); if(!f) return; u1.disabled=true;
+          try{ const from=drawn(f.properties); await save(k,from,"Back to the drawing code"); toast("Back to the drawing code "+(from||"(no code)")); }catch(e){ u1.disabled=false; toast("Not saved: "+(e.message||e),true); } }; } } }
+  catch(e){ console.warn("gis code card",e); }
+  return out; }; }
+
+/* ---- start: read the corrections once the data is in, then link again ---- */
+(function boot(n){ if(typeof S!=="undefined"&&S.rows&&S.rows.length&&S.geo&&online()){ load(true).then(()=>{ if(Object.keys(GF.items).length) refresh(); }).catch(e=>console.warn("gis:codefix",e)); return; }
+  setTimeout(()=>boot(n+1),n<240?500:5000); })(0);
+window.SID_GISFIX={load,save,compare,check,applyFix,refresh,exportXls,openEdit,get state(){ return GF; }};
+})();
 </script>
 </body>
 </html>
