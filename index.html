@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' data: blob: https://ihjlvxmttvjcciafruya.supabase.co wss://ihjlvxmttvjcciafruya.supabase.co https://iyubegbevtjcvtuubpaq.supabase.co https://*.cartocdn.com https://*.arcgisonline.com https://router.project-osrm.org https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com https://s3.amazonaws.com; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' blob: data: https://www.teleport.eco https://teleport.eco; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' data: blob: https://ihjlvxmttvjcciafruya.supabase.co wss://ihjlvxmttvjcciafruya.supabase.co https://iyubegbevtjcvtuubpaq.supabase.co https://*.cartocdn.com https://*.arcgisonline.com https://router.project-osrm.org https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com https://s3.amazonaws.com https://tiles.mapterhorn.com; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' blob: data: https://www.teleport.eco https://teleport.eco; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <script>window.__cspV=[];addEventListener("securitypolicyviolation",function(e){if(__cspV.length<60)__cspV.push(e.violatedDirective+" "+(e.blockedURI||""));});
 if(window.top!==window.self){document.documentElement.style.display="none";try{window.top.location.replace(window.location.href);}catch(e){}}</script>
@@ -19363,12 +19363,12 @@ function buildUI(){ const host=A.ui(); if(!host) return; ui=document.createEleme
   q("#plClr").onclick=()=>{ if(empty()){ A.flash("The plan is already empty"); return; } menu(null,"Start a new plan?",[["clear","Clear the whole plan","Undo brings it back","#B3263D"]],k=>{ pushUndo(); PL.plan=blank(); O=null; PL.sel=null; PL.cur=null; changed(); live(); A.flash("New plan — Undo brings the old one back"); }); };
   q("#plKpi").onclick=()=>{ kpiMin=!kpiMin; kpi(); }; addEventListener("resize",placeKpi);
   opts(); btns(); kpi(); card(); live(); plansUI();
-  if(A.movable){ A.movable(q("#plTools"),"plTools",true); A.movable(q("#plOpt"),"plOpt"); A.movable(q("#plKpi"),"plKpi"); A.movable(q("#plCard"),"plCard"); A.movable(q("#plLive"),"plLive"); A.movable(q("#plPlans"),"plPlans"); A.movable(q("#plRules"),"plRules"); } prof(); applyRoads(); rulesUI(); }
+  if(A.movable){ A.movable(q("#plTools"),"plTools",true); A.movable(q("#plOpt"),"plOpt"); A.movable(q("#plKpi"),"plKpi"); A.movable(q("#plCard"),"plCard"); A.movable(q("#plLive"),"plLive"); A.movable(q("#plPlans"),"plPlans"); A.movable(q("#plRules"),"plRules"); } prof(); applyRoads(); rulesUI(); try{ if(window.SID_WS) setTimeout(SID_WS.mount,0); }catch(e){} }
 function set3d(on){ PL.v3=on; persist(); btns(); map.easeTo({pitch:on?60:0,bearing:on&&Math.abs(map.getBearing())<1?-20:map.getBearing(),duration:900}); A.flash(on?"3D view — twist two fingers to turn, Move tool to look around":"Flat view"); }
-function btns(){ if(!ui) return; ui.querySelectorAll("[data-pt]").forEach(b=>{ const on=b.dataset.pt===PL.tool; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on); });
+function btns(){ if(!ui) return; document.querySelectorAll("#plTools [data-pt]").forEach(b=>{ const on=b.dataset.pt===PL.tool; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on); });
   q("#plUndo").disabled=!PL.undo.length&&!PL.cur; q("#plRedo").disabled=!PL.redo.length; const b3=q("#pl3d"); if(b3) b3.classList.toggle("on",!!PL.v3); const rb=q("#plRB"); if(rb) rb.classList.toggle("on",rulesOn); }
 const tzOf=()=>PL.tz||(PL.tz={avoid:false,max:6,low:false,lowDepth:1});
-function tzBtns(){ const z=tzOf(); return `<i class="sep"></i><span class="tzg"><b title="Heights: 30 m satellite model or your uploaded survey">Terrain</b><button type="button" data-tz="avoid" class="${z.avoid?"on":""}" title="Leave out plots steeper than this">Avoid slopes ></button><input type="number" id="plTzM" min="1" max="30" step="1" value="${z.max}" inputmode="numeric" aria-label="Steepest slope in percent"> %<button type="button" data-tz="low" class="${z.low?"on":""}" title="Mark plots on a low spot where water would collect (▼)">Flag low spots</button></span>`; }
+function tzBtns(){ const z=tzOf(); return `<i class="sep"></i><span class="tzg"><b title="Heights: Copernicus 30 m model (2011–15) or your uploaded survey">Terrain</b><button type="button" data-tz="avoid" class="${z.avoid?"on":""}" title="Leave out plots steeper than this">Avoid slopes ></button><input type="number" id="plTzM" min="1" max="30" step="1" value="${z.max}" inputmode="numeric" aria-label="Steepest slope in percent"> %<button type="button" data-tz="low" class="${z.low?"on":""}" title="Mark plots on a low spot where water would collect (▼)">Flag low spots</button></span>`; }
 function tzCb(){ return {flash:m=>A.flash(m), apply:(rm)=>{ if(rm&&rm.length){ pushUndo(); const set=new Set(rm); PL.plan.plots=PL.plan.plots.filter(x=>!set.has(x.id)); PL.plan.items=PL.plan.items.filter(i=>!(i.plot&&set.has(i.plot))); GR=null; CG=null; } changed(["all"]); } }; }
 function tzAfter(){ try{ const z=PL.tz; if(z&&(z.avoid||z.low)&&window.SID_TOPO2) setTimeout(()=>window.SID_TOPO2.planPass(PL,tzCb()),30); }catch(e){} }
 function opts(){ const el=q("#plOpt"); if(!el) return; let h=""; const t=PL.tool, SEP=`<i class="sep"></i>`;
@@ -20313,7 +20313,7 @@ function outBook(){ if(!window.XLSX){ A.flash("The Excel library is not loaded y
 #plCoDlg textarea{width:100%;height:170px;margin:8px 0;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font:12px ui-monospace,Menlo,monospace;padding:8px;box-sizing:border-box;resize:vertical}
 #plCoDlg .row{display:flex;gap:8px;align-items:center;margin:6px 0}#plCoDlg .row span{flex:0 0 auto}#plCoDlg select{flex:1;min-width:0;height:30px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25)}#plCoDlg select option{color:#000}
 #plCoDlg button:not(.x){height:32px;border:0;border-radius:9px;background:rgba(255,255,255,.14);color:#fff;font-weight:600;padding:0 12px;cursor:pointer}#plCoDlg button.mk{background:#FFD60A;color:#1C1C1E}#plCoDlg .src{opacity:.7;font-size:11px;line-height:1.45}`; document.head.appendChild(st); })();
-let rulesOn=false, AUD=null;
+let rulesOn=false, AUD=null; window.__plRulesOn=()=>rulesOn; window.__plRulesSet=v=>{ rulesOn=!!v; rulesUI(); btns(); };
 // the plan check: plots on a road, on the landscape or on each other, landscape on a road, badly shaped plots (cached per change)
 function planAudit(){ if(AUD&&AUD.v===PL.ver) return AUD; const p=PL.plan, cor=[]; p.roads.forEach(r=>{ const V=r.pts.map(Lc); for(let k=1;k<V.length;k++){ const A2=V[k-1], B2=V[k], L2=lhyp(A2,B2); if(L2<.5) continue; const nx2=-(B2[1]-A2[1])/L2*(r.w/2-.5), nz2=(B2[0]-A2[0])/L2*(r.w/2-.5); cor.push([[A2[0]+nx2,A2[1]+nz2],[B2[0]+nx2,B2[1]+nz2],[B2[0]-nx2,B2[1]-nz2],[A2[0]-nx2,A2[1]-nz2]]); } });
   const PQ=p.plots.map(x=>x.pts.map(Lc)), GQ=p.green.map(x=>x.pts.map(Lc)); let onRoad=0, onGreen=0, pp=0, gRoad=0, odd=0;
@@ -20823,7 +20823,7 @@ async function activate(api){ A=api; if(PL.on) return; PL.on=true; PL.cur=null; 
   else A.flash("Build mode — start with Land or Roads, then Plots › Smart fill, then Build and Green"); A.need(); }
 function deactivate(leaving){ if(!PL.on) return; if(PL.cur) finishCur(); PL.on=false; PL.drag=null; closeMenu(); flush(true); removeEventListener("resize",placeKpi);
   try{ map.off("styledata",onStyle); if(map.getLayer("sid-plan3d")) map.removeLayer("sid-plan3d"); }catch(e){} layer=null; VEH=[];
-  if(ui){ ui.remove(); ui=null; } const b3=q("#pl3d"); if(b3) b3.remove(); const rb=q("#plRB"); if(rb) rb.remove(); if(!leaving&&map.getPitch()>.5) map.easeTo({pitch:0,duration:600}); }
+  if(ui){ ui.remove(); ui=null; } ["plTools","plOpt","plKpi","plLive","plCard","plPlans","plRules"].forEach(id=>{ const e=document.getElementById(id); if(e&&e.closest("#wsBar")) e.remove(); }); const b3=q("#pl3d"); if(b3) b3.remove(); const rb=q("#plRB"); if(rb) rb.remove(); if(!leaving&&map.getPitch()>.5) map.easeTo({pitch:0,duration:600}); }
 // the building and tree models, shared with the AR table view (sold factories and warehouses)
 window.SID_3D={build(T3,F,L,W,h,k,id,K,opts){ if(!T) T=T3; return buildingAt(F,L,W,h,k,String(id),K,opts); }, tree(T3,K,x,z,sz,c,palm){ if(!T) T=T3; treeAt(K,x,z,sz,c,palm); }};
 window.SID_PLAN={get on(){ return PL.on; },get pl(){ return PL; },plotAt:planPlotAt,activate,deactivate,down,move,up,hover,cancel,undo,redo,del,esc:escK,enter:enterK,key,hint:hintTxt,draw2d,obstacles,tool:()=>PL.tool,setTool,
@@ -20866,6 +20866,7 @@ window.SID_PLAN={get on(){ return PL.on; },get pl(){ return PL; },plotAt:planPlo
 </style>
 
 <style id="tpCss">
+#tpPanel .tp-lic{margin-top:4px;opacity:.8}#tpPanel .tp-lic summary{cursor:pointer;font-weight:600}
 /* ---- V98 Land Levels ---- */
 .tp-ctl button{width:36px!important;height:36px!important;display:grid!important;place-items:center;color:#fff!important;background:linear-gradient(160deg,#d23a55,#9e1f35)!important;border-radius:4px}
 .tp-ctl button.on{background:#fff!important;color:#9e1f35!important}
@@ -20980,9 +20981,11 @@ const q=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const say=(m,bad)=>{ try{ toast(m,bad); }catch(e){} };
 const ok=()=>typeof map!=="undefined"&&map&&map.getContainer&&map.getStyle&&map.isStyleLoaded!==undefined;
-const DEM_URL="https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png", MAXZ=14, ERR=6, SENTINEL=-500;
+const DEM_URL="https://tiles.mapterhorn.com/{z}/{x}/{y}.webp", DEM_SZ=512, DEM_MAXZ=12, OLD_URL="https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png", MAXZ=13, ERR=3, SENTINEL=-500;
+const DEM_TXT="Copernicus 30 m (2011–15) ±"+ERR+" m", OLD_TXT="SRTM 30 m (2000) ±6 m";
+const DEM_FB=new Set();   /* tiles that fell back to SRTM */
 const CT_JS="https://cdn.jsdelivr.net/npm/maplibre-contour@0.1.0/dist/index.min.js", CT_SRI="sha384-rKd9nNV3F43xwxeA6WNNsPH+cMYQl6SEM+/HDoU/sgeuK+faXwhqXYA0Pwp0COXT";
-const ATTR='Elevation: AWS Terrain Tiles (NASA SRTM ~30 m, EU-DEM) · contours: maplibre-contour';
+const ATTR='Heights <a href="https://mapterhorn.com" target="_blank" rel="noopener">© Mapterhorn</a> · Copernicus WorldDEM-30 © DLR 2010-2014, © Airbus 2014-2018, EU/ESA · contours: maplibre-contour';
 const LY=[["img","Imagery"],["str","Streets"],["hs","Hillshade"],["col","Colour by height"],["ct","Contours"],["slp","Slope %"],["plt","Plots"],["rd","Roads"]];
 const DEF={img:[1,1],str:[1,1],hs:[1,.85],col:[0,.6],ct:[1,.9],slp:[0,.6],plt:[1,1],rd:[1,1]};
 const RAMP=["#440154","#3b528b","#21908d","#5dc863","#fde725"];
@@ -21003,16 +21006,22 @@ const cvs=(w,h)=>{ if(typeof OffscreenCanvas!=="undefined") return new Offscreen
 const hexRGB=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
 
 /* ---------- the source of every number (phase 6 adds "Survey <date>") ---------- */
-const sourceOf=(lon,lat)=>{ const s=HK.src&&lon!=null?HK.src(lon,lat):null; return s||{kind:"est",txt:"30 m estimate ±"+ERR+" m",err:ERR}; };
+const sourceOf=(lon,lat)=>{ const s=HK.src&&lon!=null?HK.src(lon,lat):null; if(s) return s; let fb=false; try{ if(lon!=null){ const g=gpx(lon,lat,MAXZ); fb=DEM_FB.has(MAXZ+"/"+Math.floor(g[0]/256)+"/"+Math.floor(g[1]/256)); } }catch(e){} return fb?{kind:"est",txt:OLD_TXT,err:6}:{kind:"est",txt:DEM_TXT,err:ERR}; };
 const badge=(lon,lat)=>{ const s=sourceOf(lon,lat); return `<span class="tp-src${s.kind==="sv"?" sv":""}" style="margin:0 0 0 6px">${esc(s.txt)}</span>`; };
 
 /* ---------- elevation tiles (decoded once, kept in memory, straight from the public bucket) ---------- */
-const TC=new Map(), TR=new Map();
+const TC=new Map(), TR=new Map(), SRC=new Map();
+const decode=(b,sz)=>createImageBitmap(b,{premultiplyAlpha:"none",colorSpaceConversion:"none"}).then(bm=>{ const c=cvs(sz,sz), g=c.getContext("2d",{willReadFrequently:true}); g.drawImage(bm,0,0,sz,sz); bm.close(); const d=g.getImageData(0,0,sz,sz).data, H=new Float32Array(sz*sz);
+  for(let i=0;i<sz*sz;i++){ const v=d[i*4]*256+d[i*4+1]+d[i*4+2]/256-32768; H[i]=v<SENTINEL?NaN:v; } return H; });
+const get=u=>fetch(u).then(r=>{ if(!r.ok) throw new Error("tile "+r.status); return r.blob(); });
+/* one Mapterhorn tile (512 px) decoded once and shared by its four quarters */
+function srcTile(z,x,y){ const k=z+"/"+x+"/"+y; let p=SRC.get(k); if(p) return p; p=get(DEM_URL.replace("{z}",z).replace("{x}",x).replace("{y}",y)).then(b=>decode(b,DEM_SZ)).catch(()=>{ SRC.delete(k); return null; });
+  SRC.set(k,p); if(SRC.size>40) SRC.delete(SRC.keys().next().value); return p; }
 function demTile(z,x,y){ const k=z+"/"+x+"/"+y; let p=TC.get(k); if(p){ TC.delete(k); TC.set(k,p); return p; }
-  p=fetch(DEM_URL.replace("{z}",z).replace("{x}",x).replace("{y}",y)).then(r=>{ if(!r.ok) throw new Error("tile "+r.status); return r.blob(); })
-   .then(b=>createImageBitmap(b,{premultiplyAlpha:"none",colorSpaceConversion:"none"})).then(bm=>{
-     const c=cvs(256,256), g=c.getContext("2d",{willReadFrequently:true}); g.drawImage(bm,0,0); const d=g.getImageData(0,0,256,256).data, H=new Float32Array(65536); bm.close();
-     for(let i=0;i<65536;i++){ const v=d[i*4]*256+d[i*4+1]+d[i*4+2]/256-32768; H[i]=v<SENTINEL?NaN:v; } if(HK.merge){ try{ HK.merge(z,x,y,H); }catch(e){ console.error("survey merge",e); } } TR.set(k,H); return H; })
+  const quarter=()=>{ if(z<1||z-1>DEM_MAXZ) return Promise.resolve(null); return srcTile(z-1,x>>1,y>>1).then(S=>{ if(!S) return null; const H=new Float32Array(65536), ox=(x&1)*256, oy=(y&1)*256;
+    for(let j=0;j<256;j++){ const r=(oy+j)*DEM_SZ+ox; H.set(S.subarray(r,r+256),j*256); } return H; }); };
+  p=quarter().then(H=>{ if(H){ DEM_FB.delete(k); return H; } DEM_FB.add(k); return get(OLD_URL.replace("{z}",Math.min(z,14)).replace("{x}",x).replace("{y}",y)).then(b=>decode(b,256)); })
+   .then(H=>{ if(HK.merge){ try{ HK.merge(z,x,y,H); }catch(e){ console.error("survey merge",e); } } TR.set(k,H); return H; })
    .catch(()=>{ TC.delete(k); return null; });
   TC.set(k,p); if(TC.size>90){ const o=TC.keys().next().value; TC.delete(o); TR.delete(o); } return p; }
 const gpx=(lon,lat,z)=>{ const n=Math.pow(2,z)*256, s=Math.sin(lat*Math.PI/180); return [(lon+180)/360*n, (0.5-Math.log((1+s)/(1-s))/(4*Math.PI))*n]; };
@@ -21034,7 +21043,7 @@ const SLC=SLP.map(s=>hexRGB(s[1]));
 async function paintImage(kind,z,x,y,lo,hi,H){ const c=cvs(256,256), g=c.getContext("2d"), im=g.createImageData(256,256), d=im.data;
   if(H){ if(kind==="h"){ const sp=Math.max(1e-6,hi-lo); for(let i=0;i<65536;i++){ const v=H[i]; if(!(v===v)) continue; const t=Math.max(0,Math.min(255,Math.round((v-lo)/sp*255))); d[i*4]=LUT[t*3]; d[i*4+1]=LUT[t*3+1]; d[i*4+2]=LUT[t*3+2]; d[i*4+3]=255; } }
     else { const n=Math.pow(2,z), lat=Math.atan(Math.sinh(Math.PI*(1-2*(y+.5)/n)))*180/Math.PI, cell=40075016.686*Math.cos(lat*Math.PI/180)/(256*n);
-      for(let j=0;j<256;j++){ const j0=Math.max(0,j-1), j1=Math.min(255,j+1); for(let i=0;i<256;i++){ const i0=Math.max(0,i-1), i1=Math.min(255,i+1), r0=j0*256, r1=j*256, r2=j1*256;
+      const st=Math.max(1,Math.round(30/cell)); for(let j=0;j<256;j++){ const j0=Math.max(0,j-st), j1=Math.min(255,j+st); for(let i=0;i<256;i++){ const i0=Math.max(0,i-st), i1=Math.min(255,i+st), r0=j0*256, r1=j*256, r2=j1*256;
         const a=H[r0+i0], b=H[r0+i], cc=H[r0+i1], dd=H[r1+i0], ff=H[r1+i1], gg=H[r2+i0], hh=H[r2+i], ii=H[r2+i1]; const p=r1+i; if(!(H[p]===H[p])||!(a===a&&b===b&&cc===cc&&dd===dd&&ff===ff&&gg===gg&&hh===hh&&ii===ii)) continue;
         const dx=((cc+2*ff+ii)-(a+2*dd+gg))/(8*cell*(i1-i0)/2), dy=((gg+2*hh+ii)-(a+2*b+cc))/(8*cell*(j1-j0)/2), sl=100*Math.hypot(dx,dy); let k=0; while(k<SLP.length-1&&sl>=SLP[k][0]) k++;
         d[p*4]=SLC[k][0]; d[p*4+1]=SLC[k][1]; d[p*4+2]=SLC[k][2]; d[p*4+3]=255; } } } }
@@ -21112,7 +21121,7 @@ const setVis=(id,on)=>{ if(hasL(id)) map.setLayoutProperty(id,"visibility",on?"v
 function ctStep(){ const z=Math.max(9,Math.min(17,Math.floor(map.getZoom()))); return CTH[z]; }
 function build(){ if(!TP.on||!ok()) return; if(!map.isStyleLoaded()){ map.once("idle",build); return; } addProto();
   try{
-   if(!hasS(ID.dem)) map.addSource(ID.dem,{type:"raster-dem",tiles:[HK.has&&HK.has()?"sidtopodem://{z}/{x}/{y}":DEM_URL],tileSize:256,maxzoom:MAXZ,encoding:"terrarium",attribution:ATTR});
+   if(!hasS(ID.dem)) map.addSource(ID.dem,{type:"raster-dem",...(HK.has&&HK.has()?{tiles:["sidtopodem://{z}/{x}/{y}"],tileSize:256,maxzoom:MAXZ}:{tiles:[DEM_URL],tileSize:DEM_SZ,maxzoom:DEM_MAXZ}),encoding:"terrarium",attribution:ATTR});
    const below=firstId(isPlot)||firstId(isLb), above=firstId(isLb);
    if(!hasL("sidtopo-hs")) map.addLayer({id:"sidtopo-hs",type:"hillshade",source:ID.dem,layout:{visibility:"none"},paint:{"hillshade-exaggeration":.6,"hillshade-shadow-color":"#000000","hillshade-highlight-color":"#ffffff","hillshade-accent-color":"#202020"}},below);
    if(TP.range&&!hasS(ID.col)) map.addSource(ID.col,{type:"raster",tiles:["sidtopo://h/{z}/{x}/{y}?r="+TP.range[0]+","+TP.range[1]],tileSize:256,minzoom:6,maxzoom:MAXZ,attribution:ATTR});
@@ -21190,7 +21199,7 @@ function guardMarkers(on){ const proto=maplibregl.Marker&&maplibregl.Marker.prot
 
 /* ---------- 3D terrain (preview) ---------- */
 function pitchBack(){ if(TP.pitch0!=null){ try{ map.easeTo({pitch:TP.pitch0,duration:500}); }catch(e){} TP.pitch0=null; } }
-function terrain(){ if(!TP.on||!hasS(ID.dem)) return; try{ if(PREF.ter[0]){ guardMarkers(true); if(!hasS(ID.terrain)) map.addSource(ID.terrain,{type:"raster-dem",tiles:[HK.has&&HK.has()?"sidtopodem://{z}/{x}/{y}":DEM_URL],tileSize:256,maxzoom:MAXZ,encoding:"terrarium",attribution:ATTR}); const ex=+PREF.ter[1]||1, cur=map.getTerrain(); if(!cur||cur.source!==ID.terrain||cur.exaggeration!==ex) map.setTerrain({source:ID.terrain,exaggeration:ex}); if(map.getPixelRatio&&map.setPixelRatio){ if(TP.pixel0==null) TP.pixel0=map.getPixelRatio(); if(map.getPixelRatio()>1.25) map.setPixelRatio(1.25); } if(map.getPitch()<20&&TP.pitch0==null){ TP.pitch0=map.getPitch(); map.easeTo({pitch:40,duration:500}); } } else { guardMarkers(false); if(map.getTerrain()) map.setTerrain(null); if(TP.pixel0!=null&&map.setPixelRatio){ map.setPixelRatio(TP.pixel0); TP.pixel0=null; } pitchBack(); } }catch(e){ console.error("terrain",e); } }
+function terrain(){ if(!TP.on||!hasS(ID.dem)) return; try{ if(PREF.ter[0]){ guardMarkers(true); if(!hasS(ID.terrain)) map.addSource(ID.terrain,{type:"raster-dem",...(HK.has&&HK.has()?{tiles:["sidtopodem://{z}/{x}/{y}"],tileSize:256,maxzoom:MAXZ}:{tiles:[DEM_URL],tileSize:DEM_SZ,maxzoom:DEM_MAXZ}),encoding:"terrarium",attribution:ATTR}); const ex=+PREF.ter[1]||1, cur=map.getTerrain(); if(!cur||cur.source!==ID.terrain||cur.exaggeration!==ex) map.setTerrain({source:ID.terrain,exaggeration:ex}); if(map.getPixelRatio&&map.setPixelRatio){ if(TP.pixel0==null) TP.pixel0=map.getPixelRatio(); if(map.getPixelRatio()>1.25) map.setPixelRatio(1.25); } if(map.getPitch()<20&&TP.pitch0==null){ TP.pitch0=map.getPitch(); map.easeTo({pitch:40,duration:500}); } } else { guardMarkers(false); if(map.getTerrain()) map.setTerrain(null); if(TP.pixel0!=null&&map.setPixelRatio){ map.setPixelRatio(TP.pixel0); TP.pixel0=null; } pitchBack(); } }catch(e){ console.error("terrain",e); } }
 
 /* ---------- move / resize / fold helpers shared by the panel and the section window ---------- */
 function pinEl(el){ if(el.dataset.pin) return; const r=el.getBoundingClientRect(); el.style.left=r.left+"px"; el.style.top=r.top+"px"; el.style.width=r.width+"px"; el.style.right="auto"; el.style.bottom="auto"; el.style.boxSizing="border-box"; el.dataset.pin="1"; }
@@ -21221,7 +21230,7 @@ function ui(){ if(panel) return; panel=document.createElement("div"); panel.id="
    <div class="tp-sec">3D terrain (preview)</div><div class="tp-row" id="tpTerr"><input type="checkbox" id="tpTerrOn" aria-label="3D terrain"><span>Show in 3D · exaggeration <b id="tpExV"></b>×</span><input type="range" id="tpEx" min="1" max="3" step=".5" aria-label="Exaggeration"></div>
    <div class="tp-sec">Tools</div><div class="tp-bts"><button class="tp-bt" data-t="pt">Point height</button><button class="tp-bt" data-t="prof" title="Draw a line, see distance, a level profile and a 3D block">Section</button><button class="tp-bt" data-t="slope">Slope A→B</button><button class="tp-bt" id="tpClr">Clear</button></div>
    <div class="tp-res" id="tpRes"></div>
-   <div class="tp-note">Heights are a 30 m satellite model (SRTM), a surface model that includes buildings and trees. Use them for planning only, not for earthworks levels: those need a survey.</div></div>`;
+   <div class="tp-note">Heights: Copernicus 30 m model, captured 2011–15 (the newest free model; the old one was from 2000). It is a surface model: buildings, trees and road embankments of that time are in it, and anything built after 2015 is not. Slope is measured over about 60 m. <details class="tp-lic"><summary>Data licence</summary>Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability for any use of the Copernicus WorldDEM-30. Tiles: Mapterhorn (mapterhorn.com).</details> Use them for planning only, not for earthworks levels: those need a survey.</div></div>`;
   if(HK.ui){ try{ HK.ui(panel); }catch(e){ console.error("panel extras",e); } }
   try{ accordion(); }catch(e){ console.error("sections",e); }
   document.body.appendChild(panel); const dk=document.createElement("div"); dk.id="tpSec"; dk.hidden=true; dk.setAttribute("role","region"); dk.setAttribute("aria-label","Land section");
@@ -21400,8 +21409,8 @@ async function profDone(){ const P=TP.pts; if(P.length<2){ secHide(); guide(); r
   const H=await Promise.all(S.map(s=>elevAt(s.c[0],s.c[1]))); if(tok!==SC.tok||TP.tool!=="prof") return; S.forEach((s,i)=>s.h=H[i]);
   const V=S.filter(s=>s.h!=null); if(V.length<2){ secHide(); q("#tpRes").innerHTML='<div class="tp-card">No height data along this line (—)</div>'; return; }
   let mn=V[0],mx=V[0],rise=0,fall=0,maxS=0,sumS=0; for(let i=0;i<V.length;i++){ if(V[i].h<mn.h) mn=V[i]; if(V[i].h>mx.h) mx=V[i]; if(i){ const dh=V[i].h-V[i-1].h, sl=Math.abs(dh)/Math.max(1e-6,V[i].d-V[i-1].d)*100; if(dh>0) rise+=dh; else fall-=dh; sumS+=sl; } }
-  /* the maximum is read over about 3 samples, so a single noisy cell does not decide it */
-  const w=3; for(let i=w;i<V.length;i++){ const sl=Math.abs(V[i].h-V[i-w].h)/Math.max(1e-6,V[i].d-V[i-w].d)*100; if(sl>maxS) maxS=sl; } if(V.length<=w) maxS=sumS/Math.max(1,V.length-1);
+  /* the maximum is read over at least 60 m, so model noise does not decide it */
+  const w=Math.max(3,Math.ceil(60/step)); for(let i=w;i<V.length;i++){ const sl=Math.abs(V[i].h-V[i-w].h)/Math.max(1e-6,V[i].d-V[i-w].d)*100; if(sl>maxS) maxS=sl; } if(V.length<=w) maxS=sumS/Math.max(1,V.length-1);
   const net=V[V.length-1].h-V[0].h, avgS=(rise+fall)/L*100; const key=P.map(p=>p[0].toFixed(6)+","+p[1].toFixed(6)).join(";");
   const nk=profData&&profData.key===key; profData={S,V,mn,mx,L,seg,P:P.map(p=>[p[0],p[1]]),rise,fall,maxS,avgS,net,key,step}; if(!nk){ SC.grid=null; SC.hov=null; SC.ex=Math.max(1,Math.min(10,Math.round(L*.12/Math.max(2,mx.h-mn.h)*2)/2)); }
   q("#tpRes").innerHTML=`<div class="tp-card"><b>Section ${fmtD(L)}</b>${badge(P[0][0],P[0][1])}<div class="tp-kv"><span>Start → end</span><span>${V[0].h.toFixed(1)} → ${V[V.length-1].h.toFixed(1)} m (${sgn(net)})</span><span>Lowest</span><span>${mn.h.toFixed(1)} m at ${fmtD(mn.d)}</span><span>Highest</span><span>${mx.h.toFixed(1)} m at ${fmtD(mx.d)}</span></div>
@@ -21427,7 +21436,7 @@ function bind(on){ if(on===TP.bound) return; TP.bound=on; const f=on?"addEventLi
 /* ---------- switch the mode on / off ---------- */
 function loadScript(src,sri){ return new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src; s.integrity=sri; s.crossOrigin="anonymous"; s.onload=res; s.onerror=()=>rej(new Error("could not load "+src)); document.head.appendChild(s); }); }
 async function loadLib(){ if(TP.lib) return true; try{ if(typeof mlcontour==="undefined") await loadScript(CT_JS,CT_SRI);
-    TP.lib=new mlcontour.DemSource({url:DEM_URL,encoding:"terrarium",maxzoom:MAXZ,worker:!(HK.has&&HK.has()),cacheSize:80,timeoutMs:15000}); TP.lib.setupMaplibre(maplibregl);
+    TP.lib=new mlcontour.DemSource({url:DEM_URL,encoding:"terrarium",maxzoom:DEM_MAXZ,worker:!(HK.has&&HK.has()),cacheSize:80,timeoutMs:15000}); TP.lib.setupMaplibre(maplibregl);
     TP.lib.manager.getTile=async(url,ac)=>{ const m=/\/(\d+)\/(\d+)\/(\d+)\.png/.exec(url); if(m&&HK.has&&HK.has()) return {data:new Blob([await mergedPng(+m[1],+m[2],+m[3])],{type:"image/png"})};
       const r=await fetch(url,{signal:ac&&ac.signal}); if(!r.ok) throw new Error("tile "+r.status); return {data:await r.blob()}; }; return true; }
   catch(e){ console.error("contour library",e); say("Contours are not available (the contour library did not load); the other layers work",true); return false; } }
@@ -21566,7 +21575,7 @@ async function levels(rings,opt){ opt=opt||{}; const all=[]; rings.forEach(r=>{ 
   const slope=a==null?null:Math.hypot(a,b)*100; let dir=null,dirName=null; if(slope!=null){ if(slope<0.3){ dirName="flat"; } else { dir=(Math.atan2(-a,-b)*180/Math.PI+360)%360; dirName=COMP[Math.round(dir/45)%8]; } }
   const src=nsv===0?"est":nsv===n?"sv":"mix"; const cells=area/900;
   return {n,min:mn,max:mx,mean,slope,dir,dirName,area,cells,src,svDate,relief:mx-mn,cellA:area/n,z:Float32Array.from(Z),miss,spacing:+sp.toFixed(1)}; }
-function srcText(st){ if(!st) return "—"; if(st.src==="sv") return "Survey "+fmtDate(st.svDate); if(st.src==="mix") return "Survey "+fmtDate(st.svDate)+" + 30 m estimate"; return "30 m estimate ±"+ERR+" m"; }
+function srcText(st){ if(!st) return "—"; if(st.src==="sv") return "Survey "+fmtDate(st.svDate); if(st.src==="mix") return "Survey "+fmtDate(st.svDate)+" + Copernicus 30 m"; return "Copernicus 30 m (2011–15) ±"+ERR+" m"; }
 const slim=st=>st?{n:st.n,min:st.min,max:st.max,mean:st.mean,slope:st.slope,dir:st.dir,dirName:st.dirName,area:st.area,src:st.src,svDate:st.svDate}:null;
 async function plotLevels(k){ if(ST.has(k)) return ST.get(k); const f=featOf(k); if(!f) return null; const p=levels(ringsOf(f.geometry)).then(st=>{ if(st) ST.set(k,st); return st; }).catch(e=>{ console.error("levels",e); return null; }); const st=await p; return st; }
 const cutFill=(st,Tl)=>{ let cut=0,fill=0; for(let i=0;i<st.z.length;i++){ const d=st.z[i]-Tl; if(d>0) cut+=d; else fill-=d; } cut*=st.cellA; fill*=st.cellA; return {cut,fill,net:cut-fill}; };
@@ -21592,7 +21601,7 @@ async function renderLv(box,items){ const keys=items.map(x=>x.k); const single=k
   if(st&&single&&PLAT[key]!=null) cfFill(box,key,st); box._st=st; }
 function cardLevels(){ const el=q("#selpanel"); if(!el||el.hidden||typeof selRows!=="function") return; const old=el.querySelector(".tp-lv"); if(old) old.remove(); const items=selRows(); if(!items.length) return;
   const body=el.querySelector(".sp-body")||el, box=document.createElement("div"); box.className="tp-lv"; box.dataset.keys=items.map(x=>x.k).join("|"); body.appendChild(box);
-  if(!LV_ON&&!T.on){ box.innerHTML=`<h4>Levels</h4><div>Heights, slope and cut / fill for ${items.length>1?"these plots":"this plot"} from the 30 m satellite model. <button type="button" data-lvon="1">Show levels</button></div><div class="note">Loads about 100 KB of height tiles, straight from the public source.</div>`; return; }
+  if(!LV_ON&&!T.on){ box.innerHTML=`<h4>Levels</h4><div>Heights, slope and cut / fill for ${items.length>1?"these plots":"this plot"} from the Copernicus 30 m model (2011–15). <button type="button" data-lvon="1">Show levels</button></div><div class="note">Loads about 100 KB of height tiles, straight from the public source.</div>`; return; }
   renderLv(box,items); }
 document.addEventListener("click",e=>{ const t=e.target; if(!t||!t.closest) return; const b=t.closest("[data-lvon]"); if(b){ LV_ON=true; try{ localStorage.setItem("sid.topo.card."+emailKey(),"1"); }catch(x){} cardLevels(); return; }
   const c=t.closest("[data-cf]"), m=t.closest("[data-cfm]"); if(!c&&!m) return; const box=t.closest(".tp-lv"); if(!box||!box._st) return; const key=(c||m).dataset.cf||(c||m).dataset.cfm; const inp=box.querySelector(`[data-plat="${CSS.escape(key)}"]`);
@@ -21746,10 +21755,10 @@ async function usage(){ const c=SBC(); if(!c) return null; try{ const r=await c.
 function sizeTxt(b){ return b==null?"—":b>=1048576?nf(b/1048576,1)+" MB":nf(b/1024,0)+" KB"; }
 function svUi(){ if(!svSec||!svSec.isConnected) return; const c=SBC(), box=svSec; const parks=parkList(); if(!svPark||!parks.includes(svPark)) svPark=nearestPark()||parks[0];
   let h=""; if(!c){ box.innerHTML='<div class="tp-note">Sign in to see or add surveys.</div>'; return; }
-  if(SV.failed){ box.innerHTML=`<div class="tp-note">Survey storage is not set up yet: the owner has to run <b>sql_15_topo.sql</b> once in the Supabase SQL editor. Until then everything uses the 30 m estimate.${SV.err?"<br><span style=\"opacity:.7\">"+esc(SV.err)+"</span>":""}</div>`; return; }
+  if(SV.failed){ box.innerHTML=`<div class="tp-note">Survey storage is not set up yet: the owner has to run <b>sql_15_topo.sql</b> once in the Supabase SQL editor. Until then everything uses the Copernicus 30 m model.${SV.err?"<br><span style=\"opacity:.7\">"+esc(SV.err)+"</span>":""}</div>`; return; }
   const act=activeRow(svPark), vers=SV.list.filter(r=>r.park===svPark);
   h+=`<label for="tpSvPark">Park</label><select id="tpSvPark">${parks.map(p=>`<option value="${esc(p)}"${p===svPark?" selected":""}>${esc(parkName(p))}</option>`).join("")}</select>`;
-  h+=`<div class="tp-note" style="opacity:.9;margin-top:5px">${act?`<b>Survey v${act.version}</b> · ${esc(fmtDate(act.survey_date))} · ${act.stats&&act.stats.areaM2?nf(act.stats.areaM2,0)+" m² · ":""}${sizeTxt(act.grid_bytes)} — replaces the 30 m heights inside its area.`:"No survey for this park: heights are the 30 m estimate."}</div>`;
+  h+=`<div class="tp-note" style="opacity:.9;margin-top:5px">${act?`<b>Survey v${act.version}</b> · ${esc(fmtDate(act.survey_date))} · ${act.stats&&act.stats.areaM2?nf(act.stats.areaM2,0)+" m² · ":""}${sizeTxt(act.grid_bytes)} — replaces the 30 m heights inside its area.`:"No survey for this park: heights are the Copernicus 30 m model (2011–15)."}</div>`;
   h+=`<div class="tp-bts" style="margin-top:5px">${CAN_EDIT()?`<button class="tp-bt" id="tpSvUp">Upload survey…</button>`:`<span class="tp-note" style="margin:0">Your role cannot upload surveys.</span>`}<button class="tp-bt" id="tpSvZoom"${act?"":" disabled"}>Go to survey</button></div>`;
   h+=`<div id="tpSvUpBox"></div>`;
   if(vers.length){ h+=`<div class="tp-vl">${vers.map(r=>`<div class="${r.status==="archived"?"arch":""}"><span>v${r.version} · ${esc(fmtDate(r.survey_date))} · ${esc(r.name||"")} · ${sizeTxt(r.grid_bytes)} · ${r.status}</span>${CAN_EDIT()?(r.status==="active"?`<button class="tp-bt sm" data-svarch="${r.id}">Archive</button>`:`<button class="tp-bt sm" data-svact="${r.id}">Make active</button>`):""}</div>`).join("")}</div>`; }
@@ -21766,7 +21775,7 @@ function zoomSurvey(){ const r=activeRow(svPark); if(r&&r.bbox){ const b=r.bbox;
 async function svSetStatus(id,status){ const c=SBC(); if(!c) return; const row=SV.list.find(r=>r.id===id); if(!row) return; const me=emailKey(); const now=new Date().toISOString();
   try{ if(status==="active"){ const cur=activeRow(row.park); if(cur&&cur.id!==id){ const a=await c.from("sid_topo_surveys").update({status:"archived",archived_at:now,archived_by:me}).eq("id",cur.id); if(a.error) throw a.error; } const u=await c.from("sid_topo_surveys").update({status:"active",archived_at:null,archived_by:null}).eq("id",id); if(u.error) throw u.error; }
     else { const u=await c.from("sid_topo_surveys").update({status:"archived",archived_at:now,archived_by:me}).eq("id",id); if(u.error) throw u.error; }
-    await svList(true); await svEnsure(mapBox()); ST.clear(); SUM.clear(); PARKDONE.clear(); say(status==="active"?"Survey version made active":"Survey archived — the 30 m estimate is used again (the file is kept)"); svUi(); }
+    await svList(true); await svEnsure(mapBox()); ST.clear(); SUM.clear(); PARKDONE.clear(); say(status==="active"?"Survey version made active":"Survey archived — the Copernicus 30 m model is used again (the file is kept)"); svUi(); }
   catch(e){ say("Could not change the survey: "+(e.message||e),true); } }
 
 /* ----- upload: choose a file, check it, save as a new version ----- */
@@ -21846,7 +21855,7 @@ async function planPass(PL,cb,force){ const tz=PL&&PL.tz; if(!tz||!(tz.avoid||tz
     for(const p of plots){ const st=await levels([p.pts],{noload:true}).catch(()=>null); if(!st){ p.tz=null; continue; } stats.push(st); if(st.min<mn)mn=st.min; if(st.max>mx)mx=st.max;
       let low=false,depth=0; if(dep){ const ring=p.pts, lon0=ring.reduce((t,c)=>t+c[0],0)/ring.length, lat0=ring.reduce((t,c)=>t+c[1],0)/ring.length; depth=Math.max(dep.depth(lon0,lat0),ring.reduce((t,c)=>t+dep.depth(c[0],c[1]),0)/ring.length); low=depth>=lowD; }
       const steep=!!(tz.avoid&&st.slope!=null&&st.slope>maxS&&!p.pin); p.tz={slope:st.slope==null?null:+st.slope.toFixed(1),mean:+st.mean.toFixed(1),min:+st.min.toFixed(1),max:+st.max.toFixed(1),low:!!low,depth:+depth.toFixed(1),src:st.src}; if(steep){ nSteep++; out.push(p.id); } else { kept.push(st); if(low) nLow++; if(st.min<kmn) kmn=st.min; if(st.max>kmx) kmx=st.max; } }
-    lastPlan={n:kept.length,min:kept.length?kmn:mn,max:kept.length?kmx:mx,maxSlope:tz.avoid?maxS:null,steep:nSteep,low:nLow,src:stats.every(x=>x.src==="sv")?"survey":stats.every(x=>x.src==="est")?"30 m estimate ±"+ERR+" m":"survey + 30 m estimate"};
+    lastPlan={n:kept.length,min:kept.length?kmn:mn,max:kept.length?kmx:mx,maxSlope:tz.avoid?maxS:null,steep:nSteep,low:nLow,src:stats.every(x=>x.src==="sv")?"survey":stats.every(x=>x.src==="est")?"Copernicus 30 m (2011–15) ±"+ERR+" m":"survey + Copernicus 30 m"};
     cb.apply(tz.avoid?out:[]); const msg=[]; if(tz.avoid) msg.push(nSteep?("removed "+nSteep+" plot"+(nSteep>1?"s":"")+" steeper than "+maxS+"% (Undo brings them back)"):("no plot steeper than "+maxS+"%")); if(tz.low) msg.push(nLow?(nLow+" plot"+(nLow>1?"s":"")+" on a low spot ▼ (ponding ≥ "+lowD+" m, indicative)"):"no low spots found"); cb.flash("Terrain: "+msg.join(" · ")+" — "+lastPlan.src); }
   catch(e){ console.error("planner terrain",e); cb.flash("Terrain check failed: "+(e&&e.message||e)); } }
 const planTxt=p=>{ try{ if(!p||!p.tz) return ""; const t=p.tz; return " · slope "+(t.slope==null?"—":t.slope+" %")+" · level "+t.min+"–"+t.max+" m"+(t.low?" · ▼ low spot":""); }catch(e){ return ""; } };
@@ -24720,6 +24729,193 @@ if(typeof showSelection==="function"){ const s0=showSelection; window.showSelect
 (function boot(n){ if(typeof S!=="undefined"&&S.rows&&S.rows.length&&S.geo&&online()){ load(true).then(()=>{ if(Object.keys(GF.items).length) refresh(); }).catch(e=>console.warn("gis:codefix",e)); return; }
   setTimeout(()=>boot(n+1),n<240?500:5000); })(0);
 window.SID_GISFIX={load,save,compare,check,applyFix,refresh,exportXls,openEdit,get state(){ return GF; }};
+})();
+</script>
+
+<style id="wsCss">
+/* ---- V137 Build workspace side bar ---- */
+#wsBar{--ws-w:340px;position:fixed;left:0;top:0;bottom:0;width:var(--ws-w);z-index:2147482600;display:none;flex-direction:column;
+  font:12px -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;color:#fff;background:rgba(24,24,27,.92);
+  -webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);border-right:1px solid rgba(255,255,255,.12);box-shadow:6px 0 24px rgba(0,0,0,.28)}
+body.ws-on #wsBar{display:flex}
+#wsBar button{font-family:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+#wsBar .ws-hd{display:flex;align-items:center;gap:8px;padding:10px 10px 8px 14px;border-bottom:1px solid rgba(255,255,255,.1);flex:none}
+#wsBar .ws-hd b{font-size:14px;letter-spacing:.01em}
+#wsBar .ws-hd small{display:block;font-size:10.5px;opacity:.6;font-weight:500}
+#wsBar .ws-ib{margin-left:auto;width:30px;height:30px;border:0;border-radius:9px;background:rgba(255,255,255,.1);color:#fff;cursor:pointer;display:grid;place-items:center;flex:none}
+#wsBar .ws-ib:hover{background:rgba(255,255,255,.18)}
+#wsBar .ws-ib svg,#wsBar .ws-ic svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#wsBar .ws-sc{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 8px 20px;overscroll-behavior:contain}
+#wsBar .ws-sec{border-radius:12px;margin:0 0 6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)}
+#wsBar .ws-sec.open{background:rgba(255,255,255,.06)}
+#wsBar .ws-sh{display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border:0;background:none;color:#fff;cursor:pointer;text-align:left;border-radius:12px}
+#wsBar .ws-sh:hover{background:rgba(255,255,255,.06)}
+#wsBar .ws-ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:rgba(210,58,85,.9);flex:none}
+#wsBar .ws-sh .tt{display:flex;flex-direction:column;min-width:0;flex:1}
+#wsBar .ws-sh .tt b{font-size:13px}
+#wsBar .ws-sh .tt span{font-size:10.5px;opacity:.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#wsBar .ws-sh .chev{opacity:.6;transition:transform .15s;font-size:11px}
+#wsBar .ws-sec.open .ws-sh .chev{transform:rotate(90deg)}
+#wsBar .ws-tb{display:none;align-items:center;gap:6px;padding:0 10px 6px;flex-wrap:wrap}
+#wsBar .ws-sec.open .ws-tb{display:flex}
+#wsBar .ws-pill{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;border-radius:99px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer}
+#wsBar .ws-pill.on{background:#fff;color:#9e1f35;border-color:#fff}
+#wsBar .ws-pill.go{background:linear-gradient(160deg,#d23a55,#9e1f35);border-color:transparent}
+#wsBar .ws-bd{display:none;padding:0 6px 8px}
+#wsBar .ws-sec.open .ws-bd{display:block}
+#wsBar .ws-empty{padding:8px 10px;font-size:11.5px;opacity:.7;line-height:1.45}
+/* the moved panels sit in the flow: no floating, no drag bar, no resize corner */
+#wsBar .ws-bd>*{position:static!important;inset:auto!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;transform:none!important;
+  width:auto!important;max-width:none!important;min-width:0!important;height:auto!important;max-height:none!important;margin:0 0 6px!important;box-shadow:none!important;animation:none!important;
+  background:transparent!important;border:0!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;pointer-events:auto!important;z-index:auto!important}
+#wsBar .ws-bd>[hidden]{display:none!important}
+#wsBar .sk-bar,#wsBar .sk-rs,#wsBar #plRules>.hd .x,#wsBar #plRX,#wsBar #tpMin,#wsBar #tpX{display:none!important}
+#wsBar #plRules>.hd{display:none!important}
+#wsBar #plRules{overflow:visible!important;padding:0!important}
+/* Draw: tools as a grid of tiles */
+#wsBar #plTools{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:0!important;flex-direction:row!important}
+#wsBar #plTools .sk-sep{display:none}
+#wsBar #plTools .sk-b{width:auto!important;height:54px!important;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:10px;background:rgba(255,255,255,.07)}
+#wsBar #plTools .sk-b span{display:block!important;font-size:10px;line-height:1.1;opacity:.85}
+#wsBar #plTools .sk-b.on{background:#fff;color:#9e1f35}
+#wsBar .ws-sec.cmp #plTools{grid-template-columns:repeat(6,minmax(0,1fr))}
+#wsBar .ws-sec.cmp #plTools .sk-b{height:38px!important}
+#wsBar .ws-sec.cmp #plTools .sk-b span{display:none!important}
+#wsBar #plOpt{display:flex!important;flex-wrap:wrap;gap:6px;padding:8px!important;border-radius:10px!important;background:rgba(255,255,255,.05)!important;align-items:center}
+#wsBar #plOpt:empty{display:none!important}
+#wsBar #plKpi{padding:4px!important;cursor:default}
+#wsBar #plPlans{padding:2px!important}
+/* Smart master plan: steps */
+#wsBar .ws-grp{border-top:1px solid rgba(255,255,255,.08)}
+#wsBar .ws-grp:first-child{border-top:0}
+#wsBar .ws-gh{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;color:#fff;padding:8px 4px;cursor:pointer;text-align:left;font-size:12px;font-weight:700}
+#wsBar .ws-gh i{font-style:normal;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:10.5px;flex:none}
+#wsBar .ws-gh .chev{margin-left:auto;opacity:.55;font-size:10px;transition:transform .15s}
+#wsBar .ws-grp.open .ws-gh .chev{transform:rotate(90deg)}
+#wsBar .ws-grp.open .ws-gh i{background:#d23a55}
+#wsBar .ws-gb{display:none;padding:0 2px 8px}
+#wsBar .ws-grp.open .ws-gb{display:block}
+#wsBar .ws-gb>.sec{display:none!important}
+/* Land Levels inside the bar */
+#wsBar #tpPanel{color:#fff;font-size:11.5px}
+#wsBar #tpPanel .tp-hd{padding:0 0 4px!important;cursor:default!important}
+#wsBar #tpPanel .tp-hd>b{display:none}
+/* folded: icon rail */
+#wsBar.mini{width:58px}
+#wsBar.mini .ws-hd b,#wsBar.mini .ws-hd small,#wsBar.mini .ws-sh .tt,#wsBar.mini .ws-sh .chev,#wsBar.mini .ws-tb,#wsBar.mini .ws-bd{display:none!important}
+#wsBar.mini .ws-hd{padding:10px 0;justify-content:center}#wsBar.mini .ws-hd .ws-ib{margin:0}
+#wsBar.mini .ws-sec{background:none;border:0;margin:0 0 4px}#wsBar.mini .ws-sh{justify-content:center;padding:6px 0}
+#wsBar.mini .ws-sec.open .ws-ic{box-shadow:0 0 0 2px #fff}
+#wsBar .ws-rz{position:absolute;top:0;right:-4px;width:8px;bottom:0;cursor:ew-resize}
+#wsBar.mini .ws-rz{display:none}
+/* the map and its floating bits move to the right of the bar */
+body.ws-on .sk-full{left:var(--ws-w,340px)!important;width:calc(100vw - var(--ws-w,340px))!important}
+body.ws-on #skUI{left:var(--ws-w,340px)!important}
+body.ws-on #plRB,body.ws-on #tpSkBtn{display:none!important}
+body.ws-on #tpSec{left:calc(var(--ws-w,340px) + 12px)!important}
+@media (max-width:760px){
+  #wsBar{top:auto;right:0;width:auto;height:min(56dvh,480px);border-right:0;border-top:1px solid rgba(255,255,255,.14);border-radius:16px 16px 0 0;box-shadow:0 -8px 24px rgba(0,0,0,.3)}
+  #wsBar.mini{height:auto;width:auto}
+  #wsBar.mini .ws-sc{display:flex;gap:6px;overflow-x:auto;padding:4px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+  #wsBar.mini .ws-hd{display:none}
+  #wsBar .ws-rz{display:none}
+  body.ws-on .sk-full{left:0!important;width:100vw!important}
+  body.ws-on #skUI{left:0!important}
+  body.ws-on #tpSec{left:8px!important}
+  body.ws-on #skUI .sk-top{max-width:calc(100vw - 16px)!important;overflow-x:auto!important;flex-wrap:nowrap!important;-webkit-overflow-scrolling:touch}
+}
+</style>
+
+<script id="wsJs">
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const KEY="sid.ws.v1";
+let ST={mini:false,open:{draw:1,plan:0,levels:0,kpi:1,files:0},cmp:{},w:340,grp:{}};
+try{ const o=JSON.parse(localStorage.getItem(KEY)||"null"); if(o&&typeof o==="object") ST=Object.assign(ST,o); }catch(e){}
+const save=()=>{ try{ localStorage.setItem(KEY,JSON.stringify(ST)); }catch(e){} };
+const I={
+  draw:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>',
+  plan:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12M15 9v6h6"/>',
+  levels:'<path d="M3 18l5-7 4 5 3-4 6 6z"/><path d="M3 21h18"/>',
+  kpi:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  files:'<path d="M4 5a2 2 0 0 1 2-2h5l2 3h5a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>',
+  fold:'<path d="M15 6l-6 6 6 6"/>', unfold:'<path d="M9 6l6 6-6 6"/>'};
+const svg=k=>`<svg viewBox="0 0 24 24" aria-hidden="true">${I[k]}</svg>`;
+const plan=()=>window.SID_PLAN||null, topo=()=>window.SID_TOPO||null;
+const TOOLN={select:"Select",hand:"Move",land:"Land",road:"Roads",plot:"Plots",build:"Build",green:"Green",street:"Street",eraser:"Eraser"};
+const SECS=[
+  {id:"draw",t:"Draw",ic:"draw",panels:["plTools","plOpt"],sub:()=>{ const p=plan(); const t=p&&p.tool&&p.tool(); return "Tool: "+(TOOLN[t]||t||"—")+" · land, roads, plots, buildings, green, street"; },
+   tb:()=>`<button type="button" class="ws-pill${ST.cmp.draw?" on":""}" data-cmp="draw" title="Show the tools as small icons">Icons only</button>`},
+  {id:"plan",t:"Smart master plan",ic:"plan",panels:["plRules"],sub:()=>"Brief → site → zoning → fit → options → outputs",
+   on:()=>!!(window.__plRulesOn&&__plRulesOn()), set:v=>{ if(window.__plRulesSet) __plRulesSet(v); },
+   tb:()=>`<button type="button" class="ws-pill go" data-ws="mk" title="Make the master plan on the land">Make the master plan</button><button type="button" class="ws-pill" data-ws="steps1" title="Open every step">Open all</button><button type="button" class="ws-pill" data-ws="steps0" title="Close every step">Close all</button>`},
+  {id:"levels",t:"Land Levels",ic:"levels",panels:["tpPanel"],sub:()=>{ const t=topo(); return t&&t.on?"On · heights, contours, slope, sections":"Off · open to switch on"; },
+   on:()=>{ const t=topo(); return !!(t&&t.on); }, set:v=>{ const t=topo(); if(t&&t.setOn) t.setOn(v); },
+   tb:()=>{ const t=topo(); return `<button type="button" class="ws-pill${t&&t.on?" on":""}" data-ws="lvon">${t&&t.on?"On":"Off"}</button>`; }},
+  {id:"kpi",t:"Plan numbers",ic:"kpi",panels:["plKpi"],sub:()=>"Areas, plots, shares of the land"},
+  {id:"files",t:"Drawings",ic:"files",panels:["plPlans"],sub:()=>"Open, save, share your drawings"}];
+let bar=null, mo=null, rmo=null;
+function build(){ if(bar) return bar; bar=document.createElement("div"); bar.id="wsBar"; bar.setAttribute("role","complementary"); bar.setAttribute("aria-label","Build workspace");
+  bar.innerHTML=`<div class="ws-hd"><div><b>Build workspace</b><small>Every tool in one place</small></div><button type="button" class="ws-ib" id="wsFold" title="Fold the side bar">${svg("fold")}</button></div>
+   <div class="ws-sc">${SECS.map(S=>`<div class="ws-sec" data-s="${S.id}"><button type="button" class="ws-sh" aria-expanded="false" title="${esc(S.t)}"><span class="ws-ic">${svg(S.ic)}</span><span class="tt"><b>${esc(S.t)}</b><span class="ws-sub"></span></span><span class="chev">▶</span></button><div class="ws-tb"></div><div class="ws-bd"></div></div>`).join("")}</div><div class="ws-rz" title="Drag to make the bar wider or narrower"></div>`;
+  document.body.appendChild(bar);
+  bar.querySelector("#wsFold").onclick=()=>{ ST.mini=!ST.mini; save(); paint(); relayout(); };
+  bar.querySelectorAll(".ws-sec").forEach(el=>{ const id=el.dataset.s, S=SECS.find(x=>x.id===id);
+    el.querySelector(".ws-sh").onclick=()=>{ if(ST.mini){ ST.mini=false; ST.open[id]=1; if(S.set&&S.on&&!S.on()) S.set(true); save(); paint(); relayout(); setTimeout(()=>el.scrollIntoView({block:"nearest"}),60); return; }
+      const open=!el.classList.contains("open"); ST.open[id]=open?1:0; save(); if(S.set&&id==="plan") S.set(open); if(id==="levels"&&open&&S.on&&!S.on()) S.set(true); paint(); }; });
+  bar.addEventListener("click",e=>{ const b=e.target.closest("[data-cmp],[data-ws],[data-g]"); if(!b||!bar.contains(b)) return;
+    if(b.dataset.cmp){ ST.cmp[b.dataset.cmp]=!ST.cmp[b.dataset.cmp]; save(); paint(); return; }
+    if(b.dataset.g!=null){ const k=b.dataset.g; ST.grp[k]=ST.grp[k]?0:1; save(); const g=b.closest(".ws-grp"); if(g) g.classList.toggle("open",!!ST.grp[k]); return; }
+    const a=b.dataset.ws;
+    if(a==="lvon"){ const S=SECS.find(x=>x.id==="levels"); S.set(!S.on()); setTimeout(paint,300); }
+    if(a==="steps1"||a==="steps0"){ bar.querySelectorAll("#plRules .ws-grp").forEach(g=>{ g.classList.toggle("open",a==="steps1"); ST.grp[g.dataset.k]=a==="steps1"?1:0; }); save(); }
+    if(a==="mk"){ const p=plan(); if(!p) return; p.setTool("plot"); setTimeout(()=>{ const sb=$('#plOpt button[data-o="psub"][data-v="master"]'); if(sb&&!sb.classList.contains("on")) sb.click(); setTimeout(()=>{ const m=$("#plMk"); if(m) m.click(); else if(p._t&&p._t.masterAsk) p._t.masterAsk(); },120); },80); } });
+  /* drag the right edge to change the width */
+  const rz=bar.querySelector(".ws-rz"); let d=null;
+  rz.addEventListener("pointerdown",e=>{ d={x:e.clientX,w:ST.w}; try{ rz.setPointerCapture(e.pointerId); }catch(_){} e.preventDefault(); });
+  rz.addEventListener("pointermove",e=>{ if(!d) return; ST.w=Math.max(280,Math.min(560,d.w+e.clientX-d.x)); width(); });
+  const up=()=>{ if(!d) return; d=null; save(); relayout(); }; rz.addEventListener("pointerup",up); rz.addEventListener("pointercancel",up);
+  return bar; }
+function width(){ const w=ST.mini?58:ST.w; if(bar) bar.style.setProperty("--ws-w",w+"px"); document.body.style.setProperty("--ws-w",w+"px"); }
+function relayout(){ width(); try{ if(typeof map!=="undefined"&&map&&map.resize) requestAnimationFrame(()=>map.resize()); }catch(e){} }
+/* the Park rules panel is one long list: fold it into numbered steps that open one by one */
+function stepify(){ const r=$("#plRules"); if(!r||!r.closest("#wsBar")) return; if(rmo) rmo.disconnect();
+  try{ const kids=[...r.children].filter(c=>!c.classList.contains("ws-grp")&&!c.classList.contains("sk-bar")&&!c.classList.contains("sk-rs")&&!c.classList.contains("hd"));
+    if(kids.length){ const old=[...r.querySelectorAll(":scope>.ws-grp")]; const groups=[]; let cur=null;
+      const start=(title)=>{ cur={title,nodes:[]}; groups.push(cur); };
+      kids.forEach(c=>{ if(c.classList.contains("sec")){ const t=(c.childNodes[0]&&c.childNodes[0].textContent||c.textContent||"").trim(); start(t||"Step"); cur.nodes.push(c); return; }
+        if(c.matches("details.rb")){ start("Rule book"); cur.nodes.push(c); return; }
+        if(!cur) start("Profile"); cur.nodes.push(c); });
+      old.forEach(g=>g.remove());
+      groups.forEach((g,i)=>{ const k=g.title.split(/\s+/).slice(0,2).join(" "); if(ST.grp[k]==null) ST.grp[k]=i<2?1:0;
+        const w=document.createElement("div"); w.className="ws-grp"+(ST.grp[k]?" open":""); w.dataset.k=k;
+        w.innerHTML=`<button type="button" class="ws-gh" data-g="${esc(k)}"><i>${i+1}</i>${esc(g.title)}<span class="chev">▶</span></button><div class="ws-gb"></div>`;
+        const gb=w.lastElementChild; g.nodes.forEach(n=>gb.appendChild(n)); r.appendChild(w); }); }
+  }catch(e){ console.error("workspace steps",e); }
+  if(!rmo) rmo=new MutationObserver(()=>stepify()); rmo.observe(r,{childList:true}); }
+function home(id){ const el=document.getElementById(id); if(!el) return null; return el; }
+/* move the builder panels into their sections (or back out when the bar is not shown) */
+function mount(){ const on=document.body.classList.contains("sk-on")&&document.body.classList.contains("sk-build")&&!!plan()&&plan().on;
+  document.body.classList.toggle("ws-on",on);
+  if(!on){ const tp=$("#tpPanel"); if(tp&&tp.closest("#wsBar")) document.body.appendChild(tp); relayout(); return; }
+  build(); width();
+  SECS.forEach(S=>{ const bd=bar.querySelector(`.ws-sec[data-s="${S.id}"] .ws-bd`); S.panels.forEach(pid=>{ const el=home(pid); if(el&&el.parentNode!==bd){ el.classList.remove("sk-min"); bd.appendChild(el); } }); });
+  stepify(); paint(); relayout(); }
+function paint(){ if(!bar) return; bar.classList.toggle("mini",!!ST.mini); const fb=bar.querySelector("#wsFold"); fb.innerHTML=svg(ST.mini?"unfold":"fold"); fb.title=ST.mini?"Open the side bar":"Fold the side bar";
+  SECS.forEach(S=>{ const el=bar.querySelector(`.ws-sec[data-s="${S.id}"]`); let open=!!ST.open[S.id];
+    if(S.id==="plan"&&S.on) open=S.on();
+    if(S.id==="levels"&&S.on&&!S.on()) open=false;
+    el.classList.toggle("open",open); el.classList.toggle("cmp",!!ST.cmp[S.id]); el.querySelector(".ws-sh").setAttribute("aria-expanded",open);
+    el.querySelector(".ws-sub").textContent=S.sub?S.sub():""; el.querySelector(".ws-tb").innerHTML=S.tb?S.tb():"";
+    const bd=el.querySelector(".ws-bd"); let em=bd.querySelector(".ws-empty"); const has=[...bd.children].some(c=>!c.classList.contains("ws-empty")&&!c.hidden);
+    if(!has&&open){ if(!em){ em=document.createElement("div"); em.className="ws-empty"; bd.appendChild(em); } em.textContent=S.id==="levels"?"Land Levels is off — press On.":"Nothing to show yet."; } else if(em) em.remove(); }); }
+/* keep everything in step: mode changes, the planner rebuilding its panels, Land Levels opening late */
+let t=0; const soon=()=>{ cancelAnimationFrame(t); t=requestAnimationFrame(mount); };
+new MutationObserver(soon).observe(document.body,{attributes:true,attributeFilter:["class"],childList:true});
+document.addEventListener("click",e=>{ if(e.target.closest&&e.target.closest("#plTools [data-pt],#plOpt button,#tpPanel,#plRB,#tpSkBtn,.sk-top [data-mode]")) setTimeout(paint,120); },true);
+window.SID_WS={mount,paint,stepify,get state(){ return ST; },get bar(){ return bar; }};
 })();
 </script>
 </body>
