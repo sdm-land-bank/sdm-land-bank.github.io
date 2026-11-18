@@ -23576,13 +23576,19 @@ function polygonize(segs,orph,maxSegs,snapTol){
   if(S.length>(maxSegs||60000)) S=S.slice(0,maxSegs||60000);
   const q=v=>Math.round(v*50)/50;                       // 2 cm snap
   S=S.map(s=>[q(s[0]),q(s[1]),q(s[2]),q(s[3])]).filter(s=>s[0]!==s[2]||s[1]!==s[3]);
+  /* V137.4: the same line drawn twice (New Sadat REV05: the M1-1 / M1-2 divider) counted as two lines at each end, so its 3 mm gap to the
+     block edge was never bridged and the divider was dropped as a dead end - M1-1 and M1-2 came out as one plot. Keep one copy of each line. */
+  { const seen=new Set(); S=S.filter(s=>{ const a=s[0]+","+s[1], b=s[2]+","+s[3], k=a<b?a+"|"+b:b+"|"+a; if(seen.has(k)) return false; seen.add(k); return true; }); }
   /* plot dividers often stop a few cm short of the block edge (New Sadat REV05: 1 cm – 60 cm): join each loose end to the nearest line with a short connector (lines are never moved, so the order does not matter) */
   { const tol=snapTol||.6, ek=(x,y)=>x+"|"+y, cnt=new Map(); S.forEach(s=>{ [ek(s[0],s[1]),ek(s[2],s[3])].forEach(k=>cnt.set(k,(cnt.get(k)||0)+1)); });
     const c2=Math.max(tol*4,5), H=new Map(); S.forEach((s,i)=>{ for(let x=Math.floor(Math.min(s[0],s[2])/c2);x<=Math.floor(Math.max(s[0],s[2])/c2);x++) for(let y=Math.floor(Math.min(s[1],s[3])/c2);y<=Math.floor(Math.max(s[1],s[3])/c2);y++){ if((Math.floor(Math.max(s[0],s[2])/c2)-Math.floor(Math.min(s[0],s[2])/c2)+1)*(Math.floor(Math.max(s[1],s[3])/c2)-Math.floor(Math.min(s[1],s[3])/c2)+1)>20000) return; const k=x+","+y; if(!H.has(k)) H.set(k,[]); H.get(k).push(i); } });
-    const bridges=[]; S.forEach((s,i)=>{ [0,2].forEach(o=>{ const px=s[o],py=s[o+1]; if(cnt.get(ek(px,py))!==1) return; let best=null,bd=tol;
+    /* V137.4: a corner that is already joined can still stop a few cm short of the next line (New Sadat REV05: the 10 m passage between
+       P1-4 and P1-5 is its own closed rectangle ending 4 cm before the block edge, so the two plots met around its end). Every point within
+       8 cm of another line is joined to it; loose ends keep the larger allowance and may also be carried on. */
+    const bridges=[]; S.forEach((s,i)=>{ [0,2].forEach(o=>{ const px=s[o],py=s[o+1]; const loose=cnt.get(ek(px,py))===1; let best=null,bd=loose?tol:Math.min(tol,.08);
       [-1,0,1].flatMap(ax=>[-1,0,1].map(ay=>H.get((Math.floor(px/c2)+ax)+","+(Math.floor(py/c2)+ay)))).filter(Boolean).flat().forEach(j=>{ if(j===i) return; const t=S[j], dx=t[2]-t[0], dy=t[3]-t[1], L=dx*dx+dy*dy; if(!L) return; let u=((px-t[0])*dx+(py-t[1])*dy)/L; u=Math.max(0,Math.min(1,u));
         const qx=t[0]+u*dx, qy=t[1]+u*dy, d=Math.hypot(px-qx,py-qy); if(d>1e-9&&d<bd){ bd=d; best=[qx,qy]; } });
-      if(!best){ // or carry the line on in its own direction (up to 3 m) until it meets another line
+      if(!best&&loose){ // or carry the line on in its own direction (up to 3 m) until it meets another line
         const ox=o?s[0]:s[2], oy=o?s[1]:s[3], L0=Math.hypot(px-ox,py-oy); if(L0>0){ const ux=(px-ox)/L0, uy=(py-oy)/L0, ext=Math.min(3*tol/.6,L0*.5), fx=px+ux*ext, fy=py+uy*ext; let bt=1e9;
           const cells=new Set(); for(let k=0;k<=4;k++){ const x=px+ux*ext*k/4, y=py+uy*ext*k/4; cells.add(Math.floor(x/c2)+","+Math.floor(y/c2)); }
           cells.forEach(ck=>(H.get(ck)||[]).forEach(j=>{ if(j===i) return; const t=S[j], d=(fx-px)*(t[3]-t[1])-(fy-py)*(t[2]-t[0]); if(Math.abs(d)<1e-12) return;
@@ -23693,7 +23699,16 @@ async function prepare(R,near,opts){ opts=opts||{}; if(!R._orig) R._orig={items:
         for(const gap of [3,8,25]){ let faces; try{ faces=polygonize(segs,[t],0,gap*us); }catch(e){ break; }
           faces.map(r=>({r,A:area(r),b:bb(r)})).filter(f=>f.A>=PLOT_MIN&&f.A<=PLOT_MAX&&inR([t.x,t.y],f.r)&&!R.texts.some(o=>o!==t&&o.isCode&&o.x>=f.b[0]&&o.x<=f.b[2]&&o.y>=f.b[1]&&o.y<=f.b[3]&&inR([o.x,o.y],f.r))).forEach(f=>{ const dev=exp?Math.abs(f.A-exp)/exp:f.A; if(!best||dev<best.dev) best={f,dev,gap}; }); }
         if(best&&(!exp||best.dev<=.5)) rescued.push({rings:[best.f.r],layer:"(built from lines)",code:"",props:{},fromLines:true,rescued:t.t,gap:best.gap}); });
-      if(rescued.length){ R.items.push(...rescued); const left2=assign(R.items,R.texts); rep.rescued=rescued.filter(x=>x.code||left2.every(t=>t.t!==x.rescued)).map(x=>x.rescued+" ("+x.gap+" m gap closed)"); R.items=R.items.filter(it=>!it.fromLines||it.code||it.shared); orph=left2.filter(t=>!sh.has(nk(t.t))); } } }
+      if(rescued.length){ R.items.push(...rescued); const left2=assign(R.items,R.texts); rep.rescued=rescued.filter(x=>x.code||left2.every(t=>t.t!==x.rescued)).map(x=>x.rescued+" ("+x.gap+" m gap closed)"); R.items=R.items.filter(it=>!it.fromLines||it.code||it.shared); orph=left2.filter(t=>!sh.has(nk(t.t))); }
+      /* V137.4: a plot built from lines whose area is far from the expected one (Excel area table, else the MDS register) is traced again
+         with the gap steps; the outline closest to the expected area that holds this number and no other wins (New Sadat REV05: O1-1 at a
+         road mouth took part of the road) */
+      if(opts.areas){ rep.refit=[]; R.items.filter(it=>it.fromLines&&it.code).forEach(it=>{ const exp=opts.areas[nk(it.code)]; if(!exp) return; const dev0=Math.abs(it.a-exp)/exp; if(dev0<=.25) return;
+          const t=R.texts.find(o=>o.isCode&&nk(o.t)===nk(it.code)&&inR([o.x,o.y],it.rings[0])); if(!t) return; const Wd=Math.max(160,Math.sqrt(exp)*2)*us;
+          const segs=all.filter(s=>(Math.abs(s[0]-t.x)<Wd||Math.abs(s[2]-t.x)<Wd)&&(Math.abs(s[1]-t.y)<Wd||Math.abs(s[3]-t.y)<Wd)); if(!segs.length) return; let best=null;
+          for(const gap of [.6,3,8,25]){ let faces; try{ faces=polygonize(segs,[t],0,gap*us); }catch(e){ break; }
+            faces.map(r=>({r,A:area(r),b:bb(r)})).filter(f=>f.A>=PLOT_MIN&&f.A<=PLOT_MAX&&inR([t.x,t.y],f.r)&&!R.texts.some(o=>o!==t&&o.isCode&&o.x>=f.b[0]&&o.x<=f.b[2]&&o.y>=f.b[1]&&o.y<=f.b[3]&&inR([o.x,o.y],f.r))).forEach(f=>{ const dev=Math.abs(f.A-exp)/exp; if(!best||dev<best.dev) best={f,dev,gap}; }); }
+          if(best&&best.dev<dev0-.05){ rep.refit.push(it.code+" "+Math.round(it.a)+" → "+Math.round(best.f.A)+" m² (expected "+Math.round(exp)+")"); it.rings=[best.f.r]; it.a=best.f.A; it.b=best.f.b; it.c=cen(best.f.r); } }); } } }
   // drop exact duplicates (same place, same size)
   const seen=new Map(); R.items=R.items.filter(it=>{ const k=Math.round(it.c[0])+","+Math.round(it.c[1])+","+Math.round(it.a/10); if(seen.has(k)){ const o=seen.get(k); if(!o.code&&it.code){ o.code=it.code; } return false; } seen.set(k,it); return true; });
   R.items.forEach(it=>{ const o=rep.byLayer[it.layer]||(rep.byLayer[it.layer]={n:0,coded:0,plotSized:0}); o.n++; if(it.a>=PLOT_MIN&&it.a<=PLOT_MAX) o.plotSized++; if(it.code) o.coded++; });
@@ -23966,6 +23981,18 @@ function changeCheck(plan){ const old=liveFeats(plan.park).map(f=>{ const r=oute
   freeO.filter(o=>!usedO.has(o)).forEach(o=>{ const parts=freeN.filter(n=>!usedN.has(n)&&G.inRing(n.c,o.r)); if(parts.length>=2){ parts.forEach(n=>usedN.add(n)); usedO.add(o); res.split.push(`${o.u||"?"} → ${parts.map(n=>n.u||"?").join(" + ")}`); G_("split",`${o.u||"?"} → ${parts.map(n=>n.u||"?").join(" + ")}`,o.r); } });
   freeN.filter(n=>!usedN.has(n)).forEach(n=>{ res.added.push(n.u||"unnumbered"); G_("added",n.u||"unnumbered",n.r); }); freeO.filter(o=>!usedO.has(o)).forEach(o=>{ res.removed.push(o.u||"unnumbered"); G_("removed",o.u||"unnumbered",o.r); });
   return res; }
+/* V137.4: the change check in plain words - what each kind of change means and what to do (shown before saving the draft) */
+const CH_WHY=[["merged","#E5484D","Joined into one plot","Two or more of today's plots fall inside one outline of the new drawing. Usually the line between them is missing in the drawing (or drawn so it was not read). Split it on the test map or fix the drawing — joined plots lose their own MDS rows."],
+  ["removed","#E5484D","On today's map, not in the new drawing","These plots disappear when the plan is published. If one is sold or reserved it must stay: agree with Sales Operation first."],
+  ["split","#FFB224","Split into several plots","One plot of today's map is now several: the drawing has new dividing lines. Each new plot needs its own MDS row."],
+  ["renamed","#FFB224","Same place and size, new number","Check which number is right — the MDS register links plots by their number."],
+  ["resized","#FFB224","Same number, area changed (> 2 %)","Compare with the MDS area. A sold plot that changes size needs Sales Operation and Finance to agree."],
+  ["moved","#0091FF","Same number, moved more than 5 m","The drawing may sit differently on the ground (coordinate system or survey points). Check on the test map before publishing."],
+  ["added","#30A46C","New numbers","Numbers not on today's map: new plots (they need MDS rows) or numbers written differently in the drawing."]];
+function chHtml(ch,plan){ if(!ch) return `<div class="mp-sec"><h4>What will change on the map</h4><p class="mp-n">This project has no plots on today's map yet: every plot in the drawing is new.</p></div>`;
+  const tot=CH_WHY.reduce((t,[k])=>t+(ch[k]||[]).length,0), sh=(plan.plots||[]).filter(p=>!p.u&&p.j);
+  return `<div class="mp-sec"><h4>What will change on the map</h4><p class="mp-n"><b>${fmt(ch.same)}</b> plots stay as they are · <b>${tot}</b> change${sh.length?` · <b style="color:#E5484D">${sh.length}</b> outlines hold two numbers (${sh.slice(0,4).map(p=>esc(p.j)).join(", ")}${sh.length>4?" …":""}): the line between them is missing in the drawing`:""}. The test map (next step) shows each change in its colour.</p>
+    ${CH_WHY.filter(([k])=>(ch[k]||[]).length).map(([k,c,t,w])=>`<details class="mp-is"${["merged","removed"].includes(k)?" open":""}><summary><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${c};margin-right:6px"></i>${t} <b>${ch[k].length}</b></summary><p class="mp-n" style="margin:4px 0 6px">${w}</p><div class="mp-chips">${ch[k].slice(0,200).map(x=>`<span>${esc(x)}</span>`).join("")}</div></details>`).join("")}</div>`; }
 /* what the MDS link would look like: swap the project's plots in, re-link, read, put the live plots back */
 function linkStats(park){ const L=S.link&&S.link.parks[park]; if(!L) return {rows:0,plots:0,linked:0,rowsNo:[],plotsNo:[],smart:[],sale:[],size:0};
   let size=0; S.plots.forEach(x=>{ if(x.park===park&&x.row&&x.how==="exact"&&x.rows.length===1&&x.props.gis&&x.row.area&&Math.abs(x.props.gis-x.row.area)/x.row.area>.1) size++; });
@@ -24126,7 +24153,10 @@ function wizShell(){ const W=MP.wiz; return `<div class="mpd-h"><b>${W.newPark?"
   <div class="mpd-b" id="mpwB"></div><div class="mpd-f"><span class="mp-n" id="mpwMsg"></span><button class="ebtn" id="mpwBack" ${W.step?"":"hidden"}>Back</button><button class="ebtn pri" id="mpwNext">Next</button></div>`; }
 function openWizard(park,isNew){ if(!canUpload()){ toast("Only Development or an administrator can upload a master plan",true); return; }
   MP.wiz={step:0,park:park||"",newPark:isNew?{name:"",where:"",aliases:[]}:null,file:null,R:null,SC:null,sched:null,pdf:null,roles:null,crs:null,plan:null}; const d=modal(wizShell(),"mp-wiz"); renderStep(); }
-function schedAreas(W){ const o={}; if(W.SC) W.SC.schedule.plots.forEach(p=>{ if(p.code&&p.area) o[String(p.code).trim().toUpperCase().replace(/\s+/g,"")]=p.area; }); return o; }
+function schedAreas(W){ const o={}; if(W.SC) W.SC.schedule.plots.forEach(p=>{ if(p.code&&p.area) o[String(p.code).trim().toUpperCase().replace(/\s+/g,"")]=p.area; });
+  /* V137.4: no area table uploaded - the MDS register areas of this project are the expected areas */
+  if(!Object.keys(o).length&&W.park){ try{ S.rows.filter(r=>r.park===W.park&&!r.dup&&r.unit&&r.area).forEach(r=>{ o[String(r.unit).trim().toUpperCase().replace(/\s+/g,"")]=+r.area; }); }catch(e){} }
+  return o; }
 async function autoRead(W){ const near=nearOf(W.park); if(!W.crs){ try{ W.crs=await SID_MPR.guessCrs(W.R,near); }catch(e){ W.crs="wgs"; } } await SID_MPR.toLonLat(W.R,W.crs); if(!W.roles) W.roles=guessRoles(W.R);
   const plan=buildPlan(W.R,W.roles,W.park,W.file.name); if(W.SC) attachSched(plan,W.SC); W.plan=plan; if(!plan.plots.length) throw new Error("no plots were found — open “Advanced” to choose the layers"); }
 function setMsg(t,bad){ const m=document.getElementById("mpwMsg"); if(m){ m.textContent=t||""; m.classList.toggle("bad",!!bad); } }
@@ -24205,7 +24235,7 @@ async function renderStep(){ const W=MP.wiz; const dlg=document.querySelector(".
     await new Promise(r=>setTimeout(r,30)); const ch=liveFeats(W.park).length?changeCheck(plan):null; W.ch=ch;
     if(!W.reg){ try{ W.reg=SID_MPREG.build(W.park,plan,W.SC&&W.SC.schedule,liveFeats(W.park)); }catch(e){ console.error("register wizard",e); W.reg=null; } }
     const L=(t,a)=>a&&a.length?`<details class="mp-is"><summary>${t} <b>${a.length}</b></summary><div class="mp-chips">${a.slice(0,300).map(x=>`<span>${esc(x)}</span>`).join("")}</div></details>`:"";
-    B.innerHTML=`<div class="mp-sec"><h4>MDS register</h4><div id="mpReg">${W.reg?"":'<div class="mp-warn">The register comparison could not run — the plan can still be saved; fix the register by hand after publishing.</div>'}</div></div>
+    B.innerHTML=chHtml(ch,plan)+`<div class="mp-sec"><h4>MDS register</h4><div id="mpReg">${W.reg?"":'<div class="mp-warn">The register comparison could not run — the plan can still be saved; fix the register by hand after publishing.</div>'}</div></div>
       <div class="mp-sec" id="mpSim"></div>`;
     const simBox=B.querySelector("#mpSim"); let tmr=null;
     const sim=()=>{ clearTimeout(tmr); tmr=setTimeout(()=>{ try{ const O=W.reg?SID_MPREG.ops(W.reg):[]; const r=simulate(W.park,planFeatures(plan),O); W.sim=r;
@@ -24465,6 +24495,48 @@ async function signUnclear(park,dept,ids){ if(!canWrite()) throw new Error("your
 function light(park,dept,n){ const s=C.sign[park]&&C.sign[park][dept]; if(!s) return {cls:n?"red":"grey",txt:n?n+" open":"not checked"};
   return s.sig===sig(park,dept)?{cls:"green",txt:"signed "+day(s.at)}:{cls:"amber",txt:"changed since sign-off"}; }
 
+
+/* ---------- V137.4 Fix assistant (Development): pairs "MDS row not drawn" with the drawn plot that is most likely it, swapped codes and
+   smart links, each with its reason; one click gives the plot its GIS code (sid_kv gis:codefix, the V135 correction - the drawing is not touched) ---------- */
+const nk=c=>String(c==null?"":c).toUpperCase().replace(/\s+/g,"");
+const blockOf=c=>{ const m=nk(c).match(/^(.*?)[-\/_.]?\d+$/); return m&&m[1]?m[1].replace(/[-\/_.]$/,""):""; };
+const looseKey=c=>nk(c).replace(/[-\/_.]/g,"").replace(/(\D)0+(\d)/g,"$1$2");
+const meters=(a,b)=>{ if(!a||!b) return 1e9; const k=111320*Math.cos(((a[1]+b[1])/2)*Math.PI/180); return Math.hypot((a[0]-b[0])*k,(a[1]-b[1])*110574); };
+const gfOk=()=>{ try{ return !!(window.SID_GISFIX&&window.SID_MPC&&SID_MPC.isDev()&&canWrite()&&online()); }catch(e){ return false; } };
+function suggest(park,I){ const out=[], mine=I.filter(i=>i.dept==="dev"&&!i.acc&&(park==="all"||i.park===park));
+  const rows=mine.filter(i=>i.rule==="notDrawn"&&i.row).map(i=>i.row), plots=mine.filter(i=>i.rule==="noRow"&&i.plot).map(i=>i.plot);
+  const feats=S.geo.features.map(f=>f.properties), byPark={}; feats.forEach(p=>{ (byPark[p.park]=byPark[p.park]||[]).push(p); });
+  const cand=[];
+  rows.forEach(r=>{ const bl=blockOf(r.unit), sib=(byPark[r.park]||[]).filter(p=>p.unit&&bl&&blockOf(p.unit)===bl);
+    plots.filter(p=>p.park===r.park).forEach(p=>{ const d=r.area&&p.gis?Math.abs(p.gis-r.area)/r.area:1, same=p.unit&&looseKey(p.unit)===looseKey(r.unit);
+      let ds=1e9, nb=null; sib.forEach(q=>{ const m=meters(q.c,p.c); if(m<ds){ ds=m; nb=q.unit; } });
+      const sc=(d<=.03?3:d<=.08?2:d<=.15?1:0)+(ds<=120?2:ds<=300?1:0)+(same?3:0); if(sc<3) return;
+      const why=[same?`the drawing writes it “${p.unit}”`:"", r.area&&p.gis?`area ${fInt(p.gis)} vs MDS ${fInt(r.area)} sqm (${d<.005?"same":(p.gis>r.area?"+":"−")+(d*100).toFixed(1)+"%"})`:"", nb&&ds<1e8?`${Math.round(ds)} m from ${nb} in the same block`:""].filter(Boolean).join(" · ");
+      cand.push({t:"pair",park:r.park,k:p.k,from:p.unit||"",to:r.unit,sc,d,why,sure:sc>=5&&d<=.08,row:r}); }); });
+  cand.sort((a,b)=>b.sc-a.sc||a.d-b.d); const uk=new Set(), ur=new Set(); cand.forEach(c=>{ if(uk.has(c.k)||ur.has(c.to)) return; uk.add(c.k); ur.add(c.to); out.push(c); });
+  /* swapped codes in a block: each plot's area is the other row's area */
+  const sw=mine.filter(i=>i.rule==="swap"&&i.row).map(i=>i.row), used=new Set();
+  sw.forEach(a=>{ if(used.has(a)) return; const pa=a._plots&&a._plots.length===1&&S.plots.get(a._plots[0]); if(!pa) return;
+    sw.forEach(b=>{ if(b===a||used.has(a)||used.has(b)||b.park!==a.park) return; const pb=b._plots&&b._plots.length===1&&S.plots.get(b._plots[0]); if(!pb) return;
+      const g1=pa.props.gis, g2=pb.props.gis; if(!(g1&&g2&&a.area&&b.area)) return; if(Math.abs(g1-b.area)/b.area<=.03&&Math.abs(g2-a.area)/a.area<=.03){ used.add(a); used.add(b);
+        out.push({t:"swap",park:a.park,list:[{k:pa.props.k,to:b.unit},{k:pb.props.k,to:a.unit}],from:a.unit+" ↔ "+b.unit,to:"",sure:true,sc:9,why:`${a.unit} is drawn ${fInt(g1)} sqm (MDS ${fInt(a.area)}), ${b.unit} is drawn ${fInt(g2)} sqm (MDS ${fInt(b.area)}): the two numbers are swapped on the drawing`}); } }); });
+  /* linked only by the smart check: the plot takes the MDS code */
+  mine.filter(i=>i.rule==="smart"&&i.row&&i.row._plots&&i.row._plots.length===1).forEach(i=>{ const x=S.plots.get(i.row._plots[0]); if(!x) return; const p=x.props;
+    out.push({t:"smart",park:i.park,k:p.k,from:p.unit||"",to:i.row.unit,sure:!!(p.gis&&i.row.area&&Math.abs(p.gis-i.row.area)/i.row.area<=.03),sc:5,why:`linked only by the smart check (${(i.row._ml&&i.row._ml.why)||"same area"})`}); });
+  /* whole blocks where the register still holds an older layout than the map: one explanation instead of many separate issues */
+  const nd={}; mine.filter(i=>i.rule==="notDrawn"&&i.row).forEach(i=>{ const bl=blockOf(i.row.unit); if(!bl||out.some(x=>x.to===i.row.unit)) return; const k=i.park+"|"+bl; (nd[k]=nd[k]||[]).push(i.row); });
+  Object.entries(nd).forEach(([k,L])=>{ if(L.length<2) return; const [park,bl]=k.split("|"); const drawn=(byPark[park]||[]).filter(p=>p.unit&&blockOf(p.unit)===bl), mds=S.rows.filter(r=>!r.dup&&r.park===park&&blockOf(r.unit)===bl);
+    const avgD=drawn.length?drawn.reduce((t,p)=>t+(p.gis||0),0)/drawn.length:0, avgM=mds.length?mds.reduce((t,r)=>t+(+r.area||0),0)/mds.length:0;
+    out.push({t:"block",park,from:bl,to:"",sure:false,sc:0,n:L.length,none:!drawn.length,why:drawn.length?`MDS has ${mds.length} plots in ${bl}, the map has ${drawn.length}${avgD&&avgM?` (about ${fInt(avgD)} sqm each on the map vs ${fInt(avgM)} in the MDS)`:""}: the register still has the older layout of this block. ${L.length} rows (${L.slice(0,4).map(r=>r.unit).join(", ")}${L.length>4?" …":""}) are cleared by updating the register from the new master plan in the Master Plan Center (register step), not one by one.`:`MDS has ${mds.length} plots in ${bl}, the map has none: block ${bl} is not drawn in the survey. Upload the drawing that has it in the Master Plan Center, or mark the rows "not an issue" if ${bl} is planned for later.`}); });
+  return out; }
+function assistHtml(d,I){ if(d!=="dev") return ""; const L=suggest(C.park,I); C.sug=L; if(!L.length) return "";
+  const sure=L.filter(x=>x.sure), ok=gfOk();
+  return `<details class="ck-g ck-as" open><summary style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px"><span class="ck-sev s1"></span><span>Fix assistant — <b>${L.filter(x=>x.t!=="block").length}</b> suggested fixes, ${sure.length} sure${L.some(x=>x.t==="block")?` · ${L.filter(x=>x.t==="block").length} blocks need the register update`:""}</span>${ok&&sure.length?` <button class="ebtn" data-asall="1" title="Give these plots their MDS codes in one go (you can undo each on its plot card)">Apply the ${sure.length} sure fixes</button>`:""}</summary>
+   <p class="ck-n">Each line gives a drawn plot the code the MDS register uses, so the plot and the row link. Only the GIS code on our map changes (the drawing file is not touched); every change is logged and can be undone on the plot card.${ok?"":" Only Development or an administrator can apply them."}</p>
+   <div class="ck-list">${L.slice(0,300).map((x,i)=>`<div class="ck-it" data-as="${i}"><span class="ck-pk">${esc(pname(x.park))}${x.sure?' · <b style="color:#30A46C">sure</b>':""}</span><span class="ck-tx"><b>${x.t==="swap"?"Swap "+esc(x.from):x.t==="block"?(x.none?`Block ${esc(x.from)} — ${x.n} rows: block not drawn on the map`:`Block ${esc(x.from)} — ${x.n} rows: register holds the old layout`):`${esc(x.from||"Unnumbered plot")} → ${esc(x.to)}`}</b><br><small>${esc(x.why)}</small></span><span class="ck-b">${x.t==="block"?`<button data-a="asmpc">Master Plan Center</button>`:`<button data-a="asopen">Show</button>${ok?`<button data-a="asgo">Apply</button>`:""}`}</span></div>`).join("")}</div></details>`; }
+async function applySug(list,why){ const items=[]; list.forEach(x=>{ if(x.t==="swap") items.push(...x.list); else items.push({k:x.k,to:x.to}); });
+  await SID_GISFIX.save(items,why); try{ await SID_GISFIX.refresh(); }catch(e){} repaint(); }
+
 /* ---------- page ---------- */
 function parks(){ return Object.keys(S.reg.parks); }
 function view(){ const I=issues(), open=I.filter(i=>!i.acc), by={}; open.forEach(i=>{ const k=i.park+"|"+i.dept; by[k]=(by[k]||0)+1; });
@@ -24480,7 +24552,7 @@ function overview(by){ return `<div class="ck-tw"><table class="ck-t"><thead><tr
 function deptView(d,I){ const mine=I.filter(i=>i.dept===d&&(C.park==="all"||i.park===C.park)), open=mine.filter(i=>!i.acc); let ac=mine.filter(i=>i.acc);
   const groups={}; open.forEach(i=>{ (groups[i.rule]=groups[i.rule]||[]).push(i); });
   const ps=C.park==="all"?parks():[C.park]; const can=isAdm()||myDept()===d;
-  return `<div class="ck-sign">${ps.map(p=>{ const n=open.filter(i=>i.park===p).length, L=light(p,d,n); return `<div class="ck-sp"><i class="ckd ${L.cls}"></i><b>${esc(pname(p))}</b><span>${n} open · ${L.txt}</span>${can?`<button class="ebtn" data-sign="${p}" title="${n?`Clears the ${n} open item(s) of ${esc(pname(p))} from the list, with one reason`:"Sign off"}">${n?`Sign off · clear ${n}`:"Sign off"}</button>`:""}</div>`; }).join("")}</div>
+  return assistHtml(d,I)+`<div class="ck-sign">${ps.map(p=>{ const n=open.filter(i=>i.park===p).length, L=light(p,d,n); return `<div class="ck-sp"><i class="ckd ${L.cls}"></i><b>${esc(pname(p))}</b><span>${n} open · ${L.txt}</span>${can?`<button class="ebtn" data-sign="${p}" title="${n?`Clears the ${n} open item(s) of ${esc(pname(p))} from the list, with one reason`:"Sign off"}">${n?`Sign off · clear ${n}`:"Sign off"}</button>`:""}</div>`; }).join("")}</div>
    ${!can?`<p class="ck-n">You can look; only ${DN[d]} (or an administrator) signs off this list.</p>`:""}
    ${Object.keys(groups).length?Object.entries(groups).sort((a,b)=>b[1][0].sev-a[1][0].sev||b[1].length-a[1].length).map(([rule,list])=>`<details class="ck-g" ${list[0].sev>=2?"open":""}><summary><span class="ck-sev s${list[0].sev}"></span>${esc(RULES[rule]||rule)} <b>${list.length}</b></summary>
      <div class="ck-list">${list.slice(0,300).map((i,ix)=>`<div class="ck-it" data-i="${esc(i.key)}"><span class="ck-pk">${esc(pname(i.park))}</span><span class="ck-tx">${esc(i.text)}</span><span class="ck-b"><button data-a="open">Open</button>${can?`<button data-a="ok">Not an issue</button>`:""}</span></div>`).join("")}${list.length>300?`<p class="ck-n">+${list.length-300} more — narrow by project or use Excel</p>`:""}</div></details>`).join("")
@@ -24499,6 +24571,13 @@ function wire(){ const root=document.querySelector(".ck-page"); if(!root) return
   root.querySelectorAll("[data-unclear]").forEach(b=>b.onclick=async ev=>{ ev.preventDefault(); ev.stopPropagation(); const p=b.dataset.unclear, d=C.tab, ids=I.filter(i=>i.dept===d&&i.park===p&&i.acc&&i.acc.so).map(i=>i.key+"|"+i.rule);
     if(!confirm(`Put the ${ids.length} cleared item(s) of ${pname(p)} back on the open list? The sign-off itself stays.`)) return;
     b.disabled=true; try{ await signUnclear(p,d,ids); toast("Reopened "+ids.length); repaint(); }catch(e){ b.disabled=false; toast("Not saved: "+(e.message||e),true); } });
+  root.querySelectorAll("[data-asall]").forEach(b=>b.onclick=async ev=>{ ev.preventDefault(); ev.stopPropagation(); const L=(C.sug||[]).filter(x=>x.sure); if(!L.length) return;
+    if(!confirm(`Give ${L.length} plots their MDS codes now?\n\n`+L.slice(0,12).map(x=>x.t==="swap"?"Swap "+x.from:(x.from||"Unnumbered")+" → "+x.to).join("\n")+(L.length>12?"\n…":"")+"\n\nEach one can be undone on its plot card.")) return;
+    b.disabled=true; try{ await applySug(L,"Fix assistant (sure match)"); toast(L.length+" plots got their MDS codes"); }catch(e){ b.disabled=false; toast("Not saved: "+(e.message||e),true); } });
+  root.querySelectorAll(".ck-it[data-as]").forEach(el=>{ const x=(C.sug||[])[+el.dataset.as]; if(!x) return;
+    el.querySelectorAll("[data-a]").forEach(b=>b.onclick=async()=>{ if(b.dataset.a==="asmpc"){ try{ go("masterplan"); }catch(e){} return; }
+      if(b.dataset.a==="asopen"){ const k=x.t==="swap"?x.list[0].k:x.k; const f=S.geo.features.find(q=>q.properties.k===k); if(f) openIt({plot:f.properties},b); }
+      if(b.dataset.a==="asgo"){ b.disabled=true; try{ await applySug([x],"Fix assistant"+(x.sure?" (sure match)":"")); toast(x.t==="swap"?"Codes swapped":"Done: "+(x.from||"plot")+" → "+x.to); }catch(e){ b.disabled=false; toast("Not saved: "+(e.message||e),true); } } }); });
   root.querySelectorAll(".ck-it[data-i]").forEach(el=>{ const it=el.dataset.r?byKey.get(el.dataset.i+"|"+el.dataset.r):find(el.dataset.i); if(!it) return;
     el.querySelectorAll("[data-a]").forEach(b=>b.onclick=async()=>{ if(b.dataset.a==="open") openIt(it,b);
       if(b.dataset.a==="reopen"){ try{ if(it.acc&&it.acc.so) await signUnclear(it.park,it.dept,[it.key+"|"+it.rule]); else await SID_MLFIX.accSet(it.key,""); toast("Reopened"); repaint(); }catch(e){ toast("Not saved: "+(e.message||e),true); } }
@@ -24521,7 +24600,7 @@ if(typeof edStartEdit==="function"){ const e0=edStartEdit; window.edStartEdit=fu
     if(o&&me&&o!==me&&!isAdm()&&!warned.has(c.k)){ warned.add(c.k); toast(`“${c.label}” belongs to ${DN[o]}. You can change it; their check light will show it changed.`); } }catch(e){} return e0.apply(this,arguments); }; }
 
 if(typeof render==="function"){ const r0=render; window.render=function(){ const out=r0.apply(this,arguments); try{ if(S.view==="checks"){ repaint(); signLoad().then(()=>{ if(S.view==="checks") repaint(); }); } }catch(e){ console.error("checks page",e); } return out; }; }
-window.SID_CHK={issues,sig,signLoad,signSet,signUnclear,light,RULES,OWN,view,get state(){ return C; }};
+window.SID_CHK={issues,suggest,sig,signLoad,signSet,signUnclear,light,RULES,OWN,view,get state(){ return C; }};
 })();
 
 
