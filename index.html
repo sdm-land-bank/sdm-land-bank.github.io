@@ -25256,6 +25256,12 @@ function topOnScreen(){ try{ const t=document.querySelector("#skUI .sk-top"); if
     if(document.body.classList.contains("ws-on")){ if(t.getAttribute("style")) unpinTop(t); return; }   /* builder: fixed by CSS, never pinned */
     const r=t.getBoundingClientRect(); if(!r.width) return;
     if(r.right>innerWidth+2||r.left<-2||r.top<-2||r.top>innerHeight-30||r.width<160) unpinTop(t); }catch(e){} }
+/* V138.1: in the builder the top bar (Sketch/Build, Freeze, Done ...) is never folded: its fold handle is hidden there,
+   so a bar folded on a short screen (or saved folded) shrank to a 14 px dot and Done/Freeze could not be reached */
+function topUnfold(){ try{ if(!document.body.classList.contains("ws-on")) return; const t=document.querySelector("#skUI .sk-top"); if(!t) return;
+    if(t.classList.contains("sk-min")){ t.classList.remove("sk-min"); delete t.dataset.amin; const b=t.querySelector(".sk-mn"); if(b){ b.textContent="–"; b.title="Minimise"; } }
+    if(!t._wsUf){ t._wsUf=1; new MutationObserver(()=>{ if(t.classList.contains("sk-min")&&document.body.classList.contains("ws-on")) topUnfold(); }).observe(t,{attributes:true,attributeFilter:["class"]}); } }catch(e){} }
+new MutationObserver(topUnfold).observe(document.body,{attributes:true,attributeFilter:["class"]});
 /* in the builder the top bar cannot be dragged (it stays at the top right) */
 document.addEventListener("pointerdown",e=>{ if(!document.body.classList.contains("ws-on")) return; const t=e.target.closest&&e.target.closest("#skUI .sk-top"); if(!t) return; if(e.target.closest("button,input,select,a,label")) return; e.stopPropagation(); },true);
 addEventListener("resize",()=>setTimeout(topOnScreen,200));
