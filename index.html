@@ -23958,6 +23958,9 @@ function guessRoles0(R){ const L={}; R.items.forEach(it=>{ const l=it.layer; con
   const TL={}; R.texts.forEach(t=>{ TL[t.layer]=(TL[t.layer]||0)+1; });
   const poly={}; Object.entries(L).forEach(([l,o])=>{ const n=l.toLowerCase();
     poly[l]=/bound|border|limit|حدود|site|project/.test(n)&&o.n<=3?"boundary":/road|street|طريق|شارع|asphalt/.test(n)?"roads":/green|park|landsc|tree|حدائق|خضر/.test(n)?"green":/serv|util|substation|mosque|خدم|tank|station/.test(n)?"services":/plot|parcel|lot|قطع|land|unit|blocks?$/.test(n)?"plots":"ignore"; });
+  /* V137.4: a layer whose shapes mostly carry plot numbers is plots, whatever its name (GeoJSON / KML exported per land use: "صناعات غذائية",
+     "صناعات دوائية" ... were all ignored except one, so 181 of New Sadat's 261 numbered plots were dropped) */
+  Object.entries(L).forEach(([l,o])=>{ if(poly[l]!=="ignore"&&poly[l]!=="services") return; const avg=o.a/Math.max(1,o.n); if(o.code>=Math.max(1,o.n*.6)&&avg>150&&avg<3e6) poly[l]="plots"; });   // numbered "services" (logistics services N1-…) are sellable plots too
   if(!Object.values(poly).includes("plots")){ const best=Object.entries(L).filter(([l])=>poly[l]==="ignore").map(([l,o])=>[l,o.n*(o.a/o.n>150&&o.a/o.n<3e6?1:.1)]).sort((a,b)=>b[1]-a[1])[0]; if(best) poly[best[0]]="plots"; }
   const text={}; const tl=Object.entries(TL).sort((a,b)=>b[1]-a[1]); tl.forEach(([l],i)=>{ const n=l.toLowerCase(); text[l]=/no|num|text|label|رقم|plot|code|txt/.test(n)||i===0?"numbers":"ignore"; });
   return {poly,text,layers:L,textLayers:TL}; }
