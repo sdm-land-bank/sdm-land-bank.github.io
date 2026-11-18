@@ -18583,7 +18583,7 @@ function tipAt(pt,e){ if(e&&e.pointerType==="touch") return; if(SK.on===false) r
         o={unit:pr.unit||"Unnumbered",status:st&&st.label,color:st&&st.color&&st.color!=="transparent"?st.color:null,ink:st&&st.ink,sub:(park&&park.name||"")+(r&&r.phase?" · Phase "+r.phase:""),area:r&&r.area!=null?r.area:(pr.gis!=null?pr.gis:fArea(ringArea(hit.r))),dims:obbDims(hit.r)}; if(o.area==null||!isFinite(o.area)) o.area=null; SK.tipK="s"+pr.k; tipShow(e.clientX,e.clientY,o); return; } }
   }catch(err){ console.warn("plot card",err); }
   tipHide(); }
-function xtras(){ const tools=q("#skTools"), top=q(".sk-top"), card=q("#skCard"); movable(tools,"skTools",true); movable(top,"skTop",true); movable(card,"skCard");
+function xtras(){ const tools=q("#skTools"), top=q(".sk-top"), card=q("#skCard"); movable(tools,"skTools",true); movable(card,"skCard");   /* V138.2: the top bar is fixed - no move, fold or resize */
   const cp=compassBuild(); ui.appendChild(cp); movable(cp,"compass"); compassUpd(); }
 const API={SK,P,U,dist,pathLen,ringArea,dest,radii,fLen,fArea,fArea2,nf,flash,hint,need,pill,upNormal,snap:(pt,ex)=>snap(pt,ex),startPan,svg,IC,FONT,esc,hyp,segDist,inPoly,rdp,centroid,rr,
   cv:()=>cv, ctx:()=>ctx, panPx, btns, ui:()=>ui, movable, resetLayout, arrange:arrangeSoon, obbDims, tipShow, tipHide, compassUpd};
@@ -25084,6 +25084,18 @@ body.ws-on #tpSec{left:calc(var(--ws-w,340px) + 12px)!important}
 /* V137.3 top bar: fixed at the top right in the builder (dragging it moved it off-screen) */
 body.ws-on #skUI .sk-top{position:absolute!important;top:8px!important;right:8px!important;left:auto!important;bottom:auto!important;transform:none!important;max-width:calc(100% - 16px)!important}
 body.ws-on #skUI .sk-top>.sk-bar,body.ws-on #skUI .sk-top>.sk-rs{display:none!important}
+/* V138.2 top bar: slim, fixed at the top right, no move/fold/resize; labels only on wide screens, icons below */
+#skUI .sk-top>.sk-bar,#skUI .sk-top>.sk-rs{display:none!important}
+#skUI .sk-top{position:absolute!important;top:6px!important;right:6px!important;left:auto!important;bottom:auto!important;transform:none!important;width:auto!important;height:auto!important;max-height:none!important;
+  max-width:calc(100% - 12px)!important;padding:2px!important;gap:1px!important;border-radius:9px!important;flex-wrap:nowrap!important;align-items:center!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none;-webkit-overflow-scrolling:touch;animation:none!important}
+#skUI .sk-top::-webkit-scrollbar{display:none}
+#skUI .sk-top .sk-tb{height:26px!important;min-width:26px;padding:0 7px!important;border-radius:7px!important;font-size:11.5px!important;gap:4px!important;flex:none}
+#skUI .sk-top .sk-tb svg{width:14px!important;height:14px!important}
+#skUI .sk-top .sk-tb.done{margin-left:2px!important}
+#skUI .sk-top .sk-mode{padding:2px!important;border-radius:7px!important;margin-right:3px!important;flex:none}
+#skUI .sk-top .sk-mode button{height:22px!important;padding:0 8px!important;font-size:11px!important;border-radius:5px!important}
+@media (max-width:1500px),(max-height:560px){ #skUI .sk-top .sk-tb>span{display:none!important} #skUI .sk-top .sk-tb{padding:0 6px!important} #skUI .sk-top .sk-tb.done>span{display:inline!important} }
+@media (max-width:760px){ #skUI .sk-top .sk-tb{height:24px!important;min-width:24px;padding:0 5px!important} #skUI .sk-top .sk-tb.done>span{display:none!important} #skUI .sk-top .sk-mode button{height:20px!important;padding:0 6px!important} }
 /* V137.2 layout: nothing on top of anything */
 body.sk-on .sk-full .maplibregl-ctrl-bottom-right{max-width:min(440px,52%)}
 body.sk-on .sk-full .maplibregl-ctrl-attrib-inner{white-space:normal;line-height:1.3;font-size:10px}
