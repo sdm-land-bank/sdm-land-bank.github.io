@@ -24395,14 +24395,18 @@ function wireEdit(el,keys){ const box=el.querySelector(".mp-edit"); if(!box) ret
       if(u.length!==1){ toast("These plots do not touch — merge only neighbouring plots",true); return; }
       const keep=fs[0]; keep.geometry={type:"Polygon",coordinates:[u[0][0]]}; keep.properties.gis=Math.round(G.ringArea(u[0][0])); keep.properties.c=G.ringCentroid(u[0][0]);
       S.geo.features=S.geo.features.filter(f=>!fs.slice(1).includes(f)); afterEdit([keep.properties.k]); toast(`Merged into ${keep.properties.unit||"one plot"} · ${fmt(keep.properties.gis)} sqm — rename it if needed`); }
-    if(a==="split"){ await needPC(); toast("Click two points on the map across the plot"); const pts=[]; const f=featOf(keys[0]);
-      const on=e=>{ pts.push([e.lngLat.lng,e.lngLat.lat]); if(pts.length<2) return; map.off("click",on); map.getCanvas().style.cursor="";
+    if(a==="split"){ await needPC(); toast("Click two points on the map across the plot (Esc cancels)"); const pts=[]; const f=featOf(keys[0]);
+      /* V137.6: pressing "Split with a line" twice armed two splits and the same two clicks cut the plot twice (duplicate plots) - one split at a time */
+      if(MP._split){ MP._split(); }
+      const stop=()=>{ map.off("click",on); document.removeEventListener("keydown",esc,true); map.getCanvas().style.cursor=""; if(MP._split===stop) MP._split=null; };
+      const esc=ev=>{ if(ev.key==="Escape"){ stop(); toast("Split cancelled"); } };
+      const on=e=>{ pts.push([e.lngLat.lng,e.lngLat.lat]); if(pts.length<2) return; stop(); if(!S.geo.features.includes(f)){ toast("That plot has changed — select it and split again",true); return; }
         const [a,c]=pts, k=G.kx(a[1]), dx=(c[0]-a[0])*k, dy=(c[1]-a[1])*G.KY, L=Math.hypot(dx,dy)||1, ux=dx/L, uy=dy/L, ext=2000, w=.01;
         const P=(t,s)=>[a[0]+(ux*t-uy*s)/k, a[1]+(uy*t+ux*s)/G.KY]; const strip=[[P(-ext,-w),P(ext,-w),P(ext,w),P(-ext,w),P(-ext,-w)]];
         const parts=polygonClipping.difference([f.geometry.coordinates[0]],strip); if(parts.length<2){ toast("The line does not cross the plot — try again",true); return; }
         const base=f.properties.unit||"P"; const nf=parts.map((pg,i)=>{ const r=pg[0], g={type:"Feature",geometry:{type:"Polygon",coordinates:[r]},properties:Object.assign({},f.properties,{unit:base+String.fromCharCode(65+i),gis:Math.round(G.ringArea(r)),c:G.ringCentroid(r)})}; delete g.properties.unitAr; rekey(g); return g; });
         S.geo.features=S.geo.features.filter(x=>x!==f).concat(nf); afterEdit(nf.map(x=>x.properties.k)); toast(`Split into ${nf.map(x=>x.properties.unit+" ("+fmt(x.properties.gis)+" sqm)").join(", ")} — rename them as needed`); };
-      map.getCanvas().style.cursor="crosshair"; map.on("click",on); } } }
+      MP._split=stop; document.addEventListener("keydown",esc,true); map.getCanvas().style.cursor="crosshair"; map.on("click",on); } } }
 
 /* ---------- hooks ---------- */
 if(typeof showSelection==="function"){ const s0=showSelection; window.showSelection=function(){ const out=s0.apply(this,arguments);
@@ -24796,7 +24800,7 @@ function openEdit(anchor,k){
   d.querySelectorAll("[data-why]").forEach(b=>b.onclick=()=>{ d.querySelector("#gfWhy").value=b.dataset.why; });
   d.querySelector("#gfXls").onclick=()=>exportXls();
   swb.onclick=async()=>{ const ok2=swb.dataset.k, v=inp.value.trim(), c=check(k,v); if(!c.swap||c.swap!==ok2) return; swb.disabled=true; const o2=c.other;
-    try{ await save([{k,to:o2},{k:ok2,to:p.unit}],d.querySelector("#gfWhy").value.trim()||"Codes swapped in the drawing"); closePop(); toast(`Codes swapped: ${p.unit} ↔ ${o2}`); }
+    const was=p.unit; try{ await save([{k,to:o2},{k:ok2,to:was}],d.querySelector("#gfWhy").value.trim()||"Codes swapped in the drawing"); closePop(); toast(`Codes swapped: ${was} ↔ ${o2}`); }
     catch(e){ swb.disabled=false; toast("Not saved: "+(e.message||e),true); } };
   sv.onclick=async()=>{ const v=inp.value.trim(), c=check(k,v); if(!c.ok) return; sv.disabled=true; sv.textContent="Saving…";
     try{ await save(k,v,d.querySelector("#gfWhy").value.trim()); closePop(); toast(`GIS code changed to ${v} — the plot is linked again to the MDS register`); }
@@ -24942,6 +24946,9 @@ body.ws-on #tpSec{left:calc(var(--ws-w,340px) + 12px)!important}
 #wsBar #plBud input{width:50px!important;padding:2px 4px!important;margin-right:2px}
 /* V137.3 strict fit: grids of fields and status lines inside the bar wrap, never overflow */
 #wsBar #plRules .g4{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(128px,1fr))!important;gap:6px 10px!important;min-width:0}
+#wsBar #plRules .g4:has(i.dot){grid-template-columns:1fr!important;gap:4px!important}
+#wsBar #plRules .g4:has(i.dot)>label{display:grid!important;grid-template-columns:10px minmax(0,1fr) 64px!important;align-items:center;gap:8px;text-align:left!important;justify-items:start}
+#wsBar #plRules .g4:has(i.dot)>label input{width:64px!important;margin:0!important;justify-self:end}
 #wsBar #plRules .g4>label{display:flex!important;flex-wrap:wrap;align-items:center;gap:5px;min-width:0;white-space:normal!important;line-height:1.25}
 #wsBar #plRules .g4>label input{width:56px!important;min-width:0;flex:none;margin-left:auto}
 #wsBar #plRules .row{flex-wrap:wrap;min-width:0}
@@ -24968,6 +24975,10 @@ body.ws-on #tpSec{right:auto!important;max-width:calc(100vw - var(--ws-w,340px) 
 #wsBar .ws-qv{display:flex;flex-wrap:wrap;gap:6px;width:100%}
 #wsBar .ws-qv b{width:100%;font-size:10px;letter-spacing:.06em;text-transform:uppercase;opacity:.6}
 #tpPanel .tp-row.off[data-k="img"] span::after{content:" · satellite map only";opacity:.75;font-weight:400}
+/* V137.6: the section window on the normal map ran off the right edge on narrow screens (623 px: left 322 + 615 wide) */
+#tpSec{max-width:calc(100vw - 16px)!important}
+@media (max-width:900px){ body:not(.ws-on) #tpSec:not([hidden]){left:8px!important;right:8px!important;width:auto!important;top:auto!important;bottom:8px!important;max-height:55dvh;z-index:2147483000!important} }
+@media (max-width:700px){ #tpSec .sc-hd .tp-src{display:none!important} }
 @media (max-width:760px){
   #wsBar{top:auto;right:0;width:auto;height:min(56dvh,480px);border-right:0;border-top:1px solid rgba(255,255,255,.14);border-radius:16px 16px 0 0;box-shadow:0 -8px 24px rgba(0,0,0,.3)}
   #wsBar.mini{height:auto;width:auto}
