@@ -24992,9 +24992,13 @@ function cutPlots(ptsLL,off){ if(ptsLL.length<2) return {items:[]}; const pr=pro
   const [w,s,e,n]=G.bbox(ptsLL.map(pr.m).map(pr.d)); const items=[];
   // only plots near the line (its box + 300 m)
   const pad=.003; parkFeats().forEach(f=>{ const c=f.properties.c||G.ringCentroid(ringOf(f)); if(c[0]<w-pad*3||c[0]>e+pad*3||c[1]<s-pad*3||c[1]>n+pad*3) return;
-    if(crossings(Lm,polysOf(f),pr)<2) return;   // only plots the drawn line itself crosses from side to side (not its far extension)
-    const P=polysOf(f), r=cutBy(P,Lm,pr); if(!r) return; const pieces=[...r.left.map(pg=>({pg,s:"a"})),...r.right.map(pg=>({pg,s:"b"}))].map(x=>Object.assign(x,{A:areaPolys([x.pg])}));
-    if(pieces.length<2||!r.left.length||!r.right.length) return; items.push({f,pieces,A0:areaOf(f)}); });
+    /* V139.2: a plot is cut when the drawn line crosses it from side to side, or when the line starts / ends inside it (it is carried on
+       to the plot's edge). A plot only nicked at a corner by the line's end is left alone (see the sliver rule below). */
+    const P=polysOf(f), inside=Lm.some(q=>pip(q,P[0][0].map(pr.m))); if(crossings(Lm,P,pr)<2&&!inside) return;
+    const r=cutBy(P,Lm,pr); if(!r) return; const pieces=[...r.left.map(pg=>({pg,s:"a"})),...r.right.map(pg=>({pg,s:"b"}))].map(x=>Object.assign(x,{A:areaPolys([x.pg])}));
+    if(pieces.length<2||!r.left.length||!r.right.length) return; const A0=areaOf(f);
+    if(Math.min(...pieces.map(x=>x.A))<Math.max(MIN_PIECE,A0*.015)&&off===0&&!inside) return;   // a corner sliver of a neighbour: not a split
+    items.push({f,pieces,A0}); });
   return {items,Lm,pr}; }
 function livePreview(){ const pts=ST.cur?ST.pts.concat([ST.cur]):ST.pts; clearMk(); const line=pts.length>=2?[{type:"Feature",geometry:{type:"LineString",coordinates:pts},properties:{}}]:[];
   const dots=ST.pts.map(p=>({type:"Feature",geometry:{type:"Point",coordinates:p},properties:{}}));
