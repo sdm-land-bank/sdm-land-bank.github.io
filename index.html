@@ -24812,6 +24812,9 @@ button.pri{background:#B3263D!important;color:#fff!important;border-color:#B3263
 .mpe-ba{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}.mpe-ba small{color:var(--mute,#7c818b)}.mpe-arr{font-size:18px;color:var(--mute,#7c818b)}
 .mpe-adj{border:1px solid rgba(0,0,0,.1);border-radius:11px;padding:8px;display:flex;flex-direction:column;gap:6px}
 .mpe-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}.mpe-row.end{justify-content:flex-end}.mpe-row>span{margin-right:auto}
+.mpe-row button.on{background:#0a64c8;color:#fff;border-color:#0a64c8}
+.mpe-aw{width:96px;padding:5px 7px;border-radius:8px;border:1px solid rgba(0,0,0,.18);font:inherit;font-variant-numeric:tabular-nums;background:transparent;color:inherit}
+.mpe-dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;background:#0a84ff}.mpe-dot.s-b{background:#ff9f0a}
 .mpe-off{min-width:66px;text-align:center;font-variant-numeric:tabular-nums}.mpe-rg{width:100%}
 .mpe-tgt{width:90px;padding:5px 7px;border-radius:8px;border:1px solid rgba(0,0,0,.18);font:inherit;background:transparent;color:inherit}
 .mpe-pcs{display:flex;flex-direction:column;gap:6px}.mpe-pc{display:grid;grid-template-columns:10px 1fr auto;gap:4px 7px;align-items:center}
@@ -24961,6 +24964,7 @@ function panel(){ document.documentElement.classList.toggle("mpe-busy",!!(ST.ope
    <div class="mpe-sel">${n?`<b>${n} plot${n>1?"s":""} selected</b> · ${fmt(tot)} sqm${n<=6?`<div class="mpe-chips">${sel.map(f=>`<span>${esc(f.properties.unit||"no number")} <small>${fmt(areaOf(f))}</small></span>`).join("")}</div>`:""}`:"Click a plot on the map to select it · Shift / Cmd click to select more"}</div>
    <div class="mpe-tools">
      <button data-k="split" title="Draw a line across one plot or a whole row">✂︎ Split by drawing a line</button>
+     <button data-k="quick" ${n===1?"":"disabled"} title="Straight lines along the plot's own sides, no drawing: choose length or width and type the size of each piece">▦ Quick split ${n===1?"(no drawing)":"(select 1 plot)"}</button>
      <button data-k="merge" ${n>=2?"":"disabled"} title="Select two or more touching plots">⊕ Merge ${n>=2?n+" plots":"(select 2+)"}</button>
      <button data-k="move" ${n===2?"":"disabled"} title="Select the two neighbouring plots">⇆ Move the line between them</button>
      <button data-k="remove" ${n===2?"":"disabled"} title="The two neighbours become one plot">⌫ Remove the line between them</button>
@@ -24977,7 +24981,8 @@ function act(k){ const sel=selFeats();
   if(k==="split") return startSplit();
   if(k==="merge"||k==="remove") return startMerge(sel,k==="remove");
   if(k==="move") return startMove(sel);
-  if(k==="name") return startName(sel[0]); }
+  if(k==="name") return startName(sel[0]);
+  if(k==="quick") return startQuick(sel[0]); }
 
 /* ---------- split ---------- */
 function startSplit(){ ST.mode="split-draw"; ST.pts=[]; ST.cur=null; ST.res=null; S.sel&&S.sel.clear(); try{ showSelection(); }catch(e){} map.getCanvas().style.cursor="crosshair"; try{ map.doubleClickZoom.disable(); }catch(e){} panel(); toast_("Click on the map to draw the line across the plot(s). Double-click or Enter to finish, Backspace removes the last point, Esc cancels."); }
@@ -25037,15 +25042,16 @@ function pieceList(){ const r=ST.res; if(!r) return [];
   if(r.kind==="split"){ const out=[]; r.items.forEach((it,j)=>{ const s=[...it.pieces].sort((x,y)=>x.s===y.s?0:x.s==="a"?-1:1); s.forEach((x,i)=>out.push({key:j+":"+i,from:it.f,pg:[x.pg],A:x.A,s:x.s,idx:i})); }); return out; }
   if(r.kind==="merge") return [{key:"0",from:r.base[0],pg:r.U,A:r.A1,s:"m",idx:0}];
   if(r.kind==="move") return r.parts?[{key:"0",from:r.base[0],pg:r.parts[0],A:r.A[0],s:"a",idx:0},{key:"1",from:r.base[1],pg:r.parts[1],A:r.A[1],s:"b",idx:1}]:[];
+  if(r.kind==="auto") return (r.pieces||[]).map((pg,i)=>({key:String(i),from:r.base[0],pg,A:areaPolys(pg),s:i%2?"b":"a",idx:i}));
   if(r.kind==="name") return [{key:"0",from:r.base[0],pg:polysOf(r.base[0]),A:areaOf(r.base[0]),s:"m",idx:0}];
   return []; }
 function drawResult(){ clearMk(); const L=pieceList().filter(x=>x.pg&&x.pg.length&&x.pg[0]), feats=[]; L.forEach(x=>{ x.pg.forEach(pg=>feats.push({type:"Feature",geometry:{type:"Polygon",coordinates:pg},properties:{s:x.s}})); const nm=nameOf(x);
     label(centre(x.pg[0]),`${nm?`<b>${esc(nm)}</b>`:""}${fmt(x.A)} sqm`,x.s); });
-  const r=ST.res, ln=r&&r.Lm&&r.pr?[{type:"Feature",geometry:{type:"LineString",coordinates:r.Lm.map(r.pr.d)},properties:{}}]:[]; setPrev(feats,ln); }
+  const r=ST.res, ln=r&&r.lines&&r.pr?r.lines.map(l=>({type:"Feature",geometry:{type:"LineString",coordinates:l.map(r.pr.d)},properties:{}})):r&&r.Lm&&r.pr?[{type:"Feature",geometry:{type:"LineString",coordinates:r.Lm.map(r.pr.d)},properties:{}}]:[]; setPrev(feats,ln); }
 /* which way "+" moves the line on the screen. h = the line runs up/down (it moves left/right); s = +1 when + moves it right (or down) */
 function axis(){ const r=ST.res; let a,b; if(r&&r.kind==="split"&&r.line){ const pr=proj(r.line[0][1]); a=pr.m(r.line[0]); b=pr.m(r.line[r.line.length-1]); } else if(r&&r.L){ a=r.L[0]; b=r.L[r.L.length-1]; } else return {h:true,s:1};
   const dx=b[0]-a[0], dy=b[1]-a[1], N=[-dy,dx]; if(Math.abs(N[0])>=Math.abs(N[1])) return {h:true,s:N[0]>0?1:-1}; return {h:false,s:N[1]>0?-1:1}; }
-function nameOf(x){ if(ST.names[x.key]!=null) return ST.names[x.key]; return ST.res.kind==="split"?defName(x.from,x.idx):(x.from.properties.unit||""); }
+function nameOf(x){ if(ST.names[x.key]!=null) return ST.names[x.key]; return ST.res.kind==="split"||ST.res.kind==="auto"?defName(x.from,x.idx):(x.from.properties.unit||""); }
 function linkOptions(x,pieces){ const edited=ST.res.base, free=freeRows(edited), old=rowFor(x.from.properties.unit), nm=nameOf(x), same=rowFor(nm);
   const o=[]; if(same) o.push({v:"row:"+same.unit,l:`Linked: MDS row ${rowLabel(same)}`});
   if(old&&(!same||same!==old)) o.push({v:"old",l:ST.res.kind==="name"?`Its MDS row ${old.unit} is renamed too (${rowLabel(old)})`:`Takes the old row ${rowLabel(old)}`});
@@ -25054,12 +25060,12 @@ function linkOptions(x,pieces){ const edited=ST.res.base, free=freeRows(edited),
   return o; }
 function defLink(x,opts,i){ if(ST.links[x.key]) return ST.links[x.key]; if(opts.some(o=>o.v.startsWith("row:")&&o.l.startsWith("Linked"))) return opts[0].v;
   if(ST.res.kind==="merge"||ST.res.kind==="move") return opts.find(o=>o.v==="old")?"old":"new";
-  if(ST.res.kind==="split") return i===0&&opts.find(o=>o.v==="old")?"old":"new"; return opts.find(o=>o.v==="old")?"old":"none"; }
+  if(ST.res.kind==="split"||ST.res.kind==="auto") return i===0&&opts.find(o=>o.v==="old")?"old":"new"; return opts.find(o=>o.v==="old")?"old":"none"; }
 function resultPanel(p){ const r=ST.res, L=pieceList(); const A0=r.kind==="split"?r.items.reduce((t,it)=>t+it.A0,0):r.kind==="name"?areaOf(r.base[0]):r.A0, A1=L.reduce((t,x)=>t+x.A,0);
-  const title={split:"Split",merge:"Merge",move:"Move the line between two plots",name:"Rename / link to MDS"}[r.kind];
+  const title={auto:"Quick split",split:"Split",merge:"Merge",move:"Move the line between two plots",name:"Rename / link to MDS"}[r.kind];
   const before=r.base.map(f=>`<span>${esc(f.properties.unit||"no number")} <small>${fmt(areaOf(f))}</small></span>`).join("");
   const ax=axis(), A1L=ax.h?"◀":"▲", A2L=ax.h?"▶":"▼";
-  const adj=(r.kind==="split"||r.kind==="move")?`<div class="mpe-adj"><div class="mpe-row"><span>Move the line</span><button data-o="${-ax.s}">${A1L} 1 m</button><button data-o="${-ax.s*.1}">${A1L} 0.1</button><b class="mpe-off">${f1(Math.abs(ST.off))} m${ST.off?" "+((ST.off*ax.s)<0?A1L:A2L):""}</b><button data-o="${ax.s*.1}">0.1 ${A2L}</button><button data-o="${ax.s}">1 m ${A2L}</button></div>
+  const adj=r.kind==="auto"?autoHtml(L):(r.kind==="split"||r.kind==="move")?`<div class="mpe-adj"><div class="mpe-row"><span>Move the line</span><button data-o="${-ax.s}">${A1L} 1 m</button><button data-o="${-ax.s*.1}">${A1L} 0.1</button><b class="mpe-off">${f1(Math.abs(ST.off))} m${ST.off?" "+((ST.off*ax.s)<0?A1L:A2L):""}</b><button data-o="${ax.s*.1}">0.1 ${A2L}</button><button data-o="${ax.s}">1 m ${A2L}</button></div>
      <input type="range" class="mpe-rg" min="-60" max="60" step="0.1" value="${ST.off*ax.s}" ${ax.h?"":'title="left = up, right = down"'}>
      ${mdsHtml(L)}
      <div class="mpe-row"><span>Size wanted for <b>${esc(nameOf(L[0]||{key:"0",from:r.base[0],idx:0})||"the blue piece")}</b></span><input type="number" class="mpe-tgt" min="1" step="1" placeholder="sqm"><button data-k="solve">Set</button></div></div>`:"";
@@ -25067,9 +25073,10 @@ function resultPanel(p){ const r=ST.res, L=pieceList(); const A0=r.kind==="split
   L.forEach((x,i)=>{ if(x.A<MIN_PIECE) bad.push(`${names[i]||"a piece"} is only ${f1(x.A)} sqm`); if(names[i]&&taken.has(ukey(names[i]))) bad.push(`${names[i]} is already used by another plot`); });
   const dup=names.filter((n,i)=>n&&names.findIndex(m=>m&&ukey(m)===ukey(n))!==i); if(dup.length) bad.push("two pieces have the same name: "+dup.join(", "));
   if(r.kind==="split"&&r.items.some(it=>!it.pieces.length)) bad.push("the line no longer crosses "+r.items.filter(it=>!it.pieces.length).map(it=>it.f.properties.unit||"a plot").join(", "));
+  if(r.kind==="auto"&&r.err) bad.push(r.err);
   if(r.kind==="move"&&!r.parts) bad.push("the line has left the two plots — move it back");
   if(r.kind==="move"&&r.zeroBad) bad.push("the line these two plots share is too irregular to move safely — merge them and split again with a new line");
-  if(r.kind!=="name"&&Math.abs(A1-A0)>Math.max(TOL_AREA,A0*1e-4)) bad.push(`total ${f1(A1)} sqm ≠ before ${f1(A0)} sqm`);
+  if(r.kind!=="name"&&!(r.kind==="auto"&&r.err)&&Math.abs(A1-A0)>Math.max(TOL_AREA,A0*1e-4)) bad.push(`total ${f1(A1)} sqm ≠ before ${f1(A0)} sqm`);
   p.innerHTML=`<div class="mpe-h"><b>${title}</b><button class="mpe-x" data-k="cancel" title="Cancel">×</button></div>
    <div class="mpe-ba"><div><small>Before</small><div class="mpe-chips">${before}</div><b>${fmt(A0)} sqm</b></div><div class="mpe-arr">→</div><div><small>After</small><div class="mpe-chips">${L.map(x=>`<span class="s-${x.s}">${esc(nameOf(x)||"no number")} <small>${fmt(x.A)}</small></span>`).join("")}</div><b>${fmt(A1)} sqm</b></div></div>
    ${adj}
@@ -25080,6 +25087,7 @@ function resultPanel(p){ const r=ST.res, L=pieceList(); const A0=r.kind==="split
    <div class="mpe-row end"><button data-k="cancel">Cancel</button><button class="pri" data-k="apply" ${bad.length?"disabled":""}>Apply to the draft</button></div>`;
   p.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ const k=b.dataset.k; if(k==="cancel") cancel(); if(k==="apply") apply(); if(k==="solve") solve(+p.querySelector(".mpe-tgt").value); });
   p.querySelectorAll("[data-o]").forEach(b=>b.onclick=()=>shift(ST.off+ +b.dataset.o));
+  if(r.kind==="auto") wireAuto(p);
   const rg=p.querySelector(".mpe-rg"); if(rg){ rg.oninput=()=>shift(+rg.value*ax.s,true); rg.onchange=()=>panel(); }
   p.querySelectorAll("input[data-n]").forEach(i=>{ i.oninput=()=>{ ST.names[i.dataset.n]=i.value; drawResult(); };
     /* V139.1: a name that already has an MDS row links to that row (it is never given a second row: S1-1 in October got two rows) */
@@ -25093,11 +25101,51 @@ function oldRowNote(){ const r=ST.res; if(!r||r.kind==="name") return ""; const 
 /* V139.1: the MDS area of each piece (the row it links to) - one click moves the line to it; when the MDS rows of the pieces add up
    to more or less than the land drawn, both cannot match: say so plainly, with the gap */
 function rowOfPiece(x){ const v=ST.links[x.key]||"", nm=nameOf(x).trim(); if(v.startsWith("row:")) return rowFor(v.slice(4)); if(v==="old") return rowFor(x.from.properties.unit); return rowFor(nm); }
-function mdsHtml(L){ const r=ST.res; if(!L.length||(r.kind==="split"&&r.items.length!==1)) return ""; const tot=L.reduce((t,x)=>t+x.A,0);
+function mdsHtml(L){ const r=ST.res; if(r.kind==="auto"||!L.length||(r.kind==="split"&&r.items.length!==1)) return ""; const tot=L.reduce((t,x)=>t+x.A,0);
   const T=L.map(x=>{ const rw=rowOfPiece(x); return rw&&+rw.area>0?{x,a:+rw.area}:null; }); if(!T.some(Boolean)) return "";
   const btn=T.map((t,i)=>{ if(!t) return ""; const want=i===0?t.a:tot-t.a; const ok=Math.abs(t.x.A-t.a)<=.5; return `<button data-mds="${want.toFixed(2)}" ${ok?"disabled":""}>${ok?"✓ ":""}${esc(nameOf(t.x)||"piece")} = MDS ${f1(t.a)} sqm</button>`; }).join("");
   const all=T.every(Boolean), mt=all?T.reduce((t,x)=>t+x.a,0):null, gap=all?mt-tot:0;
   return `<div class="mpe-row mpe-mds"><span>Match the MDS register</span>${btn}</div>${all&&Math.abs(gap)>1?`<div class="mpe-warn">The MDS rows add up to <b>${f1(mt)} sqm</b> but the land drawn is <b>${f1(tot)} sqm</b> (${gap>0?f1(gap)+" sqm less":f1(-gap)+" sqm more"} on the map). Moving the line only moves area between these plots, so <b>only one of them can match</b>. Ask Development whether the outer outline or the MDS areas are right.</div>`:""}`; }
+/* ---------- V139.4 quick split: no drawing. Straight lines that follow the plot's own sides (its smallest surrounding rectangle);
+   cut across the length or across the width into 2–8 pieces; the size of every piece is typed by hand (or equal, or from the MDS)
+   and each line is placed so its piece gets exactly that size. ---------- */
+function axesOf(f,pr){ const Rg=ringOf(f).map(pr.m), pts=Rg.slice(0,-1); let best=null;
+  for(let i=1;i<Rg.length;i++){ const dx=Rg[i][0]-Rg[i-1][0], dy=Rg[i][1]-Rg[i-1][1], l=Math.hypot(dx,dy); if(l<.5) continue; const u=[dx/l,dy/l], v=[-u[1],u[0]];
+    let a0=1e18,a1=-1e18,b0=1e18,b1=-1e18; pts.forEach(q=>{ const a=q[0]*u[0]+q[1]*u[1], b=q[0]*v[0]+q[1]*v[1]; a0=Math.min(a0,a); a1=Math.max(a1,a); b0=Math.min(b0,b); b1=Math.max(b1,b); });
+    const A=(a1-a0)*(b1-b0); if(!best||A<best.A-1e-6) best={A,u,v,la:a1-a0,lb:b1-b0}; }
+  if(!best) return null; return best.la>=best.lb?{len:best.u,wid:best.v,L:best.la,W:best.lb}:{len:best.v,wid:best.u,L:best.lb,W:best.la}; }
+function startQuick(f){ if(!f) return; const pr=proj(ringOf(f)[0][1]), ax=axesOf(f,pr); if(!ax){ toast_("This outline is too small to split",true); return; }
+  ST.mode="auto"; ST.res={kind:"auto",base:[f],pr,ax,dir:"len",n:2,flip:false,want:null,A0:areaOf(f)}; ST.names={}; ST.links={}; computeAuto(); panel(); }
+function computeAuto(){ const r=ST.res, f=r.base[0], pr=r.pr, P=polysOf(f); let u=r.dir==="len"?r.ax.len:r.ax.wid; if(r.flip) u=[-u[0],-u[1]];
+  const Rg=ringOf(f).map(pr.m), c=Rg.slice(0,-1).reduce((t,q)=>[t[0]+q[0],t[1]+q[1]],[0,0]).map(v=>v/(Rg.length-1));
+  let t0=1e18,t1=-1e18; Rg.forEach(q=>{ const t=(q[0]-c[0])*u[0]+(q[1]-c[1])*u[1]; t0=Math.min(t0,t); t1=Math.max(t1,t); }); const big=(t1-t0)+r.ax.L+r.ax.W+50, d=[-u[1],u[0]];
+  const lineAt=t=>{ const q=[c[0]+u[0]*t,c[1]+u[1]*t]; return [[q[0]-d[0]*big,q[1]-d[1]*big],[q[0]+d[0]*big,q[1]+d[1]*big]]; };
+  const low=t=>{ const k=cutBy(P,lineAt(t),pr); return k?areaPolys(k.left):NaN; };
+  const n=r.n, A0=r.A0; if(!r.want||r.want.length!==n-1) r.want=Array.from({length:n-1},()=>Math.round(A0/n*10)/10);
+  r.err=null; const sum=r.want.reduce((t,a)=>t+(+a||0),0); if(r.want.some(a=>!(+a>0))){ r.err="type a size for every piece"; } else if(A0-sum<MIN_PIECE){ r.err=`the sizes typed (${f1(sum)} sqm) leave nothing for the last piece — the plot is ${f1(A0)} sqm`; }
+  if(r.err){ r.pieces=null; r.lines=[]; drawResult(); return; }
+  const T=[]; let S=0; for(let i=0;i<n-1;i++){ S+=+r.want[i]; let a=t0,b=t1; for(let k=0;k<60&&b-a>1e-4;k++){ const m=(a+b)/2; if(low(m)<S) a=m; else b=m; } T.push((a+b)/2); }
+  const pieces=[]; let rem=P; for(let i=0;i<T.length;i++){ const k=cutBy(rem,lineAt(T[i]),pr); if(!k||!k.left.length||!k.right.length){ r.err="the pieces do not fit in this outline — change the sizes"; break; } pieces.push(k.left); rem=k.right; }
+  if(r.err){ r.pieces=null; r.lines=[]; drawResult(); return; } pieces.push(rem); r.pieces=pieces; r.lines=T.map(t=>{ const L=lineAt(t); return clipLine(L,Rg); }); drawResult(); }
+/* the part of a long line that lies over the plot (for the preview) */
+function clipLine(L,Rg){ const X=[]; for(let i=1;i<Rg.length;i++){ const a=L[0],b=L[1],c=Rg[i-1],e=Rg[i], r1=[b[0]-a[0],b[1]-a[1]], s1=[e[0]-c[0],e[1]-c[1]], den=r1[0]*s1[1]-r1[1]*s1[0]; if(Math.abs(den)<1e-12) continue;
+    const t=((c[0]-a[0])*s1[1]-(c[1]-a[1])*s1[0])/den, w=((c[0]-a[0])*r1[1]-(c[1]-a[1])*r1[0])/den; if(t>=0&&t<=1&&w>=0&&w<=1) X.push(t); }
+  if(X.length<2) return L; const a=Math.min(...X), b=Math.max(...X), P0=L[0], dx=L[1][0]-P0[0], dy=L[1][1]-P0[1]; return [[P0[0]+dx*a,P0[1]+dy*a],[P0[0]+dx*b,P0[1]+dy*b]]; }
+function autoHtml(L){ const r=ST.res, n=r.n; L.forEach((x,i)=>{ if(!ST.links[x.key]) ST.links[x.key]=defLink(x,linkOptions(x,L),i); }); const rowA=L.slice(0,n-1).map(x=>{ const rw=rowOfPiece(x); return rw&&+rw.area>0?+rw.area:null; });
+  return `<div class="mpe-adj">
+    <div class="mpe-row"><span>Cut</span><button data-ad="len" class="${r.dir==="len"?"on":""}" title="The lines cross the long side: pieces sit one after the other along the plot">▥ Across the length</button><button data-ad="wid" class="${r.dir==="wid"?"on":""}" title="The lines run along the long side: pieces sit side by side">▤ Across the width</button></div>
+    <div class="mpe-row"><span>Pieces</span>${[2,3,4,5,6,8].map(k=>`<button data-an="${k}" class="${k===n?"on":""}">${k}</button>`).join("")}</div>
+    <div class="mpe-row"><span>Plot ${f1(r.ax.L)} m × ${f1(r.ax.W)} m</span><button data-af="1" title="Piece A starts from the other end">⇄ Start from the other end</button></div>
+    <div class="mpe-n">Type the GIS area of each piece — the line moves so that piece gets exactly that size; the last piece takes the rest.</div>
+    ${L.length?L.map((x,i)=>`<div class="mpe-row mpe-aw-r"><span><i class="mpe-dot s-${x.s}"></i><b>${esc(nameOf(x)||"piece "+(i+1))}</b></span>${i<n-1?`<input type="number" class="mpe-aw" data-i="${i}" min="1" step="0.1" value="${r.want[i]}"> sqm`:`<b class="mpe-a">${f1(x.A)} sqm</b> <small>(the rest)</small>`}</div>`).join(""):(r.want||[]).map((a,i)=>`<div class="mpe-row mpe-aw-r"><span>piece ${i+1}</span><input type="number" class="mpe-aw" data-i="${i}" min="1" step="0.1" value="${a}"> sqm</div>`).join("")}
+    <div class="mpe-row"><button data-aeq="1">= Equal sizes</button>${rowA.some(Boolean)?`<button data-amds="1" title="${esc(rowA.map(a=>a==null?"—":f1(a)).join(" / "))}">Sizes from the MDS register</button>`:""}</div></div>`; }
+function wireAuto(p){ const r=ST.res, re=()=>{ computeAuto(); panel(); };
+  p.querySelectorAll("[data-ad]").forEach(b=>b.onclick=()=>{ r.dir=b.dataset.ad; re(); });
+  p.querySelectorAll("[data-an]").forEach(b=>b.onclick=()=>{ r.n=+b.dataset.an; r.want=null; ST.names={}; ST.links={}; re(); });
+  p.querySelectorAll("[data-af]").forEach(b=>b.onclick=()=>{ r.flip=!r.flip; re(); });
+  p.querySelectorAll("[data-aeq]").forEach(b=>b.onclick=()=>{ r.want=null; re(); });
+  p.querySelectorAll("[data-amds]").forEach(b=>b.onclick=()=>{ const L=pieceList(); r.want=r.want.map((a,i)=>{ const rw=L[i]&&rowOfPiece(L[i]); return rw&&+rw.area>0?+rw.area:a; }); re(); });
+  p.querySelectorAll(".mpe-aw").forEach(i=>{ i.onchange=()=>{ r.want[+i.dataset.i]=+i.value; re(); }; i.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); i.onchange(); } }; }); }
 function shift(v,quiet){ ST.off=Math.max(-60,Math.min(60,Math.round(v*10)/10)); if(ST.res.kind==="split") computeSplit(); else computeMove(); if(!quiet) panel(); else { const p=document.getElementById("mpePanel"), o=p&&p.querySelector(".mpe-off"), ax=axis(); if(o) o.textContent=f1(Math.abs(ST.off))+" m"+(ST.off?" "+((ST.off*ax.s)<0?(ax.h?"◀":"▲"):(ax.h?"▶":"▼")):""); const a=p&&p.querySelectorAll(".mpe-a"); const L=pieceList(); if(a) a.forEach((e,i)=>{ if(L[i]) e.textContent=f1(L[i].A)+" sqm"; }); } }
 /* the offset that gives the first piece the size wanted (bisection; the size grows steadily as the line moves) */
 function solve(want){ if(!(want>0)){ toast_("Type the size wanted in sqm",true); return; } const r=ST.res; const first=()=>{ const L=pieceList(); return L.length?L[0].A:NaN; };
@@ -25118,7 +25166,7 @@ function apply(){ const r=ST.res, L=pieceList(); if(!L.length) return; pushUndo(
   /* MDS register: what each piece links to, and what happens to the old rows. The rows are read once (as they are after this draft's
      earlier changes); every change to a row is folded into that row's earlier change, so each row carries one change at publish. */
   const RW=rowsOf(), rf=u=>{ if(!u) return null; const k=ukey(u); return RW.find(rw=>rw.unit!=null&&ukey(String(rw.unit))===k)||null; };
-  const used=new Set(), why={split:"split",merge:"merge",move:"line moved",name:"renamed"}[r.kind];
+  const used=new Set(), why={auto:"split",split:"split",merge:"merge",move:"line moved",name:"renamed"}[r.kind];
   const setRow=(rw,nm,A)=>{ const f={}; if(nm&&ukey(nm)!==ukey(String(rw.unit))) f.unit=nm; if(!(+rw.area>0)||Math.abs((+rw.area)-A)>Math.max(1,(+rw.area)*.01)) f.area=Math.round(A);   // the register keeps its official area when the drawing agrees within 1 % if(!Object.keys(f).length) return;
     pushOp(ops,Object.assign({op:"set",f,why:f.unit?`Plot ${rw.unit} is now ${nm} · ${fmt(A)} sqm (${why} on the map)`:`Plot ${rw.unit} area ${fmt(rw.area)} → ${fmt(A)} sqm (${why} on the map)`},opId(rw))); };
   L.forEach(x=>{ const v=ST.links[x.key]||"none", nm=nameOf(x).trim(), old=rf(x.from.properties.unit);
@@ -25130,7 +25178,7 @@ function apply(){ const r=ST.res, L=pieceList(); if(!L.length) return; pushUndo(
   ST.rc=null;
   const gone=new Set(r.base); S.geo.features=S.geo.features.filter(f=>!gone.has(f)).concat(out);
   ST.mode=null; ST.res=null; ST.names={}; ST.links={}; clearPrev(); E.afterEdit(out.map(f=>f.properties.k)); diffAgain(); refreshSizes(); panel();
-  toast_(`${{split:"Split",merge:"Merged",move:"Line moved",name:"Renamed"}[r.kind]}: ${out.map(f=>(f.properties.unit||"no number")+" "+fmt(f.properties.gis)+" sqm").join(", ")} — in the draft`); }
+  toast_(`${{auto:"Split",split:"Split",merge:"Merged",move:"Line moved",name:"Renamed"}[r.kind]}: ${out.map(f=>(f.properties.unit||"no number")+" "+fmt(f.properties.gis)+" sqm").join(", ")} — in the draft`); }
 
 /* the "what changed vs the live plan" box follows every edit */
 function diffAgain(){ try{ E.syncDraftFromMap(); T().diff=null; E.diffPanel(); }catch(e){} }
