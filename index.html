@@ -23582,7 +23582,10 @@ function loadLib(onP){ if(LIBP) return LIBP; LIBP=(async()=>{
   const [hg,hw,hwa]=await Promise.all([sha384(g),sha384(w),sha384(wa)]);
   if(hg!==SHA.glue||hw!==SHA.wrap||hwa!==SHA.wasm) throw new Error("the AutoCAD reader did not pass its safety check — not used");
   const td=new TextDecoder(); const glueURL=URL.createObjectURL(new Blob([patchGlue(td.decode(g))],{type:"text/javascript"}));
-  const wrapURL=URL.createObjectURL(new Blob([td.decode(w).replace(/(["'])\.\.\/wasm\/libredwg-web\.js\1/g,JSON.stringify(glueURL))],{type:"text/javascript"}));
+  /* V137.6: a damaged list size in one entity (Industria October Rev.06: an MTEXT with a garbage column count) made the reader build an
+     endless list and stop the whole drawing ("Invalid array length"). Every list reader now returns an empty list for an impossible size. */
+  const wrapTxt=td.decode(w).replace(/(["'])\.\.\/wasm\/libredwg-web\.js\1/g,JSON.stringify(glueURL)).replace(/(\n  dwg_ptr_to_\w+_array\(ptr, size\) \{\n)/g,"$1    if(!ptr||!(size>0)||size>1e6) return [];\n");
+  const wrapURL=URL.createObjectURL(new Blob([wrapTxt],{type:"text/javascript"}));
   const src=`${cleanText.toString()}\n${flatten.toString()}\n${normDWG.toString()}\n
     self.onmessage=async e=>{ try{ const {glueURL,wrapURL,wasm,buf}=e.data; const mod=await import(glueURL); const inst=await mod.default({wasmBinary:wasm,locateFile:f=>"https://cdn.jsdelivr.net/npm/@mlightcad/libredwg-web@0.7.17/wasm/"+f}); const W=await import(wrapURL);
       const lib=W.LibreDwg.createByWasmInstance(inst); const d=lib.dwg_read_data(buf,W.Dwg_File_Type.DWG); if(!d) throw new Error("this DWG could not be opened");
@@ -24297,7 +24300,8 @@ async function renderStep(){ const W=MP.wiz; const dlg=document.querySelector(".
           if(k==="pdf"){ if(f.size>15*1048576) throw new Error("the PDF is over 15 MB — export it smaller"); W.pdf=f; }
           else if(k==="sched"){ const R=await SID_MPR.readFile(f); if(R.schedule){ W.sched=f; W.SC=R; } else if(R.items.length){ W.file=f; W.R=R; W.crs=null; W.roles=null; W.plan=null; } else { W.sched=f; W.SC={schedule:{plots:R.list.map(x=>({code:x.code,area:x.area})),totals:[],budget:[],dups:[],tables:[],extra:[],sum:R.list.reduce((t,x)=>t+(x.area||0),0),uses:[]},list:R.list}; } }
           else { W.file=f; W.crs=null; W.R=await SID_MPR.readFile(f,m=>{ last=m; setMsg(m); }); W.roles=null; W.plan=null; } }
-        catch(e){ setMsg(f.name+": "+(e.message||String(e)),true); clearInterval(tick); next.disabled=false; renderStep(); return; } finally{ clearInterval(tick); } }
+        catch(e){ /* V137.6: a drawing that could not be read is not kept (it showed a green tick, then "Add the drawing first"), and the reason stays on screen */
+          if(k==="draw"){ W.file=null; W.R=null; W.plan=null; } clearInterval(tick); next.disabled=false; renderStep(); setMsg("Could not read "+f.name+": "+(e.message||String(e))+" — send this message to the support team.",true); return; } finally{ clearInterval(tick); } }
       next.disabled=false; renderStep(); setMsg([W.R?`${W.R.fmt}: ${fmt(W.R.items.length)} closed shapes, ${fmt(W.R.texts.filter(t=>t.isCode!==false).length)} numbers / texts`:"",W.SC?`schedule: ${fmt(W.SC.schedule.plots.length)} plots`:"",W.pdf?"PDF kept":""].filter(Boolean).join(" · ")); };
     drop.onclick=()=>inp.click(); drop.onkeydown=e=>{ if(e.key==="Enter"||e.key===" ") inp.click(); }; inp.onchange=()=>take(inp.files);
     drop.ondragover=e=>{ e.preventDefault(); drop.classList.add("on"); }; drop.ondragleave=()=>drop.classList.remove("on"); drop.ondrop=e=>{ e.preventDefault(); drop.classList.remove("on"); take(e.dataTransfer.files); };
