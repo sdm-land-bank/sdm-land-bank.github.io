@@ -9757,6 +9757,7 @@ function hoverEvents(){
     if(!hit.length){ $("#parkcard").hidden=true; clearRoutes("park"); clearRoutes("poi"); if(RING_AT){ RING_AT=null; drawRings(); } }
   });
   map.on("click","fill",e=>{
+    if(window.SID_MPE&&SID_MPE.busy()) return;   // V139: the plot editor is drawing
     const f=e.features&&e.features[0]; if(!f) return;
     const k=f.properties.k;
     // Plain click replaces the selection; Ctrl/Cmd/Shift adds to it. Clicking a selected
@@ -23746,6 +23747,14 @@ function polygonize(segs,orph,maxSegs,snapTol){
 /* the whole preparation; near = the project's live centre in lon/lat (or null for a new project) */
 async function prepare(R,near,opts){ opts=opts||{}; if(!R._orig) R._orig={items:R.items.slice(),texts:R.texts.slice(),segs:(R.segs||[]).slice()}; const rep={copies:[],used:null,byLayer:{},numbers:0,orphans:0,fromLines:0,lineLayers:[],dropped:0};
   rep.geo=opts.noSurvey?null:georef(R);
+  /* V137.7: the AutoCAD reader sometimes returns a text with a broken position (Industria October Rev.06: 65 of the 508 plot numbers
+     in block MD-NUM-UPDATE came back at x≈-5000 / 1e82 instead of x≈587,000). Such a number is kept aside as "lost": its plot is found
+     later from its neighbours in the numbering, instead of the plot being dropped as an unnumbered shape. */
+  rep.lost=[]; R._lost=[];
+  { const P=R.texts.filter(t=>t.isCode&&isFinite(t.x)&&isFinite(t.y)); if(P.length>=20){ const xs=P.map(t=>t.x).sort((a,b)=>a-b), ys=P.map(t=>t.y).sort((a,b)=>a-b), mx=xs[xs.length>>1], my=ys[ys.length>>1];
+      const d=P.map(t=>Math.hypot(t.x-mx,t.y-my)).sort((a,b)=>a-b), lim=Math.max(d[Math.floor(d.length*.8)]*25,20000);
+      const bad=t=>!isFinite(t.x)||!isFinite(t.y)||Math.abs(t.x)>1e12||Math.abs(t.y)>1e12||Math.hypot(t.x-mx,t.y-my)>lim;
+      const L=R.texts.filter(t=>t.isCode&&bad(t)); if(L.length&&L.length<P.length*.5){ const S_=new Set(L); R.texts=R.texts.filter(t=>!S_.has(t)); R._lost=L; } } }
   /* drawing units from the drawing itself (the file's unit setting is often wrong): plot numbers sit tens of metres apart, so a typical
      gap in the thousands means millimetres */
   const us=(()=>{ if(rep.geo&&rep.geo.applied) return 1; const P=R.texts.filter(t=>t.isCode).slice(0,400); if(P.length<5) return 1; const d=P.map(p=>{ let b=1e18; P.forEach(q=>{ if(q!==p){ const e=Math.hypot(q.x-p.x,q.y-p.y); if(e>0&&e<b) b=e; } }); return b; }).sort((a,b)=>a-b); return d[Math.floor(d.length/2)]>2000?1000:1; })(); rep.unitScale=us;
@@ -23826,6 +23835,26 @@ async function prepare(R,near,opts){ opts=opts||{}; if(!R._orig) R._orig={items:
           for(const gap of [.6,3,8,25]){ let faces; try{ faces=polygonize(segs,[t],0,gap*us); }catch(e){ break; }
             faces.map(r=>({r,A:area(r),b:bb(r)})).filter(f=>f.A>=PLOT_MIN&&f.A<=PLOT_MAX&&inR([t.x,t.y],f.r)&&!R.texts.some(o=>o!==t&&o.isCode&&o.x>=f.b[0]&&o.x<=f.b[2]&&o.y>=f.b[1]&&o.y<=f.b[3]&&inR([o.x,o.y],f.r))).forEach(f=>{ const dev=Math.abs(f.A-exp)/exp; if(!best||dev<best.dev) best={f,dev,gap}; }); }
           if(best&&best.dev<dev0-.05){ rep.refit.push(it.code+" "+Math.round(it.a)+" → "+Math.round(best.f.A)+" m² (expected "+Math.round(exp)+")"); it.rings=[best.f.r]; it.a=best.f.A; it.b=best.f.b; it.c=cen(best.f.r); } }); } } }
+  /* V137.7: numbers lost by the reader (broken position) go back to their plot: an unnumbered plot-sized shape on a plot layer that sits
+     where the numbering says (between plot n-1 and n+1 of the same block, else next to the nearest number of that block) and touches it.
+     Closest first, one number per shape; the area from the Excel / MDS must agree when it is known. Marked "placed by its neighbours". */
+  rep.guessed=[]; if(R._lost&&R._lost.length){ const have=new Set(R.items.filter(it=>it.code).map(it=>nk(it.code)));
+    const lostK=[...new Map(R._lost.map(t=>[nk(t.t),t])).values()].filter(t=>!have.has(nk(t.t)));
+    const lc={}; R.items.forEach(it=>{ if(it.a<PLOT_MIN||it.a>PLOT_MAX) return; const o=lc[it.layer]||(lc[it.layer]={n:0,c:0}); o.n++; if(it.code) o.c++; });
+    const pl=new Set(Object.keys(lc).filter(l=>lc[l].c>=5&&lc[l].c/lc[l].n>=.3));
+    const free=R.items.filter(it=>!it.code&&!it.block&&!it.shared&&pl.has(it.layer)&&it.a>=PLOT_MIN&&it.a<=PLOT_MAX);
+    const parse=c=>{ const m=nk(c).match(/^(.*?)(\d+)([A-Z']*)$/); return m?{p:m[1],n:+m[2]}:null; };
+    const byP=new Map(); R.items.forEach(it=>{ if(!it.code) return; const q=parse(it.code); if(!q) return; if(!byP.has(q.p)) byP.set(q.p,[]); byP.get(q.p).push({n:q.n,it}); });
+    const gapTo=(a,b)=>{ let m=1e18; a.rings[0].forEach(p=>{ b.rings[0].forEach((q,i)=>{ if(!i) return; const r=b.rings[0][i-1], dx=q[0]-r[0], dy=q[1]-r[1], L=dx*dx+dy*dy; const u=L?Math.max(0,Math.min(1,((p[0]-r[0])*dx+(p[1]-r[1])*dy)/L)):0; m=Math.min(m,Math.hypot(p[0]-r[0]-u*dx,p[1]-r[1]-u*dy)); }); }); return m; };
+    const usedT=new Set(), usedI=new Set();
+    for(const need of [2,2,1,1]){ const opt=[]; lostK.forEach(t=>{ if(usedT.has(nk(t.t))) return; const q=parse(t.t); if(!q||!byP.has(q.p)) return; const L=byP.get(q.p);
+      const lo=L.filter(x=>x.n<q.n).sort((a,b)=>b.n-a.n)[0], hi=L.filter(x=>x.n>q.n).sort((a,b)=>a.n-b.n)[0]; const nb=[lo,hi].filter(x=>x&&Math.abs(x.n-q.n)<=3); if(nb.length<need) return;
+      const fr=nb.length===2?(q.n-nb[0].n)/(nb[1].n-nb[0].n):0, ex=nb.length===2?[nb[0].it.c[0]+(nb[1].it.c[0]-nb[0].it.c[0])*fr,nb[0].it.c[1]+(nb[1].it.c[1]-nb[0].it.c[1])*fr]:nb[0].it.c, exp=opts.areas&&opts.areas[nk(t.t)];
+      free.forEach(it=>{ if(usedI.has(it)) return; const s=Math.sqrt(it.a); const touch=Math.min(...nb.map(x=>gapTo(it,x.it)),...nb.map(x=>gapTo(x.it,it))); if(touch>Math.max(s*.6,25*us)) return;
+        if(exp&&Math.abs(it.a-exp)/exp>.25) return; const d=Math.hypot(it.c[0]-ex[0],it.c[1]-ex[1])/s; if(nb.length===1&&d>2.2) return; if(nb.length===2&&d>1.2) return; opt.push({t,it,d:d+touch/s}); }); });
+      opt.sort((a,b)=>a.d-b.d);
+      opt.forEach(o=>{ const k=nk(o.t.t); if(usedT.has(k)||usedI.has(o.it)) return; usedT.add(k); usedI.add(o.it); o.it.code=o.t.t; o.it.guessed=true; rep.guessed.push(o.t.t); const q=parse(o.t.t); byP.get(q.p).push({n:q.n,it:o.it}); }); }
+    rep.lost=lostK.filter(t=>{ const q=parse(t.t); return q&&q.p&&/[-\/_.]$/.test(q.p)&&byP.has(q.p)&&!usedT.has(nk(t.t)); }).map(t=>t.t); }   // only real plot numbers of a known block (not sheet labels)
   // drop exact duplicates (same place, same size)
   const seen=new Map(); R.items=R.items.filter(it=>{ const k=Math.round(it.c[0])+","+Math.round(it.c[1])+","+Math.round(it.a/10); if(seen.has(k)){ const o=seen.get(k); if(!o.code&&it.code){ o.code=it.code; } return false; } seen.set(k,it); return true; });
   R.items.forEach(it=>{ const o=rep.byLayer[it.layer]||(rep.byLayer[it.layer]={n:0,coded:0,plotSized:0}); o.n++; if(it.a>=PLOT_MIN&&it.a<=PLOT_MAX) o.plotSized++; if(it.code) o.coded++; });
@@ -23833,11 +23862,17 @@ async function prepare(R,near,opts){ opts=opts||{}; if(!R._orig) R._orig={items:
   R.items.forEach(it=>{ it.keep=false; if(!it.code||it.a<PLOT_MIN||it.a>PLOT_MAX) return; const k=nk(it.code), sc=(main.has(it.layer)?0:1e9)+it.a, cur=byCode.get(k); if(!cur||sc<cur.s) byCode.set(k,{it,s:sc}); });
   byCode.forEach(({it})=>{ if(main.has(it.layer)||it.a<=100000) it.keep=true; });
   R.items.forEach(it=>{ if(!it.code&&main.has(it.layer)&&/plot|land|parcel|lot|قطع/i.test(it.layer)&&it.a>=PLOT_MIN&&it.a<=PLOT_MAX) it.keep=true; });
+  /* V137.7: a plot-sized shape on a plot layer with no number is still a plot (it was dropped before, so plots "disappeared"): kept as an
+     unnumbered plot, shown in the check step, to be named on the test map. Only shapes of a usual plot size for that layer (0.3–3× the
+     typical numbered plot there), so frames, hatches of whole blocks and small symbols stay out. */
+  { const med={}; main.forEach(l=>{ const a=R.items.filter(it=>it.layer===l&&it.code&&it.keep).map(it=>it.a).sort((x,y)=>x-y); if(a.length) med[l]=a[a.length>>1]; });
+    const coded=R.items.filter(o=>o.keep&&o.code); rep.unnamed=0; R.items.forEach(it=>{ if(it.keep||it.code||it.block||it.zone||!main.has(it.layer)||!med[it.layer]) return; if(it.a<Math.max(PLOT_MIN,med[it.layer]*.3)||it.a>med[it.layer]*3) return;
+      if(coded.some(o=>o!==it&&o.c[0]>=it.b[0]&&o.c[0]<=it.b[2]&&o.c[1]>=it.b[1]&&o.c[1]<=it.b[3]&&inR(o.c,it.rings[0]))) return; it.keep=true; it.unnamed=true; }); }
   R.items.forEach(it=>{ if(it.shared) it.keep=true; });
   const kept=R.items.filter(it=>it.keep), KG=grid(kept,200,it=>it.b);
   kept.forEach(z=>{ const seen2=new Set(); let inside=0; for(let x=Math.floor(z.b[0]/200);x<=Math.floor(z.b[2]/200)&&inside<2;x++) for(let y=Math.floor(z.b[1]/200);y<=Math.floor(z.b[3]/200)&&inside<2;y++) (KG.get(x+","+y)||[]).forEach(i=>{ const o=kept[i]; if(o===z||seen2.has(o)||o.a>=z.a) return; seen2.add(o); if(inR(o.c,z.rings[0])) inside++; });
     if(inside>=2){ z.keep=false; z.zone=true; } });
-  rep.plots=R.items.filter(it=>it.keep).length; rep.zones=R.items.filter(it=>it.zone).length; rep.extra=R.items.filter(it=>it.keep&&!main.has(it.layer)).length;
+  rep.unnamed=R.items.filter(it=>it.keep&&it.unnamed).length; rep.plots=R.items.filter(it=>it.keep).length; rep.zones=R.items.filter(it=>it.zone).length; rep.extra=R.items.filter(it=>it.keep&&!main.has(it.layer)).length;
   rep.orphans=orph.length; rep.orphanList=orph.map(t=>t.t).slice(0,200); rep.units=R.units; R.prepared=rep; return rep; }
 /* plot layers by content: many plot-sized shapes holding a number */
 function plotLayers(rep){ return Object.entries(rep.byLayer).filter(([l,o])=>(o.coded>=10&&o.coded/Math.max(1,o.plotSized)>=.3)||(o.coded>=1&&/plot|land|parcel|lot|قطع|built from lines/i.test(l))).map(([l])=>l); }
@@ -24160,7 +24195,7 @@ async function enterTest(park,plan,ver){
   document.documentElement.classList.add("mp-testing"); bind(); S.park=park; const ps=document.getElementById("parkSel"); if(ps) ps.value=park;
   closeWiz(); go("inventory"); setTimeout(()=>{ repaint(); liveLayer(false); const ks=new Set(S.geo.features.filter(f=>f.properties.park===park).map(f=>f.properties.k)); if(ks.size) fitKeys(ks); banner(); diffPanel(); },400);
   toast("Test map: only you see this draft. Everyone else still sees the live plan."); }
-function exitTest(quiet){ if(!MP.test) return; S.geo.features=MP.test.saved; MP.test=null; document.documentElement.classList.remove("mp-testing");
+function exitTest(quiet){ if(!MP.test) return; try{ if(window.SID_MPE&&SID_MPE.state.open) SID_MPE.close(); }catch(e){} S.geo.features=MP.test.saved; MP.test=null; document.documentElement.classList.remove("mp-testing");
   const b=document.getElementById("mpBanner"); if(b) b.remove(); const dp=document.getElementById("mpDiff"); if(dp) dp.remove(); document.documentElement.style.removeProperty("--mpb"); liveLayer(false); diffLayer(false); bind(); try{ render(); }catch(e){} repaint(); if(!quiet) toast("Back to the live map"); }
 function syncDraftFromMap(){ if(!MP.test) return; const park=MP.test.park; MP.test.feats=S.geo.features.filter(f=>f.properties.park===park).map(f=>{ const c=JSON.parse(JSON.stringify(f)); if(c.properties.unitAr){ c.properties.unit=c.properties.unitAr; delete c.properties.unitAr; } delete c.properties.st; delete c.properties.mlc; return c; });
   const sc=MP.test.plan.sched||{}; MP.test.plan.plots=MP.test.feats.map(f=>{ const u=f.properties.unit||"", x=u&&sc[ukey(u)]; return Object.assign({u,g:f.properties.gis||G.ringArea(outer(f)),r:outer(f)},x?{a:x[0]}:{},x&&x[1]?{use:x[1]}:{}); }); }
@@ -24177,6 +24212,7 @@ function banner(){ if(!MP.test) return; let b=document.getElementById("mpBanner"
       <select id="mpbStep" aria-label="Step"><option value="0.25">0.25 m</option><option value="1" selected>1 m</option><option value="5">5 m</option></select></span>${s&&(s.dx||s.dy||s.rot)?`<small>moved ${s.dx.toFixed(2)} m east, ${s.dy.toFixed(2)} m north, turned ${s.rot.toFixed(2)}°</small>`:""}</div></details>
     <button class="mpb-b" id="mpbSave" ${t.dirty&&canUpload()?"":"disabled"}>Save as new draft</button>
     <button class="mpb-b${t.only?" on":""}" id="mpbOnly" title="Hide the old drawing (its outline and the plots that are gone) and show only the new uploaded plan">${t.only?"Show old drawing":"Hide old drawing"}</button>
+    ${canUpload()&&window.SID_MPE?`<button class="mpb-b${SID_MPE.state.open?" on":""}" id="mpbEdit" title="Split, merge, move lines, rename and link plots to the MDS register">Edit plots</button>`:""}
     <button class="mpb-b" id="mpbChk">Checks</button>
     <button class="mpb-b pri" id="mpbPub" ${canPublish()?"":"disabled title='Only the publisher (Dina Rizk) or an administrator'"}>Publish to live…</button>
     <button class="mpb-b" id="mpbOut">Back to live</button>`;
@@ -24187,6 +24223,7 @@ function banner(){ if(!MP.test) return; let b=document.getElementById("mpBanner"
   b.querySelector("#mpbOut").onclick=()=>{ if(t.dirty&&!confirm("Leave the test map? The changes made here are not saved as a draft.")) return; exitTest(); };
   b.querySelector("#mpbSave").onclick=()=>saveDraftFromTest();
   b.querySelector("#mpbOnly").onclick=()=>{ t.only=!t.only; liveLayer(!t.only&&t.showLive); diffLayer(!t.only&&t.showDiff!==false); const dp=document.getElementById("mpDiff"); if(dp) dp.style.display=t.only?"none":""; banner(); };
+  const eb=b.querySelector("#mpbEdit"); if(eb) eb.onclick=()=>{ if(SID_MPE.state.open) SID_MPE.close(); else SID_MPE.open(); banner(); };
   b.querySelector("#mpbChk").onclick=()=>{ syncDraftFromMap(); openChecks(t.park,t.plan); };
   b.querySelector("#mpbPub").onclick=()=>{ syncDraftFromMap(); publishDlg(t.park,t.plan,t.ver); }; }
 async function saveDraftFromTest(){ if(!MP.test) return; syncDraftFromMap(); const t=MP.test; try{ const v=await saveDraft(t.park,t.plan,(t.plan.src||"")+(t.ver?" (edited on the test map)":"")); t.ver=v; t.dirty=false; banner(); toast("Saved as a new draft"); }catch(e){ toast("Not saved: "+(e.message||e),true); } }
@@ -24405,6 +24442,9 @@ function cadHtml(R){ const r=R.prepared; if(!r) return ""; const cp=(r.copies||[
     ${g?(g.ok&&g.applied?`<li>Placed on the grid with <b>${g.used} survey point${g.used>1?"s":""}</b> written on the drawing (N / E) — ${g.used>=3?`they agree to <b>${g.max<.01?"under 1 cm":f2(g.max)+" m"}</b>`:"only two points, so the placement is not cross-checked — check it on the test map"}${Math.abs(g.rot)>.01?` · turned ${f2(g.rot)}°`:""}${Math.abs(g.scale-1)>1e-4&&Math.abs(g.scale-.001)>1e-7?` · scale ${g.scale.toFixed(5)}`:""}.</li>`:g.ok?"":`<li class="bad">The survey points on the drawing do not agree with each other (${f2(g.max)} m) — not used; the coordinates are read as they are.</li>`):""}
     ${rl.length?`<li>Plot numbers written wrongly on this copy of the plan and corrected from the other copy in the same file: ${rl.map(x=>`<b>${esc(x.from)} → ${esc(x.to)}</b>`).join(", ")} — tell Development so the drawing is fixed.</li>`:""}
     ${bo.length?`<li>${bo.length} number${bo.length>1?"s":""} missing on this copy, taken from the other copy: ${esc(bo.slice(0,12).join(", "))}${bo.length>12?"…":""}</li>`:""}
+    ${(r.guessed||[]).length?`<li>${r.guessed.length} plot number${r.guessed.length>1?"s were":" was"} stored in the file at a broken position (an AutoCAD file fault). Each was placed on the plot between its neighbours in the numbering — check them on the test map: ${esc(r.guessed.slice(0,30).join(", "))}${r.guessed.length>30?"…":""}</li>`:""}
+    ${(r.lost||[]).length?`<li class="bad">${r.lost.length} plot number${r.lost.length>1?"s are":" is"} in the file at a broken position and no free plot fits next to its neighbours: ${esc(r.lost.slice(0,30).join(", "))} — name them on the test map.</li>`:""}
+    ${r.unnamed?`<li class="bad"><b>${fmt(r.unnamed)}</b> plot outline${r.unnamed>1?"s have":" has"} no number in the drawing. They are kept as unnamed plots (nothing is dropped) — give them their numbers on the test map, or ask Development to add the numbers in AutoCAD.</li>`:""}
     ${cf.length?`<li class="bad">The two copies in the file disagree on ${cf.length} number${cf.length>1?"s":""}: ${cf.slice(0,8).map(x=>esc(x.here)+" / "+esc(x.other)).join(", ")}</li>`:""}
     ${sh.length?`<li class="bad">${sh.length} outline${sh.length>1?"s hold":" holds"} two or more numbers (the dividing line is missing in the drawing): ${sh.map(x=>esc(x.codes.join(" + "))).join(", ")} — split them on the test map.</li>`:""}
     ${cp.length>1?`<li>The drawing holds <b>${cp.length} copies</b> of the plan (sheet copies, details). Using the one ${used&&used.km!=null?`<b>${used.km<1?"on":used.km.toFixed(1)+" km from"}</b> the project`:"with the most numbered plots"} (${fmt(used&&used.coded)} numbered plots${parts?`, plus ${parts} nearby part${parts>1?"s":""} of the same project`:""}). ${cp.filter(c=>!c.used).slice(0,3).map(c=>`<button class="mp-link" data-copy="${c.i}">Use the other copy (${fmt(c.coded)} plots${c.km!=null?", "+c.km.toFixed(0)+" km away":""})</button>`).join(" ")}</li>`:""}
@@ -24449,7 +24489,7 @@ function card(p){ const lf=liveFeats(p), vs=vers(p), live=vs.find(v=>v.status===
   return `<section class="mp-card" data-p="${esc(p)}"><div class="mp-ch"><h3>${esc(pname(p))}</h3>${live?`<span class="mp-pill live">Live v${vs.length-vs.indexOf(live)}</span>`:`<span class="mp-pill">Original drawing</span>`}${drafts.length?`<span class="mp-pill draft">${drafts.length} draft${drafts.length>1?"s":""}</span>`:""}</div>
     <div class="mp-kv"><div><b>${fmt(lf.length)}</b><span>plots</span></div><div><b>${fmt(area)}</b><span>sqm</span></div><div><b>${pct==null?"—":pct+"%"}</b><span>linked to MDS</span></div><div><b>${L?L.rowsNo.length:"—"}</b><span>MDS rows not drawn</span></div></div>
     <p class="mp-n">${live?`Published ${day(live.pubAt||live.at)} by ${esc(live.pubBy||live.by)}${live.note?" — "+esc(live.note):""}`:"The drawing from before the Master Plan Center."}</p>
-    <div class="mp-cb">${canUpload()?`<button class="ebtn pri" data-a="up">Upload new master plan</button>`:""}<button class="ebtn" data-a="vers">Versions (${vs.length})</button>${drafts[0]?`<button class="ebtn" data-a="test" data-v="${drafts[0].id}">Open latest draft on the test map</button>`:""}</div>
+    <div class="mp-cb">${canUpload()?`<button class="ebtn pri" data-a="up">Upload new master plan</button>`:""}<button class="ebtn" data-a="vers">Versions (${vs.length})</button>${drafts[0]?`<button class="ebtn" data-a="test" data-v="${drafts[0].id}">Open latest draft on the test map</button>`:""}${canUpload()&&window.SID_MPE&&mapFeats(p).length?`<button class="ebtn" data-a="edit" title="Split, merge, move lines and rename plots on the map. Makes a draft from today's live plan; nothing changes on the live map until it is published.">Edit plots on the map</button>`:""}</div>
     <div class="mp-vl" ${vs.length>1?"":"hidden"}>${vs.length>1?versHtml(p):""}</div></section>`; }
 function versHtml(p){ const vs=vers(p); if(!vs.length) return '<p class="mp-n">No versions yet. The first upload creates one; the drawing that is live today is saved as “Original drawing” on the first publish.</p>';
   const hid=((MP.idx&&MP.idx.parks[p]&&MP.idx.parks[p].v)||[]).filter(v=>v.hidden).length;
@@ -24466,6 +24506,9 @@ function wire(){ const root=document.querySelector(".mp-page"); if(!root) return
     c.querySelectorAll("[data-a]").forEach(b=>b.onclick=async()=>{ const a=b.dataset.a;
       if(a==="up") openWizard(p,false);
       if(a==="vers"){ const L=c.querySelector(".mp-vl"); L.hidden=!L.hidden; if(!L.hidden){ L.innerHTML=versHtml(p); wireVers(L,p); } }
+      if(a==="edit"){ /* V139: a draft made from today's live plan, opened on the test map with the plot editor */
+        const raw=mapFeats(p).map(f=>{ const c=JSON.parse(JSON.stringify(f)); if(c.properties.unitAr){ c.properties.unit=c.properties.unitAr; delete c.properties.unitAr; } delete c.properties.st; delete c.properties.mlc; return c; });
+        const plan={park:p,raw,src:"Live plan edited on the map",plots:raw.map(f=>({u:f.properties.unit||"",g:f.properties.gis||G.ringArea(outer(f)),r:outer(f)})),reg:[]}; await enterTest(p,plan,null); if(MP.test) delete MP.test.plan.raw; setTimeout(()=>{ try{ SID_MPE.open(); banner(); }catch(e){} },700); }
       if(a==="test"){ const v=vers(p).find(x=>x.id===b.dataset.v); if(v){ b.disabled=true; try{ await enterTest(p,await loadPlan(v),v); }catch(e){ toast("Could not open: "+(e.message||e),true); } b.disabled=false; } } }); }); }
 function exportGeo(p,v,plan){ const ccw=r=>{ let t=0; for(let i=0;i<r.length-1;i++) t+=r[i][0]*r[i+1][1]-r[i+1][0]*r[i][1]; return t>0?r:r.slice().reverse(); }, rd=c=>c.map(q=>[+q[0].toFixed(7),+q[1].toFixed(7)]);
   const f=plan.raw?planFeatures(plan).map(x=>({geometry:x.geometry,properties:{plot:x.properties.unit||"",drawn_sqm:x.properties.gis}})):plan.plots.map(x=>({geometry:{type:"Polygon",coordinates:[ccw(rd(Array.isArray(x.r[0])?x.r:G.dec(x.r)))]},properties:{plot:x.u||"",drawn_sqm:Math.round(x.g*100)/100,official_sqm:x.a!=null?Math.round(x.a*1000)/1000:null,use:x.use||null}}));
@@ -24540,7 +24583,8 @@ async function whatsNew(){ try{ const idx=await idxLoad(); let seen=""; try{ see
   if(seen&&pub.length) toast(pub.map(x=>`${pname(x.p)} master plan updated by ${x.v.pubBy||"Development"}${x.v.note?": "+x.v.note:""}`).join(" · "));
   try{ localStorage.setItem("sid.mp.seen",new Date().toISOString()); }catch(e){} }catch(e){} }
 (function boot(n){ if(typeof S!=="undefined"&&S.rows&&S.rows.length&&online()){ idxLoad().then(()=>{ seedPublishers().catch(()=>{}); whatsNew(); }).catch(()=>{}); return; } if(n<240) setTimeout(()=>boot(n+1),500); })(0);
-window.SID_MPC={view,wire,openWizard,enterTest,exitTest,publish,saveDraft,planCheck,changeCheck,simulate,buildPlan,guessRoles,planFeatures,loadPlan,idxLoad,canPublish,canUpload,isDev,nudge,template,get state(){ return MP; }};
+window.SID_MPC={view,wire,openWizard,enterTest,exitTest,publish,saveDraft,planCheck,changeCheck,simulate,buildPlan,guessRoles,planFeatures,loadPlan,idxLoad,canPublish,canUpload,isDev,nudge,template,get state(){ return MP; },
+  _e:{featOf,afterEdit,rekey,needPC,snapTo,banner,enterTest,liveFeats,syncDraftFromMap,diffPanel}};   // V139: used by the plot editor (mp_edit.js)
 })();
 
 /* V116 Department checks (window.SID_CHK) — one page, a row per project, three lights (Development · Sales Operation · Finance DEV).
@@ -24752,6 +24796,342 @@ if(typeof canSee==="function"){ const cs=canSee; canSee=function(id){ if(id==="m
 #plLg .lg-r.ok>span:first-child{color:#32D74B}
 #plLg .lg-r button{flex:0 0 auto;font-size:10.5px;padding:1px 7px}
 </style>
+<style id="mpeCss">
+#mpePanel{position:fixed;left:14px;top:calc(var(--mpb,48px) + 70px);z-index:60;width:min(380px,calc(100vw - 28px));max-height:calc(100vh - var(--mpb,48px) - 90px);overflow:auto;
+  background:var(--card,#fff);color:var(--ink,#1d1d1f);border:1px solid rgba(0,0,0,.12);border-radius:16px;box-shadow:0 12px 36px rgba(0,0,0,.22);padding:12px 13px;font-size:12.5px;display:flex;flex-direction:column;gap:9px}
+.mpe-h{display:flex;align-items:center;gap:8px}.mpe-h small{color:var(--mute,#7c818b)}.mpe-x{margin-left:auto;border:0;background:none;font-size:20px;line-height:1;cursor:pointer;color:inherit}
+.mpe-tools{display:grid;grid-template-columns:1fr 1fr;gap:6px}.mpe-tools button,.mpe-row button,.mpe-f button{border:1px solid rgba(0,0,0,.14);background:rgba(127,127,127,.06);border-radius:9px;padding:7px 8px;font:inherit;cursor:pointer;color:inherit;text-align:left}
+.mpe-tools button:disabled,.mpe-row button:disabled,.mpe-f button:disabled{opacity:.42;cursor:default}
+.mpe-tools button:first-child{grid-column:1/-1;background:#B3263D;color:#fff;border-color:#B3263D;font-weight:650}
+button.pri{background:#B3263D!important;color:#fff!important;border-color:#B3263D!important;font-weight:650}
+.mpe-f{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap}.mpe-f span{display:flex;gap:5px}
+.mpe-n{margin:0;color:var(--mute,#7c818b);font-size:11.5px;line-height:1.45}
+.mpe-chips{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}.mpe-chips span{background:rgba(127,127,127,.12);border-radius:7px;padding:2px 7px;font-size:11.5px}
+.mpe-chips span.s-a{background:rgba(10,132,255,.16)}.mpe-chips span.s-b{background:rgba(255,159,10,.2)}.mpe-chips span.s-m{background:rgba(48,164,108,.18)}
+.mpe-ba{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}.mpe-ba small{color:var(--mute,#7c818b)}.mpe-arr{font-size:18px;color:var(--mute,#7c818b)}
+.mpe-adj{border:1px solid rgba(0,0,0,.1);border-radius:11px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.mpe-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}.mpe-row.end{justify-content:flex-end}.mpe-row>span{margin-right:auto}
+.mpe-off{min-width:66px;text-align:center;font-variant-numeric:tabular-nums}.mpe-rg{width:100%}
+.mpe-tgt{width:90px;padding:5px 7px;border-radius:8px;border:1px solid rgba(0,0,0,.18);font:inherit;background:transparent;color:inherit}
+.mpe-pcs{display:flex;flex-direction:column;gap:6px}.mpe-pc{display:grid;grid-template-columns:10px 1fr auto;gap:4px 7px;align-items:center}
+.mpe-pc i{width:10px;height:10px;border-radius:3px;background:#bf5af2}.mpe-pc.s-a i{background:#0a84ff}.mpe-pc.s-b i{background:#ff9f0a}.mpe-pc.s-m i{background:#30a46c}
+.mpe-pc input{padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,.18);font:650 13px ui-monospace,Menlo,monospace;background:transparent;color:inherit;min-width:0}
+.mpe-pc select{grid-column:2/-1;padding:5px 6px;border-radius:8px;border:1px solid rgba(0,0,0,.18);font:inherit;font-size:11.5px;background:transparent;color:inherit;max-width:100%}
+.mpe-a{font-variant-numeric:tabular-nums;font-weight:650}
+.mpe-bad{color:#c22d33;background:rgba(229,72,77,.08);border-radius:9px;padding:7px 9px}.mpe-ok{color:#1f7a4c;background:rgba(48,164,108,.08);border-radius:9px;padding:7px 9px}
+.mpe-warn{color:#8a5300;background:rgba(255,159,10,.1);border-radius:9px;padding:7px 9px;line-height:1.45}
+.mpe-live{background:rgba(127,127,127,.07);border-radius:9px;padding:7px 9px}
+.mpe-reg summary{cursor:pointer;color:var(--mute,#7c818b)}.mpe-reg div{font-size:11px;padding:2px 0;border-bottom:1px dashed rgba(127,127,127,.25)}
+.mpe-lbl{background:#fff;color:#111;border-radius:7px;padding:2px 6px;font:650 11.5px/1.25 -apple-system,Inter,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.3);pointer-events:none;text-align:center;white-space:nowrap}
+.mpe-lbl b{display:block;font-size:11px}.mpe-lbl.a{border:2px solid #0a84ff}.mpe-lbl.b{border:2px solid #ff9f0a}.mpe-lbl.m{border:2px solid #30a46c}
+.mpe-sz{pointer-events:none;text-align:center;font:600 10px/1.15 -apple-system,Inter,sans-serif;color:#fff;text-shadow:0 0 3px #000,0 0 2px #000;white-space:nowrap}
+.mpe-sz b{display:block;font-size:10.5px}.mpe-sz span{opacity:.95}
+html.mpe-busy #tip{display:none!important}   /* the plot hover card hides while a line is drawn or a result is shown */
+@media (max-width:640px){#mpePanel{left:8px;right:8px;width:auto;top:auto;bottom:8px;max-height:55vh}}
+</style>
+<script id="mpeJs">
+/* V139 Plot editor (window.SID_MPE) — Development edits the plots of a project directly on the map.
+   It works on the TEST MAP only (a draft): the live map changes only when the publisher (Dina Rizk / administrators) publishes it,
+   with the usual change review and MDS register step. Start it from the Master Plan Center ("Edit plots on the map" = a draft made
+   from today's live plan) or from any draft already open on the test map.
+   Tools
+     Split  : draw a line (one or more clicks, any shape) across one plot or a whole row; sizes of every piece show while drawing.
+              Then move the line left / right (0.1 m steps, slider or arrows) or type the size wanted for the first piece; name each
+              piece and link it to an MDS row (an existing free row, the old plot's row, or a new row added at publish).
+     Merge  : select two or more touching plots (Shift/Cmd click) → one plot; the size before / after shows, name + MDS link.
+     Move the line between two plots : select the two neighbours → slide their shared line left / right or type the size wanted.
+     Remove the line between two plots = merge of the two neighbours.
+     Rename / link : one plot → new number, or pick an MDS row so the plot links to it.
+     Sizes on the map : every plot's size (sqm) written on it while editing.
+     Undo / Redo for every edit. Each edit is checked: pieces must be real plots (≥ 20 sqm), names must be unique in the project,
+     the total area before and after must agree (to 0.5 sqm).
+   MDS register changes are stored with the draft (plan.reg, same format as the upload wizard) and applied only when published. */
+(function(){
+"use strict";
+if(!window.SID_MPC||!SID_MPC._e) return;
+const C=SID_MPC, E=C._e, G=SID_MPR.geo;
+const ST={mode:null,pts:[],cur:null,sel:[],off:0,res:null,undo:[],redo:[],sizes:true,names:{},links:{},mk:[],sizeMk:[],last:0};
+const MIN_PIECE=20, TOL_AREA=.5;
+const fmt=n=>n==null||!isFinite(n)?"—":Math.round(n).toLocaleString("en-GB");
+const f1=n=>n==null||!isFinite(n)?"—":(Math.round(n*10)/10).toLocaleString("en-GB",{maximumFractionDigits:1});
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const T=()=>C.state.test;
+const can=()=>{ try{ return C.canUpload(); }catch(e){ return false; } };
+const busy=()=>!!(ST.mode&&ST.mode!=="idle");
+const park=()=>T()&&T().park;
+const parkFeats=()=>S.geo.features.filter(f=>f.properties.park===park());
+const ringOf=f=>f.geometry.type==="Polygon"?f.geometry.coordinates[0]:f.geometry.coordinates[0][0];
+const polysOf=f=>f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates;
+const areaOf=f=>polysOf(f).reduce((t,pg)=>t+G.ringArea(pg[0])-pg.slice(1).reduce((h,r)=>h+G.ringArea(r),0),0);
+const areaPolys=P=>P.reduce((t,pg)=>t+G.ringArea(pg[0])-pg.slice(1).reduce((h,r)=>h+G.ringArea(r),0),0);
+/* local metres around a reference point (the same flat projection the rest of the page uses) */
+function proj(lat){ const k=G.kx(lat), ky=G.KY; return {m:p=>[p[0]*k,p[1]*ky],d:q=>[q[0]/k,q[1]/ky]}; }
+const toast_=(m,bad)=>{ try{ toast(m,bad); }catch(e){} };
+
+/* ---------- geometry: cut by a line, offset a line, shared line of two plots ---------- */
+/* the half-plane on the LEFT of a polyline (metres), as a big polygon; the line is carried 3 km past both ends */
+function leftSide(L){ const n=L.length, u=(a,b)=>{ const dx=b[0]-a[0], dy=b[1]-a[1], l=Math.hypot(dx,dy)||1; return [dx/l,dy/l]; };
+  const d0=u(L[0],L[1]), d1=u(L[n-2],L[n-1]), E1=3000; const s0=[L[0][0]-d0[0]*E1,L[0][1]-d0[1]*E1], e0=[L[n-1][0]+d1[0]*E1,L[n-1][1]+d1[1]*E1];
+  const D=u(s0,e0), N=[-D[1],D[0]], E2=8000; return [s0,...L,e0,[e0[0]+N[0]*E2,e0[1]+N[1]*E2],[s0[0]+N[0]*E2,s0[1]+N[1]*E2],s0]; }
+/* move a polyline sideways by d metres (left is +), keeping its shape (mitred corners) */
+function offsetLine(L,d){ if(!d) return L.map(p=>p.slice()); const n=L.length, nr=(a,b)=>{ const dx=b[0]-a[0], dy=b[1]-a[1], l=Math.hypot(dx,dy)||1; return [-dy/l,dx/l]; };
+  return L.map((p,i)=>{ let v; if(i===0) v=nr(L[0],L[1]); else if(i===n-1) v=nr(L[n-2],L[n-1]); else { const a=nr(L[i-1],L[i]), b=nr(L[i],L[i+1]), m=[a[0]+b[0],a[1]+b[1]], l=Math.hypot(m[0],m[1])||1, c=(m[0]/l)*a[0]+(m[1]/l)*a[1]; v=[m[0]/l/Math.max(c,.25),m[1]/l/Math.max(c,.25)]; } return [p[0]+v[0]*d,p[1]+v[1]*d]; }); }
+/* cut a (multi)polygon (lon/lat) by a polyline (metres): pieces left and right of the line */
+function cutBy(P,Lm,pr){ const side=[leftSide(Lm).map(pr.d)]; let L=[],R=[]; try{ L=polygonClipping.intersection(P,[side]); R=polygonClipping.difference(P,[side]); }catch(e){ return null; }
+  return {left:L.filter(pg=>G.ringArea(pg[0])>=.01),right:R.filter(pg=>G.ringArea(pg[0])>=.01)}; }
+/* the line two neighbouring plots share: A's corners lying on B's edges (within tol m), the longest run along A's outline */
+function sharedLine(A,B,pr,tol){ tol=tol||.6; const a=ringOf(A).map(pr.m), b=ringOf(B).map(pr.m);
+  const dEdge=(p,R)=>{ let m=1e18; for(let i=1;i<R.length;i++){ const s=R[i-1], e=R[i], dx=e[0]-s[0], dy=e[1]-s[1], L=dx*dx+dy*dy; const t=L?Math.max(0,Math.min(1,((p[0]-s[0])*dx+(p[1]-s[1])*dy)/L)):0; m=Math.min(m,Math.hypot(p[0]-s[0]-t*dx,p[1]-s[1]-t*dy)); } return m; };
+  const ring=a.slice(0,-1), on=ring.map(p=>dEdge(p,b)<=tol), n=ring.length; if(on.filter(Boolean).length<2) return null; if(on.every(Boolean)) return null;
+  let best=null; for(let s=0;s<n;s++){ if(!on[s]||on[(s-1+n)%n]) continue; const run=[]; for(let k=0;k<n&&on[(s+k)%n];k++) run.push(ring[(s+k)%n]); if(!best||run.length>best.length) best=run; }
+  if(!best||best.length<2) return null; let len=0; for(let i=1;i<best.length;i++) len+=Math.hypot(best[i][0]-best[i-1][0],best[i][1]-best[i-1][1]); return len>=1?best:null; }
+/* which side of a polyline a point is on (+ left) */
+function pip(p,r){ let c=false; for(let i=0,j=r.length-1;i<r.length;j=i++){ const [xi,yi]=r[i],[xj,yj]=r[j]; if((yi>p[1])!==(yj>p[1])&&p[0]<(xj-xi)*(p[1]-yi)/(yj-yi)+xi) c=!c; } return c; }
+const centre=pg=>G.ringCentroid(pg[0]);
+/* how many times a polyline (metres) crosses a plot's outlines */
+function crossings(Lm,P,pr){ let n=0; const X=(a,b,c,d)=>{ const r=[b[0]-a[0],b[1]-a[1]], s=[d[0]-c[0],d[1]-c[1]], den=r[0]*s[1]-r[1]*s[0]; if(Math.abs(den)<1e-12) return false;
+    const t=((c[0]-a[0])*s[1]-(c[1]-a[1])*s[0])/den, u=((c[0]-a[0])*r[1]-(c[1]-a[1])*r[0])/den; return t>=0&&t<=1&&u>=0&&u<=1; };
+  P.forEach(pg=>pg.forEach(rg=>{ const m=rg.map(pr.m); for(let i=1;i<m.length;i++) for(let j=1;j<Lm.length;j++) if(X(Lm[j-1],Lm[j],m[i-1],m[i])) n++; })); return n; }
+
+/* ---------- names and MDS rows ---------- */
+/* the register as it will be after this draft's own changes (a plot made in this draft already has its row) */
+function rowsOf(){ const ops=regOps(), key=park()+"|"+JSON.stringify(ops).length+"|"+ops.length; if(ST.rc&&ST.rcK===key) return ST.rc;
+  const base=(S.rows||[]).filter(r=>r.park===park()); let rows=base; try{ if(ops.length&&window.SID_MPREG) rows=SID_MPREG.applyToRows(base,park(),ops).rows; }catch(e){ rows=base; }
+  ST.rc=rows; ST.rcK=key; return rows; }
+const takenNames=(except)=>{ const s=new Set(); parkFeats().forEach(f=>{ if(!except.includes(f)&&f.properties.unit) s.add(ukey(f.properties.unit)); }); return s; };
+function rowFor(unit){ if(!unit) return null; const k=ukey(unit); return rowsOf().find(r=>r.unit!=null&&ukey(String(r.unit))===k)||null; }
+/* rows of this project with no plot on the map (or only on the plots being edited): they can take a new piece */
+function freeRows(edited){ const ek=new Set(edited.map(f=>f.properties.k)); const onMap=new Map(); parkFeats().forEach(f=>{ if(f.properties.unit&&!ek.has(f.properties.k)) onMap.set(ukey(f.properties.unit),1); });
+  return rowsOf().filter(r=>r.unit!=null&&String(r.unit).trim()&&!onMap.has(ukey(String(r.unit)))); }
+const rowLabel=r=>`${r.unit} · ${fmt(r.area)} sqm · ${r.status||"—"}${r.client?" · "+String(r.client).slice(0,24):""}`;
+const isDeal=r=>/sold|contract|reserv/i.test(String(r&&r.status||""));
+function regOps(){ const t=T(); if(!t) return []; return t.plan.reg||(t.plan.reg=[]); }
+const opId=r=>({unit:String(r.unit),st:r.status||"",client:String(r.client||"")});
+/* one change per register row: a later change to a row that an earlier change made (renamed / added) is folded into it */
+const resId=E=>E.op==="add"?{unit:String(E.row.unit),st:String(E.row.status||""),client:String(E.row.client||"")}:E.op==="set"?{unit:String(E.f.unit!=null?E.f.unit:E.unit),st:String(E.f.status!=null?E.f.status:E.st),client:String(E.f.client!=null?E.f.client:E.client)}:null;
+function pushOp(ops,op){ const same=(a,b)=>a&&b&&a.unit===b.unit&&a.st===b.st&&a.client===b.client, id={unit:String(op.unit),st:String(op.st||""),client:String(op.client||"")};
+  for(let i=ops.length-1;i>=0;i--){ const E=ops[i]; if(E.op==="del"||!same(resId(E),id)) continue;
+    if(op.op==="set"){ if(E.op==="add"){ Object.assign(E.row,op.f); E.why=`New plot ${E.row.unit} · ${fmt(E.row.area)} sqm (made on the map)`; } else { Object.assign(E.f,op.f); if(E.f.unit!=null&&String(E.f.unit)===String(E.unit)) delete E.f.unit;
+      const o0=(S.rows||[]).find(rw=>rw.park===park()&&String(rw.unit)===String(E.unit)&&String(rw.status||"")===String(E.st||"")&&String(rw.client||"")===String(E.client||""));
+      if(o0&&E.f.area!=null&&+o0.area>0&&Math.abs(E.f.area-o0.area)<=Math.max(1,o0.area*.01)) delete E.f.area;   /* back to (about) its official area: keep the official one */ E.why=E.why.split(" · then ")[0]+" · then "+op.why; if(!Object.keys(E.f).length) ops.splice(i,1); } return; }
+    if(op.op==="del"){ if(E.op==="add") ops.splice(i,1); else ops[i]={op:"del",unit:E.unit,st:E.st,client:E.client,why:`Plot ${E.unit} is gone (edited on the map)`}; return; } }
+  ops.push(op); }
+
+/* ---------- undo ---------- */
+function snap(){ return JSON.stringify({f:parkFeats(),reg:regOps()}); }
+function restore(s){ ST.rc=null; const o=JSON.parse(s); const p=park(); S.geo.features=S.geo.features.filter(f=>f.properties.park!==p).concat(o.f); T().plan.reg=o.reg; E.afterEdit([]); diffAgain(); refreshSizes(); }
+function pushUndo(){ ST.undo.push(snap()); if(ST.undo.length>60) ST.undo.shift(); ST.redo=[]; }
+function undo(){ if(!ST.undo.length) return; ST.redo.push(snap()); restore(ST.undo.pop()); panel(); toast_("Undone"); }
+function redo(){ if(!ST.redo.length) return; ST.undo.push(snap()); restore(ST.redo.pop()); panel(); toast_("Redone"); }
+
+/* ---------- map preview (pieces, the line, size labels) ---------- */
+const SRC="mpe-prev", LSRC="mpe-line";
+function ensureLayers(){ if(typeof map==="undefined"||!map||!map.getStyle) return false; try{
+  if(!map.getSource(SRC)){ map.addSource(SRC,{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    map.addLayer({id:"mpe-fill",type:"fill",source:SRC,paint:{"fill-color":["match",["get","s"],"a","#0a84ff","b","#ff9f0a","m","#30a46c","#bf5af2"],"fill-opacity":.28}});
+    map.addLayer({id:"mpe-edge",type:"line",source:SRC,paint:{"line-color":["match",["get","s"],"a","#0a64c8","b","#c26a00","m","#1f7a4c","#8e3fc1"],"line-width":2.2}}); }
+  if(!map.getSource(LSRC)){ map.addSource(LSRC,{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    map.addLayer({id:"mpe-line",type:"line",source:LSRC,paint:{"line-color":"#e5484d","line-width":3,"line-dasharray":[2,1]}});
+    map.addLayer({id:"mpe-pts",type:"circle",source:LSRC,filter:["==",["geometry-type"],"Point"],paint:{"circle-radius":5,"circle-color":"#fff","circle-stroke-color":"#e5484d","circle-stroke-width":2}}); }
+  return true; }catch(e){ return false; } }
+function setPrev(feats,line){ if(!ensureLayers()) return; try{ map.getSource(SRC).setData({type:"FeatureCollection",features:feats||[]}); map.getSource(LSRC).setData({type:"FeatureCollection",features:line||[]}); }catch(e){} }
+function clearMk(){ ST.mk.forEach(m=>{ try{ m.remove(); }catch(e){} }); ST.mk=[]; }
+function label(ll,txt,cls){ try{ const el=document.createElement("div"); el.className="mpe-lbl "+(cls||""); el.innerHTML=txt; const m=new maplibregl.Marker({element:el}).setLngLat(ll).addTo(map); ST.mk.push(m); }catch(e){} }
+function clearPrev(){ setPrev([],[]); clearMk(); }
+/* every plot's size on the map while the editor is open (only the plots in view, at most 400) */
+function refreshSizes(){ ST.sizeMk.forEach(m=>{ try{ m.remove(); }catch(e){} }); ST.sizeMk=[]; if(!ST.sizes||!T()||typeof map==="undefined") return;
+  if(map.getZoom()<15.5){ return; } const b=map.getBounds(); let n=0;
+  parkFeats().forEach(f=>{ if(n>=400) return; const c=f.properties.c||G.ringCentroid(ringOf(f)); if(!b.contains(c)) return; n++;
+    const el=document.createElement("div"); el.className="mpe-sz"; el.innerHTML=`${f.properties.unit?`<b>${esc(f.properties.unit)}</b>`:"<i>no number</i>"}<span>${fmt(areaOf(f))}</span>`;
+    try{ ST.sizeMk.push(new maplibregl.Marker({element:el}).setLngLat(c).addTo(map)); }catch(e){} }); }
+let sizeHooked=false; function hookSizes(){ if(sizeHooked||typeof map==="undefined"||!map||!map.on) return; sizeHooked=true; let tm=0; map.on("moveend",()=>{ clearTimeout(tm); tm=setTimeout(()=>{ if(T()&&ST.open) refreshSizes(); },120); }); }
+
+/* ---------- the panel ---------- */
+function selFeats(){ return [...(S.sel||[])].map(E.featOf).filter(f=>f&&f.properties.park===park()); }
+function panel(){ document.documentElement.classList.toggle("mpe-busy",!!(ST.open&&busy())); let p=document.getElementById("mpePanel"); if(!T()||!can()||!ST.open){ if(p) p.remove(); return; }
+  if(!p){ p=document.createElement("div"); p.id="mpePanel"; document.body.appendChild(p); }
+  if(ST.mode==="split-draw") return drawPanel(p);
+  if(ST.res) return resultPanel(p);
+  const sel=selFeats(), n=sel.length, tot=sel.reduce((t,f)=>t+areaOf(f),0);
+  p.innerHTML=`<div class="mpe-h"><b>Plot editor</b><small>Development · draft only</small><button class="mpe-x" data-k="close" title="Close the editor">×</button></div>
+   <div class="mpe-sel">${n?`<b>${n} plot${n>1?"s":""} selected</b> · ${fmt(tot)} sqm${n<=6?`<div class="mpe-chips">${sel.map(f=>`<span>${esc(f.properties.unit||"no number")} <small>${fmt(areaOf(f))}</small></span>`).join("")}</div>`:""}`:"Click a plot on the map to select it · Shift / Cmd click to select more"}</div>
+   <div class="mpe-tools">
+     <button data-k="split" title="Draw a line across one plot or a whole row">✂︎ Split by drawing a line</button>
+     <button data-k="merge" ${n>=2?"":"disabled"} title="Select two or more touching plots">⊕ Merge ${n>=2?n+" plots":"(select 2+)"}</button>
+     <button data-k="move" ${n===2?"":"disabled"} title="Select the two neighbouring plots">⇆ Move the line between them</button>
+     <button data-k="remove" ${n===2?"":"disabled"} title="The two neighbours become one plot">⌫ Remove the line between them</button>
+     <button data-k="name" ${n===1?"":"disabled"}>✎ Rename / link to MDS</button>
+   </div>
+   <div class="mpe-f"><label><input type="checkbox" data-k="sizes" ${ST.sizes?"checked":""}> Show every plot's size on the map</label>
+     <span><button data-k="undo" ${ST.undo.length?"":"disabled"}>↶ Undo</button><button data-k="redo" ${ST.redo.length?"":"disabled"}>↷ Redo</button></span></div>
+   ${regOps().length?`<details class="mpe-reg"><summary>MDS register changes waiting for publish (${regOps().length})</summary>${regOps().map(o=>`<div>${esc(o.why||o.op)}</div>`).join("")}</details>`:""}
+   <p class="mpe-n">Changes stay in this draft. Press <b>Save as new draft</b> on the top bar; the publisher reviews and publishes.</p>`;
+  p.querySelectorAll("[data-k]").forEach(b=>{ const k=b.dataset.k; if(k==="sizes"){ b.onchange=()=>{ ST.sizes=b.checked; refreshSizes(); }; return; } b.onclick=()=>act(k); }); }
+function act(k){ const sel=selFeats();
+  if(k==="close") return close();
+  if(k==="undo") return undo(); if(k==="redo") return redo();
+  if(k==="split") return startSplit();
+  if(k==="merge"||k==="remove") return startMerge(sel,k==="remove");
+  if(k==="move") return startMove(sel);
+  if(k==="name") return startName(sel[0]); }
+
+/* ---------- split ---------- */
+function startSplit(){ ST.mode="split-draw"; ST.pts=[]; ST.cur=null; ST.res=null; S.sel&&S.sel.clear(); try{ showSelection(); }catch(e){} map.getCanvas().style.cursor="crosshair"; try{ map.doubleClickZoom.disable(); }catch(e){} panel(); toast_("Click on the map to draw the line across the plot(s). Double-click or Enter to finish, Backspace removes the last point, Esc cancels."); }
+function drawPanel(p){ const pv=ST.preview; p.innerHTML=`<div class="mpe-h"><b>Split · draw the line</b><button class="mpe-x" data-k="cancel">×</button></div>
+   <p class="mpe-n">Click points across the plot(s); the line can bend. <b>Double-click</b> or <b>Enter</b> to finish · <b>Backspace</b> removes the last point · <b>Esc</b> cancels.</p>
+   <div class="mpe-live">${ST.pts.length?`${ST.pts.length} point${ST.pts.length>1?"s":""}`:"No point yet"}${pv&&pv.items.length?` · crosses <b>${pv.items.length}</b> plot${pv.items.length>1?"s":""}<div class="mpe-chips">${pv.items.slice(0,8).map(it=>`<span>${esc(it.f.properties.unit||"no number")}: ${it.pieces.map(x=>fmt(x.A)).join(" + ")}</span>`).join("")}</div>`:""}</div>
+   <div class="mpe-row"><button data-k="back" ${ST.pts.length?"":"disabled"}>Remove last point</button><button class="pri" data-k="finish" ${ST.pts.length>=2?"":"disabled"}>Finish the line</button></div>`;
+  p.querySelector('[data-k="cancel"]').onclick=()=>cancel(); p.querySelector('[data-k="back"]').onclick=()=>{ ST.pts.pop(); livePreview(); };
+  p.querySelector('[data-k="finish"]').onclick=()=>finishLine(); }
+/* the pieces a line makes on every plot it crosses */
+function cutPlots(ptsLL,off){ if(ptsLL.length<2) return {items:[]}; const pr=proj(ptsLL[0][1]); const Lm=offsetLine(ptsLL.map(pr.m),off||0);
+  const [w,s,e,n]=G.bbox(ptsLL.map(pr.m).map(pr.d)); const items=[];
+  // only plots near the line (its box + 300 m)
+  const pad=.003; parkFeats().forEach(f=>{ const c=f.properties.c||G.ringCentroid(ringOf(f)); if(c[0]<w-pad*3||c[0]>e+pad*3||c[1]<s-pad*3||c[1]>n+pad*3) return;
+    if(crossings(Lm,polysOf(f),pr)<2) return;   // only plots the drawn line itself crosses from side to side (not its far extension)
+    const P=polysOf(f), r=cutBy(P,Lm,pr); if(!r) return; const pieces=[...r.left.map(pg=>({pg,s:"a"})),...r.right.map(pg=>({pg,s:"b"}))].map(x=>Object.assign(x,{A:areaPolys([x.pg])}));
+    if(pieces.length<2||!r.left.length||!r.right.length) return; items.push({f,pieces,A0:areaOf(f)}); });
+  return {items,Lm,pr}; }
+function livePreview(){ const pts=ST.cur?ST.pts.concat([ST.cur]):ST.pts; clearMk(); const line=pts.length>=2?[{type:"Feature",geometry:{type:"LineString",coordinates:pts},properties:{}}]:[];
+  const dots=ST.pts.map(p=>({type:"Feature",geometry:{type:"Point",coordinates:p},properties:{}}));
+  if(pts.length<2){ ST.preview=null; setPrev([],line.concat(dots)); }
+  else if(typeof polygonClipping!=="undefined"){ const pv=cutPlots(pts,0); ST.preview=pv; const feats=[];
+    pv.items.forEach(it=>it.pieces.forEach(x=>{ feats.push({type:"Feature",geometry:{type:"Polygon",coordinates:x.pg},properties:{s:x.s}}); label(centre(x.pg),`${fmt(x.A)} sqm`,x.s); })); setPrev(feats,line.concat(dots)); } if(ST.mode==="split-draw"){ const p=document.getElementById("mpePanel"); if(p) drawPanel(p); } }
+function finishLine(){ if(ST.pts.length<2){ toast_("Click at least two points",true); return; } ST.cur=null; const pv=cutPlots(ST.pts,0);
+  if(!pv.items.length){ toast_("The line does not cross a plot from side to side — draw it across the plot",true); return; }
+  ST.mode="split-adjust"; map.getCanvas().style.cursor=""; ST.off=0; ST.res={kind:"split",line:ST.pts.slice(),base:pv.items.map(it=>it.f)}; ST.names={}; ST.links={}; computeSplit(); panel(); }
+function computeSplit(){ const r=ST.res, pv=cutPlots(r.line,ST.off); const map_=new Map(pv.items.map(it=>[it.f,it])); r.items=r.base.map(f=>map_.get(f)||{f,pieces:[],A0:areaOf(f)}); r.pr=pv.pr; r.Lm=pv.Lm; drawResult(); }
+/* default names: A-5 → A-5A, A-5B …; a plot without number → "" */
+function defName(f,i){ const u=f.properties.unit||""; return u?u+String.fromCharCode(65+i):""; }
+
+/* ---------- merge / move / rename ---------- */
+function startMerge(sel,remove){ if(sel.length<2){ toast_("Select two or more plots (Shift / Cmd click)",true); return; }
+  const P=sel.map(polysOf); let U; try{ U=polygonClipping.union(...P.map(pp=>pp.map(pg=>pg.map((r,i)=>i?r:r)))); }catch(e){ toast_("These outlines cannot be joined",true); return; }
+  if(U.length!==1){ // corners a few cm apart: snap them on the first plot's edges and try again
+    try{ const a=ringOf(sel[0]); U=polygonClipping.union([[a]],...sel.slice(1).map(f=>[[E.snapTo(a,ringOf(f),.3)]])); }catch(e){} }
+  if(U.length!==1){ toast_("These plots do not touch — merge only neighbouring plots",true); return; }
+  if(remove&&sel.length===2){ const pr=proj(ringOf(sel[0])[0][1]); if(!sharedLine(sel[0],sel[1],pr)){ toast_("These two plots share no line",true); return; } }
+  ST.mode="merge"; ST.res={kind:"merge",base:sel,U:[U[0].map((r,i)=>i?r:r)],A0:sel.reduce((t,f)=>t+areaOf(f),0)}; ST.res.A1=areaPolys(ST.res.U); ST.names={0:sel.find(f=>f.properties.unit)?.properties.unit||""}; ST.links={}; drawResult(); panel(); }
+function startMove(sel){ if(sel.length!==2){ toast_("Select the two neighbouring plots",true); return; } const pr=proj(ringOf(sel[0])[0][1]);
+  let L=sharedLine(sel[0],sel[1],pr); if(!L){ const L2=sharedLine(sel[1],sel[0],pr); if(L2) L=L2.slice().reverse(); } if(!L){ toast_("These two plots do not share a line",true); return; }
+  let U; try{ const a=ringOf(sel[0]); U=polygonClipping.union([[a]],[[E.snapTo(a,ringOf(sel[1]),.3)]]); }catch(e){ U=[]; }
+  if(U.length!==1){ toast_("These two plots cannot be joined to move their line",true); return; }
+  const aSide=pip(pr.m(G.ringCentroid(ringOf(sel[0]))),leftSide(L))?"left":"right";
+  ST.mode="move"; ST.off=0; ST.res={kind:"move",base:sel,U,L,pr,aSide,A0:areaOf(sel[0])+areaOf(sel[1])}; ST.names={0:sel[0].properties.unit||"",1:sel[1].properties.unit||""}; ST.links={}; computeMove(); panel(); }
+function computeMove(){ const r=ST.res, Lm=offsetLine(r.L,ST.off), c=cutBy(r.U,Lm,r.pr); if(!c){ r.items=null; return; }
+  const a=r.aSide==="left"?c.left:c.right, b=r.aSide==="left"?c.right:c.left; if(!a.length||!b.length){ r.parts=null; r.A=null; r.Lm=Lm; drawResult(); return; } r.parts=[a,b]; r.A=[areaPolys(a),areaPolys(b)]; r.Lm=Lm; drawResult(); }
+function startName(f){ if(!f) return; ST.mode="name"; ST.res={kind:"name",base:[f]}; ST.names={0:f.properties.unit||""}; ST.links={}; drawResult(); panel(); }
+
+/* ---------- result: pieces on the map + the panel with sizes, names, MDS links ---------- */
+function pieceList(){ const r=ST.res; if(!r) return [];
+  if(r.kind==="split"){ const out=[]; r.items.forEach((it,j)=>{ const s=[...it.pieces].sort((x,y)=>x.s===y.s?0:x.s==="a"?-1:1); s.forEach((x,i)=>out.push({key:j+":"+i,from:it.f,pg:[x.pg],A:x.A,s:x.s,idx:i})); }); return out; }
+  if(r.kind==="merge") return [{key:"0",from:r.base[0],pg:r.U,A:r.A1,s:"m",idx:0}];
+  if(r.kind==="move") return r.parts?[{key:"0",from:r.base[0],pg:r.parts[0],A:r.A[0],s:"a",idx:0},{key:"1",from:r.base[1],pg:r.parts[1],A:r.A[1],s:"b",idx:1}]:[];
+  if(r.kind==="name") return [{key:"0",from:r.base[0],pg:polysOf(r.base[0]),A:areaOf(r.base[0]),s:"m",idx:0}];
+  return []; }
+function drawResult(){ clearMk(); const L=pieceList().filter(x=>x.pg&&x.pg.length&&x.pg[0]), feats=[]; L.forEach(x=>{ x.pg.forEach(pg=>feats.push({type:"Feature",geometry:{type:"Polygon",coordinates:pg},properties:{s:x.s}})); const nm=nameOf(x);
+    label(centre(x.pg[0]),`${nm?`<b>${esc(nm)}</b>`:""}${fmt(x.A)} sqm`,x.s); });
+  const r=ST.res, ln=r&&r.Lm&&r.pr?[{type:"Feature",geometry:{type:"LineString",coordinates:r.Lm.map(r.pr.d)},properties:{}}]:[]; setPrev(feats,ln); }
+/* which way "+" moves the line on the screen. h = the line runs up/down (it moves left/right); s = +1 when + moves it right (or down) */
+function axis(){ const r=ST.res; let a,b; if(r&&r.kind==="split"&&r.line){ const pr=proj(r.line[0][1]); a=pr.m(r.line[0]); b=pr.m(r.line[r.line.length-1]); } else if(r&&r.L){ a=r.L[0]; b=r.L[r.L.length-1]; } else return {h:true,s:1};
+  const dx=b[0]-a[0], dy=b[1]-a[1], N=[-dy,dx]; if(Math.abs(N[0])>=Math.abs(N[1])) return {h:true,s:N[0]>0?1:-1}; return {h:false,s:N[1]>0?-1:1}; }
+function nameOf(x){ if(ST.names[x.key]!=null) return ST.names[x.key]; return ST.res.kind==="split"?defName(x.from,x.idx):(x.from.properties.unit||""); }
+function linkOptions(x,pieces){ const edited=ST.res.base, free=freeRows(edited), old=rowFor(x.from.properties.unit), nm=nameOf(x), same=rowFor(nm);
+  const o=[]; if(same) o.push({v:"row:"+same.unit,l:`Linked: MDS row ${rowLabel(same)}`});
+  if(old&&(!same||same!==old)) o.push({v:"old",l:ST.res.kind==="name"?`Its MDS row ${old.unit} is renamed too (${rowLabel(old)})`:`Takes the old row ${rowLabel(old)}`});
+  o.push({v:"new",l:"New MDS row at publish (status Hold)"}); o.push({v:"none",l:"No MDS row (not linked)"});
+  free.filter(r=>r!==same&&r!==old).sort((a,b)=>Math.abs((+a.area||0)-x.A)-Math.abs((+b.area||0)-x.A)).slice(0,12).forEach(r=>o.push({v:"row:"+r.unit,l:`Use free row ${rowLabel(r)}`}));
+  return o; }
+function defLink(x,opts,i){ if(ST.links[x.key]) return ST.links[x.key]; if(opts.some(o=>o.v.startsWith("row:")&&o.l.startsWith("Linked"))) return opts[0].v;
+  if(ST.res.kind==="merge"||ST.res.kind==="move") return opts.find(o=>o.v==="old")?"old":"new";
+  if(ST.res.kind==="split") return i===0&&opts.find(o=>o.v==="old")?"old":"new"; return opts.find(o=>o.v==="old")?"old":"none"; }
+function resultPanel(p){ const r=ST.res, L=pieceList(); const A0=r.kind==="split"?r.items.reduce((t,it)=>t+it.A0,0):r.kind==="name"?areaOf(r.base[0]):r.A0, A1=L.reduce((t,x)=>t+x.A,0);
+  const title={split:"Split",merge:"Merge",move:"Move the line between two plots",name:"Rename / link to MDS"}[r.kind];
+  const before=r.base.map(f=>`<span>${esc(f.properties.unit||"no number")} <small>${fmt(areaOf(f))}</small></span>`).join("");
+  const ax=axis(), A1L=ax.h?"◀":"▲", A2L=ax.h?"▶":"▼";
+  const adj=(r.kind==="split"||r.kind==="move")?`<div class="mpe-adj"><div class="mpe-row"><span>Move the line</span><button data-o="${-ax.s}">${A1L} 1 m</button><button data-o="${-ax.s*.1}">${A1L} 0.1</button><b class="mpe-off">${f1(Math.abs(ST.off))} m${ST.off?" "+((ST.off*ax.s)<0?A1L:A2L):""}</b><button data-o="${ax.s*.1}">0.1 ${A2L}</button><button data-o="${ax.s}">1 m ${A2L}</button></div>
+     <input type="range" class="mpe-rg" min="-60" max="60" step="0.1" value="${ST.off*ax.s}" ${ax.h?"":'title="left = up, right = down"'}>
+     <div class="mpe-row"><span>Size wanted for <b>${esc(nameOf(L[0]||{key:"0",from:r.base[0],idx:0})||"the blue piece")}</b></span><input type="number" class="mpe-tgt" min="1" step="1" placeholder="sqm"><button data-k="solve">Set</button></div></div>`:"";
+  const bad=[]; const names=L.map(x=>nameOf(x).trim()); const taken=takenNames(r.base);
+  L.forEach((x,i)=>{ if(x.A<MIN_PIECE) bad.push(`${names[i]||"a piece"} is only ${f1(x.A)} sqm`); if(names[i]&&taken.has(ukey(names[i]))) bad.push(`${names[i]} is already used by another plot`); });
+  const dup=names.filter((n,i)=>n&&names.findIndex(m=>m&&ukey(m)===ukey(n))!==i); if(dup.length) bad.push("two pieces have the same name: "+dup.join(", "));
+  if(r.kind==="split"&&r.items.some(it=>!it.pieces.length)) bad.push("the line no longer crosses "+r.items.filter(it=>!it.pieces.length).map(it=>it.f.properties.unit||"a plot").join(", "));
+  if(r.kind==="move"&&!r.parts) bad.push("the line has left the two plots — move it back");
+  if(r.kind!=="name"&&Math.abs(A1-A0)>Math.max(TOL_AREA,A0*1e-4)) bad.push(`total ${f1(A1)} sqm ≠ before ${f1(A0)} sqm`);
+  p.innerHTML=`<div class="mpe-h"><b>${title}</b><button class="mpe-x" data-k="cancel" title="Cancel">×</button></div>
+   <div class="mpe-ba"><div><small>Before</small><div class="mpe-chips">${before}</div><b>${fmt(A0)} sqm</b></div><div class="mpe-arr">→</div><div><small>After</small><div class="mpe-chips">${L.map(x=>`<span class="s-${x.s}">${esc(nameOf(x)||"no number")} <small>${fmt(x.A)}</small></span>`).join("")}</div><b>${fmt(A1)} sqm</b></div></div>
+   ${adj}
+   <div class="mpe-pcs">${L.map((x,i)=>{ const opts=linkOptions(x,L); if(ST.links[x.key]&&!opts.some(o=>o.v===ST.links[x.key])) delete ST.links[x.key]; const v=defLink(x,opts,i); ST.links[x.key]=v; return `<div class="mpe-pc s-${x.s}"><i></i><input data-n="${x.key}" value="${esc(nameOf(x))}" placeholder="Plot number"><span class="mpe-a">${f1(x.A)} sqm</span>
+       <select data-l="${x.key}">${opts.map(o=>`<option value="${esc(o.v)}"${o.v===v?" selected":""}>${esc(o.l)}</option>`).join("")}</select></div>`; }).join("")}</div>
+   ${oldRowNote()}
+   ${bad.length?`<div class="mpe-bad">${bad.map(esc).join("<br>")}</div>`:`<div class="mpe-ok">Checked: sizes add up, names are free.</div>`}
+   <div class="mpe-row end"><button data-k="cancel">Cancel</button><button class="pri" data-k="apply" ${bad.length?"disabled":""}>Apply to the draft</button></div>`;
+  p.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ const k=b.dataset.k; if(k==="cancel") cancel(); if(k==="apply") apply(); if(k==="solve") solve(+p.querySelector(".mpe-tgt").value); });
+  p.querySelectorAll("[data-o]").forEach(b=>b.onclick=()=>shift(ST.off+ +b.dataset.o));
+  const rg=p.querySelector(".mpe-rg"); if(rg){ rg.oninput=()=>shift(+rg.value*ax.s,true); rg.onchange=()=>panel(); }
+  p.querySelectorAll("input[data-n]").forEach(i=>{ i.oninput=()=>{ ST.names[i.dataset.n]=i.value; drawResult(); }; i.onchange=()=>panel(); });
+  p.querySelectorAll("select[data-l]").forEach(s=>s.onchange=()=>{ ST.links[s.dataset.l]=s.value; const m=s.value.match(/^row:(.+)$/); if(m){ ST.names[s.dataset.l]=m[1]; } else if(s.value==="old"){ const x=L.find(y=>y.key===s.dataset.l); if(x&&x.from.properties.unit&&r.kind!=="split"&&r.kind!=="name") ST.names[s.dataset.l]=x.from.properties.unit; } panel(); drawResult(); }); }
+/* the old plots' MDS rows that no piece takes */
+function oldRowNote(){ const r=ST.res; if(!r||r.kind==="name") return ""; const L=pieceList(); const takes=new Set(L.filter(x=>ST.links[x.key]==="old").map(x=>x.from));
+  const left=r.base.filter(f=>!takes.has(f)&&rowFor(f.properties.unit)&&!L.some(x=>ukey(nameOf(x)||"-")===ukey(f.properties.unit))).map(f=>rowFor(f.properties.unit));
+  if(!left.length) return ""; return `<div class="mpe-warn">${left.map(rw=>isDeal(rw)?`MDS row <b>${esc(rw.unit)}</b> is a ${esc(rw.status)} deal: it is kept and will show "not on the map" — choose "Takes the old row" for one piece to move the deal.`:`MDS row <b>${esc(rw.unit)}</b> (${esc(rw.status||"—")}) has no plot after this: it is removed from the register at publish.`).join("<br>")}</div>`; }
+function shift(v,quiet){ ST.off=Math.max(-60,Math.min(60,Math.round(v*10)/10)); if(ST.res.kind==="split") computeSplit(); else computeMove(); if(!quiet) panel(); else { const p=document.getElementById("mpePanel"), o=p&&p.querySelector(".mpe-off"), ax=axis(); if(o) o.textContent=f1(Math.abs(ST.off))+" m"+(ST.off?" "+((ST.off*ax.s)<0?(ax.h?"◀":"▲"):(ax.h?"▶":"▼")):""); const a=p&&p.querySelectorAll(".mpe-a"); const L=pieceList(); if(a) a.forEach((e,i)=>{ if(L[i]) e.textContent=f1(L[i].A)+" sqm"; }); } }
+/* the offset that gives the first piece the size wanted (bisection; the size grows steadily as the line moves) */
+function solve(want){ if(!(want>0)){ toast_("Type the size wanted in sqm",true); return; } const r=ST.res; const first=()=>{ const L=pieceList(); return L.length?L[0].A:NaN; };
+  if(r.kind==="split"&&r.items.length!==1){ toast_("Size wanted works when the line crosses one plot",true); return; }
+  const at=d=>{ ST.off=d; if(r.kind==="split") computeSplit(); else computeMove(); return first(); };
+  const keep=ST.off; let lo=-60, hi=60, flo=at(lo), fhi=at(hi); if(!isFinite(flo)||!isFinite(fhi)){ // the line leaves the plot at the ends: shrink the range
+    let a=-60,b=60; for(let i=0;i<30&&!isFinite(at(a));i++) a/=1.3; for(let i=0;i<30&&!isFinite(at(b));i++) b/=1.3; lo=a; hi=b; flo=at(lo); fhi=at(hi); }
+  if(!isFinite(flo)||!isFinite(fhi)||(want-flo)*(want-fhi)>0){ at(keep); panel(); toast_(`${fmt(want)} sqm cannot be reached by moving this line (possible: ${fmt(Math.min(flo,fhi))} – ${fmt(Math.max(flo,fhi))} sqm)`,true); return; }
+  for(let i=0;i<50;i++){ const m=(lo+hi)/2, fm=at(m); if(!isFinite(fm)) break; if((fm-want)*(flo-want)<=0){ hi=m; fhi=fm; } else { lo=m; flo=fm; } if(hi-lo<.002) break; }
+  ST.off=Math.round(((lo+hi)/2)*1000)/1000; if(r.kind==="split") computeSplit(); else computeMove(); panel(); toast_(`Line moved ${f1(ST.off)} m · first piece ${f1(first())} sqm`); }
+
+/* ---------- apply to the draft ---------- */
+function apply(){ const r=ST.res, L=pieceList(); if(!L.length) return; pushUndo();
+  const sheet=r.base[0].properties.sheet, ops=regOps(), pk=park(), mk=(x,props)=>{ const pg=x.pg; const g=pg.length===1?{type:"Polygon",coordinates:pg[0]}:{type:"MultiPolygon",coordinates:pg};
+      const pr=Object.assign({},props,{park:pk,sheet,unit:nameOf(x).trim()||undefined,gis:Math.round(x.A),c:G.ringCentroid(pg[0][0]).map(v=>+v.toFixed(7))}); if(!pr.unit) delete pr.unit; delete pr.unitAr; delete pr.st; delete pr.mlc;
+      const f={type:"Feature",geometry:g,properties:pr}; E.rekey(f); return f; };
+  const out=[]; L.forEach(x=>{ out.push(mk(x,x.from.properties)); });
+  /* MDS register: what each piece links to, and what happens to the old rows. The rows are read once (as they are after this draft's
+     earlier changes); every change to a row is folded into that row's earlier change, so each row carries one change at publish. */
+  const RW=rowsOf(), rf=u=>{ if(!u) return null; const k=ukey(u); return RW.find(rw=>rw.unit!=null&&ukey(String(rw.unit))===k)||null; };
+  const used=new Set(), why={split:"split",merge:"merge",move:"line moved",name:"renamed"}[r.kind];
+  const setRow=(rw,nm,A)=>{ const f={}; if(nm&&ukey(nm)!==ukey(String(rw.unit))) f.unit=nm; if(!(+rw.area>0)||Math.abs((+rw.area)-A)>Math.max(1,(+rw.area)*.01)) f.area=Math.round(A);   // the register keeps its official area when the drawing agrees within 1 % if(!Object.keys(f).length) return;
+    pushOp(ops,Object.assign({op:"set",f,why:f.unit?`Plot ${rw.unit} is now ${nm} · ${fmt(A)} sqm (${why} on the map)`:`Plot ${rw.unit} area ${fmt(rw.area)} → ${fmt(A)} sqm (${why} on the map)`},opId(rw))); };
+  L.forEach(x=>{ const v=ST.links[x.key]||"none", nm=nameOf(x).trim(), old=rf(x.from.properties.unit);
+    if(v==="old"&&old&&!used.has(old)){ used.add(old); setRow(old,nm,x.A); }
+    else if(v==="new"&&nm){ ops.push({op:"add",row:{park:pk,sheet:(S.rows.find(rw=>rw.park===pk&&rw.sheet)||{}).sheet||null,unit:nm,area:Math.round(x.A),status:"hold",sector:null,landType:null},why:`New plot ${nm} · ${fmt(x.A)} sqm (${why} on the map)`}); }
+    else if(v.startsWith("row:")){ const rw=rf(v.slice(4)); if(rw&&!used.has(rw)){ used.add(rw); setRow(rw,nm,x.A); } } });
+  if(r.kind!=="name") r.base.forEach(f=>{ const rw=rf(f.properties.unit); if(!rw||used.has(rw)) return; if(out.some(o=>o.properties.unit&&ukey(o.properties.unit)===ukey(String(rw.unit)))) return; if(isDeal(rw)) return;
+    pushOp(ops,Object.assign({op:"del",why:`Plot ${rw.unit} is gone (${why} on the map)`},opId(rw))); });
+  ST.rc=null;
+  const gone=new Set(r.base); S.geo.features=S.geo.features.filter(f=>!gone.has(f)).concat(out);
+  ST.mode=null; ST.res=null; ST.names={}; ST.links={}; clearPrev(); E.afterEdit(out.map(f=>f.properties.k)); diffAgain(); refreshSizes(); panel();
+  toast_(`${{split:"Split",merge:"Merged",move:"Line moved",name:"Renamed"}[r.kind]}: ${out.map(f=>(f.properties.unit||"no number")+" "+fmt(f.properties.gis)+" sqm").join(", ")} — in the draft`); }
+
+/* the "what changed vs the live plan" box follows every edit */
+function diffAgain(){ try{ E.syncDraftFromMap(); T().diff=null; E.diffPanel(); }catch(e){} }
+function cancel(){ ST.mode=null; ST.res=null; ST.pts=[]; ST.cur=null; ST.preview=null; clearPrev(); try{ map.getCanvas().style.cursor=""; map.doubleClickZoom.enable(); }catch(e){} panel(); }
+function close(){ cancel(); ST.open=false; ST.sizeMk.forEach(m=>{ try{ m.remove(); }catch(e){} }); ST.sizeMk=[]; panel(); C._e.banner(); }
+function open(){ if(!T()){ toast_("Open a draft on the test map first (Master Plan Center)",true); return; } if(!can()){ toast_("Only Development or an administrator can edit plots",true); return; }
+  ST.open=true; ST.undo=[]; ST.redo=[]; hookMap(); hookSizes(); E.needPC().then(()=>{ panel(); refreshSizes(); }).catch(e=>toast_("The shape tools did not load: "+(e.message||e),true)); }
+
+/* ---------- map events (only while drawing a split line) ---------- */
+let hooked=false; function hookMap(){ if(hooked||typeof map==="undefined"||!map||!map.on) return; hooked=true;
+  map.on("click",e=>{ if(ST.mode!=="split-draw") return; ST.pts.push([e.lngLat.lng,e.lngLat.lat]); livePreview(); });
+  map.on("dblclick",e=>{ if(ST.mode!=="split-draw") return; e.preventDefault&&e.preventDefault(); // the double-click added its point twice: keep one
+    const n=ST.pts.length; if(n>=2&&Math.hypot(ST.pts[n-1][0]-ST.pts[n-2][0],ST.pts[n-1][1]-ST.pts[n-2][1])<1e-7) ST.pts.pop(); finishLine(); });
+  let raf=0; map.on("mousemove",e=>{ if(ST.mode!=="split-draw"||!ST.pts.length) return; ST.cur=[e.lngLat.lng,e.lngLat.lat]; if(raf) return; raf=requestAnimationFrame(()=>{ raf=0; if(ST.mode==="split-draw") livePreview(); }); });
+  document.addEventListener("keydown",ev=>{ if(ST.mode!=="split-draw") { if(ST.res&&ev.key==="Escape") cancel(); return; } const tg=ev.target&&ev.target.tagName; if(tg==="INPUT"||tg==="TEXTAREA"||tg==="SELECT") return;
+    if(ev.key==="Escape"){ ev.preventDefault(); cancel(); toast_("Split cancelled"); } else if(ev.key==="Enter"){ ev.preventDefault(); finishLine(); } else if(ev.key==="Backspace"){ ev.preventDefault(); ST.pts.pop(); livePreview(); } },true); }
+
+/* the panel follows the selection made on the map */
+if(typeof showSelection==="function"){ const s0=window.showSelection; window.showSelection=function(){ const o=s0.apply(this,arguments); try{ if(ST.open&&!ST.res&&!busy()) panel(); }catch(e){} return o; }; }
+
+window.SID_MPE={open,close,busy,state:ST,_t:{leftSide,offsetLine,cutBy,sharedLine,cutPlots,solve,shift}};
+})();
+
+</script>
 
 <style id="gfCss">
 .gf-box{margin:8px 0 6px;border:1px solid rgba(0,0,0,.12);border-radius:11px;padding:8px 10px;font-size:12px;display:flex;flex-direction:column;gap:5px;background:rgba(127,127,127,.04)}
