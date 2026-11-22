@@ -1004,7 +1004,11 @@ body.no-matchfin #fpOn,body.no-matchfin .fp-panel,body.no-matchfin .fp-sec,body.
 .sbg-box input{height:40px;border:1px solid #d9dbe0;border-radius:10px;padding:0 12px;font-size:14px}
 .sbg-box input:focus{outline:none;border-color:#A6192E;box-shadow:0 0 0 3px rgba(166,25,46,.15)}
 .sbg-box .applybtn{height:42px;margin-top:4px}
-.sbg-err{color:#A6192E;font-size:12px;min-height:16px;margin:0}
+.sbg-err{color:#A6192E;font-size:12px;min-height:16px;margin:0}.sbg-links{display:flex;justify-content:space-between;gap:10px;margin:2px 0 0;font-size:12.5px}
+.sbg-links a,.sbg-fp{color:#A6192E;font-weight:600;text-decoration:none;font-size:12.5px}
+.sbg-links a:hover,.sbg-fp:hover{text-decoration:underline}
+.sbg-fp{align-self:center;margin-top:-4px}
+.sbg-ok{background:#eef8f0;color:#1f6b35;border:1px solid #bfe3c8;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.45;margin:0}
 .sb-act{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 
 .pres-tour .pt-bar{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2;opacity:0;transition:opacity .25s}
@@ -13517,7 +13521,7 @@ function sbLoginUI(){
       <div class="sbg-t">SID Dashboard</div><p class="sbg-m">Sign in to open the land bank, sales and investor tools.</p>${(()=>{ try{ if(localStorage.getItem("sid.autoLogout")){ localStorage.removeItem("sid.autoLogout"); return `<p style="background:#fff4e0;color:#7a4a00;border:1px solid #f0c987;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.4;margin:0 0 4px">You were signed out automatically because there was no activity for 1 hour.</p>`; } }catch(e){} return ""; })()}
       <label>Email<input type="email" id="sbgE" autocomplete="username" required></label>
       <label>Password<input type="password" id="sbgP" autocomplete="current-password" required></label>
-      <button class="applybtn" type="submit" id="sbgB">Sign in</button><p class="sbg-err" id="sbgErr"></p></form>`;
+      <button class="applybtn" type="submit" id="sbgB">Sign in</button><p class="sbg-err" id="sbgErr"></p><a href="#" class="sbg-fp" data-fp="forgot">Forgot password?</a></form>`;
     const f=g.querySelector("#sbgForm"); setTimeout(()=>{ const e=$("#sbgE"); if(e) e.focus(); },50);
     f.onsubmit=async ev=>{ ev.preventDefault(); const b=$("#sbgB"); b.disabled=true; b.textContent="Signing in…"; $("#sbgErr").textContent="";
       const {data,error}=await SB.auth.signInWithPassword({email:$("#sbgE").value.trim(),password:$("#sbgP").value});
@@ -25741,6 +25745,72 @@ document.addEventListener("click",e=>{ if(e.target.closest&&e.target.closest("#p
 addEventListener("resize",()=>{ if(document.body.classList.contains("ws-on")) relayout(); });
 let pT=0; const paintSoon=()=>{ clearTimeout(pT); pT=setTimeout(()=>{ if(bar&&document.body.classList.contains("ws-on")) paint(); },40); };
 window.SID_WS={mount,paint,paintSoon,stepify,get state(){ return ST; },get bar(){ return bar; }};
+})();
+</script>
+
+<script>
+(()=>{
+  const API="https://iyubegbevtjcvtuubpaq.supabase.co/functions/v1/api";
+  const esc=t=>String(t??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  let mail="";
+  const post=async(path,body)=>{
+    let r; try{ r=await fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); }
+    catch(e){ throw new Error("Could not reach the password service. Check the connection and try again."); }
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error||j.message||("The server answered "+r.status));
+    return j;
+  };
+  const box=()=>document.getElementById("sbgForm");
+  const head=`<div class="sbg-t">SID Dashboard</div>`;
+  function show(mode,info){
+    const f=box(); if(!f) return;
+    const logo=f.querySelector("img"); const logoHtml=logo?logo.outerHTML:"";
+    f.onsubmit=null;
+    if(mode==="forgot"){
+      f.innerHTML=`${logoHtml}${head}<p class="sbg-m">Enter your work e-mail. We will send you a 6-digit code to set a new password.</p>
+        <label>Email<input type="email" id="fpE" autocomplete="username" required value="${esc(mail)}"></label>
+        <button class="applybtn" type="submit" id="fpB">Send me the code</button><p class="sbg-err" id="fpErr"></p>
+        <p class="sbg-links"><a href="#" data-fp="code">I already have a code</a><a href="#" data-fp="login">Back to sign in</a></p>`;
+      f.onsubmit=async ev=>{ ev.preventDefault(); const b=document.getElementById("fpB"); mail=document.getElementById("fpE").value.trim();
+        b.disabled=true; b.textContent="Sending…"; document.getElementById("fpErr").textContent="";
+        try{ await post("/auth/forgot",{email:mail,app:"landbank"});
+          show("code","If this e-mail belongs to an active account, we sent a 6-digit code to it. It can take a minute. Check Junk as well."); }
+        catch(e){ document.getElementById("fpErr").textContent=e.message; b.disabled=false; b.textContent="Send me the code"; } };
+      setTimeout(()=>document.getElementById("fpE")?.focus(),50);
+    } else if(mode==="code"){
+      f.innerHTML=`${logoHtml}${head}${info?`<p class="sbg-ok">${esc(info)}</p>`:`<p class="sbg-m">Enter the code from the e-mail and choose a new password.</p>`}
+        <label>Email<input type="email" id="fpE" autocomplete="username" required value="${esc(mail)}"></label>
+        <label>6-digit code from the e-mail<input id="fpC" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code" style="letter-spacing:.4em;text-align:center;font-size:18px"></label>
+        <label>New password<input type="password" id="fpP" autocomplete="new-password" required minlength="8"></label>
+        <label>New password again<input type="password" id="fpP2" autocomplete="new-password" required minlength="8"></label>
+        <p class="sbg-m" style="font-size:11.5px">At least 8 characters, with letters and numbers. The same password works in SDM Sales Leads.</p>
+        <button class="applybtn" type="submit" id="fpB">Set the new password</button><p class="sbg-err" id="fpErr"></p>
+        <p class="sbg-links"><a href="#" data-fp="forgot">Send a new code</a><a href="#" data-fp="login">Back to sign in</a></p>`;
+      f.onsubmit=async ev=>{ ev.preventDefault(); const err=document.getElementById("fpErr"); err.textContent="";
+        const p=document.getElementById("fpP").value, p2=document.getElementById("fpP2").value;
+        mail=document.getElementById("fpE").value.trim();
+        if(p!==p2){ err.textContent="The two passwords are not the same."; return; }
+        if(p.length<8||!/[A-Za-z]/.test(p)||!/\d/.test(p)){ err.textContent="The new password needs at least 8 characters, with letters and numbers."; return; }
+        const b=document.getElementById("fpB"); b.disabled=true; b.textContent="Saving…";
+        try{ await post("/auth/reset",{email:mail,code:document.getElementById("fpC").value.trim(),password:p}); show("done"); }
+        catch(e){ err.textContent=e.message; b.disabled=false; b.textContent="Set the new password"; } };
+      setTimeout(()=>document.getElementById(mail?"fpC":"fpE")?.focus(),50);
+    } else if(mode==="done"){
+      f.innerHTML=`${logoHtml}${head}<p class="sbg-ok">Your password is changed. Sign in with the new password (it works in SDM Sales Leads too).</p>
+        <button class="applybtn" type="button" data-fp="login">Sign in</button>`;
+    }
+  }
+  document.addEventListener("click",ev=>{
+    const a=ev.target.closest&&ev.target.closest("[data-fp]"); if(!a||!box()) return;
+    ev.preventDefault(); const m=a.getAttribute("data-fp");
+    if(m==="login"){ try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){} location.reload(); return; }
+    const e=document.getElementById("sbgE")||document.getElementById("fpE"); if(e&&e.value) mail=e.value.trim();
+    show(m);
+  });
+  // the e-mail link: #reset=<email> opens the code step as soon as the sign-in box is on screen
+  const m=/[#&]reset=([^&]+)/.exec(location.hash);
+  if(m){ try{ mail=decodeURIComponent(m[1]); }catch(e){}
+    let n=0; const t=setInterval(()=>{ if(box()){ clearInterval(t); show("code"); } else if(++n>600) clearInterval(t); },100); }
 })();
 </script>
 </body>
