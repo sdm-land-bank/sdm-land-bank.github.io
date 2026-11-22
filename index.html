@@ -14426,7 +14426,7 @@ const SL_HEAT=["#E9D5FF","#C084FC","#9333EA","#6B21A8","#3B0764"];   /* violet: 
 const SL_PER={"30":"Last 30 days","90":"Last 90 days","365":"Last 12 months","all":"All time","custom":"Custom"};
 const SLD={period:"90",from:"",to:"",data:null,err:"",busy:false,open:false,seq:0,metric:"prints",vw:{},ps:{by:"project",sort:"score",dir:-1},pv:[]};
 const SLH={on:false,cnt:new Map(),max:0,hooked:false};
-const slStatsOk=()=>!!(SBME&&(SBME.is_admin||(SBME.pages||[]).includes("*")||(SBME.pages||[]).includes("demand")));
+const slStatsOk=()=>!!(SBME&&(SBME.is_admin||(SBME.access_mode==="modules"&&SBME.access&&typeof SID_MOD!=="undefined"?SID_MOD.can("demand","view"):((SBME.pages||[]).includes("*")||(SBME.pages||[]).includes("demand")))));   /* V141.1 */
 const slBandOf=a=>(SL_BANDS.find(b=>(+a||0)<b[1])||SL_BANDS[SL_BANDS.length-1])[0];
 const slN=v=>v==null||v===""?"—":fInt(v);
 const slPct=(a,b)=>b?Math.round(a/b*100)+"%":"—";
@@ -22342,6 +22342,7 @@ function roleGrid(role){ return role&&role.access&&typeof role.access==="object"
 /* V141: cells that no code reads -> locked with the reason; rows that only administrators can use -> hidden */
 const V141_HIDE=new Set(["lb.settings","roadshow","sync","admin.users","admin.viewas","admin.teams","admin.look","admin.keys","admin.usage"]);
 const V141_WHY={ export:"Downloads and prints follow the page: anyone who can open the page can export from it.",
+  "notif|view":"Everyone signed in gets notifications.",
   approve:"Approving follows the role's Plot status part (Settings → Roles & page access).",
   "map.status":"Plot status changes follow the role's Plot status part (Settings → Roles & page access).",
   "map.survey|view":"Everyone with the Map sees the survey layers. Edit = may upload surveys.",
