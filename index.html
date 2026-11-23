@@ -25274,7 +25274,11 @@ function linkOptions(x,pieces){ const edited=ST.res.base, free=freeRows(edited),
   const o=[]; if(same) o.push({v:"row:"+same.unit,l:`Linked: MDS row ${rowLabel(same)}`});
   if(old&&(!same||same!==old)) o.push({v:"old",l:ST.res.kind==="name"?`Its MDS row ${old.unit} is renamed too (${rowLabel(old)})`:`Takes the old row ${rowLabel(old)}`});
   o.push({v:"new",l:"New MDS row at publish (status Hold)"}); o.push({v:"none",l:"No MDS row (not linked)"});
-  free.filter(r=>r!==same&&r!==old).sort((a,b)=>Math.abs((+a.area||0)-x.A)-Math.abs((+b.area||0)-x.A)).slice(0,12).forEach(r=>o.push({v:"row:"+r.unit,l:`Use free row ${rowLabel(r)}`}));
+  if(ST.res.kind==="merge"){ const q=(ST.rowQ||"").trim().toLowerCase(), seen=new Set(o.map(z=>z.v));
+    const add=r=>{ const v="row:"+r.unit; if(seen.has(v)) return; seen.add(v); o.push({v,l:`Use MDS row ${rowLabel(r)}`}); };
+    edited.forEach(f=>{ const r=rowFor(f.properties.unit); if(r) add(r); });
+    rowsOf().filter(r=>r.unit!=null&&(q?(String(r.unit)+" "+String(r.client||"")).toLowerCase().includes(q):(isDeal(r)&&free.includes(r)))).slice(0,25).forEach(add); }
+  free.filter(r=>r!==same&&r!==old&&!(ST.res.kind==="merge"&&o.some(z=>z.v==="row:"+r.unit))).sort((a,b)=>Math.abs((+a.area||0)-x.A)-Math.abs((+b.area||0)-x.A)).slice(0,12).forEach(r=>o.push({v:"row:"+r.unit,l:`Use free row ${rowLabel(r)}`}));
   return o; }
 function defLink(x,opts,i){ if(ST.links[x.key]) return ST.links[x.key]; if(opts.some(o=>o.v.startsWith("row:")&&o.l.startsWith("Linked"))) return opts[0].v;
   if(ST.res.kind==="merge"||ST.res.kind==="move") return opts.find(o=>o.v==="old")?"old":"new";
@@ -25294,14 +25298,21 @@ function resultPanel(p){ const r=ST.res, L=pieceList(); const A0=r.kind==="split
   if(r.kind==="auto"&&r.err) bad.push(r.err);
   if(r.kind==="move"&&!r.parts) bad.push("the line has left the two plots — move it back");
   if(r.kind==="move"&&r.zeroBad) bad.push("the line these two plots share is too irregular to move safely — merge them and split again with a new line");
-  if(r.kind!=="name"&&!(r.kind==="auto"&&r.err)&&Math.abs(A1-A0)>Math.max(TOL_AREA,A0*1e-4)) bad.push(`total ${f1(A1)} sqm ≠ before ${f1(A0)} sqm`);
+  const areaGap=r.kind!=="name"&&!(r.kind==="auto"&&r.err)&&Math.abs(A1-A0)>Math.max(TOL_AREA,A0*1e-4);
+  /* merge: the drawn plots may not touch (gap between them), so the total differs: allowed, but a reason is required */
+  if(areaGap&&r.kind!=="merge") bad.push(`total ${f1(A1)} sqm ≠ before ${f1(A0)} sqm`);
+  if(r.kind==="merge"&&areaGap&&!(ST.reason||"").trim()) bad.push("the merged area differs from the two plots — type a reason below");
   p.innerHTML=`<div class="mpe-h"><b>${title}</b><button class="mpe-x" data-k="cancel" title="Cancel">×</button></div>
    <div class="mpe-ba"><div><small>Before</small><div class="mpe-chips">${before}</div><b>${fmt(A0)} sqm</b></div><div class="mpe-arr">→</div><div><small>After</small><div class="mpe-chips">${L.map(x=>`<span class="s-${x.s}">${esc(nameOf(x)||"no number")} <small>${fmt(x.A)}</small></span>`).join("")}</div><b>${fmt(A1)} sqm</b></div></div>
    ${adj}
    <div class="mpe-pcs">${L.map((x,i)=>{ const opts=linkOptions(x,L); if(ST.links[x.key]&&!opts.some(o=>o.v===ST.links[x.key])) delete ST.links[x.key]; const v=defLink(x,opts,i); ST.links[x.key]=v; return `<div class="mpe-pc s-${x.s}"><i></i><input data-n="${x.key}" value="${esc(nameOf(x))}" placeholder="Plot number"><span class="mpe-a">${f1(x.A)} sqm</span>
        <select data-l="${x.key}">${opts.map(o=>`<option value="${esc(o.v)}"${o.v===v?" selected":""}>${esc(o.l)}</option>`).join("")}</select></div>`; }).join("")}</div>
    ${oldRowNote()}
-   ${bad.length?`<div class="mpe-bad">${bad.map(esc).join("<br>")}</div>`:`<div class="mpe-ok">Checked: sizes add up, names are free.</div>`}
+   ${r.kind==="merge"?`<div class="mpe-row"><span>Find MDS row</span><input type="text" class="mpe-rq" placeholder="plot number or client (e.g. Adel Kamel)" value="${esc(ST.rowQ||"")}" style="flex:1"></div>
+   ${areaGap?`<div class="mpe-warn">Total after merge <b>${f1(A1)} sqm</b> vs before <b>${f1(A0)} sqm</b> (${f1(A1-A0)} sqm). You can still apply it: write the reason.</div>`:""}
+   <div class="mpe-row"><span>Reason</span><input type="text" class="mpe-rs" placeholder="why these plots are merged / why the area differs" value="${esc(ST.reason||"")}" style="flex:1"></div>
+   <div class="mpe-row"><span>Comment</span><input type="text" class="mpe-cm" placeholder="optional comment" value="${esc(ST.comment||"")}" style="flex:1"></div>`:""}
+   ${bad.length?`<div class="mpe-bad"${bad.length===1&&r.kind==="merge"&&areaGap&&!(ST.reason||"").trim()?' data-r="1"':""}>${bad.map(esc).join("<br>")}</div>`:`<div class="mpe-ok">Checked${areaGap?" (area difference accepted with a reason)":": sizes add up, names are free"}.</div>`}
    <div class="mpe-row end"><button data-k="cancel">Cancel</button><button class="pri" data-k="apply" ${bad.length?"disabled":""}>Apply to the draft</button></div>`;
   p.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ const k=b.dataset.k; if(k==="cancel") cancel(); if(k==="apply") apply(); if(k==="solve") solve(+p.querySelector(".mpe-tgt").value); });
   p.querySelectorAll("[data-o]").forEach(b=>b.onclick=()=>shift(ST.off+ +b.dataset.o));
@@ -25311,6 +25322,10 @@ function resultPanel(p){ const r=ST.res, L=pieceList(); const A0=r.kind==="split
     /* V139.1: a name that already has an MDS row links to that row (it is never given a second row: S1-1 in October got two rows) */
     i.onchange=()=>{ const rw=rowFor(i.value.trim()); if(rw) ST.links[i.dataset.n]="row:"+rw.unit; else if(String(ST.links[i.dataset.n]||"").startsWith("row:")) delete ST.links[i.dataset.n]; panel(); }; });
   p.querySelectorAll("[data-mds]").forEach(b=>b.onclick=()=>solve(+b.dataset.mds));
+  { const rs=p.querySelector(".mpe-rs"), cm=p.querySelector(".mpe-cm"), rq=p.querySelector(".mpe-rq");
+    if(rs) rs.oninput=()=>{ ST.reason=rs.value; const bd=p.querySelector(".mpe-bad[data-r]"), ab=p.querySelector('[data-k="apply"]'); if(bd&&ab&&rs.value.trim()){ ab.disabled=false; bd.style.display="none"; } else if(bd&&ab){ ab.disabled=true; bd.style.display=""; } }; if(rs) rs.onchange=()=>panel();
+    if(cm) cm.oninput=()=>{ ST.comment=cm.value; };
+    if(rq) rq.onchange=()=>{ ST.rowQ=rq.value; panel(); }; }
   p.querySelectorAll("select[data-l]").forEach(s=>s.onchange=()=>{ ST.links[s.dataset.l]=s.value; const m=s.value.match(/^row:(.+)$/); if(m){ ST.names[s.dataset.l]=m[1]; } else if(s.value==="old"){ const x=L.find(y=>y.key===s.dataset.l); if(x&&x.from.properties.unit&&r.kind!=="split"&&r.kind!=="name") ST.names[s.dataset.l]=x.from.properties.unit; } panel(); drawResult(); }); }
 /* the old plots' MDS rows that no piece takes */
 function oldRowNote(){ const r=ST.res; if(!r||r.kind==="name") return ""; const L=pieceList(); const takes=new Set(L.filter(x=>ST.links[x.key]==="old").map(x=>x.from));
@@ -25384,9 +25399,11 @@ function apply(){ const r=ST.res, L=pieceList(); if(!L.length) return; pushUndo(
   /* MDS register: what each piece links to, and what happens to the old rows. The rows are read once (as they are after this draft's
      earlier changes); every change to a row is folded into that row's earlier change, so each row carries one change at publish. */
   const RW=rowsOf(), rf=u=>{ if(!u) return null; const k=ukey(u); return RW.find(rw=>rw.unit!=null&&ukey(String(rw.unit))===k)||null; };
+  const rsn=(ST.reason||"").trim(), cmt=(ST.comment||"").trim(), sfx=(rsn?` · Reason: ${rsn}`:"")+(cmt?` · Comment: ${cmt}`:"");
+  if(r.kind==="merge"&&(rsn||cmt)){ const t=T(); (t.plan.notes||(t.plan.notes=[])).push({kind:"merge",plots:r.base.map(f=>f.properties.unit||""),before:Math.round(r.A0),after:Math.round(r.A1),reason:rsn,comment:cmt,at:new Date().toISOString()}); }
   const used=new Set(), why={auto:"split",split:"split",merge:"merge",move:"line moved",name:"renamed"}[r.kind];
   const setRow=(rw,nm,A)=>{ const f={}; if(nm&&ukey(nm)!==ukey(String(rw.unit))) f.unit=nm; if(!(+rw.area>0)||Math.abs((+rw.area)-A)>Math.max(1,(+rw.area)*.01)) f.area=Math.round(A);   // the register keeps its official area when the drawing agrees within 1 % if(!Object.keys(f).length) return;
-    pushOp(ops,Object.assign({op:"set",f,why:f.unit?`Plot ${rw.unit} is now ${nm} · ${fmt(A)} sqm (${why} on the map)`:`Plot ${rw.unit} area ${fmt(rw.area)} → ${fmt(A)} sqm (${why} on the map)`},opId(rw))); };
+    pushOp(ops,Object.assign({op:"set",f,why:(f.unit?`Plot ${rw.unit} is now ${nm} · ${fmt(A)} sqm (${why} on the map)`:`Plot ${rw.unit} area ${fmt(rw.area)} → ${fmt(A)} sqm (${why} on the map)`)+sfx},opId(rw))); };
   L.forEach(x=>{ const v=ST.links[x.key]||"none", nm=nameOf(x).trim(), old=rf(x.from.properties.unit);
     if(v==="old"&&old&&!used.has(old)){ used.add(old); setRow(old,nm,x.A); }
     else if(v==="new"&&nm){ ops.push({op:"add",row:{park:pk,sheet:(S.rows.find(rw=>rw.park===pk&&rw.sheet)||{}).sheet||null,unit:nm,area:Math.round(x.A),status:"hold",sector:null,landType:null},why:`New plot ${nm} · ${fmt(x.A)} sqm (${why} on the map)`}); }
@@ -25395,6 +25412,7 @@ function apply(){ const r=ST.res, L=pieceList(); if(!L.length) return; pushUndo(
     pushOp(ops,Object.assign({op:"del",why:`Plot ${rw.unit} is gone (${why} on the map)`},opId(rw))); });
   ST.rc=null;
   const gone=new Set(r.base); S.geo.features=S.geo.features.filter(f=>!gone.has(f)).concat(out);
+  ST.reason=""; ST.comment=""; ST.rowQ="";
   ST.mode=null; ST.res=null; ST.names={}; ST.links={}; clearPrev(); E.afterEdit(out.map(f=>f.properties.k)); diffAgain(); refreshSizes(); panel();
   toast_(`${{auto:"Split",split:"Split",merge:"Merged",move:"Line moved",name:"Renamed"}[r.kind]}: ${out.map(f=>(f.properties.unit||"no number")+" "+fmt(f.properties.gis)+" sqm").join(", ")} — in the draft`); }
 
