@@ -6782,7 +6782,8 @@ const DQ_F=[["area","Area (sqm)"],["landType","Land type"],["sector","Sector"],[
 const dqLbl=k=>(DQ_F.find(x=>x[0]===k)||[0,k])[1];
 const SL_SITE="https://sdm-sales-leads.github.io/";
 function sidReqOnly(){ try{ return !!(SBME&&!SBME.is_admin&&(SBME.wf==="sales"||SBME.wf==="manager")); }catch(e){ return false; } }
-function sidCanStrategic(){ try{ return !!(SBME&&(SBME.is_admin||SBME.wf==="ops"||SBME.role==="development")); }catch(e){ return false; } }
+function sidIsOps(){ try{ return !!(SBME&&(SBME.is_admin||SBME.wf==="ops"||SBME.role==="sales-operation")); }catch(e){ return false; } }   /* live: the sales-operation role has part "direct", so Sales Operation = role or part */
+function sidCanStrategic(){ try{ return !!(sidIsOps()||(SBME&&SBME.role==="development")); }catch(e){ return false; } }
 function sidNoSave(){ return sidReqOnly()?"Sales and Sales Managers do not change the MDS register. Open the plot on the map and press “Request a change”: your manager and Sales Operation approve it.":"Your role can see the MDS register but "+"not save changes — an administrator can give your role edit rights (Settings → Roles)"; }
 const dqVal=v=>v==null||v===""?"—":typeof v==="number"?fInt(v):String(v);
 async function dqLoad(){ try{ const r=await SB.from("sid_data_req").select("*").order("created_at",{ascending:false}).limit(200);
@@ -6829,10 +6830,10 @@ function dqDialog(k){
 const dqStage={manager:"Waiting for the sales manager",ops:"Waiting for sales operation",approved:"Approved",rejected:"Rejected",cancelled:"Cancelled"};
 function dqMine(q){ const w=wfRole(); if(!w) return false;
   if(q.stage==="manager") return !!SBME.is_admin||(w==="manager"&&q.team&&q.team===SBME.team);
-  if(q.stage==="ops") return w==="ops"&&q.by_email!==wfMe();
+  if(q.stage==="ops") return sidIsOps()&&q.by_email!==wfMe();
   return false; }
 function dqCard(q){
-  const me=wfMe(), act=dqMine(q), canCancel=q.by_email===me&&(q.stage==="manager"||q.stage==="ops"), notApplied=q.stage==="approved"&&!q.applied_at&&wfRole()==="ops";
+  const me=wfMe(), act=dqMine(q), canCancel=q.by_email===me&&(q.stage==="manager"||q.stage==="ops"), notApplied=q.stage==="approved"&&!q.applied_at&&sidIsOps();
   const st=q.stage==="approved"?(q.applied_at?"Approved · on the register and the map":"Approved · not yet on the register"):dqStage[q.stage];
   const step=(on,done,label,who,at,note)=>`<li class="${done?"done":on?"on":""}"><b>${label}</b>${who?`<span>${esc(who)} · ${wfAgo(at)}</span>`:""}${note?`<em>“${esc(note)}”</em>`:""}</li>`;
   return `<article class="wf-card st-${q.stage}" data-dq="${q.id}">
@@ -6862,7 +6863,7 @@ const dqVA=viewApprovals; viewApprovals=function(){ const h=dqVA.apply(this,argu
   return h.replace(/<\/div>\s*$/,dqSection()+"</div>"); };
 const dqWA=wireApprovals; wireApprovals=function(){ dqWA.apply(this,arguments); dqWire(); };
 async function dqApply(q){
-  try{ if(wfRole()!=="ops") return false;
+  try{ if(!sidIsOps()) return false;
     const row=S.byKey.get(q.key); if(!row){ toast("This plot is no longer in the MDS register",true); return false; }
     if(typeof edInit==="function") edInit();
     if(edPending()>0){ toast("You have unsaved register edits — save or discard them first, then press “Apply to the register”",true); return false; }
