@@ -18760,11 +18760,17 @@ function obbDims(ring){ // ring: [[lng,lat]...] -> {w,d} metres of the smallest 
     const w=u1-u0, d=v1-v0, ar=w*d; if(!best||ar<best.ar) best={ar,w,d}; }
   const sides=R.map((c,i)=>{ const n=R[(i+1)%R.length]; return Math.hypot((n[0]-c[0])*kx,(n[1]-c[1])*ky); });
   return best?{w:Math.max(best.w,best.d),d:Math.min(best.w,best.d),sides}:null; }
+/* V145: the hover card uses the SAME side figures as the printed Technical annex: the plot's own outline, neighbouring segments in one direction joined
+   into one side (mergeRuns of the offer annex), sides under 3 m not listed, 2 decimals. No bounding box. */
+function annexDims(f){ try{ if(typeof mergeRuns!=="function"||typeof ringsOfFeature!=="function") return null; const out=[]; let om=0, ol=0;
+    ringsOfFeature(f).forEach(r=>mergeRuns(r).forEach(run=>{ if(run.len<3){ if(run.len>0.01){ om++; ol+=run.len; } return; } out.push(run.len); }));
+    return out.length?{runs:out,omitted:om,omitLen:ol}:null; }catch(e){ return null; } }
 const fm=n=>n==null||!isFinite(n)?"—":(n>=100?Math.round(n).toLocaleString("en-US"):n.toFixed(1));
+const fm2=n=>n==null||!isFinite(n)?"—":n.toFixed(2);
 function tipShow(x,y,o){ let t=q("#skTip"); if(!t){ t=document.createElement("div"); t.id="skTip"; document.body.appendChild(t); }
-  const dm=o.dims, ds=dm?`${fm(dm.w)} × ${fm(dm.d)} m`:"—", sd=dm&&dm.sides&&dm.sides.length<=6?dm.sides.map(v=>fm(v)).join(" · ")+" m":"";
+  const dm=o.dims, ds=dm&&dm.runs?dm.runs.map(fm2).join(" · ")+" m":dm?`${fm(dm.w)} × ${fm(dm.d)} m`:"—", sd=dm&&dm.runs&&dm.omitted?`${dm.omitted} segment(s) under 3 m (${fm2(dm.omitLen)} m total) not dimensioned`:"";
   t.innerHTML=`<div class="h"><span class="u">${esc(o.unit||"Unnumbered")}</span>${o.status?`<span class="c" ${o.color?`style="background:${esc(o.color)};color:${esc(o.ink||"#fff")}"`:""}>${esc(o.status)}</span>`:""}</div>${o.sub?`<div class="s">${esc(o.sub)}</div>`:""}
-    <div class="r"><span>Plot size</span><b>${o.area!=null?fm(o.area)+" m²":"—"}</b></div><div class="r"><span>Dimensions</span><b>${ds}</b></div>${sd?`<div class="e">Sides: ${sd}</div>`:""}`;
+    <div class="r"><span>Plot size</span><b>${o.area!=null?fm(o.area)+" m²":"—"}</b></div><div class="r"><span>Dimensions</span><b>${ds}</b></div>${sd?`<div class="e">${sd}</div>`:""}`;
   t.classList.add("on"); const w=t.offsetWidth,h=t.offsetHeight; let L=x+16,T=y+16; if(L+w>innerWidth-8) L=x-w-16; if(T+h>innerHeight-8) T=y-h-16; t.style.transform=`translate3d(${Math.max(8,L)|0}px,${Math.max(8,T)|0}px,0)`; }
 function tipHide(){ const t=q("#skTip"); if(t&&t.classList.contains("on")) t.classList.remove("on"); SK.tipK=null; }
 let PBB=null;
@@ -18775,7 +18781,7 @@ function tipAt(pt,e){ if(e&&e.pointerType==="touch") return; if(SK.on===false) r
     if(PLAN()&&PLAN().plotAt){ const p=PLAN().plotAt(pt); if(p){ SK.tipK="p"+p.unit; tipShow(e.clientX,e.clientY,p); return; } }
     if(map.getZoom()>=14){ const ll=U(pt[0],pt[1]); let hit=null; for(const it of plotBoxes()){ const b=it.b; if(ll[0]<b[0]||ll[0]>b[2]||ll[1]<b[1]||ll[1]>b[3]) continue; if(inPoly(ll,it.r)){ hit=it; break; } }
       if(hit){ const pr=hit.f.properties||{}, info=(S.plots&&S.plots.get&&S.plots.get(pr.k))||null, r=info&&info.row, st=info&&info.st, park=(S.reg&&S.reg.parks&&S.reg.parks[pr.park])||null;
-        o={unit:pr.unit||"Unnumbered",status:st&&st.label,color:st&&st.color&&st.color!=="transparent"?st.color:null,ink:st&&st.ink,sub:(park&&park.name||"")+(r&&r.phase?" · Phase "+r.phase:""),area:r&&r.area!=null?r.area:(pr.gis!=null?pr.gis:fArea(ringArea(hit.r))),dims:obbDims(hit.r)}; if(o.area==null||!isFinite(o.area)) o.area=null; SK.tipK="s"+pr.k; tipShow(e.clientX,e.clientY,o); return; } }
+        o={unit:pr.unit||"Unnumbered",status:st&&st.label,color:st&&st.color&&st.color!=="transparent"?st.color:null,ink:st&&st.ink,sub:(park&&park.name||"")+(r&&r.phase?" · Phase "+r.phase:""),area:r&&r.area!=null?r.area:(pr.gis!=null?pr.gis:fArea(ringArea(hit.r))),dims:annexDims(hit.f)||obbDims(hit.r)}; if(o.area==null||!isFinite(o.area)) o.area=null; SK.tipK="s"+pr.k; tipShow(e.clientX,e.clientY,o); return; } }
   }catch(err){ console.warn("plot card",err); }
   tipHide(); }
 function xtras(){ const tools=q("#skTools"), top=q(".sk-top"), card=q("#skCard"); movable(tools,"skTools",true); movable(card,"skCard");   /* V138.2: the top bar is fixed - no move, fold or resize */
