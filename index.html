@@ -24261,6 +24261,8 @@ const pubList=()=>((MP.idx&&MP.idx.cfg&&MP.idx.cfg.publishers)||[]).map(s=>Strin
 const canPublish=()=>isAdm()||pubList().includes(myEmail());
 const isDev=()=>{ try{ return isAdm()||canPublish()||(SBME&&SBME.role==="development"); }catch(e){ return false; } };
 const canUpload=()=>isDev()&&canWrite();
+/* V146: only the publisher (Dina Rizk) and administrators edit plots and lines on the map */
+const canEdit=()=>canPublish()&&canWrite();
 const pname=id=>(S.reg.parks[id]&&S.reg.parks[id].name)||(MP.idx&&MP.idx.newParks&&MP.idx.newParks[id]&&MP.idx.newParks[id].name)||id;
 const fmt=n=>n==null||!isFinite(n)?"—":fInt(n);
 const f2=n=>n==null||!isFinite(n)?"—":Number(n).toLocaleString("en-GB",{maximumFractionDigits:2});
@@ -24425,7 +24427,7 @@ function banner(){ if(!MP.test) return; let b=document.getElementById("mpBanner"
       <select id="mpbStep" aria-label="Step"><option value="0.25">0.25 m</option><option value="1" selected>1 m</option><option value="5">5 m</option></select></span>${s&&(s.dx||s.dy||s.rot)?`<small>moved ${s.dx.toFixed(2)} m east, ${s.dy.toFixed(2)} m north, turned ${s.rot.toFixed(2)}°</small>`:""}</div></details>
     <button class="mpb-b" id="mpbSave" ${t.dirty&&canUpload()?"":"disabled"}>Save as new draft</button>
     <button class="mpb-b${t.only?" on":""}" id="mpbOnly" title="Hide the old drawing (its outline and the plots that are gone) and show only the new uploaded plan">${t.only?"Show old drawing":"Hide old drawing"}</button>
-    ${canUpload()&&window.SID_MPE?`<button class="mpb-b${SID_MPE.state.open?" on":""}" id="mpbEdit" title="Split, merge, move lines, rename and link plots to the MDS register">Edit plots</button>`:""}
+    ${canEdit()&&window.SID_MPE?`<button class="mpb-b${SID_MPE.state.open?" on":""}" id="mpbEdit" title="Split, merge, move lines, rename and link plots to the MDS register">Edit plots</button>`:""}
     <button class="mpb-b" id="mpbChk">Checks</button>
     <button class="mpb-b pri" id="mpbPub" ${canPublish()?"":"disabled title='Only the publisher (Dina Rizk) or an administrator'"}>Publish to live…</button>
     <button class="mpb-b" id="mpbOut">Back to live</button>`;
@@ -24702,7 +24704,7 @@ function card(p){ const lf=liveFeats(p), vs=vers(p), live=vs.find(v=>v.status===
   return `<section class="mp-card" data-p="${esc(p)}"><div class="mp-ch"><h3>${esc(pname(p))}</h3>${live?`<span class="mp-pill live">Live v${vs.length-vs.indexOf(live)}</span>`:`<span class="mp-pill">Original drawing</span>`}${drafts.length?`<span class="mp-pill draft">${drafts.length} draft${drafts.length>1?"s":""}</span>`:""}</div>
     <div class="mp-kv"><div><b>${fmt(lf.length)}</b><span>plots</span></div><div><b>${fmt(area)}</b><span>sqm</span></div><div><b>${pct==null?"—":pct+"%"}</b><span>linked to MDS</span></div><div><b>${L?L.rowsNo.length:"—"}</b><span>MDS rows not drawn</span></div></div>
     <p class="mp-n">${live?`Published ${day(live.pubAt||live.at)} by ${esc(live.pubBy||live.by)}${live.note?" — "+esc(live.note):""}`:"The drawing from before the Master Plan Center."}</p>
-    <div class="mp-cb">${canUpload()?`<button class="ebtn pri" data-a="up">Upload new master plan</button>`:""}<button class="ebtn" data-a="vers">Versions (${vs.length})</button>${drafts[0]?`<button class="ebtn" data-a="test" data-v="${drafts[0].id}">Open latest draft on the test map</button>`:""}${canUpload()&&window.SID_MPE&&mapFeats(p).length?`<button class="ebtn" data-a="edit" title="Split, merge, move lines and rename plots on the map. Makes a draft from today's live plan; nothing changes on the live map until it is published.">Edit plots on the map</button>`:""}</div>
+    <div class="mp-cb">${canUpload()?`<button class="ebtn pri" data-a="up">Upload new master plan</button>`:""}<button class="ebtn" data-a="vers">Versions (${vs.length})</button>${drafts[0]?`<button class="ebtn" data-a="test" data-v="${drafts[0].id}">Open latest draft on the test map</button>`:""}${canEdit()&&window.SID_MPE&&mapFeats(p).length?`<button class="ebtn" data-a="edit" title="Split, merge, move lines and rename plots on the map. Makes a draft from today's live plan; nothing changes on the live map until it is published.">Edit plots on the map</button>`:""}</div>
     <div class="mp-vl" ${vs.length>1?"":"hidden"}>${vs.length>1?versHtml(p):""}</div></section>`; }
 function versHtml(p){ const vs=vers(p); if(!vs.length) return '<p class="mp-n">No versions yet. The first upload creates one; the drawing that is live today is saved as “Original drawing” on the first publish.</p>';
   const hid=((MP.idx&&MP.idx.parks[p]&&MP.idx.parks[p].v)||[]).filter(v=>v.hidden).length;
@@ -24755,7 +24757,7 @@ function snapTo(A,B,tol){ const k=G.kx(A[0][1]), toM=p=>[p[0]*k,p[1]*G.KY], toD=
   return B.map(p=>{ const q=toM(p); let best=null,bd=tol; for(let i=0;i<a.length-1;i++){ const s0=a[i],e=a[i+1],dx=e[0]-s0[0],dy=e[1]-s0[1],L=dx*dx+dy*dy; let t=L?((q[0]-s0[0])*dx+(q[1]-s0[1])*dy)/L:0; t=Math.max(0,Math.min(1,t)); const pr=[s0[0]+t*dx,s0[1]+t*dy], d=Math.hypot(q[0]-pr[0],q[1]-pr[1]); if(d<bd){ bd=d; best=pr; } } return best?toD(best):p; }); }
 function rekey(f){ const p=f.properties, sh=p.sheet||sheetFor(p.park); p.k=p.unit?ckey(sh,p.unit):norm(sh)+"|#"+Math.random().toString(36).slice(2,7); }
 function afterEdit(sel){ MP.test.dirty=true; bind(); repaint(); S.sel=new Set(sel||[]); try{ showSelection(); }catch(e){} banner(); }
-function editBox(keys){ const fs=keys.map(featOf).filter(Boolean); if(!MP.test||!fs.length||fs.some(f=>f.properties.park!==MP.test.park)) return "";
+function editBox(keys){ const fs=keys.map(featOf).filter(Boolean); if(!canEdit()) return ""; if(!MP.test||!fs.length||fs.some(f=>f.properties.park!==MP.test.park)) return "";
   return `<div class="mp-edit"><b>Edit the draft</b> <small>(test map only)</small><div>${fs.length===1?`<input id="mpeName" value="${esc(fs[0].properties.unit||"")}" placeholder="Plot number"><button data-e="ren">Rename</button>${window.SID_MPE?`<button data-e="editor">Split / move line / merge…</button>`:`<button data-e="split">Split with a line</button>`}`:`<button data-e="merge">Merge the ${fs.length} plots into one</button>`}</div></div>`; }
 function wireEdit(el,keys){ const box=el.querySelector(".mp-edit"); if(!box) return;
   box.querySelectorAll("[data-e]").forEach(b=>b.onclick=async()=>{ try{ await doEdit(b.dataset.e); }catch(e){ toast(String(e&&e.message||e),true); } });
@@ -24797,7 +24799,7 @@ async function whatsNew(){ try{ const idx=await idxLoad(); let seen=""; try{ see
   if(seen&&pub.length) toast(pub.map(x=>`${pname(x.p)} master plan updated by ${x.v.pubBy||"Development"}${x.v.note?": "+x.v.note:""}`).join(" · "));
   try{ localStorage.setItem("sid.mp.seen",new Date().toISOString()); }catch(e){} }catch(e){} }
 (function boot(n){ if(typeof S!=="undefined"&&S.rows&&S.rows.length&&online()){ idxLoad().then(()=>{ seedPublishers().catch(()=>{}); whatsNew(); }).catch(()=>{}); return; } if(n<240) setTimeout(()=>boot(n+1),500); })(0);
-window.SID_MPC={view,wire,openWizard,enterTest,exitTest,publish,saveDraft,planCheck,changeCheck,simulate,buildPlan,guessRoles,planFeatures,loadPlan,idxLoad,canPublish,canUpload,isDev,nudge,template,get state(){ return MP; },
+window.SID_MPC={view,wire,openWizard,enterTest,exitTest,publish,saveDraft,planCheck,changeCheck,simulate,buildPlan,guessRoles,planFeatures,loadPlan,idxLoad,canPublish,canUpload,canEdit,isDev,nudge,template,get state(){ return MP; },
   _e:{featOf,afterEdit,rekey,needPC,snapTo,banner,enterTest,liveFeats,syncDraftFromMap,diffPanel}};   // V139: used by the plot editor (mp_edit.js)
 })();
 
@@ -25080,7 +25082,7 @@ const f2=n=>n==null||!isFinite(n)?"—":(Math.round(n*100)/100).toFixed(2);
 const f1=n=>n==null||!isFinite(n)?"—":(Math.round(n*10)/10).toLocaleString("en-GB",{maximumFractionDigits:1});
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const T=()=>C.state.test;
-const can=()=>{ try{ return C.canUpload(); }catch(e){ return false; } };
+const can=()=>{ try{ return C.canEdit(); }catch(e){ return false; } };   /* V146: publisher (Dina Rizk) + administrators only */
 const busy=()=>!!(ST.mode&&ST.mode!=="idle");
 const park=()=>T()&&T().park;
 const parkFeats=()=>S.geo.features.filter(f=>f.properties.park===park());
@@ -25191,12 +25193,13 @@ function panel(){ document.documentElement.classList.toggle("mpe-busy",!!(ST.ope
      <button data-k="move" ${n===2?"":"disabled"} title="Select the two neighbouring plots">⇆ Move the line between them</button>
      <button data-k="remove" ${n===2?"":"disabled"} title="The two neighbours become one plot">⌫ Remove the line between them</button>
      <button data-k="name" ${n===1?"":"disabled"}>✎ Rename / link to MDS</button>
+     <button data-k="del" ${n>=1?"":"disabled"} title="Delete the selected plot(s) from the draft (a reason is required)">🗑 Delete ${n>1?n+" plots":"plot"}</button>
    </div>
    <div class="mpe-f"><label><input type="checkbox" data-k="sizes" ${ST.sizes?"checked":""}> Show every plot's size on the map</label>
      <span><button data-k="undo" ${ST.undo.length?"":"disabled"}>↶ Undo</button><button data-k="redo" ${ST.redo.length?"":"disabled"}>↷ Redo</button></span></div>
    ${regOps().length?`<details class="mpe-reg"><summary>MDS register changes waiting for publish (${regOps().length})</summary>${regOps().map(o=>`<div>${esc(o.why||o.op)}</div>`).join("")}</details>`:""}
    <p class="mpe-n">Changes stay in this draft. Press <b>Save as new draft</b> on the top bar; the publisher reviews and publishes.</p>`;
-  p.querySelectorAll("[data-k]").forEach(b=>{ const k=b.dataset.k; if(k==="sizes"){ b.onchange=()=>{ ST.sizes=b.checked; refreshSizes(); }; return; } b.onclick=()=>act(k); }); }
+  p.querySelectorAll("[data-k]").forEach(b=>{ const k=b.dataset.k; if(k==="applydel") return; if(k==="sizes"){ b.onchange=()=>{ ST.sizes=b.checked; refreshSizes(); }; return; } b.onclick=()=>act(k); }); }
 function act(k){ const sel=selFeats();
   if(k==="close") return close();
   if(k==="undo") return undo(); if(k==="redo") return redo();
@@ -25205,6 +25208,7 @@ function act(k){ const sel=selFeats();
   if(k==="move") return startMove(sel);
   if(k==="pick") return startPick();
   if(k==="name") return startName(sel[0]);
+  if(k==="del") return startDelete(sel);
   if(k==="quick") return startQuick(sel[0]); }
 
 /* ---------- split ---------- */
@@ -25251,7 +25255,7 @@ function startMerge(sel,remove){ if(sel.length<2){ toast_("Select two or more pl
 /* V145: pick the line to move by clicking it (no need to select the two plots first) */
 function startPick(){ ST.mode="pick-line"; ST.res=null; S.sel&&S.sel.clear(); try{ showSelection(); }catch(e){} try{ map.getCanvas().style.cursor="crosshair"; }catch(e){} panel(); toast_("Click any plot line (between plots, or beside a road / green). Then move it with the arrow keys."); }
 function pickPanel(p){ p.innerHTML=`<div class="mpe-h"><b>Pick a line to move</b><button class="mpe-x" data-k="cancel">×</button></div>
-   <p class="mpe-n">Click <b>any plot line</b> on the map — between two plots, or beside a road, green or other land. Then move it with the keyboard: <b>← → ↑ ↓</b> = 0.1 m · <b>Shift</b> = 1 m · <b>Alt</b> = 0.01 m. The size of both plots shows while it moves. <b>Esc</b> cancels.</p>`;
+   <p class="mpe-n">Click <b>any plot line</b> on the map — between two plots, or beside a road, green or other land. Then move it with the keyboard: <b>← → ↑ ↓</b> = 0.05 m · <b>Shift</b> = 1 m · <b>Alt</b> = 0.01 m. The size of both plots shows while it moves. <b>Esc</b> cancels.</p>`;
   p.querySelector('[data-k="cancel"]').onclick=()=>cancel(); }
 function distToLine(pt,L){ let m=1e18; for(let i=1;i<L.length;i++){ const a=L[i-1], b=L[i], dx=b[0]-a[0], dy=b[1]-a[1], l=dx*dx+dy*dy, t=l?Math.max(0,Math.min(1,((pt[0]-a[0])*dx+(pt[1]-a[1])*dy)/l)):0; m=Math.min(m,Math.hypot(pt[0]-a[0]-t*dx,pt[1]-a[1]-t*dy)); } return m; }
 function pickLine(ll){ const pr=proj(ll[1]), c=pr.m(ll), mpp=156543.03*Math.cos(ll[1]*Math.PI/180)/Math.pow(2,map.getZoom()), tol=Math.max(1.2,14*mpp);
@@ -25291,6 +25295,25 @@ function startMove(sel){ if(sel.length!==2){ toast_("Select the two neighbouring
   const r0=ST.res; r0.zeroBad=!r0.parts||Math.abs(r0.A[0]-areaOf(sel[0]))>1||Math.abs(r0.A[1]-areaOf(sel[1]))>1; panel(); }
 function computeMove(){ const r=ST.res, Lm=offsetLine(r.L,ST.off), c=cutBy(r.U,Lm,r.pr); if(!c){ r.items=null; return; }
   const a=r.aSide==="left"?c.left:c.right, b=r.aSide==="left"?c.right:c.left; if(!a.length||!b.length){ r.parts=null; r.A=null; r.Lm=Lm; drawResult(); return; } r.parts=[a,b]; r.A=[areaPolys(a),areaPolys(b)]; r.Lm=Lm; drawResult(); }
+/* V146: delete plots from the draft (the MDS row is removed at publish, except a sold / reserved deal: it stays and shows "not on the map") */
+function startDelete(sel){ if(!sel.length){ toast_("Select the plot(s) to delete",true); return; } ST.mode="delete"; ST.res={kind:"delete",base:sel.slice()}; ST.names={}; ST.links={}; ST.reason=""; ST.comment="";
+  setPrev(sel.flatMap(f=>polysOf(f).map(pg=>({type:"Feature",geometry:{type:"Polygon",coordinates:pg},properties:{s:"x"}}))),[]); panel(); }
+function deletePanel(p){ const r=ST.res, tot=r.base.reduce((t,f)=>t+areaOf(f),0), rows=r.base.map(f=>({f,rw:rowFor(f.properties.unit)})), deals=rows.filter(x=>x.rw&&isDeal(x.rw)), ok=(ST.reason||"").trim().length>=3;
+  p.innerHTML=`<div class="mpe-h"><b>Delete ${r.base.length>1?r.base.length+" plots":"plot"}</b><button class="mpe-x" data-k="cancel" title="Cancel">×</button></div>
+   <div class="mpe-ba"><div><small>Plots</small><div class="mpe-chips">${rows.map(x=>`<span>${esc(x.f.properties.unit||"no number")} <small>${fmt(areaOf(x.f))}</small></span>`).join("")}</div><b>${fmt(tot)} sqm</b></div></div>
+   <div class="mpe-warn">${rows.map(x=>x.rw?(isDeal(x.rw)?`<b>${esc(x.rw.unit)}</b> is a ${esc(x.rw.status)} deal: the row is kept and will show "not on the map" (the publish step asks for the Sales Operation name).`:`MDS row <b>${esc(x.rw.unit)}</b> (${esc(x.rw.status||"—")}) is removed from the register at publish.`):`${esc(x.f.properties.unit||"This plot")} has no MDS row.`).join("<br>")}</div>
+   <div class="mpe-row"><span>Reason</span><input type="text" class="mpe-rs" placeholder="why the plot is deleted (required)" value="${esc(ST.reason||"")}" style="flex:1"></div>
+   ${ok?"":`<div class="mpe-bad" data-r="1">type a reason to delete</div>`}
+   <div class="mpe-row end"><button data-k="cancel">Cancel</button><button class="pri" data-k="applydel" ${ok?"":"disabled"}>Delete from the draft</button></div>`;
+  p.querySelectorAll('[data-k="cancel"]').forEach(b=>b.onclick=()=>cancel());
+  const rs=p.querySelector(".mpe-rs"), ab=p.querySelector('[data-k="applydel"]'), bd=p.querySelector(".mpe-bad");
+  rs.oninput=()=>{ ST.reason=rs.value; const g=rs.value.trim().length>=3; ab.disabled=!g; if(bd) bd.style.display=g?"none":""; };
+  ab.onclick=()=>applyDelete(); }
+function applyDelete(){ const r=ST.res, rsn=(ST.reason||"").trim(); if(!r||rsn.length<3) return; pushUndo(); const ops=regOps(), names=[];
+  r.base.forEach(f=>{ names.push(f.properties.unit||"no number"); const rw=rowFor(f.properties.unit); if(rw&&!isDeal(rw)) pushOp(ops,Object.assign({op:"del",why:`Plot ${rw.unit} deleted on the map · Reason: ${rsn}`},opId(rw))); });
+  { const t=T(); (t.plan.notes||(t.plan.notes=[])).push({kind:"delete",plots:names,before:Math.round(r.base.reduce((q,f)=>q+areaOf(f),0)),after:0,reason:rsn,comment:"",at:new Date().toISOString()}); }
+  const gone=new Set(r.base); S.geo.features=S.geo.features.filter(f=>!gone.has(f)); ST.rc=null; ST.reason=""; ST.comment=""; ST.mode=null; ST.res=null; clearPrev();
+  E.afterEdit([]); diffAgain(); refreshSizes(); panel(); toast_(`Deleted from the draft: ${names.join(", ")}`); }
 function startName(f){ if(!f) return; ST.mode="name"; ST.res={kind:"name",base:[f]}; ST.names={0:f.properties.unit||""}; ST.links={}; drawResult(); panel(); }
 
 /* ---------- result: pieces on the map + the panel with sizes, names, MDS links ---------- */
@@ -25303,7 +25326,7 @@ function pieceList(){ const r=ST.res; if(!r) return [];
   if(r.kind==="edge") return r.parts?[{key:"0",from:r.base[0],pg:r.parts,A:areaPolys(r.parts),s:"a",idx:0}]:[];
   return []; }
 function drawResult(){ clearMk(); const L=pieceList().filter(x=>x.pg&&x.pg.length&&x.pg[0]), feats=[]; L.forEach(x=>{ x.pg.forEach(pg=>feats.push({type:"Feature",geometry:{type:"Polygon",coordinates:pg},properties:{s:x.s}})); const nm=nameOf(x);
-    label(centre(x.pg[0]),`${nm?`<b>${esc(nm)}</b>`:""}${fmt(x.A)} sqm`,x.s); });
+    label(centre(x.pg[0]),`${nm?`<b>${esc(nm)}</b>`:""}${ST.res&&(ST.res.kind==="edge"||ST.res.kind==="move"||ST.res.kind==="split")?f2(x.A):fmt(x.A)} sqm`,x.s); });
   const r=ST.res, ln=r&&r.lines&&r.pr?r.lines.map(l=>({type:"Feature",geometry:{type:"LineString",coordinates:l.map(r.pr.d)},properties:{}})):r&&r.Lm&&r.pr?[{type:"Feature",geometry:{type:"LineString",coordinates:r.Lm.map(r.pr.d)},properties:{}}]:[]; setPrev(feats,ln); }
 /* which way "+" moves the line on the screen. h = the line runs up/down (it moves left/right); s = +1 when + moves it right (or down) */
 function axis(){ const r=ST.res; let a,b; if(r&&r.kind==="split"&&r.line){ const pr=proj(r.line[0][1]); a=pr.m(r.line[0]); b=pr.m(r.line[r.line.length-1]); } else if(r&&r.L){ a=r.L[0]; b=r.L[r.L.length-1]; } else return {h:true,s:1};
@@ -25322,15 +25345,16 @@ function linkOptions(x,pieces){ const edited=ST.res.base, free=freeRows(edited),
 function defLink(x,opts,i){ if(ST.links[x.key]) return ST.links[x.key]; if(opts.some(o=>o.v.startsWith("row:")&&o.l.startsWith("Linked"))) return opts[0].v;
   if(ST.res.kind==="merge"||ST.res.kind==="move") return opts.find(o=>o.v==="old")?"old":"new";
   if(ST.res.kind==="split"||ST.res.kind==="auto") return i===0&&opts.find(o=>o.v==="old")?"old":"new"; return opts.find(o=>o.v==="old")?"old":"none"; }
-function resultPanel(p){ const r=ST.res, L=pieceList(); const A0=r.kind==="split"?r.items.reduce((t,it)=>t+it.A0,0):r.kind==="name"?areaOf(r.base[0]):r.A0, A1=L.reduce((t,x)=>t+x.A,0);
+function resultPanel(p){ const r=ST.res; if(r.kind==="delete") return deletePanel(p); const L=pieceList(); const A0=r.kind==="split"?r.items.reduce((t,it)=>t+it.A0,0):r.kind==="name"?areaOf(r.base[0]):r.A0, A1=L.reduce((t,x)=>t+x.A,0);
   const title={auto:"Quick split",split:"Split",merge:"Merge",move:"Move the line between two plots",edge:"Move a line of the plot",name:"Rename / link to MDS"}[r.kind];
   const before=r.base.map(f=>`<span>${esc(f.properties.unit||"no number")} <small>${fmt(areaOf(f))}</small></span>`).join("");
   const ax=axis(), A1L=ax.h?"◀":"▲", A2L=ax.h?"▶":"▼";
-  const adj=r.kind==="auto"?autoHtml(L):(r.kind==="split"||r.kind==="move"||r.kind==="edge")?`<div class="mpe-adj"><div class="mpe-row"><span>Move the line</span><button data-o="${-ax.s}">${A1L} 1 m</button><button data-o="${-ax.s*.1}">${A1L} 0.1</button><b class="mpe-off">${f2(Math.abs(ST.off))} m${ST.off?" "+((ST.off*ax.s)<0?A1L:A2L):""}</b><button data-o="${ax.s*.1}">0.1 ${A2L}</button><button data-o="${ax.s}">1 m ${A2L}</button></div>
-     <div class="mpe-n">Keyboard: <b>← → ↑ ↓</b> move the line 0.1 m · <b>Shift</b> 1 m · <b>Alt</b> 0.01 m</div>
-     <input type="range" class="mpe-rg" min="-60" max="60" step="0.1" value="${ST.off*ax.s}" ${ax.h?"":'title="left = up, right = down"'}>
+  const adj=r.kind==="auto"?autoHtml(L):(r.kind==="split"||r.kind==="move"||r.kind==="edge")?`<div class="mpe-adj"><div class="mpe-row"><span>Move the line</span><button data-o="${-ax.s}">${A1L} 1 m</button><button data-o="${-ax.s*.05}">${A1L} 0.05</button><b class="mpe-off">${f2(Math.abs(ST.off))} m${ST.off?" "+((ST.off*ax.s)<0?A1L:A2L):""}</b><button data-o="${ax.s*.05}">0.05 ${A2L}</button><button data-o="${ax.s}">1 m ${A2L}</button></div>
+     <div class="mpe-n">Keyboard: <b>← → ↑ ↓</b> move the line 0.05 m · <b>Shift</b> 1 m · <b>Alt</b> 0.01 m</div>
+     ${r.kind==="move"?`<div class="mpe-row"><button data-k="dline" title="No line: the two plots become one plot">⌫ Delete this line (the two plots become one)</button></div>`:""}
+     <input type="range" class="mpe-rg" min="-200" max="200" step="0.05" value="${ST.off*ax.s}" ${ax.h?"":'title="left = up, right = down"'}>
      ${mdsHtml(L)}
-     <div class="mpe-row"><span>Size wanted for <b>${esc(nameOf(L[0]||{key:"0",from:r.base[0],idx:0})||"the blue piece")}</b></span><input type="number" class="mpe-tgt" min="1" step="1" placeholder="sqm"><button data-k="solve">Set</button></div></div>`:"";
+     <div class="mpe-row"><span>Size wanted for <b>${esc(nameOf(L[0]||{key:"0",from:r.base[0],idx:0})||"the blue piece")}</b></span><input type="number" class="mpe-tgt" min="1" step="any" placeholder="type the area (sqm)" value="${esc(ST.tgt||"")}"><button data-k="solve">Set</button></div></div>`:"";
   const bad=[]; const names=L.map(x=>nameOf(x).trim()); const taken=takenNames(r.base);
   L.forEach((x,i)=>{ if(x.A<MIN_PIECE) bad.push(`${names[i]||"a piece"} is only ${f1(x.A)} sqm`); if(names[i]&&taken.has(ukey(names[i]))) bad.push(`${names[i]} is already used by another plot`); });
   const dup=names.filter((n,i)=>n&&names.findIndex(m=>m&&ukey(m)===ukey(n))!==i); if(dup.length) bad.push("two pieces have the same name: "+dup.join(", "));
@@ -25338,7 +25362,7 @@ function resultPanel(p){ const r=ST.res, L=pieceList(); const A0=r.kind==="split
   if(r.kind==="auto"&&r.err) bad.push(r.err);
   if(r.kind==="move"&&!r.parts) bad.push("the line has left the two plots — move it back");
   if(r.kind==="edge"&&!r.parts) bad.push("the plot outline is no longer valid — move the line back");
-  if(r.kind==="edge"&&r.over&&r.over.length) bad.push("the plot would overlap "+r.over.join(", ")+" — move the line back");
+
   if(r.kind==="move"&&r.zeroBad) bad.push("the line these two plots share is too irregular to move safely — merge them and split again with a new line");
   const areaGap=r.kind!=="name"&&!(r.kind==="auto"&&r.err)&&Math.abs(A1-A0)>Math.max(TOL_AREA,A0*1e-4);
   /* merge: the drawn plots may not touch (gap between them), so the total differs: allowed, but a reason is required */
@@ -25347,9 +25371,10 @@ function resultPanel(p){ const r=ST.res, L=pieceList(); const A0=r.kind==="split
   p.innerHTML=`<div class="mpe-h"><b>${title}</b><button class="mpe-x" data-k="cancel" title="Cancel">×</button></div>
    <div class="mpe-ba"><div><small>Before</small><div class="mpe-chips">${before}</div><b>${fmt(A0)} sqm</b></div><div class="mpe-arr">→</div><div><small>After</small><div class="mpe-chips">${L.map(x=>`<span class="s-${x.s}">${esc(nameOf(x)||"no number")} <small>${fmt(x.A)}</small></span>`).join("")}</div><b>${fmt(A1)} sqm</b></div></div>
    ${adj}
-   <div class="mpe-pcs">${L.map((x,i)=>{ const opts=linkOptions(x,L); if(ST.links[x.key]&&!opts.some(o=>o.v===ST.links[x.key])) delete ST.links[x.key]; const v=defLink(x,opts,i); ST.links[x.key]=v; return `<div class="mpe-pc s-${x.s}"><i></i><input data-n="${x.key}" value="${esc(nameOf(x))}" placeholder="Plot number"><span class="mpe-a">${f1(x.A)} sqm</span>
+   <div class="mpe-pcs">${L.map((x,i)=>{ const opts=linkOptions(x,L); if(ST.links[x.key]&&!opts.some(o=>o.v===ST.links[x.key])) delete ST.links[x.key]; const v=defLink(x,opts,i); ST.links[x.key]=v; return `<div class="mpe-pc s-${x.s}"><i></i><input data-n="${x.key}" value="${esc(nameOf(x))}" placeholder="Plot number"><span class="mpe-a">${f2(x.A)} sqm</span>
        <select data-l="${x.key}">${opts.map(o=>`<option value="${esc(o.v)}"${o.v===v?" selected":""}>${esc(o.l)}</option>`).join("")}</select></div>`; }).join("")}</div>
    ${oldRowNote()}
+   ${r.kind==="edge"&&r.over&&r.over.length?`<div class="mpe-warn">This plot now overlaps <b>${esc(r.over.join(", "))}</b>. Allowed, but the plan check at publish will list the overlap (it needs a reason to go live).</div>`:""}
    ${r.kind==="edge"?`<div class="mpe-warn">Plot size changes from <b>${f1(A0)}</b> to <b>${f1(A1)} sqm</b> (${f1(A1-A0)} sqm). The line is moved on this plot only; the neighbour (road, green, other land) is not changed.</div>
    <div class="mpe-row"><span>Reason</span><input type="text" class="mpe-rs" placeholder="why the line moves (optional)" value="${esc(ST.reason||"")}" style="flex:1"></div>
    <div class="mpe-row"><span>Comment</span><input type="text" class="mpe-cm" placeholder="optional comment" value="${esc(ST.comment||"")}" style="flex:1"></div>`:""}
@@ -25359,7 +25384,9 @@ function resultPanel(p){ const r=ST.res, L=pieceList(); const A0=r.kind==="split
    <div class="mpe-row"><span>Comment</span><input type="text" class="mpe-cm" placeholder="optional comment" value="${esc(ST.comment||"")}" style="flex:1"></div>`:""}
    ${bad.length?`<div class="mpe-bad"${bad.length===1&&r.kind==="merge"&&areaGap&&!(ST.reason||"").trim()?' data-r="1"':""}>${bad.map(esc).join("<br>")}</div>`:`<div class="mpe-ok">Checked${areaGap?" (area difference accepted with a reason)":": sizes add up, names are free"}.</div>`}
    <div class="mpe-row end"><button data-k="cancel">Cancel</button><button class="pri" data-k="apply" ${bad.length?"disabled":""}>Apply to the draft</button></div>`;
-  p.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ const k=b.dataset.k; if(k==="cancel") cancel(); if(k==="apply") apply(); if(k==="solve") solve(+p.querySelector(".mpe-tgt").value); });
+  p.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ const k=b.dataset.k; if(k==="cancel") cancel(); if(k==="apply") apply(); if(k==="dline"){ const b=r.base.slice(); ST.res=null; ST.off=0; ST.mode=null; ST.tgt=""; clearPrev(); startMerge(b,true); return; } if(k==="solve") solve(+p.querySelector(".mpe-tgt").value); });
+  { const tg=p.querySelector(".mpe-tgt"); if(tg){ let tt=0; tg.oninput=()=>{ ST.tgt=tg.value; clearTimeout(tt); tt=setTimeout(()=>{ if(+tg.value>0){ ST.tgtFocus=true; solve(+tg.value,true); } },450); }; tg.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); clearTimeout(tt); ST.tgtFocus=true; solve(+tg.value,true); } };
+      if(ST.tgtFocus){ ST.tgtFocus=false; tg.focus(); try{ tg.setSelectionRange(tg.value.length,tg.value.length); }catch(e){} } } }
   p.querySelectorAll("[data-o]").forEach(b=>b.onclick=()=>shift(ST.off+ +b.dataset.o));
   if(r.kind==="auto") wireAuto(p);
   const rg=p.querySelector(".mpe-rg"); if(rg){ rg.oninput=()=>shift(+rg.value*ax.s,true); rg.onchange=()=>panel(); }
@@ -25424,16 +25451,16 @@ function wireAuto(p){ const r=ST.res, re=()=>{ computeAuto(); panel(); };
   p.querySelectorAll("[data-aeq]").forEach(b=>b.onclick=()=>{ r.want=null; re(); });
   p.querySelectorAll("[data-amds]").forEach(b=>b.onclick=()=>{ const L=pieceList(); r.want=r.want.map((a,i)=>{ const rw=L[i]&&rowOfPiece(L[i]); return rw&&+rw.area>0?+rw.area:a; }); re(); });
   p.querySelectorAll(".mpe-aw").forEach(i=>{ i.onchange=()=>{ r.want[+i.dataset.i]=+i.value; re(); }; i.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); i.onchange(); } }; }); }
-function shift(v,quiet){ ST.off=Math.max(-60,Math.min(60,Math.round(v*100)/100)); computeAny(); if(!quiet) panel(); else { const p=document.getElementById("mpePanel"), o=p&&p.querySelector(".mpe-off"), ax=axis(); if(o) o.textContent=f2(Math.abs(ST.off))+" m"+(ST.off?" "+((ST.off*ax.s)<0?(ax.h?"◀":"▲"):(ax.h?"▶":"▼")):""); const a=p&&p.querySelectorAll(".mpe-a"); const L=pieceList(); if(a) a.forEach((e,i)=>{ if(L[i]) e.textContent=f1(L[i].A)+" sqm"; }); } }
+function shift(v,quiet){ ST.off=Math.max(-200,Math.min(200,Math.round(v*100)/100)); computeAny(); if(!quiet) panel(); else { const p=document.getElementById("mpePanel"), o=p&&p.querySelector(".mpe-off"), ax=axis(); if(o) o.textContent=f2(Math.abs(ST.off))+" m"+(ST.off?" "+((ST.off*ax.s)<0?(ax.h?"◀":"▲"):(ax.h?"▶":"▼")):""); const a=p&&p.querySelectorAll(".mpe-a"); const L=pieceList(); if(a) a.forEach((e,i)=>{ if(L[i]) e.textContent=f2(L[i].A)+" sqm"; }); } }
 /* the offset that gives the first piece the size wanted (bisection; the size grows steadily as the line moves) */
-function solve(want){ if(!(want>0)){ toast_("Type the size wanted in sqm",true); return; } const r=ST.res; const first=()=>{ const L=pieceList(); return L.length?L[0].A:NaN; };
+function solve(want,quiet){ if(!(want>0)){ toast_("Type the size wanted in sqm",true); return; } const r=ST.res; const first=()=>{ const L=pieceList(); return L.length?L[0].A:NaN; };
   if(r.kind==="split"&&r.items.length!==1){ toast_("Size wanted works when the line crosses one plot",true); return; }
   const at=d=>{ ST.off=d; computeAny(); return first(); };
-  const keep=ST.off; let lo=-60, hi=60, flo=at(lo), fhi=at(hi); if(!isFinite(flo)||!isFinite(fhi)){ // the line leaves the plot at the ends: shrink the range
-    let a=-60,b=60; for(let i=0;i<30&&!isFinite(at(a));i++) a/=1.3; for(let i=0;i<30&&!isFinite(at(b));i++) b/=1.3; lo=a; hi=b; flo=at(lo); fhi=at(hi); }
-  if(!isFinite(flo)||!isFinite(fhi)||(want-flo)*(want-fhi)>0){ at(keep); panel(); toast_(`${fmt(want)} sqm cannot be reached by moving this line (possible: ${fmt(Math.min(flo,fhi))} – ${fmt(Math.max(flo,fhi))} sqm)`,true); return; }
-  for(let i=0;i<50;i++){ const m=(lo+hi)/2, fm=at(m); if(!isFinite(fm)) break; if((fm-want)*(flo-want)<=0){ hi=m; fhi=fm; } else { lo=m; flo=fm; } if(hi-lo<.002) break; }
-  ST.off=Math.round(((lo+hi)/2)*1000)/1000; computeAny(); panel(); toast_(`Line moved ${f1(ST.off)} m · first piece ${f1(first())} sqm`); }
+  const keep=ST.off; let lo=-200, hi=200, flo=at(lo), fhi=at(hi); if(!isFinite(flo)||!isFinite(fhi)){ // the line leaves the plot at the ends: shrink the range
+    let a=-200,b=200; for(let i=0;i<40&&!isFinite(at(a));i++) a/=1.3; for(let i=0;i<40&&!isFinite(at(b));i++) b/=1.3; lo=a; hi=b; flo=at(lo); fhi=at(hi); }
+  if(!isFinite(flo)||!isFinite(fhi)||(want-flo)*(want-fhi)>0){ at(keep); panel(); if(!quiet) toast_(`${fmt(want)} sqm cannot be reached by moving this line (possible: ${fmt(Math.min(flo,fhi))} – ${fmt(Math.max(flo,fhi))} sqm)`,true); return; }
+  for(let i=0;i<70;i++){ const m=(lo+hi)/2, fm=at(m); if(!isFinite(fm)) break; if((fm-want)*(flo-want)<=0){ hi=m; fhi=fm; } else { lo=m; flo=fm; } if(hi-lo<1e-7) break; }
+  ST.off=Math.round(((lo+hi)/2)*1e6)/1e6; computeAny(); panel(); if(!quiet) toast_(`Line moved ${f2(ST.off)} m · first piece ${f2(first())} sqm`); }
 
 /* ---------- apply to the draft ---------- */
 function apply(){ const r=ST.res, L=pieceList(); if(!L.length) return; pushUndo();
@@ -25457,15 +25484,15 @@ function apply(){ const r=ST.res, L=pieceList(); if(!L.length) return; pushUndo(
     pushOp(ops,Object.assign({op:"del",why:`Plot ${rw.unit} is gone (${why} on the map)`},opId(rw))); });
   ST.rc=null;
   const gone=new Set(r.base); S.geo.features=S.geo.features.filter(f=>!gone.has(f)).concat(out);
-  ST.reason=""; ST.comment=""; ST.rowQ="";
+  ST.reason=""; ST.comment=""; ST.rowQ=""; ST.tgt="";
   ST.mode=null; ST.res=null; ST.names={}; ST.links={}; clearPrev(); E.afterEdit(out.map(f=>f.properties.k)); diffAgain(); refreshSizes(); panel();
   toast_(`${{auto:"Split",split:"Split",merge:"Merged",move:"Line moved",edge:"Line moved",name:"Renamed"}[r.kind]}: ${out.map(f=>(f.properties.unit||"no number")+" "+fmt(f.properties.gis)+" sqm").join(", ")} — in the draft`); }
 
 /* the "what changed vs the live plan" box follows every edit */
 function diffAgain(){ try{ E.syncDraftFromMap(); T().diff=null; E.diffPanel(); }catch(e){} }
-function cancel(){ ST.mode=null; ST.res=null; ST.pts=[]; ST.cur=null; ST.preview=null; clearPrev(); try{ map.getCanvas().style.cursor=""; map.doubleClickZoom.enable(); }catch(e){} panel(); }
+function cancel(){ ST.tgt=""; ST.tgtFocus=false; ST.mode=null; ST.res=null; ST.pts=[]; ST.cur=null; ST.preview=null; clearPrev(); try{ map.getCanvas().style.cursor=""; map.doubleClickZoom.enable(); }catch(e){} panel(); }
 function close(){ cancel(); ST.open=false; ST.sizeMk.forEach(m=>{ try{ m.remove(); }catch(e){} }); ST.sizeMk=[]; panel(); C._e.banner(); }
-function open(){ if(!T()){ toast_("Open a draft on the test map first (Master Plan Center)",true); return; } if(!can()){ toast_("Only Development or an administrator can edit plots",true); return; }
+function open(){ if(!T()){ toast_("Open a draft on the test map first (Master Plan Center)",true); return; } if(!can()){ toast_("Only Dina Rizk (publisher) or an administrator can edit plots and lines",true); return; }
   ST.open=true; ST.undo=[]; ST.redo=[]; hookMap(); hookSizes(); E.needPC().then(()=>{ panel(); refreshSizes(); }).catch(e=>toast_("The shape tools did not load: "+(e.message||e),true)); }
 
 /* ---------- map events (only while drawing a split line) ---------- */
@@ -25478,7 +25505,7 @@ let hooked=false; function hookMap(){ if(hooked||typeof map==="undefined"||!map|
   let kt=0; document.addEventListener("keydown",ev=>{ const tg=ev.target&&ev.target.tagName; if(tg==="INPUT"||tg==="TEXTAREA"||tg==="SELECT") return;
     if(ST.mode==="pick-line"&&ev.key==="Escape"){ cancel(); return; }
     if(!ST.res||!(ST.res.kind==="move"||ST.res.kind==="split"||ST.res.kind==="edge")||!/^Arrow(Left|Right|Up|Down)$/.test(ev.key)) return;
-    ev.preventDefault(); ev.stopPropagation(); const ax=axis(), step=ev.shiftKey?1:ev.altKey?.01:.1, neg=ev.key==="ArrowLeft"||ev.key==="ArrowUp";
+    ev.preventDefault(); ev.stopPropagation(); const ax=axis(), step=ev.shiftKey?1:ev.altKey?.01:.05, neg=ev.key==="ArrowLeft"||ev.key==="ArrowUp";
     shift(ST.off+(neg?-ax.s:ax.s)*step,true); clearTimeout(kt); kt=setTimeout(()=>panel(),250); },true);
   document.addEventListener("keydown",ev=>{ if(ST.mode!=="split-draw") { if(ST.res&&ev.key==="Escape") cancel(); return; } const tg=ev.target&&ev.target.tagName; if(tg==="INPUT"||tg==="TEXTAREA"||tg==="SELECT") return;
     if(ev.key==="Escape"){ ev.preventDefault(); cancel(); toast_("Split cancelled"); } else if(ev.key==="Enter"){ ev.preventDefault(); finishLine(); } else if(ev.key==="Backspace"){ ev.preventDefault(); ST.pts.pop(); livePreview(); } },true); }
