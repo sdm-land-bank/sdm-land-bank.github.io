@@ -14656,7 +14656,7 @@ function slHistHtml(){ const f=SLO.f, rows=SLO.rows;
   const one=new Set(rows.map(r=>r.printedBy||r.printedByName||"")), me=String((SBME&&SBME.name)||wfMe().split("@")[0]||"").toLowerCase().replace(/[^a-z؀-ۿ]/g,"");
   const nm=rows[0]&&String(rows[0].printedByName||"").toLowerCase().replace(/[^a-z؀-ۿ]/g,"");
   const showBy=!(one.size===1&&nm&&me&&(nm===me||nm.includes(me)||me.includes(nm)));
-  const th=`<tr><th>Date</th><th>Customer</th><th>Plot(s)</th><th>Type</th><th class="n">Total (EGP)</th><th>Payment plan</th>${showBy?"<th>Printed by</th>":""}<th></th></tr>`;
+  const th=`<tr><th>Date</th><th>Customer</th><th>Plot(s)</th><th>Type</th><th class="n">Total (EGP)</th><th>Payment plan</th>${showBy?"<th>Printed by</th>":""}<th>Result</th><th></th></tr>`;
   const tr=r=>{ const pl=Array.isArray(r.plots)?r.plots:[], park=[...new Set(pl.map(p=>p.park).filter(Boolean))].join(", ");
     return `<tr><td data-l="Date">${esc(slDate(r.printedAt))}</td>
       <td data-l="Customer"><b>${esc(r.contactName||"—")}</b>${r.contactCompany||r.contactPhone?`<small>${esc([r.contactCompany,r.contactPhone?"•••• "+String(r.contactPhone).replace(/\D/g,"").slice(-4):""].filter(Boolean).join(" · "))}</small>`:""}</td>
@@ -14665,7 +14665,7 @@ function slHistHtml(){ const f=SLO.f, rows=SLO.rows;
       <td data-l="Total (EGP)" class="n">${r.totalValue!=null?fInt(r.totalValue):"—"}</td>
       <td data-l="Payment plan">${esc(slPlanTxt(r.plan))}</td>
       ${showBy?`<td data-l="Printed by">${esc(r.printedByName||"—")}</td>`:""}
-      <td class="slo-a"><button type="button" class="ebtn" data-slo-again="${esc(r.id)}" ${r.hasOffer?"":`disabled title="Printed before the history kept the offer details"`}>Print again</button></td></tr>`; };
+      ${typeof slResCell==="function"?slResCell(r):""}<td class="slo-a"><button type="button" class="ebtn" data-slo-again="${esc(r.id)}" ${r.hasOffer?"":`disabled title="Printed before the history kept the offer details"`}>Print again</button></td></tr>`; };
   return `<div class="slo-hist">
     <div class="slo-f"><input type="search" id="sloQ" value="${esc(f.q)}" placeholder="Search customer, company, plot or salesperson" aria-label="Search offers">
       <select id="sloType" aria-label="Type"><option value="">All types</option>${Object.entries(SL_TYPE_S).map(([k,l])=>`<option value="${k}" ${k===f.type?"selected":""}>${l}</option>`).join("")}</select>
@@ -14694,7 +14694,7 @@ function slHistWire(noLoad){ if(!noLoad&&!SLO.loaded&&!SLO.busy) slHistLoad();
   const p=$("#sloPer"); if(p) p.onchange=()=>{ SLO.f.period=p.value; slHistLoad(); };
   const r=$("#sloRef"); if(r) r.onclick=()=>slHistLoad();
   const m=$("#sloMore"); if(m) m.onclick=()=>slHistLoad(true);
-  document.querySelectorAll("[data-slo-again]").forEach(b=>b.onclick=()=>slAgain(b.dataset.sloAgain,b)); }
+  document.querySelectorAll("[data-slo-again]").forEach(b=>b.onclick=()=>slAgain(b.dataset.sloAgain,b)); try{ if(typeof slResWire==="function") slResWire(); }catch(e){} }
 
 /* ---- Print again: the saved offer back into the form (or Investor Match), the record's customer pre-picked ---- */
 async function slAgain(id,btn){ if(btn){ btn.disabled=true; btn.textContent="Opening…"; }
@@ -25837,6 +25837,89 @@ window.SID_WS={mount,paint,paintSoon,stepify,get state(){ return ST; },get bar()
   const m=/[#&]reset=([^&]+)/.exec(location.hash);
   if(m){ try{ mail=decodeURIComponent(m[1]); }catch(e){}
     let n=0; const t=setInterval(()=>{ if(box()){ clearInterval(t); show("code"); } else if(++n>600) clearInterval(t); },100); }
+})();
+</script>
+
+<script>
+/* V142: the customer's answer to each printed offer (Sales offer → History) */
+(function(){
+  try{ if(!document.getElementById("v142-res")){ const st=document.createElement("style"); st.id="v142-res";
+    st.textContent=".slr-b{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid;font-size:11px;font-weight:700;white-space:nowrap}"
+      +".slr-open{background:#eef6ff;color:#1d5fa8;border-color:#bcd8f5}.slr-accepted{background:#fff6e5;color:#8a5a00;border-color:#f0c987}"
+      +".slr-confirmed{background:#eaf7ee;color:#1f6b35;border-color:#bfe3c8}.slr-rejected{background:#fdecee;color:#a1192e;border-color:#f3c1c8}"
+      +".slr-closed{background:#f2f2f4;color:#6b6f76;border-color:#dcdde1}.slr-a{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}"
+      +".slr-a button{padding:3px 9px;border-radius:8px;border:0;font-size:11px;font-weight:700;cursor:pointer;color:#fff}"
+      +".slr-ok{background:#2e7d32}.slr-no{background:#b3263d}.slr-cf{background:#1d5fa8}.slr-a button:disabled{opacity:.5;cursor:default}"
+      +".slr-ov{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9700;display:flex;align-items:center;justify-content:center;padding:16px}"
+      +".slr-box{background:#fff;color:#15171b;border-radius:16px;max-width:420px;width:100%;padding:20px;display:flex;flex-direction:column;gap:10px;font:14px Inter,system-ui,sans-serif}"
+      +".slr-box select,.slr-box textarea{border:1px solid #d9dbe0;border-radius:10px;padding:8px;font:inherit}.slr-box .row{display:flex;gap:8px;justify-content:flex-end}"
+      +".slr-box .row button{padding:8px 14px;border-radius:10px;border:1px solid #d9dbe0;background:#fff;font-weight:700;cursor:pointer}.slr-box .row .p{background:#b3263d;color:#fff;border-color:#b3263d}";
+    document.head.appendChild(st); } }catch(e){}
+  const REASONS=["Price too high","Payment plan","Plot / location","Plot size","Chose a competitor","Not ready / postponed","Other"];
+  const LBL={open:"Open",accepted:"Accepted · waiting finance",confirmed:"Confirmed Won",rejected:"Rejected",closed:"Closed"};
+  const TIP={open:"Printed, waiting for the customer",accepted:"The Sales Leads lead is Won; finance has to confirm the cash before it counts in the sales numbers",
+    confirmed:"Finance confirmed the cash: counted in the sales numbers",rejected:"The customer said no",closed:"Another offer on this lead was accepted"};
+  const e=t=>String(t??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  window.slResCell=function(r){ const k=r.result||r.status||"open";
+    const why=k==="rejected"&&r.rejectReason?" · "+r.rejectReason:"";
+    const tip=(TIP[k]||"")+(r.decisionNote?" — "+r.decisionNote:"")+(r.decidedByName?" ("+r.decidedByName+")":"")
+      +((k==="accepted"||k==="confirmed")?(r.holdReq?" · Land Bank hold request #"+r.holdReq:r.holdNote?" · No hold request: "+r.holdNote:""):"");
+    const btn=(r.canDecide?`<button type="button" class="slr-ok" data-slr-acc="${e(r.id)}">Accepted</button><button type="button" class="slr-no" data-slr-rej="${e(r.id)}">Rejected</button>`:"")
+      +(r.canConfirm?`<button type="button" class="slr-cf" data-slr-cf="${e(r.id)}">Confirm (finance)</button>`:"");
+    return `<td data-l="Result"><span class="slr-b slr-${e(k)}" title="${e(tip)}">${e((LBL[k]||k)+why)}</span>${btn?`<div class="slr-a">${btn}</div>`:""}</td>`; };
+  const money=v=>v!=null&&v>0?"EGP "+Math.round(v).toLocaleString("en-US"):"no value";
+  const row=id=>(typeof SLO!=="undefined"&&SLO.rows||[]).find(x=>x.id===id)||{};
+  async function act(path,body,btn,okMsg){ if(btn) btn.disabled=true;
+    try{ const j=await slFetch(path,{method:"POST",body:body||{}}); toast(okMsg(j)); try{ slHistLoad(); }catch(x){} }
+    catch(err){ toast(typeof slErrMsg==="function"?slErrMsg(err):(err.message||"Failed"),true); if(btn) btn.disabled=false; } }
+  function rejectBox(id,btn){ const ov=document.createElement("div"); ov.className="slr-ov";
+    ov.innerHTML=`<div class="slr-box"><b>Why did the customer reject the offer?</b><select id="slrR"><option value="">Choose a reason…</option>${REASONS.map(x=>`<option>${e(x)}</option>`).join("")}</select>
+      <textarea id="slrN" rows="2" maxlength="500" placeholder="Note (optional)"></textarea><div class="row"><button type="button" id="slrC">Cancel</button><button type="button" class="p" id="slrS">Save</button></div></div>`;
+    document.body.appendChild(ov); const close=()=>ov.remove(); ov.querySelector("#slrC").onclick=close; ov.onclick=x=>{ if(x.target===ov) close(); };
+    ov.querySelector("#slrS").onclick=()=>{ const r=ov.querySelector("#slrR").value; if(!r){ toast("Choose a reason",true); return; } close();
+      act("/integration/offer-decide/"+encodeURIComponent(id),{decision:"reject",reason:r,note:ov.querySelector("#slrN").value.trim()},btn,()=>"Offer marked as rejected"); }; }
+  window.slResWire=function(){
+    document.querySelectorAll("[data-slr-acc]").forEach(b=>b.onclick=()=>{ const r=row(b.dataset.slrAcc);
+      if(!confirm(`The customer ACCEPTED this offer (${money(r.totalValue)})?\n\nIn Sales Leads the lead becomes Won with this value, other open offers on it are closed and finance is asked to confirm.`)) return;
+      act("/integration/offer-decide/"+encodeURIComponent(b.dataset.slrAcc),{decision:"accept"},b,()=>"Offer accepted — the lead is Won and waits for finance."); });
+    document.querySelectorAll("[data-slr-rej]").forEach(b=>b.onclick=()=>rejectBox(b.dataset.slrRej,b));
+    document.querySelectorAll("[data-slr-cf]").forEach(b=>b.onclick=()=>{ const r=row(b.dataset.slrCf);
+      if(!confirm(`Confirm the cash of this deal (${money(r.totalValue)})? It will count in the sales numbers.`)) return;
+      act("/integration/offer-confirm/"+encodeURIComponent(b.dataset.slrCf),{},b,()=>"Deal confirmed — counted in the sales numbers"); });
+  };
+})();
+</script>
+
+<script>
+/* V142: 1-day offer hold notice on the plot card (Sales Leads /integration/plot-offers). The plot stays Available; this only informs. */
+(function(){
+  if(typeof showSelection!=="function"||typeof slFetch!=="function") return;
+  const C=new Map(); let seq=0;
+  const e=t=>String(t??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const tm=iso=>{ try{ return new Date(iso).toLocaleString("en-GB",{timeZone:"Africa/Cairo",weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}); }catch(x){ return iso; } };
+  const rowKeys=()=>{ const out=[]; try{ selRows().forEach(x=>{ const i=x.info||{}, rs=i.how==="sub"&&i.rows&&i.rows.length?i.rows:(i.row?[i.row]:[]);
+    rs.forEach(r=>{ if(r&&r.key) out.push({key:r.key,unit:r.unit||""}); }); }); }catch(x){} return out; };
+  function html(list){ const parts=[];
+    list.forEach(({key,unit})=>{ const d=C.get(key); if(!d||!d.v) return; const v=d.v, u=e(unit||key);
+      if(v.hold&&!v.hold.mine) parts.push(`<div class="ofh ofh-hold"><b>On hold · ${u}</b> — ${e(v.hold.byName||"A salesperson")} printed a sales offer for this plot. Held until ${e(tm(v.hold.until))}: you cannot print a sales offer for it before then.</div>`);
+      else if(v.hold&&v.hold.mine) parts.push(`<div class="ofh ofh-mine"><b>Your 1-day hold · ${u}</b> — you printed a sales offer; the plot is held for you until ${e(tm(v.hold.until))}.</div>`);
+      (v.open||[]).forEach(o=>parts.push(`<div class="ofh ofh-open"><b>Open sales offer · ${u}</b> — printed by ${e(o.mine?"you":(o.byName||"a salesperson"))} on ${e(tm(o.at))}, not accepted or rejected yet. ${o.mine?"Record the customer's answer (Sales offer → History, or the lead in Sales Leads).":"Please refer back to "+e(o.byName||"the salesperson")+" to accept or reject the open offer."}</div>`));
+      (v.accepted||[]).forEach(o=>parts.push(`<div class="ofh ofh-acc"><b>Offer accepted · ${u}</b> — ${e(o.mine?"your":(o.byName||"a salesperson")+"'s")} customer accepted the sales offer${o.confirmed?"; finance confirmed the deal":"; waiting for finance to confirm"}.</div>`));
+    });
+    return parts.length?`<div class="ofh-wrap">${parts.join("")}</div>`:""; }
+  function paint(){ const el=document.getElementById("selpanel"); if(!el||el.hidden) return; const old=el.querySelector(".ofh-wrap"); if(old) old.remove();
+    const h=html(rowKeys()); if(!h) return; const head=el.querySelector("h4"); const box=document.createElement("div"); box.innerHTML=h;
+    const w=box.firstElementChild; if(head&&head.parentNode) head.parentNode.insertBefore(w,(head.nextElementSibling&&head.nextElementSibling.classList.contains("sp-w"))?head.nextElementSibling.nextSibling:head.nextSibling); else el.prepend(w); }
+  async function load(){ const ks=rowKeys(), my=++seq, now=Date.now(); const need=ks.filter(k=>{ const d=C.get(k.key); return !d||now-d.t>60000; }).map(k=>k.key);
+    if(need.length){ try{ const j=await slFetch("/integration/plot-offers?keys="+encodeURIComponent([...new Set(need)].slice(0,30).join("~"))); const P=j.plots||{};
+        need.forEach(k=>C.set(k,{t:Date.now(),v:P[k]||null})); }catch(x){ return; } }
+    if(my===seq) paint(); }
+  const base=showSelection;
+  showSelection=function(){ const r=base.apply(this,arguments); try{ paint(); load(); }catch(x){} return r; };
+  window.SID_OFFERHOLD={clear:()=>C.clear()};
+  try{ const st=document.createElement("style"); st.textContent=".ofh-wrap{display:flex;flex-direction:column;gap:6px;margin:8px 0}.ofh{border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.45;border:1px solid}"
+    +".ofh-hold{background:#fff6e5;border-color:#f0c987;color:#6b4a00}.ofh-mine{background:#eef6ff;border-color:#bcd8f5;color:#1d5fa8}.ofh-open{background:#fdf1f3;border-color:#f3c1c8;color:#8a1d2e}.ofh-acc{background:#eaf7ee;border-color:#bfe3c8;color:#1f6b35}";
+    document.head.appendChild(st); }catch(x){}
 })();
 </script>
 </body>
