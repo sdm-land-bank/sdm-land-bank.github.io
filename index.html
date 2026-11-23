@@ -995,6 +995,19 @@ body.no-matchfin #fpOn,body.no-matchfin .fp-panel,body.no-matchfin .fp-sec,body.
 .aud-tbl.edh-tbl td:nth-child(4)::before{content:"Field"}.aud-tbl.edh-tbl td:nth-child(5)::before{content:"It was"}.aud-tbl.edh-tbl td:nth-child(6)::before{content:"Changed to"}
 @media (max-width:820px){ .edh-ov{padding:0;align-items:stretch} .edh-box{border-radius:0;max-height:100dvh;height:100dvh} }
 
+
+.sp-rq{display:flex;width:100%;justify-content:center;align-items:center;gap:6px;margin-top:10px;padding:7px;border:1px dashed color-mix(in srgb,var(--signal) 40%,var(--rule-2));border-radius:var(--r-sm);font-size:11px;font-weight:600;color:var(--signal);cursor:pointer;background:transparent}
+.sp-rq:hover{background:color-mix(in srgb,var(--signal) 8%,transparent)}
+body.sid-public .sp-rq,body.sid-public .sp-sh{display:none!important}
+.hw{margin:6px 0 2px;padding:7px 9px;border-radius:9px;background:#fff6e5;color:#6b4a00;font-size:11px;line-height:1.35;border:1px solid #f0c987;white-space:normal}
+.hw b{display:block;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:2px}
+.sl-rw{display:flex;flex-direction:column;gap:3px}
+.sl-ed{font-size:11.5px;font-weight:600;color:#0A84FF;text-decoration:none;padding:0 4px 2px}
+.sl-ed:hover{text-decoration:underline}
+.sl-nolead{border-style:dashed;opacity:.8}
+.sl-nolead b::after{content:"  · no lead";font-size:10.5px;font-weight:700;color:#b3263d}
+a.ebtn#sloCustEd{text-decoration:none;display:inline-flex;align-items:center}
+
 #sbGate{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:radial-gradient(1200px 600px at 20% 0%,#3a0d16 0%,#141416 60%);padding:16px}
 .sbg-box{width:min(380px,100%);background:#fff;border-radius:18px;padding:26px 24px 22px;box-shadow:0 40px 90px -30px rgba(0,0,0,.7);display:flex;flex-direction:column;gap:12px;color:#15171b}
 .sbg-box img{height:44px;align-self:flex-start}
@@ -6723,7 +6736,7 @@ function wfDialog(keys){
     ${missing.length?`<p class="wf-warn">Not in the MDS, left out: ${esc(missing.slice(0,8).join(", "))}${missing.length>8?"…":""}</p>`:""}
     ${pend.length?`<p class="wf-warn">Already waiting for approval: ${esc(pend.map(r=>r.unit).join(", "))} — they cannot be asked again until that request is decided.</p>`:""}
     <div class="wf-lbl">New status</div>
-    <div class="wf-sts">${WF_ST.map(([k,l])=>`<label class="wf-st ${one===k?"cur":""}"><input type="radio" name="st" value="${k}" ${one===k?"disabled":""}>${wfDot(k)}<span>${l}${one===k?"<em>current</em>":""}</span></label>`).join("")}</div>
+    <div class="wf-sts">${WF_ST.filter(x=>x[0]!=="hold").map(([k,l])=>`<label class="wf-st ${one===k?"cur":""}"><input type="radio" name="st" value="${k}" ${one===k?"disabled":""}>${wfDot(k)}<span>${l}${one===k?"<em>current</em>":""}</span></label>`).join("")}</div>
     <div class="wf-grid">
       <label class="wf-need">Client name<input name="client" value="${esc(same("client"))}" placeholder="e.g. Nile Foods"></label>
       <label class="wf-need">Company name<input name="company" value="${esc(same("company"))}" placeholder="e.g. Nile Foods S.A.E."></label>
@@ -6760,6 +6773,168 @@ function wfDialog(keys){
 }
 document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest(".sp-wf"); if(b){ e.preventDefault(); wfDialog([...S.sel]); } });
 
+
+/* ============================================================================
+   V144 - SALES RULES: register read-only for Sales, data change requests, strategic hold, offers need a lead
+   ========================================================================== */
+const DQ={req:[],missing:false,loaded:false};
+const DQ_F=[["area","Area (sqm)"],["landType","Land type"],["sector","Sector"],["client","Client"],["company","Company"],["soldBy","Sold by"],["contractDate","Contract date"]];
+const dqLbl=k=>(DQ_F.find(x=>x[0]===k)||[0,k])[1];
+const SL_SITE="https://sdm-sales-leads.github.io/";
+function sidReqOnly(){ try{ return !!(SBME&&!SBME.is_admin&&(SBME.wf==="sales"||SBME.wf==="manager")); }catch(e){ return false; } }
+function sidCanStrategic(){ try{ return !!(SBME&&(SBME.is_admin||SBME.wf==="ops"||SBME.role==="development")); }catch(e){ return false; } }
+function sidNoSave(){ return sidReqOnly()?"Sales and Sales Managers do not change the MDS register. Open the plot on the map and press “Request a change”: your manager and Sales Operation approve it.":"Your role can see the MDS register but "+"not save changes — an administrator can give your role edit rights (Settings → Roles)"; }
+const dqVal=v=>v==null||v===""?"—":typeof v==="number"?fInt(v):String(v);
+async function dqLoad(){ try{ const r=await SB.from("sid_data_req").select("*").order("created_at",{ascending:false}).limit(200);
+  if(r.error){ if(/does not exist|schema cache/i.test(r.error.message)) DQ.missing=true; return; } DQ.req=r.data||[]; DQ.loaded=true; }catch(e){} }
+const dqLR=wfLoadReq; wfLoadReq=async function(){ await dqLR.apply(this,arguments); await dqLoad(); if(S.view==="approvals") wfRender(); };
+const dqPend=k=>DQ.req.find(q=>q.key===k&&(q.stage==="manager"||q.stage==="ops"));
+
+/* ---- Sales / Sales Manager: ask for a change of the plot data ---- */
+function dqDialog(k){
+  const info=S.plots.get(k), r=info&&info.row;
+  if(!r){ toast("This plot is not in the MDS register",true); return; }
+  if(DQ.missing){ toast("Plot data change requests are not switched on yet — an administrator runs sql_21_sales_rules.sql in Supabase",true); return; }
+  const pe=dqPend(r.key); if(pe){ toast("This plot already has a data change waiting for approval (request #"+pe.id+")",true); return; }
+  const path=SBME.wf==="sales"?`Your request goes to the sales manager of <b>${esc(SBME.team||"your team")}</b>, then to sales operation. Once sales operation approves, it takes effect on the MDS register and on the map.`
+    :"Your request goes to sales operation. Once approved, it takes effect on the MDS register and on the map.";
+  const cur=f=>r[f]==null?"":String(r[f]);
+  const ov=document.createElement("div"); ov.className="wf-ov"; ov.id="dqDlg";
+  ov.innerHTML=`<form class="wf-box" autocomplete="off" novalidate>
+    <div class="wf-h"><div><b>Request a change</b><span>${esc(r.unit)} · ${esc(S.reg.parks[r.park]?.name||r.park||"")}</span></div><button type="button" class="wf-x" aria-label="Close">×</button></div>
+    <p class="wf-hold">Sales and Sales Managers cannot edit the MDS register. Correct what is wrong below — only the fields you change are sent for approval.</p>
+    <div class="wf-grid">${DQ_F.map(([f,l])=>`<label>${l}<input name="${f}" value="${esc(cur(f))}" ${f==="area"?'inputmode="decimal"':""} ${f==="contractDate"?'placeholder="YYYY-MM-DD"':""}></label>`).join("")}
+      <label class="wf-wide">Why is the change needed? <em>(optional)</em><textarea name="note" rows="2" maxlength="400" placeholder="Anything the approvers should know"></textarea></label></div>
+    <p class="wf-path">${path}</p><em class="wf-errm"></em>
+    <div class="wf-b"><button type="button" class="ebtn wf-cancel">Cancel</button><button type="submit" class="ebtn pri" disabled>Send for approval</button></div></form>`;
+  document.body.appendChild(ov);
+  const F=ov.querySelector("form"), go=F.querySelector("[type=submit]"), err=ov.querySelector(".wf-errm");
+  const diff=()=>{ const ch={}, bad=[]; DQ_F.forEach(([f,l])=>{ const v=String(F.elements[f].value||"").trim(), old=cur(f).trim();
+      if(f==="area"){ const n=+v.replace(/,/g,""); if(v!==old&&!(v===""&&old==="")){ if(!(n>0)) bad.push("Area must be a number above 0"); else if(n!==+r.area) ch[f]={from:r.area==null?null:r.area,to:n}; } }
+      else if(v!==old){ if(f==="contractDate"&&v&&!/^\d{4}-\d{2}-\d{2}$/.test(v)) bad.push("Contract date as YYYY-MM-DD"); else ch[f]={from:r[f]==null?null:r[f],to:v||null}; } });
+    return {ch,bad}; };
+  const upd=()=>{ const d=diff(); go.disabled=!Object.keys(d.ch).length||d.bad.length>0; err.textContent=d.bad[0]||""; };
+  F.addEventListener("input",upd);
+  const close=()=>ov.remove(); ov.querySelector(".wf-x").onclick=close; ov.querySelector(".wf-cancel").onclick=close;
+  ov.addEventListener("keydown",e=>{ if(e.key==="Escape") close(); });
+  F.onsubmit=async e=>{ e.preventDefault(); const d=diff(); if(!Object.keys(d.ch).length||d.bad.length) return;
+    go.disabled=true; go.textContent="Sending…"; err.textContent="";
+    const x=await SB.rpc("sid_data_create",{p:{key:r.key,park:r.park,sheet:r.sheet,unit:r.unit,changes:d.ch,note:F.elements.note.value.trim()}});
+    if(x.error){ if(/does not exist|schema cache|Could not find/i.test(x.error.message)) DQ.missing=true; err.textContent=wfErr(x.error); go.disabled=false; go.textContent="Send for approval"; return; }
+    close(); await dqLoad(); toast(`Request #${x.data.id} sent — waiting for ${x.data.stage==="manager"?"your sales manager":"sales operation"}`); };
+  setTimeout(()=>{ const a=F.elements.client; if(a) a.focus(); },30);
+}
+
+/* ---- the Approvals page: a section "Plot data changes" ---- */
+const dqStage={manager:"Waiting for the sales manager",ops:"Waiting for sales operation",approved:"Approved",rejected:"Rejected",cancelled:"Cancelled"};
+function dqMine(q){ const w=wfRole(); if(!w) return false;
+  if(q.stage==="manager") return !!SBME.is_admin||(w==="manager"&&q.team&&q.team===SBME.team);
+  if(q.stage==="ops") return w==="ops"&&q.by_email!==wfMe();
+  return false; }
+function dqCard(q){
+  const me=wfMe(), act=dqMine(q), canCancel=q.by_email===me&&(q.stage==="manager"||q.stage==="ops"), notApplied=q.stage==="approved"&&!q.applied_at&&wfRole()==="ops";
+  const st=q.stage==="approved"?(q.applied_at?"Approved · on the register and the map":"Approved · not yet on the register"):dqStage[q.stage];
+  const step=(on,done,label,who,at,note)=>`<li class="${done?"done":on?"on":""}"><b>${label}</b>${who?`<span>${esc(who)} · ${wfAgo(at)}</span>`:""}${note?`<em>“${esc(note)}”</em>`:""}</li>`;
+  return `<article class="wf-card st-${q.stage}" data-dq="${q.id}">
+    <div class="wf-ch"><div><b>#${q.id} · ${esc(q.unit||"")}</b><span>${esc(q.park&&S.reg.parks[q.park]?.name||q.sheet||"")} · asked by ${esc(q.by_name||q.by_email)}${q.team?" · "+esc(q.team):""} · ${wfWhen(q.created_at)}</span></div><span class="wf-pill">${st}</span></div>
+    <div class="tablewrap"><table class="tbl wf-tbl"><thead><tr><th>Field</th><th>Now</th><th>Requested</th></tr></thead><tbody>
+      ${Object.entries(q.changes||{}).map(([f,c])=>`<tr><td>${esc(dqLbl(f))}</td><td>${esc(dqVal(c&&c.from))}</td><td><b>${esc(dqVal(c&&c.to))}</b></td></tr>`).join("")}</tbody></table></div>
+    ${q.note?`<p class="wf-qn">“${esc(q.note)}”</p>`:""}
+    <ol class="wf-steps">${step(false,true,"Requested",q.by_name||q.by_email,q.created_at)}
+      ${q.by_wf==="sales"?step(q.stage==="manager",!!q.mgr_at&&q.stage!=="rejected","Sales manager",q.mgr_email,q.mgr_at,q.mgr_note):""}
+      ${step(q.stage==="ops",!!q.ops_at&&q.stage==="approved","Sales operation",q.ops_email,q.ops_at,q.ops_note)}
+      ${step(false,!!q.applied_at,"On the MDS register and the map",null,null)}</ol>
+    <div class="wf-act">
+      <button class="ebtn" data-dqmap="${q.id}">Show on map</button>
+      ${canCancel?`<button class="ebtn" data-dqcancel="${q.id}">Cancel request</button>`:""}
+      ${notApplied?`<button class="ebtn pri" data-dqapply="${q.id}">Apply to the register</button>`:""}
+      ${act?`<input class="wf-reason" placeholder="Reason (needed to reject)"><button class="ebtn danger" data-dqno="${q.id}">Reject</button><button class="ebtn pri" data-dqok="${q.id}">${q.stage==="ops"?"Approve · put on the register":"Approve"}</button>`:""}
+    </div></article>`; }
+function dqSection(){
+  if(DQ.missing||!wfRole()) return "";
+  const open=DQ.req.filter(q=>q.stage==="manager"||q.stage==="ops"||(q.stage==="approved"&&!q.applied_at)), done=DQ.req.filter(q=>!open.includes(q)).slice(0,8);
+  if(!open.length&&!done.length&&!sidReqOnly()) return "";
+  return `<section id="dqSec"><div class="wf-ph" style="margin-top:14px"><div><b>Plot data changes</b><span>${sidReqOnly()?"Open a plot on the map and press “Request a change”":"Requests to correct plot data in the MDS register"}</span></div></div>
+    ${open.length?open.map(dqCard).join(""):`<div class="mm-empty"><b>No data change waiting</b></div>`}
+    ${done.length?`<h5 class="slw-s" style="margin:12px 0 6px">Recent</h5>`+done.map(dqCard).join(""):""}</section>`; }
+const dqVA=viewApprovals; viewApprovals=function(){ const h=dqVA.apply(this,arguments); if(WF.missing) return h;
+  if(!DQ.loaded&&!DQ.missing&&!DQ.busy){ DQ.busy=true; dqLoad().then(()=>{ DQ.busy=false; if(S.view==="approvals") wfRender(); }); }
+  return h.replace(/<\/div>\s*$/,dqSection()+"</div>"); };
+const dqWA=wireApprovals; wireApprovals=function(){ dqWA.apply(this,arguments); dqWire(); };
+async function dqApply(q){
+  try{ if(wfRole()!=="ops") return false;
+    const row=S.byKey.get(q.key); if(!row){ toast("This plot is no longer in the MDS register",true); return false; }
+    if(typeof edInit==="function") edInit();
+    if(edPending()>0){ toast("You have unsaved register edits — save or discard them first, then press “Apply to the register”",true); return false; }
+    const er=ED.byId.get(row._id); if(!er) return false;
+    const g=[]; Object.entries(q.changes||{}).forEach(([f,c])=>{ let v=c?c.to:null; if(f==="area") v=+v; else if(v==="") v=null; edSetG(er,f,v,g); });
+    if(g.length){ ED.undo.push(g); await edSave(); if(edPending()>0) return false; }
+    const r=await SB.rpc("sid_data_applied",{p_id:q.id}); if(r.error){ toast(wfErr(r.error),true); return false; }
+    await dqLoad(); return true; }
+  catch(e){ console.error(e); return false; } }
+async function dqDecide(btn,ok){ const id=+(btn.dataset.dqok||btn.dataset.dqno), card=btn.closest(".wf-card"), note=(card.querySelector(".wf-reason")||{}).value||"";
+  btn.disabled=true; const r=await SB.rpc("sid_data_decide",{p_id:id,p_ok:ok,p_note:note||null});
+  if(r.error){ toast(wfErr(r.error),true); btn.disabled=false; return; }
+  await dqLoad(); const q=DQ.req.find(x=>x.id===id);
+  if(ok&&q&&q.stage==="approved"){ const done=await dqApply(q); toast(done?"Approved — it is now on the MDS register and the map":"Approved — press “Apply to the register” to write it into the register",!done); }
+  else toast(ok?"Approved":"Rejected — the requester is told why");
+  wfRender(); }
+function dqWire(){ const C=$("#content"); if(!C||!$("#dqSec",C)) return;
+  $$("[data-dqok]",C).forEach(b=>b.onclick=()=>dqDecide(b,true));
+  $$("[data-dqno]",C).forEach(b=>b.onclick=()=>dqDecide(b,false));
+  $$("[data-dqcancel]",C).forEach(b=>b.onclick=async()=>{ if(!confirm("Cancel this request?")) return; const r=await SB.rpc("sid_data_cancel",{p_id:+b.dataset.dqcancel});
+    if(r.error){ toast(wfErr(r.error),true); return; } await dqLoad(); wfRender(); toast("Request cancelled"); });
+  $$("[data-dqapply]",C).forEach(b=>b.onclick=async()=>{ const q=DQ.req.find(x=>x.id===+b.dataset.dqapply); if(!q) return; b.disabled=true; const ok=await dqApply(q); toast(ok?"On the MDS register and the map":"Could not apply it yet",!ok); wfRender(); });
+  $$("[data-dqmap]",C).forEach(b=>b.onclick=()=>{ const q=DQ.req.find(x=>x.id===+b.dataset.dqmap); if(!q) return; const ks=[];
+    S.plots.forEach((p,k)=>{ const r=p.row||(p.rows&&p.rows[0]); if(r&&r.key===q.key) ks.push(k); }); go("inventory"); setTimeout(()=>{ if(ks.length) showPlots(ks); else toast("This plot is not drawn on the map",true); },300); }); }
+
+/* ---- strategic hold / release (Sales Operation, administrators, Development) with a written reason ---- */
+function shDialog(keys,action){
+  const {rows}=wfRowsOf(keys); if(!rows.length){ toast("These plots are not in the MDS, so their status cannot be changed",true); return; }
+  const hold=action==="hold", ov=document.createElement("div"); ov.className="wf-ov"; ov.id="shDlg";
+  ov.innerHTML=`<form class="wf-box" autocomplete="off" novalidate>
+    <div class="wf-h"><div><b>${hold?"Strategic hold":"Release the hold"}</b><span>${rows.length} plot${rows.length>1?"s":""} · ${esc(rows.slice(0,6).map(r=>r.unit).join(", "))}${rows.length>6?"…":""}</span></div><button type="button" class="wf-x" aria-label="Close">×</button></div>
+    <label class="wf-lbl" style="display:block">${hold?"Why is this plot on hold? <em>(required — everyone who hovers on the plot sees it)</em>":"Note <em>(optional)</em>"}
+      <textarea name="reason" rows="3" maxlength="400" style="width:100%;box-sizing:border-box;margin-top:6px;font:inherit;padding:9px 11px;border:1px solid var(--rule-2);border-radius:10px" placeholder="${hold?"e.g. Reserved for the master plan of the logistics zone":"Why it is released"}"></textarea></label>
+    ${hold?`<p class="wf-hold">A strategic hold has no end date: the plot stays on hold until Sales Operation or Development releases it. A salesperson holds a plot for 1 day by printing a sales offer.</p>`:""}
+    <em class="wf-errm"></em><div class="wf-b"><button type="button" class="ebtn wf-cancel">Cancel</button><button type="submit" class="ebtn pri" ${hold?"disabled":""}>${hold?"Put on hold":"Release · Available"}</button></div></form>`;
+  document.body.appendChild(ov);
+  const F=ov.querySelector("form"), go=F.querySelector("[type=submit]"), err=ov.querySelector(".wf-errm");
+  F.addEventListener("input",()=>{ if(hold) go.disabled=F.elements.reason.value.trim().length<3; });
+  const close=()=>ov.remove(); ov.querySelector(".wf-x").onclick=close; ov.querySelector(".wf-cancel").onclick=close; ov.addEventListener("keydown",e=>{ if(e.key==="Escape") close(); });
+  F.onsubmit=async e=>{ e.preventDefault(); const reason=F.elements.reason.value.trim(); if(hold&&reason.length<3) return;
+    go.disabled=true; err.textContent="";
+    const park=[...new Set(rows.map(r=>r.park))];
+    const r=await SB.rpc("sid_hold_strategic",{p:{action,reason,park:park.length===1?park[0]:"mixed",plots:rows.map(r=>({key:r.key,park:r.park,sheet:r.sheet,unit:r.unit,from:r.status,area:r.area?Math.round(r.area):null}))}});
+    if(r.error){ err.textContent=wfErr(r.error); go.disabled=false; return; }
+    close(); await wfLiveChanged(); toast(hold?`${rows.length} plot${rows.length>1?"s are":" is"} on strategic hold`:`${rows.length} plot${rows.length>1?"s are":" is"} Available again`); if(S.sel.size&&!$("#selpanel").hidden) showSelection(); };
+  setTimeout(()=>{ if(F.elements.reason) F.elements.reason.focus(); },30);
+}
+/* what the plot card and the hover show for a plot on hold */
+function holdWhyHtml(r){ if(!r||r.status!=="hold") return ""; const L=r._wf, why=L&&L.hold_reason;
+  const by=L&&L.hold_by?` — ${esc(L.hold_by)}${L.since?", "+wfAgo(L.since):""}`:"";
+  return `<div class="hw"><b>Why this plot is on hold</b>${why?esc(why)+by:"No reason recorded (placed before reasons were required)"}</div>`; }
+/* the plot card: Sales get "Request a change" instead of the register editor; hold buttons for Sales Operation / Development */
+function sidCardExtras(){ const el=$("#selpanel"); if(!el||el.hidden) return;
+  if(sidReqOnly()) el.querySelectorAll(".sp-edit").forEach(b=>{ const k=b.dataset.k, info=S.plots.get(k);
+    if(info&&info.row){ const n=document.createElement("button"); n.type="button"; n.className="sp-rq"; n.dataset.k=k; n.textContent="Request a change to this plot"; b.replaceWith(n); } else b.remove(); });
+  const act=el.querySelector(".sp-act"); if(!act||act.querySelector(".sp-sh")||!sidCanStrategic()) return;
+  const rs=[...S.sel].map(k=>{ const i=S.plots.get(k); return i&&i.row; }).filter(Boolean); if(!rs.length) return;
+  const allHold=rs.every(r=>r.status==="hold"), noHold=rs.every(r=>r.status!=="hold");
+  if(!allHold&&!noHold) return;
+  const b=document.createElement("button"); b.type="button"; b.className="sp-wf sp-sh"; b.dataset.sh=allHold?"release":"hold";
+  b.textContent=allHold?"Release the hold":"Strategic hold…"; act.insertBefore(b,act.firstChild); }
+const dqSS=showSelection; showSelection=function(){ const o=dqSS.apply(this,arguments); try{ sidCardExtras(); }catch(e){ console.warn("card extras",e); } return o; };
+document.addEventListener("click",e=>{ const a=e.target.closest&&e.target.closest(".sp-rq"); if(a){ e.preventDefault(); dqDialog(a.dataset.k); return; }
+  const h=e.target.closest&&e.target.closest(".sp-sh"); if(h){ e.preventDefault(); shDialog([...S.sel],h.dataset.sh); } });
+
+/* ---- Sales Leads: edit the customer there, bring it back here ---- */
+const slLeadUrl=c=>SL_SITE+(c&&Array.isArray(c.leadIds)&&c.leadIds.length?"#lead="+encodeURIComponent(c.leadIds[0]):"");
+async function slCustReload(){ const c=SLO.cust&&SLO.cust.contact; if(!c) return; const b=$("#sloCustRf"); if(b){ b.disabled=true; b.textContent="Refreshing…"; }
+  try{ const j=await slFetch("/integration/contacts?q="+encodeURIComponent(c.serial||c.name||"")+"&limit=20"), n=(j.contacts||[]).find(x=>String(x.id)===String(c.id));
+    if(!n) throw new Error("not found"); slSetCust(n,true); toast("Customer updated from Sales Leads: "+(n.name||"")+(n.company?" · "+n.company:"")); render(); }
+  catch(e){ toast("Could not refresh the customer from Sales Leads",true); if(b){ b.disabled=false; b.textContent="Refresh customer"; } } }
+
 /* ---- the Approvals page ---- */
 function viewApprovals(){
   if(WF.missing) return `<div class="mm-empty" style="margin:40px"><b>The status workflow is not switched on yet</b>An administrator runs step 7 (sql_7_status_workflow.sql) in Supabase once.</div>`;
@@ -6795,7 +6970,7 @@ function wfCard(q){
       <div class="wf-to">${wfDot(P[0]&&P[0].from)}${esc(wfLabel(P[0]&&P[0].from))} → ${wfDot(q.to_status)}<b>${esc(wfLabel(q.to_status))}</b></div><span class="wf-pill">${stLbl}</span></div>
     <div class="wf-facts"><div><em>Client</em>${esc(q.client||"—")}</div><div><em>Company</em>${esc(q.company||"—")}</div><div><em>Sold by</em>${esc(q.sold_by||"—")}</div>
       <div><em>Asked by</em>${esc(q.by_name||q.by_email)}${q.team?` · ${esc(q.team)}`:""}</div><div><em>When</em>${wfWhen(q.created_at)}</div>
-      ${q.to_status==="hold"?`<div><em>Hold requested</em><b>${wfHd(q)}</b></div>`:""}${q.to_status==="hold"&&q.hold_until?`<div><em>Hold</em>${q.hold_ended_at?"ended "+wfWhen(q.hold_ended_at):"until "+wfWhen(q.hold_until)}</div>`:""}</div>
+      ${q.to_status==="hold"?(q.hold_reason?`<div class="wf-wide"><em>Reason for hold</em>${esc(q.hold_reason)}</div>`:`<div><em>Hold requested</em><b>${wfHd(q)}</b></div>`):""}${q.to_status==="hold"&&q.hold_until?`<div><em>Hold</em>${q.hold_ended_at?"ended "+wfWhen(q.hold_ended_at):"until "+wfWhen(q.hold_until)}</div>`:""}</div>
     ${q.note?`<p class="wf-qn">“${esc(q.note)}”</p>`:""}
     <div class="tablewrap"><table class="tbl wf-tbl"><thead><tr><th>Plot</th><th>Project</th><th class="r">Area sqm</th><th>Status now</th><th class="r">Price / sqm</th><th>Client now</th><th class="r">MVA</th></tr></thead><tbody>
       ${rows.slice(0,12).map(({p,r})=>{ const pr=r&&priceOf(r); return `<tr><td class="mono">${esc(p.unit)}</td><td>${esc(p.sheet||"")}</td><td class="r">${fInt(r?r.area:p.area)}</td><td>${wfDot(r?r.status:p.from)}${esc(wfLabel(r?r.status:p.from))}</td>
@@ -9547,6 +9722,7 @@ function showSelection(){
         <div><span>Client</span><b>${r&&r.client?esc(r.client):"—"}</b></div>
         <div><span>Sold by</span><b>${r&&r.soldBy?esc(r.soldBy):"—"}</b></div>
         <div><span>Contract</span><b>${r&&r.contractDate?r.contractDate:"—"}</b></div>
+        ${r&&r.status==="hold"?`<div class="sp-hw" style="grid-column:1/-1">${holdWhyHtml(r)}</div>`:""}
         <div><span>Actual sales</span><b>${r&&r.actualSales?fMon(r.actualSales,r.cur):"—"}</b></div>
         <div><span>Collected</span><b>${r&&r.collected?fMon(r.collected,r.cur):"—"}</b></div>
         ${(()=>{ const c=p.c; if(!c) return ""; const lg=logisticsAt(c);
@@ -9804,7 +9980,7 @@ function tipHtml(p){
       <span class="tc" style="${sw}">${s.label}</span></div>
     <div class="ts">${esc(S.reg.parks[p.park]?.name||"")}${r&&r.phase?" · Phase "+esc(r.phase):""}</div>
     <div class="tg">
-      ${line("Area", r?(((r._plots||[]).length>1||(info.rows||[]).length>1)&&p.gis?fInt(p.gis)+" sqm plot · "+fInt(r.area)+" sqm in MDS unit":fInt(r.area)+" sqm"):(p.gis?fInt(p.gis)+" sqm (GIS)":null))}
+      ${holdWhyHtml(r)}${line("Area", r?(((r._plots||[]).length>1||(info.rows||[]).length>1)&&p.gis?fInt(p.gis)+" sqm plot · "+fInt(r.area)+" sqm in MDS unit":fInt(r.area)+" sqm"):(p.gis?fInt(p.gis)+" sqm (GIS)":null))}
       ${line("Land type", r&&r.landType?esc(r.landType):null)}
       ${line("Sector", r&&r.sector?esc(r.sector):null)}
       ${(()=>{ const q=priceOf(r), tag=q&&q.basis==="list"?' <em class="pbas">list</em>':"";
@@ -13115,7 +13291,7 @@ async function edSave(){
     return;
   }
   const c=edCounts(); if(!(c.changed+c.added+c.deleted)) return;
-  if(sbReady()&&!sbCanWrite()){ toast("Your role can see the MDS register but not save changes — an administrator can give your role edit rights (Settings → Roles)",true); return; }
+  if(sbReady()&&!sbCanWrite()){ toast(sidNoSave(),true); return; }
   const btn=$("#edSave"); if(btn) btn.disabled=true;
   try{ AUD.pend=audEdits(live); }catch(e){ AUD.pend=null; }
   let next=live.map(r=>hydrateRow({...r})), mg=null;
@@ -13510,7 +13686,7 @@ function wireShell(){
    ========================================================================== */
 const SBC={url:"https://ihjlvxmttvjcciafruya.supabase.co",key:"sb_publishable_8Q-O8l1q58PmM8kQkEETDQ_g1wwmRbS"};
 let SB=null, SBU=null, SBROLE=null, SBV=null;
-const sbReady=()=>!!(SB&&SBU), sbCanWrite=()=>!!(SBME&&SBME.can_edit);
+const sbReady=()=>!!(SB&&SBU), sbCanWrite=()=>!!(SBME&&SBME.can_edit&&!sidReqOnly());
 function b64buf(buf){ const u=new Uint8Array(buf); let s=""; for(let i=0;i<u.length;i+=0x8000) s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000)); return btoa(s); }
 function gateEl(){ let g=document.getElementById("sbGate");
   if(!g){ g=document.createElement("div"); g.id="sbGate"; document.body.appendChild(g); } return g; }
@@ -14277,13 +14453,14 @@ async function slLinkGo(){ let L=null; try{ L=JSON.parse(slStore("sid.sl.link")|
   if(!canSee("inventory")){ toast("Your role does not include the map",true); return; }
   const keys=laraRowKeys(r);
   if(keys.length){ laraParkTo(r.park); showPlots(keys); }
+  if(L.a==="hold"&&!sidCanStrategic()){ toast("A plot is held for 1 day by printing a sales offer for the customer. Only Sales Operation or Development place a strategic hold, with a reason.",true); return; }
   if(L.a!=="hold"){ if(!keys.length) toast(`Plot ${r.unit} is in the MDS but not drawn on the map`,true); return; }
   if(r.status!=="ats"){ toast(`Plot ${r.unit} is no longer available (now ${(STATUS[r.status]||STATUS.unknown).label}) — it cannot be put on hold`,true); return; }
   if(!wfOn()){ toast(WF.missing?"The status workflow is not switched on yet":"Your role cannot request status changes — ask your sales manager or sales operation",true); return; }
   if(!keys.length){ toast(`Plot ${r.unit} is not drawn on the map, so its status cannot be changed here`,true); return; }
   /* §10.2 the lead behind the link: its customer (and, for operations, its salesperson) pre-filled — nothing is saved until the user presses the button */
   const brief=L.lead?slFetch("/integration/lead-brief?leadId="+encodeURIComponent(L.lead)).catch(()=>null):Promise.resolve(null);
-  setTimeout(async()=>{ wfDialog(keys); const i=document.querySelector('#wfDlg input[name=st][value="hold"]');
+  setTimeout(async()=>{ if(L.a==="hold"&&sidCanStrategic()){ shDialog(keys,"hold"); return; } wfDialog(keys); const i=document.querySelector('#wfDlg input[name=st][value="hold"]');
     if(i&&!i.disabled){ i.checked=true; i.dispatchEvent(new Event("change",{bubbles:true})); }
     const b=await Promise.race([brief,new Promise(z=>setTimeout(()=>z(null),6000))]), F=document.querySelector("#wfDlg form"); if(!b||!F) return;
     const put=(n,v,keep)=>{ const el=F.elements[n]; if(el&&v&&!(keep&&String(el.value||"").trim())) el.value=String(v).slice(0,120); };
@@ -14346,7 +14523,8 @@ function slPick(type){ return new Promise(res=>{
   const q=ov.querySelector(".sl-q"), list=ov.querySelector(".sl-list"), err=ov.querySelector(".sl-err");
   let t=null, ac=null, seq=0, done=false, cur=[];
   const fin=c=>{ if(done) return; done=true; clearTimeout(t); try{ if(ac) ac.abort(); }catch(e){} ov.remove(); if(c) SLB.pick=c; res(c||null); };
-  const row=(c,last)=>`<button type="button" class="sl-c" data-id="${esc(c.id)}">${last?"<i>Last chosen</i>":""}<b>${esc(c.name||"—")}</b><span>${[c.company,slMask(c.phone),c.serial].filter(Boolean).map(esc).join(" · ")}</span></button>`;
+  const row=(c,last)=>{ const nl=!(Array.isArray(c.leadIds)&&c.leadIds.length); return `<div class="sl-rw"><button type="button" class="sl-c${nl?" sl-nolead":""}" data-id="${esc(c.id)}">${last?"<i>Last chosen</i>":""}<b>${esc(c.name||"—")}</b><span>${[c.company,slMask(c.phone),c.serial,nl?"":(c.leadIds.length+" lead"+(c.leadIds.length>1?"s":""))].filter(Boolean).map(esc).join(" · ")}</span></button>
+      <a class="sl-ed" href="${esc(slLeadUrl(c))}" target="_blank" rel="noopener">Wrong name or company? Edit the customer in Sales Leads ↗</a></div>`; };
   const draw=(arr,msg)=>{ cur=arr; const lp=!q.value.trim()&&SLB.pick;
     list.innerHTML=(lp?row(SLB.pick,true):"")+arr.map(c=>row(c)).join("")+(msg?`<p class="sl-msg">${esc(msg)}</p>`:""); };
   draw([],"Type at least 2 characters to search.");
@@ -14388,6 +14566,9 @@ async function slGate(type,run,o){ o=o||{};
   try{ const re=slReFor(type), fc=type==="sales_offer"?slFormCust():null, c=fc||(o.lara&&o.agent?await slLaraCust(o.agent):await slPick(type));
     if(c&&type==="sales_offer"&&!fc&&!c.agent) slSetCust(c,false);
     if(!c){ toast("No customer chosen — the offer was not printed",true); return {error:"The user did not choose a customer on screen, so the offer was not printed."}; }
+    if(!(Array.isArray(c.leadIds)&&c.leadIds.length)){ const m="This customer has no lead in Sales Leads. Create the lead there first — an offer can only be printed for a lead that comes from Sales Leads.";
+      toast(m,true); if(o.lara) LARA.last=null; return {error:m}; }
+    if(type!=="sales_offer"&&window.MM&&MM.form){ if(c.company||c.name) MM.form.company=c.company||c.name; if(c.name) MM.form.contact=c.name; }   /* initial offer / proposal carry the Sales Leads customer name + company */
     Orig=J.jsPDF; mine=function(...a){ const d=new Orig(...a), sv=d.save; d.save=function(n,op){ saves.push({d,sv,n,op}); return d; }; return d; };
     J.jsPDF=mine; SLB.inRun=true; let out;
     try{ out=await run(); } finally{ SLB.inRun=false; if(J.jsPDF===mine) J.jsPDF=Orig; }
@@ -14632,11 +14813,11 @@ const slNm=v=>String(v||"").trim().toLowerCase().replace(/\s+/g," ");
 function slFormCust(){ const c=SLO.cust; return c&&c.contact&&SO.f&&slNm(SO.f.client)===slNm(c.client)?c.contact:null; }
 function slSetCust(c,fill){ if(!c){ SLO.cust=null; return; } if(fill&&SO.f){ SO.f.client=c.name||SO.f.client; if(c.company) SO.f.company=c.company; soSave(); }
   SLO.cust={contact:c,client:SO.f?SO.f.client:c.name}; SLB.pick=c; }
-function slCustWire(){ const cc=$("#sloCustCh"); if(cc) cc.onclick=async()=>{ const c=await slPick("sales_offer"); if(c){ slSetCust(c,true); render(); } }; }
+function slCustWire(){ const rf=$("#sloCustRf"); if(rf) rf.onclick=slCustReload; const cc=$("#sloCustCh"); if(cc) cc.onclick=async()=>{ const c=await slPick("sales_offer"); if(c){ slSetCust(c,true); render(); } }; }
 function slCustRefresh(){ const b=$("#sloCust"); if(!b) return; b.outerHTML=slCustBar(); slCustWire(); }
 function slCustBar(){ const c=slFormCust();
   return `<div class="slo-cust" id="sloCust"><span class="slo-cl">Customer</span>${c?`<span class="slo-cv"><b>${esc(c.name||"—")}</b>${[c.company,c.serial].filter(Boolean).map(x=>" · "+esc(x)).join("")}</span>
-    <button type="button" class="ebtn" id="sloCustCh">Change</button>`:`<span class="slo-cv slo-none">Choose the Sales Leads customer first — fills Client's name and Company name</span><button type="button" class="ebtn pri" id="sloCustCh">Choose customer</button>`}</div>`; }
+    <button type="button" class="ebtn" id="sloCustCh">Change</button><a class="ebtn" id="sloCustEd" href="${esc(slLeadUrl(c))}" target="_blank" rel="noopener" title="Name and company are edited only in Sales Leads">Edit customer in Sales Leads ↗</a><button type="button" class="ebtn" id="sloCustRf" title="Bring the corrected name and company back from Sales Leads">Refresh customer</button>`:`<span class="slo-cv slo-none">Choose the Sales Leads customer first — fills Client's name and Company name</span><button type="button" class="ebtn pri" id="sloCustCh">Choose customer</button>`}</div>`; }
 
 /* ---- the page: tabs on top, History (default) or the existing form ---- */
 const slVO=viewOffer, slWO=wireOffer;
@@ -22779,7 +22960,7 @@ function closeM(){ const o=document.getElementById("clOv"); if(o) o.remove(); ST
 
 function openImport(){
   if(typeof ED==="undefined"||!ED||!ED.rows){ toast("Open the MDS register first",true); return; }
-  try{ if(sbReady()&&!sbCanWrite()){ toast("Your role can see the MDS register but not save changes — an administrator can give your role edit rights (Settings → Roles)",true); return; } }catch(e){}
+  try{ if(sbReady()&&!sbCanWrite()){ toast(sidNoSave(),true); return; } }catch(e){}
   const d=modal(`<div class="mpd-h"><b>Import collection update</b><button class="mp-x" aria-label="Close">×</button></div>
     <div class="mpd-b" id="clB"></div><div class="mpd-f"><span class="mp-n" id="clMsg"></span><button class="ebtn" id="clIssues" hidden>Download problem report</button><button class="ebtn" id="clAgain" hidden>Upload another file</button><button class="ebtn" data-close>Cancel</button><button class="ebtn pri" id="clSave" disabled>Save changes</button></div>`);
   const B=d.querySelector("#clB"), msg=d.querySelector("#clMsg"), save=d.querySelector("#clSave"), issues=d.querySelector("#clIssues"), again=d.querySelector("#clAgain");
