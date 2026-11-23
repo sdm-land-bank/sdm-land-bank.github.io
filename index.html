@@ -1008,6 +1008,11 @@ body.sid-public .sp-rq,body.sid-public .sp-sh{display:none!important}
 .sl-nolead b::after{content:"  · no lead";font-size:10.5px;font-weight:700;color:#b3263d}
 a.ebtn#sloCustEd{text-decoration:none;display:inline-flex;align-items:center}
 
+
+.cls-locked .set-tree,.cls-locked .set-bulk,.cls-locked .set-ck.big{opacity:.38;filter:grayscale(1);pointer-events:none;user-select:none}
+.cls-locked .acc-note141{background:#fdf1f3;border:1px solid #f3c1c8;color:#8a1d2e;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.4}
+.cls-locked .acc-note141::after{content:" These ticks are locked.";font-weight:700}
+
 #sbGate{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:radial-gradient(1200px 600px at 20% 0%,#3a0d16 0%,#141416 60%);padding:16px}
 .sbg-box{width:min(380px,100%);background:#fff;border-radius:18px;padding:26px 24px 22px;box-shadow:0 40px 90px -30px rgba(0,0,0,.7);display:flex;flex-direction:column;gap:12px;color:#15171b}
 .sbg-box img{height:44px;align-self:flex-start}
@@ -14225,7 +14230,7 @@ function viewSettings(){
       <td class="r"><button class="fp-link" data-act="pw">Set password</button> ${u.email===SBU.email?"":`<button class="fp-link" data-act="del">Remove</button>`}</td></tr>`).join("")}
     </tbody></table></div></section>
   ${setTeamsHtml()}
-  <section class="card wide"><h3>Roles &amp; page access <span class="sub">tick what each role can open — pages and their sub-pages</span></h3>${(typeof SBME!=="undefined"&&SBME&&SBME.access_mode==="modules")?`<p class="acc-note141"><b>Module permissions are ON.</b> The page ticks and "Can edit the MDS register" here are not used: Users &amp; access decides (Admin → Users &amp; access). The <b>Plot status part</b> below is still used.</p>`:""}
+  <section class="card wide ${(typeof SBME!=="undefined"&&SBME&&SBME.access_mode==="modules")?"cls-locked":""}"><h3>Roles &amp; page access <span class="sub">tick what each role can open — pages and their sub-pages</span></h3>${(typeof SBME!=="undefined"&&SBME&&SBME.access_mode==="modules")?`<p class="acc-note141"><b>Module permissions are ON.</b> The page ticks and "Can edit the MDS register" here are not used: Users &amp; access decides (Admin → Users &amp; access). The <b>Plot status part</b> below is still used.</p>`:""}
     <div class="set-roles">
       <div class="set-rl">${(SET.roles||[]).map(r=>`<button type="button" data-role="${esc(r.role)}" class="${r.role===SET.cur?"on":""}"><b>${esc(r.label||r.role)}</b><em>${r.is_admin?"everything + Settings":((r.pages||[]).filter(p=>!p.includes(".")).length+" pages")} · ${(SET.users||[]).filter(u=>u.role===r.role).length} user${(SET.users||[]).filter(u=>u.role===r.role).length===1?"":"s"}</em></button>`).join("")}
         <button type="button" class="set-new" id="setNewRole">+ New role</button></div>
@@ -14237,9 +14242,9 @@ function viewSettings(){
             <option value="manager" ${D.wf==="manager"?"selected":""}>Sales manager — approves their team; own requests go to sales operation</option>
             <option value="ops" ${D.wf==="ops"?"selected":""}>Sales operation — final approval; changes directly</option>
             <option value="direct" ${D.wf==="direct"?"selected":""}>Direct — changes status without approval (Development, Finance); does not approve others</option></select></label>`}
-          <label class="set-ck big"><input type="checkbox" id="setEdit" ${D.can_edit||D.is_admin?"checked":""} ${D.is_admin?"disabled":""}><span>Can edit the MDS register<em>save changes in the MDS register for the whole team (without it, the register is view-only)</em></span></label></div>
+          <label class="set-ck big" ${(typeof SBME!=="undefined"&&SBME&&SBME.access_mode==="modules")?"inert":""}><input type="checkbox" id="setEdit" ${D.can_edit||D.is_admin?"checked":""} ${D.is_admin?"disabled":""}><span>Can edit the MDS register<em>save changes in the MDS register for the whole team (without it, the register is view-only)</em></span></label></div>
         ${D.is_admin?`<p class="note">Administrators can open every page and sub-page and manage users here. This role cannot be narrowed.</p>`:`<div class="set-bulk"><button type="button" class="fp-link" id="setAll">Tick everything</button><button type="button" class="fp-link" id="setNone">Clear everything</button></div>`}
-        <div class="set-tree">${SID_PAGES.map(p=>`<div class="set-pg">${box(p.id,p.label,"top")}
+        <div class="set-tree" ${(typeof SBME!=="undefined"&&SBME&&SBME.access_mode==="modules")?"inert":""}>${SID_PAGES.map(p=>`<div class="set-pg">${box(p.id,p.label,"top")}
           ${(p.subs||[]).map(g=>`<div class="set-sg"><div class="set-sgh">${esc(g.h)}${D.is_admin?"":` <button type="button" class="fp-link" data-grp="${esc(p.id)}|${esc(g.h)}">all</button>`}</div>${g.items.map(([id,l])=>box(id,l)).join("")}</div>`).join("")}</div>`).join("")}
           <div class="set-pg">${`<label class="set-ck top"><input type="checkbox" ${D.is_admin?"checked":""} disabled><span>Settings (users &amp; roles) — administrators only</span></label>`}</div></div>
         <div class="set-act">${D.is_admin?"":`<button class="ebtn" id="setDelRole">Delete role</button>`}<button class="applybtn" id="setSaveRole" ${D.is_admin?"disabled":""}>Save role</button></div>
