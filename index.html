@@ -10028,14 +10028,9 @@ function metres(a,b){
 function edges(g){
   const rings=g.type==="Polygon"?g.coordinates:g.type==="MultiPolygon"?g.coordinates.flat():[];
   const segs=[];
-  rings.forEach(r=>{ for(let i=0;i<r.length-1;i++){
-    const a=r[i],b=r[i+1];
-    if(a[0]===b[0]&&a[1]===b[1]) continue;
-    const L=metres(a,b); if(L<5) continue;
-    segs.push({L,mid:[(a[0]+b[0])/2,(a[1]+b[1])/2]});
-  }});
-  segs.sort((x,y)=>y.L-x.L);
-  const shown=segs.slice(0,40).map(s=>({t:s.L<100?s.L.toFixed(1)+" m":Math.round(s.L)+" m",p:s.mid}));
+  /* V145: same sides as the printed Technical annex (mergeRuns), 2 decimals, under 3 m not labelled */
+  rings.forEach(r=>{ mergeRuns(r).forEach(run=>{ if(run.len<3) return; segs.push({L:run.len,mid:[(run.a[0]+run.b[0])/2,(run.a[1]+run.b[1])/2]}); }); });
+  const shown=segs.slice(0,60).map(s=>({t:s.L.toFixed(2)+" m",p:s.mid}));
   return {labels:shown,total:segs.length,shown:shown.length};
 }
 
