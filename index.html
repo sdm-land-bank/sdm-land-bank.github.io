@@ -11594,8 +11594,8 @@ function openPdfOpts(){
   ov.hidden=false;
   ov.innerHTML=`<div class="pdfo-box" role="dialog" aria-modal="true" aria-label="Download proposal">
     <div class="pdfo-h"><div><b>Download proposal</b><span>${n} option${n>1?"s":""} selected${MM.form.company?" for "+esc(MM.form.company):""}</span></div><button class="dr-close" id="pdfoX" aria-label="Close">×</button></div>
-    <label class="pdfo-o"><input type="radio" name="pk" value="match" ${FPL.on?"":"checked"}><span><b>Best-match plots only</b><em>The ranking, the layout of each plot and why it fits.</em></span></label>
-    <label class="pdfo-o"><input type="radio" name="pk" value="fin" ${FPL.on?"checked":""}><span><b>Best-match plots + initial financial proposal</b><em>Adds each plot's payment plan and yearly collection${FPL.on?"":" — with the default plan; turn on <b>Financial offer</b> to adjust it"}.</em></span></label>
+    <label class="pdfo-o"><input type="radio" name="pk" value="match"><span><b>Best-match plots only</b><em>The ranking, the layout of each plot and why it fits.</em></span></label>
+    <label class="pdfo-o"><input type="radio" name="pk" value="fin" checked><span><b>Best-match plots + initial financial proposal</b><em>Adds each plot's payment plan and yearly collection${FPL.on?"":" — with the default plan; turn on <b>Financial offer</b> to adjust it"}.</em></span></label>
     <label class="pdfo-c"><input type="checkbox" id="pdfoP"><span><b>Show prices &amp; financial data</b><em>Off by default: no price, value or payment figure appears in the PDF.</em></span></label>
     ${plPicker("pdfoLang")}
     <div class="pdfo-f"><button class="ebtn" id="pdfoC">Cancel</button><button class="ebtn pri" id="pdfoGo">Download PDF</button></div></div>`;
