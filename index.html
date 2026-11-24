@@ -13340,7 +13340,8 @@ function edExport(rows){
     ["SqM Price planned","plannedPrice"],["Cash Value planned","plannedValue"],["Area range","areaRange"],
     ["Cost/SQM","costSqm"],["GP/SQM","gpSqm"],["Total GP","totalGp"],["GP%","gpPct"],["RF Price","rfPrice"],
     ["RF Price USD","rfPriceUsd"],["ROE USD","roeUsd"],["Total plus interest USD","totalUsd"],["Date of cost","dateOfCost"]];
-  const aoa=[H.map(h=>h[0])].concat(list.map(r=>H.map(([,f])=>{ const v=typeof f==="function"?f(r):r[f]; return v??null; })));
+  const XLB=new Set(["costSqm","gpSqm","totalGp","gpPct","rfPrice","rfPriceUsd","roeUsd","dateOfCost"]), xlBlank=!costAllowed();
+  const aoa=[H.map(h=>h[0])].concat(list.map(r=>H.map(([,f])=>{ if(xlBlank&&typeof f==="string"&&XLB.has(f)) return null; const v=typeof f==="function"?f(r):r[f]; return v??null; })));
   if(Array.isArray(rows)) return aoa;   // V87: the Sales & Land Bank workbook is built from these rows
   const ws=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true,dateNF:"yyyy-mm-dd"});
   ws["!cols"]=H.map(([h])=>({wch:Math.max(10,Math.min(28,h.length+4))}));
@@ -13466,7 +13467,7 @@ function wireEditor(){
   $("#edUndo").onclick=edUndo;
   $("#edSave").onclick=edSave;
   $("#edDiscard").onclick=edDiscard;
-  $("#edXlsx").onclick=()=>regUnlock(edExport);
+  $("#edXlsx").onclick=()=>{ if(costAllowed()) regUnlock(edExport); else { edExport(); toast("Exported. Cost and GP columns are empty for your role."); } };
   $("#edHtml").onclick=()=>regUnlock(edDownloadHtml);
   { const lk=$("#edLock"); if(lk) lk.onclick=()=>REG_LOCK.open?regLock():regUnlock(); const pc=$("#edLockPw"); if(pc) pc.onclick=async()=>{ if(await regCanSet()) regUnlock(null,true); else toast("Only an administrator can change the password",true); }; regRefresh(); }
   if(ED.cur) edMarkSel();
