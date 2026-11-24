@@ -3318,7 +3318,7 @@ function mdsRecord(T,r,label){
     withInterest:pos(get("i value","total plus interest")), collected:pos(get("collection sales","collection amount")),
     cur:"EGP", landType:lt,
     client:txt(get("client name")), company:txt(get("company name")), soldBy:txt(get("sold by"),40),
-    contractDate:cd, idaApprovalDate:xlDate(get("ida contact approval date")), reserveDate:xlDate(get("reservation form date")), eoiDate:xlDate(get("eoi date")),
+    contractDate:cd, idaApprovalDate:xlDate((get("authority contract approval date")??get("ida contact approval date"))), contractApprovalStatus:txt(get("contract approval status"),30), approvalStatusComment:txt(get("approval status comment"),300), reserveDate:xlDate(get("reservation form date")), eoiDate:xlDate(get("eoi date")),
     handoverDate:xlDate(get("handover date")), phase:txt(get("phase"),24), quarter:txt(get("quarter of sale"),12),
     opsStatus:txt(get("ops status"),16),
     mva:pos(get("electricity (mva)")), water:pos(get("water (m3/day)")), sewage:pos(get("sewage (m3/day)")),
@@ -3374,7 +3374,7 @@ function costMaskLB(f){ if(costAllowed()) return; const d=f.contentDocument; if(
 function costAsked(a){ try{ return /(^|[^a-z])(gp|gross|profit|cost|margin|loss)/i.test(Object.keys(a||{}).concat(Object.values(a||{}).filter(v=>typeof v==="string")).join(" ")); }catch(e){ return false; } }
 
 const FIN_ONLY=["costSqm","gpSqm","totalGp","gpPct","rfPrice","rfPriceUsd","roeUsd","totalUsd","dateOfCost",
-  "eoiDate","handoverDate","opsStatus","cur","clientId","unifiedMds","unifiedSales","withInterest","collected","reserveDate","contractDate","idaApprovalDate"];
+  "eoiDate","handoverDate","opsStatus","cur","clientId","unifiedMds","unifiedSales","withInterest","collected","reserveDate","contractDate","idaApprovalDate","contractApprovalStatus","approvalStatusComment"];
 /* Returns {rows, unknown, report}, or null when the workbook is not in the MDS 2026 layout. */
 
 /* ---- one cost per project: the MDS "Cost" sheet ---- */
@@ -8632,7 +8632,7 @@ function parseWorkbook(buf){
       withInterest:num(get(r,"total plus interest")), collected:num(get(r,"collection amount")),
       cur:"EGP", landType:txt(get(r,"land type"),20),
       client:txt(get(r,"client name")), company:txt(get(r,"company name")),
-      soldBy:txt(get(r,"sold by"),40), contractDate:cd, idaApprovalDate:dt(get(r,"ida contact approval date")),
+      soldBy:txt(get(r,"sold by"),40), contractDate:cd, idaApprovalDate:dt((get(r,"authority contract approval date")??get(r,"ida contact approval date"))), contractApprovalStatus:txt(get(r,"contract approval status"),30), approvalStatusComment:txt(get(r,"approval status comment"),300),
       reserveDate:dt(get(r,"reservation form date")), eoiDate:dt(get(r,"eoi date")),
       handoverDate:dt(get(r,"handover date")), phase:txt(get(r,"phase"),20),
       quarter:txt(get(r,"quarter of sale"),12), opsStatus:txt(get(r,"ops status"),14),
@@ -12678,7 +12678,9 @@ const EDCOLS=[
   {k:"reserveDate",label:"Reservation",type:"date",w:104},
   {k:"eoiDate",label:"EOI date",type:"date",w:104},
   {k:"contractDate",label:"Contract",type:"date",w:104},
-  {k:"idaApprovalDate",label:"IDA Contact Approval Date",type:"date",w:170},
+  {k:"idaApprovalDate",label:"Authority Contract Approval Date",type:"date",w:190},
+  {k:"contractApprovalStatus",label:"Contract Approval Status",type:"enum",w:170},
+  {k:"approvalStatusComment",label:"Approval Status Comment",type:"text",w:240},
   {k:"handoverDate",label:"Handover",type:"date",w:104},
   {k:"price",label:"Price / sqm",type:"num",w:98},
   {k:"cash",label:"Cash value",type:"num",w:122},
@@ -12707,7 +12709,7 @@ const EDCOLS=[
   {k:"src",label:"Source sheet",type:"text",w:150}
 ];
 
-{ const SO=[["sheet", "Project Name"], ["phase", "Phase"], ["year", "Year of Sale"], ["clientId", "Client ID"], ["unit", "Unit Code"], ["area", "Area"], ["areaRange", "Area range"], ["price", "SqM Cash Price (A)"], ["cash", "Cash Value (A)"], ["costSqm", "Cost/SQM"], ["gpSqm", "GP/SQM"], ["totalGp", "Total GP"], ["gpPct", "GP%"], ["rfPrice", "RF Price"], ["withInterest", "Total plus Interest"], ["cur", "Currency"], ["rfPriceUsd", "RF Price USD"], ["roeUsd", "ROE USD"], ["totalUsd", "Total plus interest USD"], ["landType", "Land Type"], ["status", "Status"], ["sector", "Sector"], ["contractDate", "Sales contract date"], ["idaApprovalDate", "IDA Contact Approval Date"], ["eoiDate", "EOI Date"], ["reserveDate", "Reservation form Date"], ["handoverDate", "Handover Date"], ["client", "Client Name"], ["company", "Company Name"], ["quarter", "Quarter of sale"], ["soldBy", "SOLD BY"], ["dateOfCost", "Date of cost"], ["mva", "Electricity (MVA)"], ["sewage", "Sewage (m3/day)"], ["water", "Water (m3/day)"], ["soldArea", "Sold Area"], ["plannedPrice", "SqM Price planned"], ["plannedValue", "Cash Value planned"], ["collected", "Collection Amount"], ["opsStatus", "OPS Status"]], EX={"park": "Park (dashboard)", "code": "MDS code", "approvedBy": "Approved by", "actualSales": "Actual sales", "src": "Source sheet"}, pos=new Map(SO.map((x,i)=>[x[0],i])), lab=new Map(SO), have=new Set(EDCOLS.map(c=>c.k));
+{ const SO=[["sheet", "Project Name"], ["phase", "Phase"], ["year", "Year of Sale"], ["clientId", "Client ID"], ["unit", "Unit Code"], ["area", "Area"], ["areaRange", "Area range"], ["price", "SqM Cash Price (A)"], ["cash", "Cash Value (A)"], ["costSqm", "Cost/SQM"], ["gpSqm", "GP/SQM"], ["totalGp", "Total GP"], ["gpPct", "GP%"], ["rfPrice", "RF Price"], ["withInterest", "Total plus Interest"], ["cur", "Currency"], ["rfPriceUsd", "RF Price USD"], ["roeUsd", "ROE USD"], ["totalUsd", "Total plus interest USD"], ["landType", "Land Type"], ["status", "Status"], ["sector", "Sector"], ["contractDate", "Sales contract date"], ["idaApprovalDate", "Authority Contract Approval Date"], ["contractApprovalStatus", "Contract Approval Status"], ["approvalStatusComment", "Approval Status Comment"], ["eoiDate", "EOI Date"], ["reserveDate", "Reservation form Date"], ["handoverDate", "Handover Date"], ["client", "Client Name"], ["company", "Company Name"], ["quarter", "Quarter of sale"], ["soldBy", "SOLD BY"], ["dateOfCost", "Date of cost"], ["mva", "Electricity (MVA)"], ["sewage", "Sewage (m3/day)"], ["water", "Water (m3/day)"], ["soldArea", "Sold Area"], ["plannedPrice", "SqM Price planned"], ["plannedValue", "Cash Value planned"], ["collected", "Collection Amount"], ["opsStatus", "OPS Status"]], EX={"park": "Park (dashboard)", "code": "MDS code", "approvedBy": "Approved by", "actualSales": "Actual sales", "src": "Source sheet"}, pos=new Map(SO.map((x,i)=>[x[0],i])), lab=new Map(SO), have=new Set(EDCOLS.map(c=>c.k));
   if(!have.has("dateOfCost")) EDCOLS.push({k:"dateOfCost",label:"Date of cost",type:"int",w:92});
   [["lvMin","Level min (m)","num",96],["lvMax","Level max (m)","num",96],["lvMean","Level mean (m)","num",100],["lvSlope","Mean slope (%)","num",96],["lvFall","Falls toward","text",96],["lvSrc","Level source","text",168]].forEach(([k,l,t,w])=>{ if(!have.has(k)) EDCOLS.push({k,label:l,type:t,w,calc:true}); });
   EDCOLS.sort((a,b)=>(pos.has(a.k)?pos.get(a.k):1000)-(pos.has(b.k)?pos.get(b.k):1000));
@@ -12924,6 +12926,7 @@ function edOpts(k){
   if(k==="park") return Object.entries(S.reg.parks).map(([id,p])=>[id,p.name]);
   if(k==="status") return ORDER.map(s=>[s,STATUS[s].label]);
   if(k==="cur") return [["EGP","EGP"],["USD","USD"]];
+  if(k==="contractApprovalStatus") return ["Contract Approved","Waiting Authority","Waiting Client","SOP Preparing"].map(x=>[x,x]);
   return [];
 }
 function edList(k){
@@ -13328,7 +13331,7 @@ function edExport(rows){
     ["Status",r=>XL_OUT[r.status]||""],["Sector","sector"],["Land Type","landType"],["Phase","phase"],
     ["Client Name","client"],["Company Name","company"],["Client ID","clientId"],["Sold By","soldBy"],
     ["Year of Sale","year"],["Quarter of Sale","quarter"],["Reservation Form Date",r=>D(r.reserveDate)],
-    ["EOI Date",r=>D(r.eoiDate)],["Sales Contract Date",r=>D(r.contractDate)],["IDA Contact Approval Date",r=>D(r.idaApprovalDate)],["Handover Date",r=>D(r.handoverDate)],
+    ["EOI Date",r=>D(r.eoiDate)],["Sales Contract Date",r=>D(r.contractDate)],["Authority Contract Approval Date",r=>D(r.idaApprovalDate)],["Contract Approval Status",r=>r.contractApprovalStatus||""],["Approval Status Comment",r=>r.approvalStatusComment||""],["Handover Date",r=>D(r.handoverDate)],
     ["SQM Cash Price (A)","price"],["Cash Value (A)","cash"],["Total Plus Interest","withInterest"],
     ["Collection Amount","collected"],["Currency","cur"],["Ops Status","opsStatus"],
     ["Electricity (MVA)","mva"],["Water (m3/day)","water"],["Sewage (m3/day)","sewage"],
@@ -13472,7 +13475,7 @@ function wireEditor(){
 /* ---- full-record form: add a row, or edit every field of one ---- */
 const FORM_SECTIONS=[
   ["Plot",["park","sheet","unit","area","landType","phase"]],
-  ["Status & sale",["status","sector","soldBy","reserveDate","eoiDate","contractDate","idaApprovalDate","handoverDate","year","quarter"]],
+  ["Status & sale",["status","sector","soldBy","reserveDate","eoiDate","contractDate","idaApprovalDate","contractApprovalStatus","approvalStatusComment","handoverDate","year","quarter"]],
   ["Customer",["client","company","clientId"]],
   ["Commercials",["price","cash","withInterest","collected","cur"]],
   ["Utilities & operations",["opsStatus","mva","water","sewage"]]
@@ -23066,7 +23069,7 @@ cols();
 if(typeof edFilter==="function"){ const f0=edFilter; window.edFilter=function(){ try{ cols(); define(); }catch(e){ console.error("unified columns",e); } return f0.apply(this,arguments); }; }
 if(typeof edSetG==="function"){ const g0=edSetG; window.edSetG=function(r,k){ const o=g0.apply(this,arguments); if(FXK.includes(k)){ try{ Object.defineProperty(r,k,{value:r[k],enumerable:true,writable:true,configurable:true}); }catch(e){} } return o; }; }
 /* V123: Export Excel = every row and every register column (the MDS-format columns first, then all other register fields) */
-const XH=new Set("park sheet unit area status sector landType phase client company clientId soldBy year quarter reserveDate eoiDate contractDate idaApprovalDate handoverDate price cash withInterest collected cur opsStatus mva water sewage code approvedBy actualSales soldArea plannedPrice plannedValue areaRange costSqm gpSqm totalGp gpPct rfPrice rfPriceUsd roeUsd totalUsd dateOfCost".split(" "));
+const XH=new Set("park sheet unit area status sector landType phase client company clientId soldBy year quarter reserveDate eoiDate contractDate idaApprovalDate contractApprovalStatus approvalStatusComment handoverDate price cash withInterest collected cur opsStatus mva water sewage code approvedBy actualSales soldArea plannedPrice plannedValue areaRange costSqm gpSqm totalGp gpPct rfPrice rfPriceUsd roeUsd totalUsd dateOfCost".split(" "));
 function addAll(wb){ cols(); define(); const sh=wb.Sheets[wb.SheetNames[0]]; if(!sh||!sh["!ref"]) return;
   const ex=EDCOLS.filter(c=>!XH.has(c.k)); if(!ex.length) return;
   const list=(ED.rows||S.rows).filter(r=>!ED.deleted.has(r._id)); const R=XLSX.utils.decode_range(sh["!ref"]); const c0=R.e.c+1;
