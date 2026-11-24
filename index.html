@@ -3141,7 +3141,7 @@ async function load(url,fallbackId){
   const el=document.getElementById(fallbackId);
   const j=JSON.parse(el.textContent); j.__live=false; j.__from="built-in"; return j;
 }
-const REG_EXTRA=["code","approvedBy","actualSales","soldArea","plannedPrice","plannedValue","areaRange","costSqm","gpSqm",
+const REG_EXTRA=["idaApprovalDate","contractApprovalStatus","approvalStatusComment","code","approvedBy","actualSales","soldArea","plannedPrice","plannedValue","areaRange","costSqm","gpSqm",
   "totalGp","gpPct","rfPrice","rfPriceUsd","roeUsd","totalUsd","dateOfCost","src","dup","unifiedMds","unifiedSales"];
 const STR_COLS=new Set(["park","sheet","status","sector","cur","landType","client","company","soldBy","phase","quarter",
   "opsStatus","approvedBy","areaRange","src"]);
