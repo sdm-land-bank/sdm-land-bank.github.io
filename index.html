@@ -6667,8 +6667,9 @@ async function wfLoadLive(){ const r=await SB.from("sid_status_live").select("*"
   const before=JSON.stringify([...WF.live.values()].map(x=>[x.key,x.status,x.since,x.mds_confirmed_at]));
   WF.live=new Map(r.data.map(x=>[x.key,x]));
   return before!==JSON.stringify(r.data.map(x=>[x.key,x.status,x.since,x.mds_confirmed_at])); }
-async function wfLoadReq(){ if(!wfRole()) return; const r=await SB.from("sid_status_req").select("*").order("created_at",{ascending:false}).limit(400); if(!r.error) WF.req=r.data||[]; }
-async function wfLoadNotif(){ const r=await SB.from("sid_notif").select("*").order("at",{ascending:false}).limit(80); if(!r.error){ WF.notif=r.data||[]; wfBell(); } }
+window.vaRows=function(t,rows){ const V=window.SID_VIEWAS; if(!V||typeof SBME==="undefined"||!SBME) return rows; const me=String(SBME.email||"").toLowerCase(), adm=!!SBME.is_admin, mgr=SBME.wf==="manager"&&!!SBME.team, low=x=>String(x||"").toLowerCase(); if(t==="sid_notif") return rows.filter(x=>low(x.to_email)===me); if(t==="sid_status_req"){ if(adm||SBME.wf==="ops") return rows; return rows.filter(q=>low(q.by_email)===me||(mgr&&q.team===SBME.team)); } if(t==="sid_data_req"){ if(adm||SBME.wf==="ops"||SBME.role==="sales-operation") return rows; return rows.filter(q=>low(q.by_email)===me||(mgr&&q.team===SBME.team)); } if(t==="offers"){ if(!adm&&SBME.wf==="sales") return rows.filter(o=>low(o.printedByName)===low(SBME.name)); return rows; } return rows; };
+async function wfLoadReq(){ if(!wfRole()) return; const r=await SB.from("sid_status_req").select("*").order("created_at",{ascending:false}).limit(400); if(!r.error) WF.req=vaRows("sid_status_req",r.data||[]); }
+async function wfLoadNotif(){ const r=await SB.from("sid_notif").select("*").order("at",{ascending:false}).limit(80); if(!r.error){ WF.notif=vaRows("sid_notif",r.data||[]); wfBell(); } }
 async function wfLiveChanged(){ if(await wfLoadLive()){ commitRows(); wfRefreshLB(); wfAutoConfirm(); if(S.view==="approvals") wfRender(); } }
 const wfSoon=(k,fn,ms)=>{ clearTimeout(WF.t[k]); WF.t[k]=setTimeout(fn,ms||400); };
 async function wfTick(){ if(Date.now()-WF.lastTick<4*60*1000) return; WF.lastTick=Date.now();
@@ -6792,7 +6793,7 @@ function sidCanStrategic(){ try{ return !!(sidIsOps()||(SBME&&SBME.role==="devel
 function sidNoSave(){ return sidReqOnly()?"Sales and Sales Managers do not change the MDS register. Open the plot on the map and press “Request a change”: your manager and Sales Operation approve it.":"Your role can see the MDS register but "+"not save changes — an administrator can give your role edit rights (Settings → Roles)"; }
 const dqVal=v=>v==null||v===""?"—":typeof v==="number"?fInt(v):String(v);
 async function dqLoad(){ try{ const r=await SB.from("sid_data_req").select("*").order("created_at",{ascending:false}).limit(200);
-  if(r.error){ if(/does not exist|schema cache/i.test(r.error.message)) DQ.missing=true; return; } DQ.req=r.data||[]; DQ.loaded=true; }catch(e){} }
+  if(r.error){ if(/does not exist|schema cache/i.test(r.error.message)) DQ.missing=true; return; } DQ.req=vaRows("sid_data_req",r.data||[]); DQ.loaded=true; }catch(e){} }
 const dqLR=wfLoadReq; wfLoadReq=async function(){ await dqLR.apply(this,arguments); await dqLoad(); if(S.view==="approvals") wfRender(); };
 const dqPend=k=>DQ.req.find(q=>q.key===k&&(q.stage==="manager"||q.stage==="ops"));
 
@@ -14867,7 +14868,7 @@ async function slHistLoad(more){ const my=++SLO.seq; SLO.busy=true; if(!more) SL
     if(f.period!=="all") qs.set("from",new Date(Date.now()-(+f.period)*864e5).toISOString().slice(0,10));
     if(f.q.trim()) qs.set("q",f.q.trim()); if(f.type) qs.set("type",f.type);
     const j=await slFetch("/integration/offer-history?"+qs.toString()); if(my!==SLO.seq) return;
-    const rs=Array.isArray(j.rows)?j.rows:[]; SLO.rows=more?SLO.rows.concat(rs):rs; SLO.total=+j.total||SLO.rows.length; SLO.loaded=true; }
+    const rs=vaRows("offers",Array.isArray(j.rows)?j.rows:[]); SLO.rows=more?SLO.rows.concat(rs):rs; SLO.total=window.SID_VIEWAS?SLO.rows.length:(+j.total||SLO.rows.length); SLO.loaded=true; }
   catch(e){ if(my!==SLO.seq) return; SLO.loaded=true; if(!more) SLO.rows=[];
     SLO.err=e&&(e.code===401||e.code===403)?"You do not have a Sales Leads account (or are not allowed to see offers). Ask the administrator.":slErrMsg(e); }
   finally{ if(my===SLO.seq){ SLO.busy=false; slHistPaint(); } } }
@@ -15619,7 +15620,7 @@ const k=setInterval(()=>{ if(typeof SBME==="undefined"||!SBME||!window.__sidMeFi
   .va-l{overflow:auto;display:flex;flex-direction:column;gap:4px}.va-l button{display:grid;grid-template-columns:1fr auto;text-align:left;border:1px solid #e5e5ea;border-radius:10px;padding:8px 10px;background:#fff;cursor:pointer;font:inherit}
   .va-l button:hover{border-color:#B3263D}.va-l em{grid-column:1/3;color:#8e8e93;font-style:normal;font-size:11.5px}.va-l span{color:#B3263D;font-weight:700;font-size:11.5px}`;
   document.head.appendChild(st);
-  if(window.SID_VIEWAS){ const b=document.createElement("div"); b.className="va-bar"; b.innerHTML=`<span>Viewing as <b>${esc(window.SID_VIEWAS.name||window.SID_VIEWAS.email)}</b> · ${esc(window.SID_VIEWAS.role)} · <i style="font-weight:500">anything you change here is real and saved as you</i></span><button type="button">Exit</button>`; b.querySelector("button").onclick=exitViewAs; document.body.appendChild(b); }
+  if(window.SID_VIEWAS){ const b=document.createElement("div"); b.className="va-bar"; b.innerHTML=`<span>Viewing as <b>${esc(window.SID_VIEWAS.name||window.SID_VIEWAS.email)}</b> · ${esc(window.SID_VIEWAS.role)} · <i style="font-weight:500">anything you change here is real and saved as you. Requests, notifications and (for a Sales rep) offers follow this person's rights; other pages still show administrator data.</i></span><button type="button">Exit</button>`; b.querySelector("button").onclick=exitViewAs; document.body.appendChild(b); }
   /* V72: the View as button lives in the side bar under Settings (web_roadshow3.py) */
 },500);
 })();
