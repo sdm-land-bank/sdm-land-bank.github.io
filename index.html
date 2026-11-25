@@ -17303,7 +17303,7 @@ function buildProposal0(opt={}){
   const actTxt=pdfSafe(f.activity)||"Industrial activity to be confirmed";
   const clsLines=cl?[`Sector: ${cl.secs[0].en}`,`IDA activity ${cl.top[0].code} — ${pdfSafe(cl.top[0].en)||"see register"}`,
     `Sub-activity ${cl.sub.code} · product code ${cl.prod.code}`,
-    `Licensing route: ${cl.lic}${cl.prior?" — a licence is required before operation":" — operation starts on notification"}`].filter(l=>!FIN||l.startsWith("Sector")):[];
+    `Licensing route: ${cl.lic}${cl.prior?" — a licence is required before operation":" — operation starts on notification"}`].filter(l=>!(window.SID_PROP_CLEAN!==false)||l.startsWith("Sector")):[];
   const actL=wrap(actTxt,W-2*M-12,11);
   const ph=14+actL.length*5.2+clsLines.length*5+4;
   box(M,y,W-2*M,ph); T("YOUR PROJECT",M+6,y+7,{s:7.5,c:MUTE,b:true});
@@ -17318,7 +17318,7 @@ function buildProposal0(opt={}){
     ["Power",r.mva!=null?r.mva+" MVA":"to confirm"],["Water",r.water!=null?r.water+" m3/day":"to confirm"],
     ["Nearest seaport",`${p.lg.port.name} · ${fKm(p.lg.port.km)} km`],["Nearest airport",`${p.lg.air.name} · ${fKm(p.lg.air.km)} km`],
     ["Cairo",fKm(p.lg.cairo)+" km (straight line)"]]; };
-  const topF=FIN?factsOf(picks[0]):[];
+  const topF=(window.SID_PROP_CLEAN!==false)?factsOf(picks[0]):[];
   // top recommendation
   const top=picks[0], tr=top.r;
   const LX=M+8, RX=W/2-6, LW=RX-LX-6, RW=W-M-40-RX;
@@ -17326,11 +17326,11 @@ function buildProposal0(opt={}){
   doc.setFont("helvetica","normal"); const pkL=wrap(pdfSafe(`${S.reg.parks[tr.park]?.name||tr.park} · ${S.reg.parks[tr.park]?.where||""}`),LW,9.5);
   const plL=wrap(`${top.merge?pdfSafe(tr.unit)+" = ":""}${fInt(tr.area)} sqm${top.merge?" combined":""}`,LW,9.5);
   const prL=[]; { const q=pInst(top);
-    if(SHOWP&&fpPrice(top)) prL.push(...wrap(FIN?(fpTotal(top)?`Cash: ${fMon(fpTotal(top),"EGP")}`:""):`${q?"Cash: ":""}${fInt(fpPrice(top))} EGP/sqm${fpTotal(top)?"  ·  total "+fMon(fpTotal(top),"EGP"):""}`,LW,9.5));
+    if(SHOWP&&fpPrice(top)) prL.push(...wrap((window.SID_PROP_CLEAN!==false)?(fpTotal(top)?`Cash: ${fMon(fpTotal(top),"EGP")}`:""):`${q?"Cash: ":""}${fInt(fpPrice(top))} EGP/sqm${fpTotal(top)?"  ·  total "+fMon(fpTotal(top),"EGP"):""}`,LW,9.5));
     if(q) prL.push(...wrap(`With instalments: ${fInt(q.sqmI)} EGP/sqm  ·  total ${fMon(q.paid,"EGP")}`,LW,9.5)); }
   const whyL=[]; top.why.filter(w=>w.c!=="w"&&(SHOWP||!/EGP/.test(w.t))).slice(0,5).forEach((w,i)=>{ wrap("• "+pdfSafe(w.t),RW,8.5).forEach((l,j)=>whyL.push([l,i&&!j])); });
   const lH=35+(tL.length-1)*7.2+2+pkL.length*4.8+1.5+plL.length*4.6+(prL.length?1+prL.length*4.6:0);
-  const rH=FIN?13+topF.length*4.9:13+whyL.length*4.4+whyL.filter(q=>q[1]).length*1.2;
+  const rH=(window.SID_PROP_CLEAN!==false)?13+topF.length*4.9:13+whyL.length*4.4+whyL.filter(q=>q[1]).length*1.2;
   const bh=Math.min(Math.max(58,lH+4,rH+4),H-24-y);
   box(M,y,W-2*M,bh,[255,255,255]); doc.setFillColor(...RED); doc.rect(M,y,2.2,bh,"F");
   T("OUR RECOMMENDATION",LX,y+8,{s:7.5,c:RED,b:true});
@@ -17339,35 +17339,35 @@ function buildProposal0(opt={}){
   pkL.forEach(l=>{ T(l,LX,ly,{s:9.5,c:MUTE}); ly+=4.8; }); ly+=1.5;
   plL.forEach(l=>{ T(l,LX,ly,{s:9.5}); ly+=4.6; });
   if(prL.length){ ly+=1; prL.forEach(l=>{ T(l,LX,ly,{s:9.5,b:true}); ly+=4.6; }); }
-  if(!FIN){ // score dial
+  if(!(window.SID_PROP_CLEAN!==false)){ // score dial
   const cx=W-M-22, cy=y+Math.max(29,bh/2); doc.setDrawColor(...RULE); doc.setLineWidth(3); doc.circle(cx,cy,12,"S");
   doc.setDrawColor(...RED); doc.setLineWidth(3);
   const a0=-Math.PI/2, a1=a0+2*Math.PI*top.score/100, seg=40;
   for(let i=0;i<seg;i++){ const t0=a0+(a1-a0)*i/seg, t1=a0+(a1-a0)*(i+1)/seg;
     doc.line(cx+12*Math.cos(t0),cy+12*Math.sin(t0),cx+12*Math.cos(t1),cy+12*Math.sin(t1)); }
   T(String(top.score),cx,cy+2.4,{s:15,b:true,a:"center"}); T("MATCH",cx,cy+19,{s:6.5,c:MUTE,a:"center",b:true}); }
-  let ry=y+13; if(FIN) topF.forEach(([k,v])=>{ if(ry<y+bh-3){ T(k,RX,ry,{s:8.5,c:MUTE}); doc.setFont("helvetica","bold"); T(pdfSafe(v),RX+28,ry,{s:8.5,b:true}); } ry+=4.9; });
+  let ry=y+13; if((window.SID_PROP_CLEAN!==false)) topF.forEach(([k,v])=>{ if(ry<y+bh-3){ T(k,RX,ry,{s:8.5,c:MUTE}); doc.setFont("helvetica","bold"); T(pdfSafe(v),RX+28,ry,{s:8.5,b:true}); } ry+=4.9; });
   else whyL.forEach(([l,gap])=>{ if(gap) ry+=1.2; if(ry<y+bh-3){ T(l,RX,ry,{s:8.5,c:[70,66,62]}); } ry+=4.4; });
   foot();
 
   // ── shortlist
-  const MERGE1=FIN&&picks.length<=4;   // the shortlist sits on top of option 1's page
+  const MERGE1=(window.SID_PROP_CLEAN!==false)&&picks.length<=4;   // the shortlist sits on top of option 1's page
   const shortFn=()=>{
   if(!MERGE1) head("RECOMMENDED PLOTS");
   T("Recommended plots",M,36,{s:18,b:true});
   { const nm=(MM.merges||[]).length;
-    T(`${picks.length} option${picks.length>1?"s":""} selected from ${fInt(MM.total)} matching plot${MM.total===1?"":"s"}${nm?` and ${fInt(nm)} merged block${nm===1?"":"s"} of adjacent plots`:""}${FIN?".":", ranked by fit to your brief."}`,M,43,{s:9.5,c:MUTE}); }
+    T(`${picks.length} option${picks.length>1?"s":""} selected from ${fInt(MM.total)} matching plot${MM.total===1?"":"s"}${nm?` and ${fInt(nm)} merged block${nm===1?"":"s"} of adjacent plots`:""}${(window.SID_PROP_CLEAN!==false)?".":", ranked by fit to your brief."}`,M,43,{s:9.5,c:MUTE}); }
   const cols0=SHOWP?[["#",7],["Park",38],["Plot",17],["Area sqm",20],["MVA",12],["Water",14],["Price/sqm*",20],["Total*",22],["Port km",13],["Match",11]]
                   :[["#",7],["Park",56],["Plot",26],["Area sqm",24],["MVA",14],["Water",16],["Port km",16],["Match",15]];
-  const cols=FIN?cols0.slice(0,-1):cols0;
+  const cols=(window.SID_PROP_CLEAN!==false)?cols0.slice(0,-1):cols0;
   let x0=M; y=52; doc.setFillColor(...INK); doc.rect(M,y,W-2*M,8,"F");
   cols.forEach(([h,w])=>{ T(h,x0+1.6,y+5.4,{s:7.5,c:[255,255,255],b:true}); x0+=w; });
   y+=8;
   picks.slice(0,14).forEach((p,i)=>{
     if(i%2){ doc.setFillColor(...SOFT); doc.rect(M,y,W-2*M,8,"F"); }
     const r=p.r, cells=[String(i+1),S.reg.parks[r.park]?.name||r.park,p.merge?p.members.length+" merged":pdfSafe(r.unit),fInt(r.area),r.mva??"—",r.water??"—",
-      ...(SHOWP?[pxS(p)?fInt(pxS(p))+" EGP":"—",pxT(p)?fMon(pxT(p),"EGP"):"—"]:[]),fKm(p.lg.port.km),...(FIN?[]:[String(p.score)])];
-    const lastC=FIN?-1:cells.length-1;
+      ...(SHOWP?[pxS(p)?fInt(pxS(p))+" EGP":"—",pxT(p)?fMon(pxT(p),"EGP"):"—"]:[]),fKm(p.lg.port.km),...((window.SID_PROP_CLEAN!==false)?[]:[String(p.score)])];
+    const lastC=(window.SID_PROP_CLEAN!==false)?-1:cells.length-1;
     x0=M; cells.forEach((c,j)=>{ T(String(c),x0+1.6,y+5.3,{s:8,b:j===lastC||j===2,c:j===lastC?RED:INK}); x0+=cols[j][1]; });
     if(p.merge){ const ls=wrap("= "+p.members.map(m=>pdfSafe(m.unit)+" ("+fInt(m.area)+")").join(" + "),W-2*M-12,7);
       if(i%2){ doc.setFillColor(...SOFT); doc.rect(M,y+8,W-2*M,ls.length*3.4+1.5,"F"); }
@@ -17380,7 +17380,7 @@ function buildProposal0(opt={}){
     T(`* With instalments: total payable ÷ area, on the payment plan in the financial proposal (${+c.adv}% advance, ${pt.l.toLowerCase()} over ${+c.years} year${+c.years===1?"":"s"}, ${+c.rate}% a year). Cash prices are on each plot's financial page.`,M,y,{s:7.5,c:MUTE,w:W-2*M}); }
   else if(SHOWP) T("* List price of each plot in the MDS (SqM Price planned; total = Cash Value planned), in EGP. Final prices are confirmed in the offer.",M,y,{s:7.5,c:MUTE,w:W-2*M});
   else T("Prices and payment terms are provided in the sales offer.",M,y,{s:7.5,c:MUTE,w:W-2*M}); y+=12;
-  if(!FIN){ T("HOW WE RANKED",M,y,{s:7.5,c:MUTE,b:true}); y+=6;
+  if(!(window.SID_PROP_CLEAN!==false)){ T("HOW WE RANKED",M,y,{s:7.5,c:MUTE,b:true}); y+=6;
   ["Size fit against your brief — 34%","Logistics: distance to the nearest seaport and airport — 20%","Utilities: power (MVA) and water capacity recorded for the plot — 18%",
    "Neighbours: companies in your sector already operating in the park — 16%","Price against your budget — 12%",
    ...(picks.some(p=>p.merge)?["Merged blocks: neighbouring available plots in one park and sector, combined to within about 3% of your size; every plot is needed to reach it"]:[])].forEach(l=>{ wrap("•  "+l,W-2*M,9).forEach(x=>{ T(x,M,y,{s:9}); y+=5.4; }); }); }
@@ -17426,17 +17426,17 @@ function buildProposal0(opt={}){
      if(doc.__mir) doc.__mir(true);
     } else T("No survey drawing for this park yet.",bx.x+8,bx.y+16,{s:9,c:MUTE});
     // facts
-    y=bx.y+bx.h+9; T("KEY FACTS",M,y,{s:7.5,c:MUTE,b:true}); if(!FIN) T("WHY IT FITS",W/2+4,y,{s:7.5,c:MUTE,b:true}); y+=6;
-    const facts=[["Plot",p.merge?p.members.length+" adjacent plots":pdfSafe(r.unit)],...(FIN&&p.merge?[["Composition",p.members.map(m=>`${m.unit} (${fInt(m.area)} sqm)`).join(" + ")]]:[]),["Area",fInt(r.area)+" sqm"+(p.merge?" combined":"")],["Land type",r.landType||"—"],...(FIN&&r.sector?[["Sector",r.sector]]:[]),["Phase",r.phase||"—"],
+    y=bx.y+bx.h+9; T("KEY FACTS",M,y,{s:7.5,c:MUTE,b:true}); if(!(window.SID_PROP_CLEAN!==false)) T("WHY IT FITS",W/2+4,y,{s:7.5,c:MUTE,b:true}); y+=6;
+    const facts=[["Plot",p.merge?p.members.length+" adjacent plots":pdfSafe(r.unit)],...((window.SID_PROP_CLEAN!==false)&&p.merge?[["Composition",p.members.map(m=>`${m.unit} (${fInt(m.area)} sqm)`).join(" + ")]]:[]),["Area",fInt(r.area)+" sqm"+(p.merge?" combined":"")],["Land type",r.landType||"—"],...((window.SID_PROP_CLEAN!==false)&&r.sector?[["Sector",r.sector]]:[]),["Phase",r.phase||"—"],
       ["Power",r.mva!=null?r.mva+" MVA":"to confirm"],["Water",r.water!=null?r.water+" m3/day":"to confirm"],
-      ...(SHOWP?(pInst(p)?[...(FIN?[["Total price",fpTotal(p)?fMon(fpTotal(p),"EGP"):"on request"]]:[["Cash price",`${fInt(fpPrice(p))} EGP/sqm · ${fMon(fpTotal(p),"EGP")}`]]),["With instalments",`${fInt(pInst(p).sqmI)} EGP/sqm · ${fMon(pInst(p).paid,"EGP")}`]]
-        :[...(FIN?[]:[["Price",fpPrice(p)?fInt(fpPrice(p))+" EGP/sqm":"on request"]]),["Total price",fpTotal(p)?fMon(fpTotal(p),"EGP"):"on request"]]):[]),
+      ...(SHOWP?(pInst(p)?[...((window.SID_PROP_CLEAN!==false)?[["Total price",fpTotal(p)?fMon(fpTotal(p),"EGP"):"on request"]]:[["Cash price",`${fInt(fpPrice(p))} EGP/sqm · ${fMon(fpTotal(p),"EGP")}`]]),["With instalments",`${fInt(pInst(p).sqmI)} EGP/sqm · ${fMon(pInst(p).paid,"EGP")}`]]
+        :[...((window.SID_PROP_CLEAN!==false)?[]:[["Price",fpPrice(p)?fInt(fpPrice(p))+" EGP/sqm":"on request"]]),["Total price",fpTotal(p)?fMon(fpTotal(p),"EGP"):"on request"]]):[]),
       ["Nearest seaport",`${p.lg.port.name} · ${fKm(p.lg.port.km)} km`],["Nearest airport",`${p.lg.air.name} · ${fKm(p.lg.air.km)} km`],
       ["Cairo",fKm(p.lg.cairo)+" km (straight line)"]];
-    let fy=y; const fcols=FIN?[facts.slice(0,Math.ceil(facts.length/2)),facts.slice(Math.ceil(facts.length/2))]:[facts,[]];
+    let fy=y; const fcols=(window.SID_PROP_CLEAN!==false)?[facts.slice(0,Math.ceil(facts.length/2)),facts.slice(Math.ceil(facts.length/2))]:[facts,[]];
     fcols.forEach((col,ci)=>{ const X=ci?W/2+4:M; let yy=y; col.forEach(([k,v])=>{ doc.setFont("helvetica","bold"); const ls=wrap(pdfSafe(v),W/2-M-36,8.5);
       T(k,X,yy,{s:8.5,c:MUTE}); ls.forEach((l,j)=>T(l,X+32,yy+j*4.2,{s:8.5,b:true})); yy+=6.2+(ls.length-1)*4.2; }); fy=Math.max(fy,yy); });
-    let wy=y; (FIN?[]:p.merge?[{c:"",t:"Composition: "+p.members.map(m=>`${m.unit} (${fInt(m.area)} sqm)`).join(" + ")},...p.why]:p.why).filter(w=>SHOWP||!/EGP/.test(w.t)).forEach(w=>{ const ls=wrap((w.c==="w"?"! ":"• ")+pdfSafe(w.t),W/2-M-4,8.5);
+    let wy=y; ((window.SID_PROP_CLEAN!==false)?[]:p.merge?[{c:"",t:"Composition: "+p.members.map(m=>`${m.unit} (${fInt(m.area)} sqm)`).join(" + ")},...p.why]:p.why).filter(w=>SHOWP||!/EGP/.test(w.t)).forEach(w=>{ const ls=wrap((w.c==="w"?"! ":"• ")+pdfSafe(w.t),W/2-M-4,8.5);
       ls.forEach(l=>{ if(wy<H-34) T(l,W/2+4,wy,{s:8.5,c:w.c==="w"?[154,91,0]:[60,56,52]}); wy+=4.6; }); wy+=1.2; });
     const tour=TOURS.find(t=>t.park===park);
     if(tour){ const ty=Math.min(Math.max(wy,fy)+4,H-34); box(M,ty,W-2*M,12,[255,255,255]);
@@ -17497,7 +17497,7 @@ function buildProposal0(opt={}){
       if(omitted) T(`${omitted} segment(s) under 3 m (${omitLen.toFixed(2)} m total) drawn but not dimensioned.`,M,p2+h2+5,{s:6.5,c:MUTE}); }
     if(doc.__mir) doc.__mir(true);
   };
-  if(FIN) picks.slice(0,3).forEach((p,i)=>annexPage(p,i));
+  if((window.SID_PROP_CLEAN!==false)) picks.slice(0,3).forEach((p,i)=>annexPage(p,i));
 
   // ── next steps
   head("NEXT STEPS");
@@ -17505,16 +17505,16 @@ function buildProposal0(opt={}){
   const steps=[["Site visit","Walk the plot and the park with our team"+(TOURS.some(t=>picks.some(p=>p.r.park===t.park))?", or start with the 360° virtual tour linked in this proposal.":".")],
     ["Reserve","A reservation form holds the plot while the offer and contract are prepared."],
     ["Licensing",cl?`Your activity (IDA ${cl.top[0].code}) follows the "${cl.lic}" route${cl.prior?": a licence is issued before operation — we start that file with you early.":": operation starts on notification to the authority."}`:"We confirm your IDA activity code and licensing route with you."],
-    ["Contract & handover",FIN?"Sign, pay per the agreed plan, and receive the plot.":"Sign, pay per the agreed plan, and receive the plot with its utilities connections."]];
+    ["Contract & handover",(window.SID_PROP_CLEAN!==false)?"Sign, pay per the agreed plan, and receive the plot.":"Sign, pay per the agreed plan, and receive the plot with its utilities connections."]];
   const stepsF=[steps[0],["Official sales offer","We issue the official sales offer with the confirmed price and payment plan."],
     ["Reservation form","Sign the reservation form to hold the plot."],["Down payment","Pay the down payment as set in the agreed plan."],
     ["Contracts","Sign the contracts and receive the plot."]];
-  (FIN?stepsF:steps).forEach(([h,t],i)=>{ doc.setFillColor(...RED); doc.circle(M+4,y-1.4,4,"F"); T(String(i+1),M+4,y+.1,{s:9,c:[255,255,255],b:true,a:"center"});
+  ((window.SID_PROP_CLEAN!==false)?stepsF:steps).forEach(([h,t],i)=>{ doc.setFillColor(...RED); doc.circle(M+4,y-1.4,4,"F"); T(String(i+1),M+4,y+.1,{s:9,c:[255,255,255],b:true,a:"center"});
     T(h,M+12,y,{s:11,b:true}); const ls=wrap(t,W-2*M-14,9.5); ls.forEach((l,j)=>T(l,M+12,y+6+j*4.9,{s:9.5,c:[70,66,62]})); y+=14+ls.length*4.9; });
   y+=6; box(M,y,W-2*M,30,[255,255,255]);
   T("Elsewedy Industrial Development",M+6,y+9,{s:11,b:true});
   T("elsewedydevelopment.com",M+6,y+15.5,{s:9.5,c:RED});
-  T(FIN?"Indicative figures only. Plots are subject to availability at the time of reservation; prices and terms are confirmed in the formal offer. Distances are straight-line.":"Indicative figures only. Plots are subject to availability at the time of reservation; prices, utilities and terms are confirmed in the formal offer. Distances are straight-line.",M+6,y+22,{s:7.5,c:MUTE,w:W-2*M-12});
+  T((window.SID_PROP_CLEAN!==false)?"Indicative figures only. Plots are subject to availability at the time of reservation; prices and terms are confirmed in the formal offer. Distances are straight-line.":"Indicative figures only. Plots are subject to availability at the time of reservation; prices, utilities and terms are confirmed in the formal offer. Distances are straight-line.",M+6,y+22,{s:7.5,c:MUTE,w:W-2*M-12});
   doc.save(`Proposal_${company.replace(/[^\w]+/g,"_").slice(0,40)}${FIN?"_with_financial_offer":""}_${new Date().toISOString().slice(0,10)}${PL.lang!=="en"?"_"+PL.lang.toUpperCase():""}.pdf`);
   toast("Proposal downloaded");
 }
