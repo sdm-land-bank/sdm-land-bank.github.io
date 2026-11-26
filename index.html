@@ -14013,7 +14013,7 @@ function applyPending(){
   const b=$("#applyBtn"); b.disabled=true; b.textContent="Applying…";
   if(PENDING.out&&PENDING.out.report){
     const pb=PENDING.buf, pf=PENDING.file, po=PENDING.out;
-    useWorkbook(PENDING.out,PENDING.file,true).then(()=>{ PENDING=null; sbSaveEdits(); sbSaveVersion(pb,{source:"Upload: "+pf,rows:po.rows.length,sig:rowSig(po.rows)}); toast("Workbook applied — every plot re-linked and the map repainted"); })
+    useWorkbook(PENDING.out,PENDING.file,true).then(()=>{ PENDING=null; sbSaveEdits(); sbSaveVersion(pb,{source:"Upload: "+pf,rows:po.rows.length,sig:mdsSig(po.rows)}); toast("Workbook applied — every plot re-linked and the map repainted"); })
       .catch(e=>{ b.disabled=false; b.textContent="Apply this file"; $("#diff").innerHTML+='<div class="bad">Could not apply: '+esc(e.message)+'</div>'; });
     return;
   }
@@ -19217,11 +19217,11 @@ function srcWire(){
     SRC.link=v; toast(v?"Link saved — syncing now":"Link removed"); $("#srcSync").disabled=!v; if(v) srcSyncNow(); };
   const sy=$("#srcSync"); if(sy) sy.onclick=srcSyncNow;
   const up=$("#srcUp"); if(up) up.onchange=async()=>{ const f=up.files[0]; if(!f) return;
-    try{ const buf=await f.arrayBuffer(), w=wbRead(buf), d=diffRows(S.rows,w.out.rows);
-      if(!confirm(`${f.name}: ${fInt(w.out.rows.length)} rows — ${d.n?`${d.chg} changed, ${d.add} added, ${d.del} removed`:"no changes"} against what is on screen.\n\nUse this file for everyone?`)) return;
+    try{ const buf=await f.arrayBuffer(), w=wbRead(buf), d=mdsDiff(S.rows,w.out.rows);
+      if(!confirm(`${f.name}: ${fInt(w.out.rows.length)} rows — ${d.n?`${d.chg} changed${mdsColsTxt(d)}, ${d.add} added, ${d.del} removed`:"no changes"} against what is on screen.\n\nUse this file for everyone?`)) return;
       await useWorkbook(w.out,"Upload: "+f.name,true,w.modified||undefined); LIVE.cur={buf,src:"last",modified:w.modified,at:new Date()}; mountLB();
       await sbSaveEdits();
-      await sbSaveVersion(buf,{source:"Upload: "+f.name+mdsChgTxt(d),rows:w.out.rows.length,modified:w.modified,sig:rowSig(w.out.rows)});
+      await sbSaveVersion(buf,{source:"Upload: "+f.name+mdsChgTxt(d),rows:w.out.rows.length,modified:w.modified,sig:mdsSig(w.out.rows)});
     }catch(e){ toast("Could not use that file: "+e.message,true); } finally{ up.value=""; } };
   const ls=$("#lbSave"); if(ls) ls.onclick=async()=>{ SBLB={language:$("#lbLang").value,fontSize:$("#lbSize").value};
     const k=$("#aiKey").value.trim();
@@ -19657,17 +19657,36 @@ const SBT={};
 function sbKv(key,value,ms=1500){ if(!sbReady()) return; clearTimeout(SBT[key]);
   SBT[key]=setTimeout(async()=>{ const r=await SB.from("sid_kv").upsert({key,value,updated_at:new Date().toISOString()}); if(r.error) console.warn("kv "+key+":",r.error.message); },ms); }
 
-/* V146.4: change count kept with an MDS version (shown in Data health -> From) */
-function mdsChgTxt(x){ return x&&x.n?` · ${x.chg} changed, ${x.add} added, ${x.del} removed`:" · no changes"; }
+/* V146.5: compare EVERY register column (before: 6 columns, so finance-only updates looked unchanged) */
+function mdsDiff(a,b){
+  const cols=(S.reg.cols||[]).filter(k=>k!=="src"&&k!=="_id"), key=r=>[r.park,r.sheet,r.unit].join("|"), sig=r=>JSON.stringify(cols.map(c=>r[c]??null));
+  const A=new Map(), B=new Map();
+  a.forEach(r=>{ const x=A.get(key(r))||[]; x.push(r); A.set(key(r),x); }); b.forEach(r=>{ const x=B.get(key(r))||[]; x.push(r); B.set(key(r),x); });
+  let add=0,del=0,chg=0; const cc={};
+  B.forEach((x,k)=>{ const y=A.get(k)||[];
+    if(x.length>y.length) add+=x.length-y.length; else if(y.length>x.length) del+=y.length-x.length;
+    if(x.length===1&&y.length===1){ const o=y[0], r=x[0]; let any=false; cols.forEach(c=>{ if(!edEq(o[c],r[c])){ any=true; cc[c]=(cc[c]||0)+1; } }); if(any) chg++; return; }
+    const s=x.map(sig).sort(), t=y.map(sig).sort(); for(let i=0;i<Math.min(s.length,t.length);i++) if(s[i]!==t[i]) chg++; });
+  A.forEach((y,k)=>{ if(!B.has(k)) del+=y.length; });
+  const hid=typeof REG_SENS!=="undefined"?REG_SENS:new Set(), lab=c=>{ try{ return (colOf(c)||{}).label||c; }catch(e){ return c; } };
+  const named=[]; let cost=0;
+  Object.entries(cc).sort((p,q)=>q[1]-p[1]).forEach(([c,n])=>{ if(hid.has(c)) cost+=n; else named.push(lab(c)+" "+fInt(n)); });
+  if(cost) named.push("cost figures");
+  return {n:add+del+chg,add,del,chg,cols:named};
+}
+const mdsSig=rs=>hashStr(JSON.stringify(regArrays(rs)));
+function mdsColsTxt(x){ return x&&x.cols&&x.cols.length?" ("+x.cols.slice(0,4).join(", ")+(x.cols.length>4?", …":"")+")":""; }
+/* V146.4: change count kept with an MDS version (shown in Settings -> Online · MDS versions -> From) */
+function mdsChgTxt(x){ return x&&x.n?` · ${x.chg} changed${mdsColsTxt(x)}, ${x.add} added, ${x.del} removed`:" · no changes"; }
 /* V146.4: an older MDS version becomes the live one for everyone (the current one stays in the list) */
 async function sbMakeLive(v,blob,fmt){
   if(!sbCanWrite()){ toast("Your account can view but not change the shared data",true); return; }
-  const buf=await blob.arrayBuffer(), w=wbRead(buf), x=diffRows(S.rows,w.out.rows), when=fmt(v.created_at);
-  if(!confirm(`Make the MDS kept on ${when} the live version for everyone?\n\n${fInt(w.out.rows.length)} rows — ${x.n?`${x.chg} changed, ${x.add} added, ${x.del} removed`:"no changes"} against what is on screen now.\n\nThe version in use now stays in the list, so you can switch back.`)) return;
+  const buf=await blob.arrayBuffer(), w=wbRead(buf), x=mdsDiff(S.rows,w.out.rows), when=fmt(v.created_at);
+  if(!confirm(`Make the MDS kept on ${when} the live version for everyone?\n\n${fInt(w.out.rows.length)} rows — ${x.n?`${x.chg} changed${mdsColsTxt(x)}, ${x.add} added, ${x.del} removed`:"no changes"} against what is on screen now.\n\nThe version in use now stays in the list, so you can switch back.`)) return;
   await useWorkbook(w.out,"MDS of "+when,true,v.sheet_saved||v.created_at);
   LIVE.cur={buf,src:"last",modified:v.sheet_saved,at:new Date()}; mountLB();
   await sbSaveEdits();
-  await sbSaveVersion(buf,{source:"Back to the MDS of "+when+mdsChgTxt(x),rows:w.out.rows.length,modified:v.sheet_saved,sig:rowSig(w.out.rows)});
+  await sbSaveVersion(buf,{source:"Back to the MDS of "+when+mdsChgTxt(x),rows:w.out.rows.length,modified:v.sheet_saved,sig:mdsSig(w.out.rows)});
 }
 async function sbSaveEdits(){
   if(!sbReady()) return; if(!sbCanWrite()){ toast("Saved in this browser only — your account can view but not change the shared data",true); return; }
