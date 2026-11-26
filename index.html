@@ -14013,7 +14013,8 @@ function applyPending(){
   const b=$("#applyBtn"); b.disabled=true; b.textContent="Applying…";
   if(PENDING.out&&PENDING.out.report){
     const pb=PENDING.buf, pf=PENDING.file, po=PENDING.out;
-    useWorkbook(PENDING.out,PENDING.file,true).then(()=>{ PENDING=null; sbSaveEdits(); sbSaveVersion(pb,{source:"Upload: "+pf,rows:po.rows.length,sig:mdsSig(po.rows)}); toast("Workbook applied — every plot re-linked and the map repainted"); })
+    PENDING=null; mdsGuardUpload(pb,{out:po,modified:null},pf).finally(()=>{ b.disabled=false; b.textContent="Apply this file"; }); return;
+    useWorkbook(po,pf,true).then(()=>{ sbSaveVersion(pb,{source:"Upload: "+pf,rows:po.rows.length,sig:rowSig(po.rows)}); toast("Workbook applied — every plot re-linked and the map repainted"); })
       .catch(e=>{ b.disabled=false; b.textContent="Apply this file"; $("#diff").innerHTML+='<div class="bad">Could not apply: '+esc(e.message)+'</div>'; });
     return;
   }
@@ -19217,11 +19218,10 @@ function srcWire(){
     SRC.link=v; toast(v?"Link saved — syncing now":"Link removed"); $("#srcSync").disabled=!v; if(v) srcSyncNow(); };
   const sy=$("#srcSync"); if(sy) sy.onclick=srcSyncNow;
   const up=$("#srcUp"); if(up) up.onchange=async()=>{ const f=up.files[0]; if(!f) return;
-    try{ const buf=await f.arrayBuffer(), w=wbRead(buf), d=mdsDiff(S.rows,w.out.rows);
-      if(!confirm(`${f.name}: ${fInt(w.out.rows.length)} rows — ${d.n?`${d.chg} changed${mdsColsTxt(d)}, ${d.add} added, ${d.del} removed`:"no changes"} against what is on screen.\n\nUse this file for everyone?`)) return;
+    try{ const buf=await f.arrayBuffer(), w=wbRead(buf); await mdsGuardUpload(buf,w,f.name); return; const d=mdsDiff(S.rows,w.out.rows);
+      if(!confirm(`${f.name}: ${fInt(w.out.rows.length)} rows — ${d.n?`${d.chg} changed, ${d.add} added, ${d.del} removed`:"no changes"} against what is on screen.\n\nUse this file for everyone?`)) return;
       await useWorkbook(w.out,"Upload: "+f.name,true,w.modified||undefined); LIVE.cur={buf,src:"last",modified:w.modified,at:new Date()}; mountLB();
-      await sbSaveEdits();
-      await sbSaveVersion(buf,{source:"Upload: "+f.name+mdsChgTxt(d),rows:w.out.rows.length,modified:w.modified,sig:mdsSig(w.out.rows)});
+      await sbSaveVersion(buf,{source:"Upload: "+f.name,rows:w.out.rows.length,modified:w.modified,sig:rowSig(w.out.rows)});
     }catch(e){ toast("Could not use that file: "+e.message,true); } finally{ up.value=""; } };
   const ls=$("#lbSave"); if(ls) ls.onclick=async()=>{ SBLB={language:$("#lbLang").value,fontSize:$("#lbSize").value};
     const k=$("#aiKey").value.trim();
@@ -19687,6 +19687,127 @@ async function sbMakeLive(v,blob,fmt){
   LIVE.cur={buf,src:"last",modified:v.sheet_saved,at:new Date()}; mountLB();
   await sbSaveEdits();
   await sbSaveVersion(buf,{source:"Back to the MDS of "+when+mdsChgTxt(x),rows:w.out.rows.length,modified:v.sheet_saved,sig:mdsSig(w.out.rows)});
+}
+
+/* ============================================================================
+   V146.6 (26 Nov 2026) - MDS UPLOAD GUARD
+   An uploaded MDS used to REPLACE the whole register. A file built on an older MDS (Sief, 26 Nov) undid a month of
+   register edits. Now every upload is compared three ways:
+     base = the saved MDS version the file was built from (closest match among the last 6 versions)
+     file = the uploaded workbook,  reg = the register everyone uses now
+   - a cell the file changed (file differs from base) can be applied; ticked per column
+   - a cell only the register changed (file = base, register differs) is KEPT; a full replace would undo it (red warning)
+   Default = "Apply the ticked changes only". "Replace the whole register" stays possible after a second warning.
+   ========================================================================== */
+const MDSG_SKIP=new Set(["src","_id","dup","unifiedMds","unifiedSales"]);
+const mdsgCols=()=>(S.reg.cols||[]).filter(c=>!MDSG_SKIP.has(c));
+const mdsgKey=r=>[r.park,r.sheet,r.unit].join("|");
+function mdsgGroup(rows){ const m=new Map(); rows.forEach(r=>{ const k=mdsgKey(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r); }); return m; }
+const mdsgOne=(m,k)=>{ const l=m.get(k); return l&&l.length===1?l[0]:null; };
+const mdsgLab=c=>{ try{ return (colOf(c)||{}).label||c; }catch(e){ return c; } };
+const mdsgWhen=t=>t?new Date(t).toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"—";
+
+/* the saved version this file was most likely built from (most equal cells) */
+async function mdsgBase(G){
+  const cols=mdsgCols(); let best=null;
+  const L=await SB.from("sid_mds_versions").select("*").order("created_at",{ascending:false}).limit(6);
+  for(const v of (L.data||[])){
+    try{ const w=wbRead(await (await sbDl(v.path)).arrayBuffer()), GB=mdsgGroup(w.out.rows); let eqc=0, miss=0;
+      G.forEach((l,k)=>{ const f=l.length===1?l[0]:null, b=mdsgOne(GB,k); if(!f||!b){ miss++; return; } cols.forEach(c=>{ if(edEq(f[c],b[c])) eqc++; }); });
+      const score=eqc-miss*cols.length;
+      if(!best||score>best.score) best={v,G:GB,score}; }catch(e){ console.warn("guard base",v.id,e); }
+  }
+  return best;
+}
+/* who changed the register since the base version (for the warning) */
+async function mdsgWho(since){
+  try{ const r=await SB.from("sid_audit").select("by_email").eq("source","register").in("action",["edit","add","remove"]).gte("at",since).limit(5000);
+    const n={}; (r.data||[]).forEach(x=>{ const p=String(x.by_email||"?").split("@")[0]; n[p]=(n[p]||0)+1; });
+    return Object.entries(n).sort((a,b)=>b[1]-a[1]).map(([p,c])=>p+" "+fInt(c)); }catch(e){ return []; }
+}
+function mdsgAnalyse(fileRows,base){
+  const cols=mdsgCols(), GF=mdsgGroup(fileRows), GR=mdsgGroup(S.rows), GB=base?base.G:new Map();
+  const A={cols:{}, undo:0, undoCols:{}, conflicts:0, newRows:[], fileRemoved:[], lostRows:0, backRows:0, GF, GR, GB};
+  cols.forEach(c=>A.cols[c]={chg:0,conf:0});
+  GR.forEach((rl,k)=>{ const r=rl.length===1?rl[0]:null, f=mdsgOne(GF,k), b=mdsgOne(GB,k);
+    if(!GF.has(k)){ if(GB.has(k)) A.fileRemoved.push(k); else A.lostRows+=rl.length; return; }
+    if(!r||!f) return;
+    cols.forEach(c=>{ const fb=b?!edEq(f[c],b[c]):!edEq(f[c],r[c]);
+      if(fb){ if(edEq(f[c],r[c])) return; A.cols[c].chg++; if(b&&!edEq(r[c],b[c])){ A.cols[c].conf++; A.conflicts++; } }
+      else if(b&&!edEq(r[c],b[c])){ A.undo++; A.undoCols[c]=(A.undoCols[c]||0)+1; } }); });
+  GF.forEach((fl,k)=>{ if(GR.has(k)) return; if(GB.has(k)) A.backRows+=fl.length; else A.newRows.push(...fl); });
+  return A;
+}
+function mdsgMerge(A,ticked,addNew,dropRemoved){
+  const out=[], drop=new Set(dropRemoved?A.fileRemoved:[]); let cells=0;
+  S.rows.forEach(r0=>{ const k=mdsgKey(r0); if(drop.has(k)) return; const r={...r0};
+    const rl=A.GR.get(k), f=mdsgOne(A.GF,k), b=mdsgOne(A.GB,k);
+    if(rl&&rl.length===1&&f) ticked.forEach(c=>{ const fb=b?!edEq(f[c],b[c]):!edEq(f[c],r[c]); if(fb&&!edEq(f[c],r[c])){ r[c]=f[c]??null; cells++; } });
+    out.push(r); });
+  if(addNew) A.newRows.forEach(f=>out.push({...f}));
+  return {rows:out, cells, added:addNew?A.newRows.length:0, removed:drop.size};
+}
+async function mdsgReplace(buf,w,name){
+  const d=mdsDiff(S.rows,w.out.rows);
+  await useWorkbook(w.out,"Upload: "+name,true,w.modified||undefined); LIVE.cur={buf,src:"last",modified:w.modified,at:new Date()}; mountLB();
+  await sbSaveEdits();
+  await sbSaveVersion(buf,{source:"Upload (whole register replaced): "+name+mdsChgTxt(d),rows:w.out.rows.length,modified:w.modified,sig:mdsSig(w.out.rows)});
+}
+async function mdsgApply(buf,w,name,A,ticked,addNew,dropRemoved){
+  const m=mdsgMerge(A,ticked,addNew,dropRemoved);
+  if(!m.cells&&!m.added&&!m.removed){ toast("Nothing to apply — the register already has every ticked change in this file"); return false; }
+  LIVE.cur={buf,src:"last",modified:w.modified,at:new Date()};
+  await useWorkbook({rows:m.rows,report:w.out.report},"Upload (changes only): "+name,true,w.modified||undefined); mountLB();
+  await sbSaveEdits();
+  const names=ticked.filter(c=>A.cols[c]&&A.cols[c].chg).map(mdsgLab);
+  await sbSaveVersion(regWorkbook(),{source:`Upload (changes only): ${name} · ${fInt(m.cells)} cells${names.length?" ("+names.slice(0,4).join(", ")+(names.length>4?", …":"")+")":""}, ${m.added} added, ${m.removed} removed`,
+    rows:S.rows.length,modified:w.modified,sig:mdsSig(S.rows)});
+  return true;
+}
+async function mdsGuardUpload(buf,w,name){
+  if(!sbReady()||!sbCanWrite()){ toast("Your account can view but not change the shared data",true); return; }
+  toast("Comparing "+name+" with the saved MDS versions and the register…");
+  const base=await mdsgBase(mdsgGroup(w.out.rows));
+  const A=mdsgAnalyse(w.out.rows,base), who=base?await mdsgWho(base.v.created_at):[];
+  const cols=mdsgCols().filter(c=>A.cols[c].chg);
+  const hid=typeof REG_SENS!=="undefined"?REG_SENS:new Set();
+  const risk=A.undo||A.lostRows||A.backRows;
+  const st="style=\"padding:6px 8px;border-bottom:1px solid rgba(0,0,0,.08);text-align:left\"";
+  const o=document.createElement("div"); o.className="mp-ov"; o.id="mdsgOv";
+  o.innerHTML=`<div class="mp-dlg" role="dialog" aria-modal="true" style="width:min(760px,100%)">
+    <div class="mpd-h"><b>Upload ${esc(name)}</b><span class="sub">${fInt(w.out.rows.length)} rows</span></div>
+    <div class="mpd-b">
+      <p class="note" style="margin:0">Compared with <b>${base?"the MDS version kept on "+esc(mdsgWhen(base.v.created_at)):"the register (no saved version matched)"}</b> — the version this file was most likely built from — and with the register everyone uses now.</p>
+      ${risk?`<div style="background:rgba(179,38,61,.09);border:1px solid rgba(179,38,61,.45);border-radius:12px;padding:10px 12px;color:#8a1c2e">
+        <b>This file is older than the register.</b> Replacing the whole register with it would
+        undo <b>${fInt(A.undo)}</b> cells changed in the register since ${esc(base?mdsgWhen(base.v.created_at):"then")}${who.length?" (by "+esc(who.slice(0,5).join(", "))+")":""}${A.lostRows?`, remove <b>${fInt(A.lostRows)}</b> rows added in the register`:""}${A.backRows?`, and bring back <b>${fInt(A.backRows)}</b> rows deleted in the register`:""}.
+        <br>“Apply the ticked changes” below keeps all of that and takes only what this file changed.</div>`:""}
+      ${cols.length?`<div><b>What this file changed</b> <span class="sub">tick the columns to take from it</span>
+        <table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:13px"><thead><tr><th ${st}></th><th ${st}>Column</th><th ${st}>Rows changed</th><th ${st}>Also changed in the register (file wins)</th></tr></thead><tbody>
+        ${cols.map(c=>`<tr><td ${st}><input type="checkbox" data-mdsg="${esc(c)}" checked></td><td ${st}>${esc(hid.has(c)?"Cost figure":mdsgLab(c))}</td><td ${st}>${fInt(A.cols[c].chg)}</td><td ${st}>${A.cols[c].conf?fInt(A.cols[c].conf):"—"}</td></tr>`).join("")}
+        </tbody></table></div>`:`<p class="note" style="margin:0">This file changes no cell of the register rows.</p>`}
+      ${A.newRows.length?`<label><input type="checkbox" id="mdsgAdd" checked> Add <b>${fInt(A.newRows.length)}</b> rows that are new in this file</label>`:""}
+      ${A.fileRemoved.length?`<label><input type="checkbox" id="mdsgDrop"> Remove <b>${fInt(A.fileRemoved.length)}</b> rows this file removed</label>`:""}
+    </div>
+    <div class="mpd-f"><button class="ebtn" id="mdsgRep" style="color:#b3263d">Replace the whole register…</button><span style="flex:1"></span>
+      <button class="ebtn" id="mdsgNo">Cancel</button><button class="ebtn" id="mdsgGo" style="background:#b3263d;color:#fff">Apply the ticked changes</button></div></div>`;
+  document.body.appendChild(o);
+  return new Promise(res=>{
+    const close=()=>{ o.remove(); res(); };
+    o.querySelector("#mdsgNo").onclick=close;
+    o.addEventListener("click",e=>{ if(e.target===o) close(); });
+    o.querySelector("#mdsgGo").onclick=async()=>{
+      const ticked=[...o.querySelectorAll("[data-mdsg]")].filter(x=>x.checked).map(x=>x.dataset.mdsg);
+      const add=!!(o.querySelector("#mdsgAdd")||{}).checked, drop=!!(o.querySelector("#mdsgDrop")||{}).checked;
+      o.querySelector("#mdsgGo").disabled=true;
+      try{ await mdsgApply(buf,w,name,A,ticked,add,drop); }catch(e){ toast("Could not apply: "+(e.message||e),true); }
+      close(); };
+    o.querySelector("#mdsgRep").onclick=async()=>{
+      if(risk&&!confirm(`Replace the WHOLE register with ${name}?\n\nThis undoes ${fInt(A.undo)} cells changed in the register${A.lostRows?`, removes ${fInt(A.lostRows)} rows added in the register`:""}${A.backRows?`, brings back ${fInt(A.backRows)} deleted rows`:""}.\n\nOnly do this if the file really is the newest complete MDS.`)) return;
+      if(!risk&&!confirm(`Replace the whole register with ${name}?`)) return;
+      try{ await mdsgReplace(buf,w,name); }catch(e){ toast("Could not use that file: "+(e.message||e),true); }
+      close(); };
+  });
 }
 async function sbSaveEdits(){
   if(!sbReady()) return; if(!sbCanWrite()){ toast("Saved in this browser only — your account can view but not change the shared data",true); return; }
